@@ -1,4 +1,4 @@
-# INSTALL.md
+# Installation Guide
 
 # GearView3D — Install & Run (Windows)
 
@@ -48,6 +48,9 @@ Verify:
 ```powershell
 psql --version
 ```
+# How to run / contribute
+- `cd frontend` → `npm install` → `npm run dev`
+- Verify app opens at `http://localhost:5173`
 
 ## Running backend (planned)
 - Backend folder not added yet. When present we will:
@@ -59,8 +62,3 @@ psql --version
 - Port conflict: Vite defaults to 5173 — free or change port.
 - `psql` not found: restart terminal/Windows after adding PATH.
 - Permission errors on Windows: run PowerShell as normal user (not Admin) for installs; only elevate if prompted.
-
-## Quick checklist for each teammate
-- Clone repo
-- `cd frontend` → `npm install` → `npm run dev`
-- Verify app opens at `http://localhost:5173`
