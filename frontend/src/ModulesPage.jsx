@@ -1,6 +1,6 @@
 import './ModulesPage.css'
 
-function ModulesPage({ user, onLogout }) {
+function ModulesPage({ user, onLogout, onStartTraining }) {
   const modules = [
     {
       id: 1,
@@ -42,7 +42,14 @@ function ModulesPage({ user, onLogout }) {
             <div className="module-content">
               <h2>{module.title}</h2>
               <p>{module.description}</p>
-              <button className="start-button">Start Training</button>
+              <button 
+                className="start-button" 
+                disabled={module.id !== 1}
+                onClick={() => module.id === 1 && onStartTraining(module.title)}
+              >
+                Start Training
+              </button>
+              {module.id !== 1 && <span className="coming-soon">Coming Soon</span>}
             </div>
           </div>
         ))}
