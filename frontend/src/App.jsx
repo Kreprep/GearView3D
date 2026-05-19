@@ -2,10 +2,30 @@ import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
+import LoginPage from './LoginPage'
+import ModulesPage from './ModulesPage'
 import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [user, setUser] = useState(null)
+
+  const handleLogin = (credentials) => {
+    setUser(credentials)
+    setIsLoggedIn(true)
+  }
+
+  const handleLogout = () => {
+    setIsLoggedIn(false)
+    setUser(null)
+  }
+
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={handleLogin} />
+  }
+
+  return <ModulesPage user={user} onLogout={handleLogout} />
 
   return (
     <>
@@ -37,7 +57,7 @@ function App() {
           <svg className="icon" role="presentation" aria-hidden="true">
             <use href="/icons.svg#documentation-icon"></use>
           </svg>
-          <h2>Documentation</h2>
+          <h2>Testing</h2>
           <p>Your questions, answered</p>
           <ul>
             <li>
