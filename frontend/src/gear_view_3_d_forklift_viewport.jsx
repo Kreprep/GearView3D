@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import {
   Bounds,
   Center,
@@ -145,28 +145,41 @@ function ForkliftModel({ modelUrl, wireframe }) {
 }
 
 function HotspotPin({ hotspot, selected, onSelect }) {
-  const Icon = hotspot.icon;
+  const glowRef = useRef(null);
+
+  useFrame(({ clock }) => {
+    if (!glowRef.current) return;
+
+    const pulse = selected ? 1.08 + Math.sin(clock.elapsedTime * 3.4) * 0.03 : 1.0;
+    glowRef.current.scale.setScalar(pulse);
+  });
 
   return (
-    <Html position={hotspot.position} center distanceFactor={7} occlude>
-      <button
-        type="button"
+    <group position={hotspot.position}>
+      <mesh
+        ref={glowRef}
         onClick={(event) => {
           event.stopPropagation();
           onSelect(hotspot);
         }}
-        className={`group relative flex h-10 w-10 items-center justify-center rounded-full border shadow-lg transition ${
-          selected ? "scale-110 border-cyan-200 bg-cyan-500 text-white" : "border-white/80 bg-slate-950/90 text-white hover:scale-105 hover:bg-cyan-600"
-        }`}
-        aria-label={`Open ${hotspot.label} training point`}
+        castShadow={false}
+        receiveShadow={false}
       >
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400/25" />
-        <Icon className="relative h-4 w-4" />
-        <span className="pointer-events-none absolute left-11 top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-full bg-slate-950 px-3 py-1 text-xs font-medium text-white shadow-xl group-hover:block">
-          {hotspot.label}
-        </span>
-      </button>
-    </Html>
+        <ringGeometry args={[0.018, 0.04, 24]} />
+        <meshBasicMaterial color={selected ? "#67e8f9" : "#e0f2fe"} transparent opacity={0.9} />
+      </mesh>
+      <mesh
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelect(hotspot);
+        }}
+        castShadow={false}
+        receiveShadow={false}
+      >
+        <sphereGeometry args={[0.02, 12, 12]} />
+        <meshStandardMaterial color={selected ? "#22d3ee" : "#f8fafc"} emissive={selected ? "#0ea5e9" : "#111827"} emissiveIntensity={selected ? 0.6 : 0.2} metalness={0.1} roughness={0.35} />
+      </mesh>
+    </group>
   );
 }
 
@@ -211,7 +224,7 @@ function ForkliftScene({ modelUrl, overlaysEnabled, selectedId, onSelectHotspot,
     <>
       <PerspectiveCamera makeDefault position={[1.25, 0.85, 1.55]} fov={42} />
       <ambientLight intensity={0.75} />
-      <directionalLight castShadow position={[2.2, 3, 1.8]} intensity={2.6} shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
+      <directionalLight castShadow position={[2.2, 3, 1.8]} intensity={2.4} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <Environment preset="warehouse" />
 
       <Bounds fit clip observe margin={1.25}>
@@ -332,7 +345,7 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
           </div>
 
           <ViewportErrorBoundary>
-            <Canvas shadows dpr={[1, 2]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
+            <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
               <Suspense fallback={<LoadingPanel />}>
                 {Scene}
               </Suspense>
