@@ -1,6 +1,10 @@
+import { useState } from 'react'
+import ForkliftViewport from './gear_view_3_d_forklift_viewport'
 import './PartsIdentificationPage.css'
 
 function PartsIdentificationPage({ moduleName, onBack }) {
+  const [showViewport, setShowViewport] = useState(false)
+
   return (
     <div className="training-page-container">
       <header className="training-page-header">
@@ -30,7 +34,17 @@ function PartsIdentificationPage({ moduleName, onBack }) {
             <p>Understand which parts require regular maintenance and replacement.</p>
           </div>
 
-          <button className="start-lesson-button">Start Part 1</button>
+          <button className="start-lesson-button" onClick={() => setShowViewport(true)}>
+            {showViewport ? 'Part 1 viewport is open' : 'Start Part 1'}
+          </button>
+
+          {showViewport && (
+            <section className="viewport-panel">
+              <h3>Part 1: Live Forklift View</h3>
+              <p>Use the controls below to inspect the forklift and review the main components.</p>
+              <ForkliftViewport />
+            </section>
+          )}
         </div>
       </main>
     </div>
