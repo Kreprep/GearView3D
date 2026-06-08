@@ -1,4 +1,5 @@
 import './LoadHandlingPage.css'
+import Model3DViewer from './components/Model3DViewer'
 
 function LoadHandlingPage({ moduleName, onBack }) {
   return (
@@ -42,9 +43,7 @@ function LoadHandlingPage({ moduleName, onBack }) {
                 <li>Ensure stable approach angle</li>
                 <li>Position forks at correct height before engagement</li>
               </ul>
-              <div className="placeholder">
-                <span>3D Interactive: Forklift Positioning Simulator</span>
-              </div>
+              <Model3DViewer height="280px" />
             </div>
           </div>
 
@@ -62,9 +61,7 @@ function LoadHandlingPage({ moduleName, onBack }) {
                 <li>How palletized cargo affects balance</li>
                 <li>How containerized cargo affects balance</li>
               </ul>
-              <div className="placeholder">
-                <span>3D Interactive: Stability Triangle Visualization</span>
-              </div>
+              <Model3DViewer height="280px" />
             </div>
           </div>
 
@@ -80,9 +77,7 @@ function LoadHandlingPage({ moduleName, onBack }) {
                 <li><strong>Tilt Lever:</strong> Control mast tilt angle with precision</li>
                 <li><strong>Side-Shift Controls:</strong> Fine-tune lateral positioning</li>
               </ul>
-              <div className="placeholder">
-                <span>3D Interactive: Virtual Dashboard & Lever Controls</span>
-              </div>
+              <Model3DViewer height="280px" />
             </div>
           </div>
 
@@ -101,9 +96,7 @@ function LoadHandlingPage({ moduleName, onBack }) {
                 <li>Verify proper safety barriers deployment</li>
                 <li>Confirm hazard signage placement</li>
               </ul>
-              <div className="placeholder">
-                <span>3D Interactive: Worksite Safety Assessment</span>
-              </div>
+              <Model3DViewer height="280px" />
             </div>
           </div>
         </section>

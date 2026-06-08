@@ -1,4 +1,5 @@
 import './WalkAroundCheckPage.css'
+import Model3DViewer from './components/Model3DViewer'
 
 function WalkAroundCheckPage({ moduleName, onBack }) {
   return (
@@ -42,9 +43,7 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
                 <li>Battery electrolyte leaks</li>
                 <li>Cooling system/coolant leaks</li>
               </ul>
-              <div className="placeholder">
-                <span>3D Interactive: Engine Bay Inspection</span>
-              </div>
+              <Model3DViewer height="280px" />
             </div>
 
             <div className="inspection-area">
@@ -55,9 +54,7 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
                 <li>Extreme wear or inflation issues on tires</li>
                 <li>Loose or missing structural bolts</li>
               </ul>
-              <div className="placeholder">
-                <span>3D Interactive: Component Damage Assessment</span>
-              </div>
+              <Model3DViewer height="280px" />
             </div>
           </div>
 
@@ -74,9 +71,7 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
                 <li>Water temperature gauge</li>
                 <li>Fuel level gauge</li>
               </ul>
-              <div className="placeholder">
-                <span>3D Interactive: Dashboard Gauges</span>
-              </div>
+              <Model3DViewer height="280px" />
             </div>
 
             <div className="inspection-area">
@@ -89,9 +84,7 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
                 <li>Flashing warning beacon/strobe light</li>
                 <li>Automatic backup alarm</li>
               </ul>
-              <div className="placeholder">
-                <span>3D Interactive: Safety Device Testing</span>
-              </div>
+              <Model3DViewer height="280px" />
             </div>
           </div>
         </section>

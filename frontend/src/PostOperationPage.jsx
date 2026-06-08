@@ -1,4 +1,5 @@
 import './PostOperationPage.css'
+import Model3DViewer from './components/Model3DViewer'
 
 function PostOperationPage({ moduleName, onBack }) {
   return (
@@ -43,9 +44,7 @@ function PostOperationPage({ moduleName, onBack }) {
                 <div className="step-details">
                   <h5>Select Level Surface</h5>
                   <p>Park on an appropriate level surface free from slopes and obstructions</p>
-                  <div className="placeholder">
-                    <span>3D Interactive: Surface Level Assessment</span>
-                  </div>
+                  <Model3DViewer height="260px" />
                 </div>
               </div>
 
@@ -54,9 +53,7 @@ function PostOperationPage({ moduleName, onBack }) {
                 <div className="step-details">
                   <h5>Tilt Mast Slightly Forward</h5>
                   <p>Adjust the mast tilt lever to position mast forward slightly for stability</p>
-                  <div className="placeholder">
-                    <span>3D Interactive: Mast Tilt Control</span>
-                  </div>
+                  <Model3DViewer height="260px" />
                 </div>
               </div>
 
@@ -65,9 +62,7 @@ function PostOperationPage({ moduleName, onBack }) {
                 <div className="step-details">
                   <h5>Lower Forks Completely Flat</h5>
                   <p>Use lift lever to lower forks completely to ground level</p>
-                  <div className="placeholder">
-                    <span>3D Interactive: Fork Lowering Verification</span>
-                  </div>
+                  <Model3DViewer height="260px" />
                 </div>
               </div>
             </div>
@@ -86,9 +81,7 @@ function PostOperationPage({ moduleName, onBack }) {
                 <div className="step-details">
                   <h5>Put Directional Controls in Neutral</h5>
                   <p>Ensure all control levers are in neutral position to prevent unintended movement</p>
-                  <div className="placeholder">
-                    <span>3D Interactive: Control Lever Positioning</span>
-                  </div>
+                  <Model3DViewer height="260px" />
                 </div>
               </div>
 
@@ -97,9 +90,7 @@ function PostOperationPage({ moduleName, onBack }) {
                 <div className="step-details">
                   <h5>Engage Parking Brake</h5>
                   <p>Activate the parking brake to secure the forklift in place</p>
-                  <div className="placeholder">
-                    <span>3D Interactive: Parking Brake Engagement</span>
-                  </div>
+                  <Model3DViewer height="260px" />
                 </div>
               </div>
 
@@ -108,9 +99,7 @@ function PostOperationPage({ moduleName, onBack }) {
                 <div className="step-details">
                   <h5>Allow Engine to Idle</h5>
                   <p>Let the engine run at idle speed briefly for structural and thermal stabilization (cooling)</p>
-                  <div className="placeholder">
-                    <span>3D Interactive: Idle Monitoring & Cooldown</span>
-                  </div>
+                  <Model3DViewer height="260px" />
                 </div>
               </div>
 
@@ -119,9 +108,7 @@ function PostOperationPage({ moduleName, onBack }) {
                 <div className="step-details">
                   <h5>Turn Off Ignition Switch</h5>
                   <p>Shut off the engine using the ignition switch to complete the shutdown procedure</p>
-                  <div className="placeholder">
-                    <span>3D Interactive: Ignition Switch Operation</span>
-                  </div>
+                  <Model3DViewer height="260px" />
                 </div>
               </div>
             </div>

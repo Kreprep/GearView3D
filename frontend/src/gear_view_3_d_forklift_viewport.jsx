@@ -229,7 +229,7 @@ function ForkliftScene({ modelUrl, overlaysEnabled, selectedId, onSelectHotspot,
 
       <Bounds fit clip observe margin={1.25}>
         <AutoFit resetToken={resetToken} />
-        <Center>
+        <Center position={[0, 0, 0]} top>
           <group rotation={[0, -0.18, 0]}>
             <ForkliftModel modelUrl={modelUrl} wireframe={wireframe} />
             {overlaysEnabled &&
