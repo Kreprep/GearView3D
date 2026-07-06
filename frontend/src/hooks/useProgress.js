@@ -7,6 +7,7 @@ import {
   recordQuizAttempt,
   resetStoredProgress,
   setChecklistProgress,
+  setSimulationProgress,
   subscribeToProgress,
 } from '../lib/progressService'
 
@@ -37,6 +38,10 @@ export function useProgress() {
     setProgress(recordPartsPracticeAttempt(attempt))
   }, [])
 
+  const updateSimulation = useCallback((moduleSlug, simulationProgress) => {
+    setProgress(setSimulationProgress(moduleSlug, simulationProgress))
+  }, [])
+
   const resetProgress = useCallback(() => {
     resetStoredProgress()
     setProgress(getStoredProgress())
@@ -49,6 +54,7 @@ export function useProgress() {
     viewPart,
     saveQuizAttempt,
     savePartsPracticeAttempt,
+    updateSimulation,
     resetProgress,
   }
 }

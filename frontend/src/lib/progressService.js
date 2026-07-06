@@ -15,6 +15,7 @@ function emptyProgress() {
       practiceAttempts: [],
     },
     quizzes: {},
+    simulations: {},
     updatedAt: null,
   }
 }
@@ -29,6 +30,7 @@ function normalizeProgress(progress) {
       practiceAttempts: progress?.parts?.practiceAttempts || [],
     },
     quizzes: progress?.quizzes || {},
+    simulations: progress?.simulations || {},
   }
 }
 
@@ -145,6 +147,22 @@ export function recordQuizAttempt(moduleSlug, { score, total }) {
   })
 }
 
+export function setSimulationProgress(moduleSlug, simulationProgress) {
+  const progress = getStoredProgress()
+
+  return persist({
+    ...progress,
+    simulations: {
+      ...progress.simulations,
+      [moduleSlug]: {
+        ...(progress.simulations[moduleSlug] || {}),
+        ...simulationProgress,
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  })
+}
+
 export function getChecklistCompletion(progress, moduleSlug) {
   const checklist = moduleChecklists[moduleSlug] || []
   const completedItems = progress.checklists[moduleSlug]?.completedItems || []
@@ -158,6 +176,12 @@ export function getChecklistCompletion(progress, moduleSlug) {
 }
 
 export function getModuleProgress(progress, moduleSlug) {
+  const simulationProgress = progress.simulations[moduleSlug]?.percentage
+
+  if (typeof simulationProgress === 'number') {
+    return simulationProgress
+  }
+
   const checklistCompletion = getChecklistCompletion(progress, moduleSlug)
   const latestQuiz = progress.quizzes[moduleSlug]?.[0]
 
@@ -207,6 +231,7 @@ export function getProgressSummary(progress = getStoredProgress()) {
     viewedParts: progress.parts.viewedPartIds,
     quizAttempts: progress.quizzes,
     partsPracticeAttempts: progress.parts.practiceAttempts,
+    simulations: progress.simulations,
   }
 }
 
