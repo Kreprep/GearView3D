@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TRAINEE
+  INSTRUCTOR
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  fullName     String
+  role         UserRole   @default(TRAINEE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  progress     Progress[]
+}
+
+model Equipment {
+  id          String           @id
+  title       String
+  description String
+  modelUrl    String
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  modules     TrainingModule[]
+  parts       Part[]
+}
+
+model TrainingModule {
+  id          Int       @id
+  slug        String    @unique
+  equipmentId String
+  title       String
+  subtitle    String
+  description String
+  sortOrder   Int
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  checklist   ChecklistItem[]
+  progress    Progress[]
+}
+
+model ChecklistItem {
+  id        String         @id @default(uuid())
+  moduleId  Int
+  text      String
+  sortOrder Int
+  module    TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+}
+
+model Part {
+  id           String    @id
+  equipmentId  String
+  label        String
+  functionText String
+  safetyNote   String
+  positionX    Float
+  positionY    Float
+  positionZ    Float
+  checklist    String[]
+  equipment    Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+}
+
+model Progress {
+  id             String         @id @default(uuid())
+  userId         String
+  moduleId       Int?
+  moduleSlug     String
+  completedSteps String[]
+  progress       Int
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module         TrainingModule? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, moduleSlug])
+}
