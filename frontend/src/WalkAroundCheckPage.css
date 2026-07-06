@@ -1,0 +1,552 @@
+.module-page-container {
+  min-height: 100vh;
+  background: #f4f7fb;
+}
+
+.module-page-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 32px;
+  border-bottom: 1px solid #dbe3ef;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+}
+
+.module-title-section h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.module-title-section h2 {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.back-button {
+  border: 1px solid #a5f3fc;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #155e75;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 9px 14px;
+  white-space: nowrap;
+}
+
+.back-button:hover {
+  background: #cffafe;
+}
+
+.module-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 22px;
+  width: min(1760px, 100%);
+  margin: 0 auto;
+  padding: 28px 32px 48px;
+}
+
+.syllabus-section,
+.learning-objectives,
+.critical-reminder {
+  grid-column: 1 / -1;
+}
+
+.syllabus-section,
+.learning-objectives,
+.inspection-state,
+.operation-module,
+.operation-step,
+.critical-reminder {
+  border: 1px solid #dbe3ef;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+  padding: 20px;
+}
+
+.inspection-section,
+.operation-section,
+.post-operation-section {
+  display: grid;
+  gap: 18px;
+}
+
+.syllabus-section h3,
+.learning-objectives h3,
+.inspection-section h3,
+.operation-section h3,
+.post-operation-section h3,
+.critical-reminder h3 {
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.syllabus-info {
+  display: grid;
+  gap: 8px;
+}
+
+.syllabus-info p,
+.learning-objectives p,
+.inspection-area p,
+.operation-area p,
+.step-content p,
+.step-details p,
+.critical-reminder p {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.syllabus-info strong,
+.operation-area strong {
+  color: #0f172a;
+}
+
+.inspection-state h3,
+.operation-module h3,
+.operation-step h3 {
+  margin-bottom: 12px;
+  color: #0891b2;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inspection-area,
+.operation-area,
+.step-content {
+  display: grid;
+  gap: 12px;
+}
+
+.inspection-area + .inspection-area,
+.operation-area + .operation-area {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.inspection-area h4,
+.operation-area h4,
+.step-content h4,
+.step-details h5 {
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.inspection-area ul,
+.operation-area ul {
+  margin: 0 0 0 20px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.step-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.step-number {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.guided-checklist {
+  position: sticky;
+  top: 96px;
+  align-self: start;
+}
+
+.wide-simulation-content {
+  display: block;
+  width: 100%;
+  min-height: calc(100vh - 78px);
+  padding: 24px;
+}
+
+.walkaround-scene-wrap {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
+.walkaround-scene-wrap > section {
+  border-radius: 18px;
+}
+
+.oil-leak-overlay {
+  position: absolute;
+  left: 42%;
+  bottom: 26%;
+  z-index: 8;
+  width: 180px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(10, 10, 10, 0.78), rgba(40, 40, 40, 0.34) 58%, transparent 70%);
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+  transform: rotate(-8deg);
+}
+
+.flat-tire-marker {
+  position: absolute;
+  left: 36%;
+  bottom: 34%;
+  z-index: 9;
+  display: inline-flex;
+  width: 56px;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid #fecaca;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 34px;
+  font-weight: 950;
+  pointer-events: none;
+  box-shadow: 0 16px 36px rgba(220, 38, 38, 0.38);
+}
+
+.defect-label {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 9;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 950;
+  padding: 10px 14px;
+  pointer-events: none;
+}
+
+.defect-label.good {
+  background: #047857;
+}
+
+.defect-label.oil,
+.defect-label.tire {
+  background: #dc2626;
+}
+
+.walkaround-task-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.engine-state-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.engine-state-toggle button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 950;
+  padding: 12px 14px;
+}
+
+.engine-state-toggle button.active {
+  border-color: #06b6d4;
+  background: #ecfeff;
+  color: #155e75;
+}
+
+.engine-state-toggle span {
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+.engine-state-toggle button.active span {
+  background: #0891b2;
+  color: #ffffff;
+}
+
+.reference-card,
+.lesson-bubble,
+.task-note {
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #475569;
+  line-height: 1.6;
+  padding: 14px;
+}
+
+.reference-card {
+  display: grid;
+  gap: 6px;
+}
+
+.reference-card p,
+.lesson-bubble,
+.task-note {
+  margin: 0;
+}
+
+.reference-card strong {
+  color: #0f172a;
+}
+
+.inspection-card-grid,
+.device-test-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.inspection-card,
+.gauge-card,
+.device-test,
+.scenario-choice-row button,
+.scenario-picker button {
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 850;
+  padding: 12px;
+  text-align: left;
+}
+
+.inspection-card {
+  display: grid;
+  gap: 5px;
+}
+
+.inspection-card span {
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.inspection-card small {
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.inspection-card.done,
+.gauge-card.done,
+.device-test.done {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.virtual-dashboard {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #dbe3ef;
+  border-radius: 16px;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 14px;
+}
+
+.virtual-dashboard h4 {
+  margin: 0;
+  color: #ffffff;
+}
+
+.gauge-card {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.gauge-card button {
+  border: 0;
+  border-radius: 999px;
+  background: #0891b2;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 950;
+  padding: 9px 12px;
+}
+
+.gauge-dial {
+  position: relative;
+  width: 48px;
+  height: 32px;
+  overflow: hidden;
+  border: 3px solid #cbd5e1;
+  border-bottom: 0;
+  border-radius: 48px 48px 0 0;
+  background: #ffffff;
+}
+
+.gauge-dial::after {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #0f172a;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.gauge-dial i {
+  position: absolute;
+  left: calc(50% - 2px);
+  bottom: 2px;
+  width: 4px;
+  height: 24px;
+  border-radius: 999px;
+  background: #dc2626;
+  transform-origin: 50% 100%;
+  transition: transform 180ms ease;
+}
+
+.gauge-card strong {
+  color: #0891b2;
+  display: block;
+  margin-top: 2px;
+}
+
+.device-test-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.scenario-picker,
+.scenario-choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.scenario-picker button {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  text-align: center;
+}
+
+.scenario-picker button.active,
+.scenario-choice-row button.selected {
+  border-color: #06b6d4;
+  background: #0891b2;
+  color: #ffffff;
+}
+
+.scenario-choice-row button {
+  min-width: 110px;
+  text-align: center;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-grid div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 14px;
+}
+
+.summary-grid span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.summary-grid strong {
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.completion-ready,
+.completion-warning {
+  border-radius: 14px;
+  font-weight: 850;
+  line-height: 1.6;
+  padding: 14px;
+}
+
+.completion-ready {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.completion-warning {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+@media (max-width: 1180px) {
+  .module-content {
+    grid-template-columns: 1fr;
+  }
+
+  .guided-checklist {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .module-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 14px 18px;
+  }
+
+  .module-content {
+    padding: 18px;
+  }
+
+  .device-test-grid,
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .oil-leak-overlay {
+    left: 35%;
+    width: 130px;
+  }
+}

@@ -1,0 +1,26 @@
+.scope-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  border: 1px solid #a5f3fc;
+  border-radius: 14px;
+  background: #ecfeff;
+  color: #155e75;
+  padding: 12px 14px;
+}
+
+.scope-notice strong {
+  color: #0e7490;
+}
+
+.scope-notice span {
+  color: #155e75;
+}
+
+@media (max-width: 640px) {
+  .scope-notice {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

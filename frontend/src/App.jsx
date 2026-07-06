@@ -1,122 +1,174 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useEffect, useState } from 'react'
+import LoginPage from './LoginPage'
+import DashboardPage from './DashboardPage'
+import ModulesPage from './ModulesPage'
+import TrainingSelectionPage from './TrainingSelectionPage'
+import EquipmentUsagePage from './EquipmentUsagePage'
+import WalkAroundCheckPage from './WalkAroundCheckPage'
+import LoadHandlingPage from './LoadHandlingPage'
+import PostOperationPage from './PostOperationPage'
+import PartsIdentificationPage from './PartsIdentificationPage'
+import AssessmentPage from './AssessmentPage'
+import AdminDashboard from './AdminDashboard'
+import NotFoundPage from './NotFoundPage'
+import { getCurrentUser, loginUser, setAuthToken } from './lib/api'
+import { goTo, normalizePath, routes } from './lib/router'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [path, setPath] = useState(() => normalizePath(window.location.pathname))
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(localStorage.getItem('gearview_token')))
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('gearview_user')
+    return saved ? JSON.parse(saved) : null
+  })
+  const [loginError, setLoginError] = useState('')
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  useEffect(() => {
+    const syncPath = () => setPath(normalizePath(window.location.pathname))
+    window.addEventListener('popstate', syncPath)
+    return () => window.removeEventListener('popstate', syncPath)
+  }, [])
 
-      <div className="ticks"></div>
+  useEffect(() => {
+    const token = localStorage.getItem('gearview_token')
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+    if (!token || user) return
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    setAuthToken(token)
+    getCurrentUser()
+      .then((currentUser) => {
+        setUser(currentUser)
+        localStorage.setItem('gearview_user', JSON.stringify(currentUser))
+      })
+      .catch(() => {
+        localStorage.removeItem('gearview_token')
+        localStorage.removeItem('gearview_user')
+        setAuthToken(null)
+        setIsLoggedIn(false)
+        goTo(routes.login, { replace: true })
+      })
+  }, [user])
+
+  useEffect(() => {
+    if (!isLoggedIn && path !== routes.login) {
+      goTo(routes.login, { replace: true })
+    }
+
+    if (isLoggedIn && (path === '/' || path === routes.login)) {
+      goTo(routes.dashboard, { replace: true })
+    }
+  }, [isLoggedIn, path])
+
+  const navigate = (nextPath, options) => {
+    goTo(nextPath, options)
+  }
+
+  const handleLogin = async (credentials) => {
+    setLoginError('')
+    const auth = await loginUser(credentials)
+    localStorage.setItem('gearview_token', auth.token)
+    localStorage.setItem('gearview_user', JSON.stringify(auth.user))
+    setAuthToken(auth.token)
+    setUser(auth.user)
+    setIsLoggedIn(true)
+    navigate(routes.dashboard, { replace: true })
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('gearview_token')
+    localStorage.removeItem('gearview_user')
+    setAuthToken(null)
+    setIsLoggedIn(false)
+    setUser(null)
+    navigate(routes.login, { replace: true })
+  }
+
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={handleLogin} loginError={loginError} setLoginError={setLoginError} />
+  }
+
+  if (path === '/' || path === routes.login) {
+    return null
+  }
+
+  if (path === routes.dashboard) {
+    return <DashboardPage user={user} onLogout={handleLogout} onNavigate={navigate} />
+  }
+
+  if (path === routes.catalog) {
+    return (
+      <ModulesPage
+        user={user}
+        onLogout={handleLogout}
+        onNavigate={navigate}
+      />
+    )
+  }
+
+  if (path === routes.forklift) {
+    return (
+      <TrainingSelectionPage
+        moduleName="Forklift"
+        onNavigate={navigate}
+        onBack={() => navigate(routes.catalog)}
+      />
+    )
+  }
+
+  if (path === routes.equipment) {
+    return (
+      <EquipmentUsagePage
+        moduleName="Forklift"
+        onBack={() => navigate(routes.forklift)}
+        onNavigate={navigate}
+      />
+    )
+  }
+
+  if (path === routes.walkAround) {
+    return <WalkAroundCheckPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+  }
+
+  if (path === routes.loadHandling) {
+    return <LoadHandlingPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+  }
+
+  if (path === routes.postOperation) {
+    return <PostOperationPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+  }
+
+  if (path === routes.parts) {
+    return <PartsIdentificationPage moduleName="Forklift" onBack={() => navigate(routes.forklift)} />
+  }
+
+  if (path === routes.assessment) {
+    return (
+      <AssessmentPage
+        moduleName="Forklift"
+        onBack={() => navigate(routes.forklift)}
+        onNavigate={navigate}
+      />
+    )
+  }
+
+  if (path === routes.admin || path.startsWith('/admin/')) {
+    if (user?.role !== 'ADMIN') {
+      return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
+    }
+
+    return (
+      <AdminDashboard
+        user={user}
+        onLogout={handleLogout}
+        onBack={() => navigate(routes.dashboard)}
+        path={path}
+        onNavigate={navigate}
+      />
+    )
+  }
+
+  return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
 }
 
 export default App
