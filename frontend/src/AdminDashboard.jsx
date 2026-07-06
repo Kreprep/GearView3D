@@ -183,7 +183,7 @@ function AdminDashboard({ user, onLogout, onBack, path, onNavigate }) {
 
       {!content.backendOnline && (
         <div className="admin-alert">
-          Backend is not connected yet. This dashboard is showing local fallback content until the API is running.
+          Frontend-only prototype mode is active. Admin changes are saved in this browser's localStorage.
         </div>
       )}
 
@@ -346,7 +346,7 @@ function AdminDashboard({ user, onLogout, onBack, path, onNavigate }) {
                 <h3>{item.user?.fullName || item.user?.email}</h3>
                 <p>{item.moduleSlug}: {item.progress}% complete</p>
               </article>
-            )) : <p>No saved backend progress yet.</p>}
+            )) : <p>No saved local progress yet.</p>}
           </section>
         </main>
       )}

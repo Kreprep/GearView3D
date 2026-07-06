@@ -1,15 +1,10 @@
 # GearView3D
 
-GearView3D is a thesis prototype for browser-based forklift familiarization. It supports learner modules, guided checklists, parts identification, progress tracking, quizzes, final assessment review, and admin content management.
+GearView3D is a thesis prototype for browser-based forklift familiarization. This branch is a frontend-only demo that supports learner modules, guided checklists, parts identification, progress tracking, quizzes, final assessment review, and local admin content management.
 
 Important scope note: GearView3D is for preparatory learning only. It is not a certification simulator and does not imply TESDA certification.
 
-## Demo Accounts
-
-- Admin: `admin@mail.com` / `admin123`
-- Learner: `trainee@mail.com` / `trainee123`
-
-## Frontend Setup
+## Run This Branch
 
 ```bash
 cd frontend
@@ -17,46 +12,14 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
 
-## Backend Setup
+This branch does not require any server, database, migrations, or environment variables. Data is loaded from frontend files and saved in browser `localStorage`.
 
-```bash
-cd backend
-npm install
-copy .env.example .env
-npm run dev
-```
+## Demo Accounts
 
-The API runs on `http://localhost:4000` by default.
-
-## Database Setup
-
-Use a local PostgreSQL database named `gearview3d` and schema `gearview3d`.
-
-Example `.env`:
-
-```env
-PORT=4000
-DATABASE_URL="postgresql://gearview3d:YOUR_PASSWORD@localhost:5432/gearview3d?schema=gearview3d"
-JWT_SECRET="replace-this-secret"
-CLIENT_ORIGIN="http://localhost:5173"
-```
-
-Apply schema and seed data:
-
-```bash
-cd backend
-npx prisma db push
-npm run prisma:seed
-```
-
-If Prisma Client generation fails on Windows with an `EPERM` rename error, stop any running backend Node process and run:
-
-```bash
-npx prisma generate
-npm run prisma:seed
-```
+- Admin: `admin@mail.com` / `admin123`
+- Learner: `trainee@mail.com` / `trainee123`
 
 ## Main Learner Flow
 
@@ -80,4 +43,4 @@ Admin routes:
 - `/admin/users`
 - `/admin/reports`
 
-Admins can review and edit modules, parts, checklist items, quiz questions, view learners, and export progress reports as CSV.
+Admins can review and edit modules, parts, checklist items, quiz questions, view local learner progress, and export a CSV report. Admin edits are saved locally in the current browser.
