@@ -79,17 +79,19 @@
   margin-top: 0;
 }
 
+.accordion-card {
+  padding: 0;
+}
+
 .accordion-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   width: 100%;
-  margin: -16px -18px 16px;
   padding: 16px 18px;
   border: 0;
   border-bottom: 1px solid #dbe3ef;
-  border-radius: 14px 14px 0 0;
   background: #f8fafc;
   cursor: pointer;
   text-align: left;
@@ -98,6 +100,10 @@
 
 .accordion-header:hover {
   background: #eef2f7;
+}
+
+.accordion-body {
+  padding: 16px 18px;
 }
 
 .accordion-header-right {
