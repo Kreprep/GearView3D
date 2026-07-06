@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import ForkliftViewport from './gear_view_3_d_forklift_viewport'
+import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
@@ -224,6 +224,14 @@ function LoadHandlingPage({ moduleName, onBack }) {
     })
   }
 
+  const handleViewerHotspot = (hotspot) => {
+    setFeedback({
+      type: hotspot.result === 'unsafe' ? 'warning' : 'correct',
+      title: hotspot.label,
+      message: `${hotspot.inspect} ${hotspot.feedback}`,
+    })
+  }
+
   const passCheckpoint = () => {
     saveSimulation({ checkpointPassed: true })
     setFeedback({
@@ -269,8 +277,12 @@ function LoadHandlingPage({ moduleName, onBack }) {
 
     return (
       <div className="load-scene-wrap">
-        <ForkliftViewport selectedPartId="forks" />
-        <div className="load-state-label">Good forklift condition: no defect overlay</div>
+        <InteractiveForkliftViewer
+          mode="load-handling"
+          scenario="good-forklift"
+          activeHotspots={['forks', 'carriage', 'mast-assembly', 'tires', 'operator-area']}
+          onHotspotSelect={handleViewerHotspot}
+        />
       </div>
     )
   }

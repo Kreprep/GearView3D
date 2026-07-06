@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import ForkliftViewport from './gear_view_3_d_forklift_viewport'
+import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
@@ -14,6 +14,27 @@ import {
 import './WalkAroundCheckPage.css'
 
 const moduleSlug = 'walk-around-check'
+const engineOffViewerHotspots = [
+  'underside-fluid-leaks',
+  'engine-bay',
+  'battery-area',
+  'tires',
+  'mast-assembly',
+  'forks',
+  'carriage',
+  'structural-bolts',
+]
+const engineOnViewerHotspots = ['operator-area', 'warning-devices']
+const viewerHotspotToCheck = {
+  'underside-fluid-leaks': 'fluid-leaks',
+  'engine-bay': 'engine-bay',
+  'battery-area': 'battery-area',
+  tires: 'tires',
+  'mast-assembly': 'mast-assembly',
+  forks: 'forks-carriage',
+  carriage: 'forks-carriage',
+  'structural-bolts': 'structural-bolts',
+}
 
 function unique(items) {
   return [...new Set(items)]
@@ -36,35 +57,12 @@ function calculateSimulationState(nextState) {
   return { ...nextState, percentage, complete }
 }
 
-function VisualOverlay({ state }) {
-  if (state === 'oil-leak') {
-    return (
-      <>
-        <div className="oil-leak-overlay" />
-        <div className="defect-label oil">Visible fluid leak</div>
-      </>
-    )
-  }
-
-  if (state === 'flat-tire') {
-    return (
-      <>
-        <div className="flat-tire-marker">!</div>
-        <div className="defect-label tire">Unsafe tire condition</div>
-      </>
-    )
-  }
-
-  return <div className="defect-label good">No visible defect overlay</div>
-}
-
 function WalkAroundCheckPage({ moduleName, onBack }) {
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
   const steps = moduleScenarioSteps[moduleSlug]
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [selectedPartId, setSelectedPartId] = useState('counterweight')
   const [activeScenarioIndex, setActiveScenarioIndex] = useState(0)
   const [feedback, setFeedback] = useState({
     type: 'neutral',
@@ -91,12 +89,35 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
   }
 
   const completeEngineOffCheck = (check) => {
-    setSelectedPartId(check.hotspotId)
     saveSimulation({ engineOffChecks: unique([...simulation.engineOffChecks, check.id]) })
     setFeedback({
       type: check.status === 'safe' ? 'correct' : 'warning',
       title: check.label,
       message: `${check.found} ${check.feedback}`,
+    })
+  }
+
+  const handleViewerHotspot = (hotspot) => {
+    if (steps[currentStepIndex]?.id === 'engine-off-inspection') {
+      const check = engineOffInspectionChecks.find((item) => item.id === viewerHotspotToCheck[hotspot.id])
+      if (check) {
+        completeEngineOffCheck(check)
+        return
+      }
+    }
+
+    setFeedback({
+      type: hotspot.result === 'unsafe' ? 'warning' : 'correct',
+      title: hotspot.label,
+      message: `${hotspot.inspect} ${hotspot.feedback}`,
+    })
+  }
+
+  const handleScenarioAction = (action) => {
+    setFeedback({
+      type: 'warning',
+      title: action.id === 'oil-leak' ? 'Fluid Leak Detected' : 'Tire Warning',
+      message: action.feedback,
     })
   }
 
@@ -144,11 +165,22 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
 
   const renderScene = ({ currentStep }) => {
     const scenarioState = currentStep.id === 'defect-recognition' ? activeScenario.visualState : 'normal'
+    const scenario = scenarioState === 'normal' ? 'good-forklift' : scenarioState
+    const activeHotspots = currentStep.id === 'engine-off-inspection'
+      ? engineOffViewerHotspots
+      : currentStep.id === 'engine-on-inspection'
+        ? engineOnViewerHotspots
+        : []
 
     return (
       <div className="walkaround-scene-wrap">
-        <ForkliftViewport selectedPartId={selectedPartId} onPartSelect={setSelectedPartId} />
-        <VisualOverlay state={scenarioState} />
+        <InteractiveForkliftViewer
+          mode={currentStep.id === 'defect-recognition' ? 'defect-test' : 'inspection'}
+          scenario={scenario}
+          activeHotspots={activeHotspots}
+          onHotspotSelect={handleViewerHotspot}
+          onScenarioAction={handleScenarioAction}
+        />
       </div>
     )
   }

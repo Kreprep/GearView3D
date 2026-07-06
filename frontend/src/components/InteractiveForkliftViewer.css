@@ -1,0 +1,223 @@
+.interactive-forklift-viewer {
+  width: 100%;
+  min-width: 0;
+}
+
+.interactive-viewer-canvas-shell {
+  position: relative;
+  min-height: min(74vh, 780px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0f172a, #020617);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+}
+
+.interactive-viewer-toolbar {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 12;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.interactive-viewer-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 9px 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+}
+
+.viewer-scenario-badge {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 12;
+  display: grid;
+  gap: 2px;
+  min-width: 160px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #ffffff;
+  padding: 12px 14px;
+  backdrop-filter: blur(12px);
+}
+
+.viewer-scenario-badge span {
+  color: #67e8f9;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.viewer-scenario-badge strong {
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.interactive-viewer-help {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 12;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 10px 12px;
+  backdrop-filter: blur(12px);
+}
+
+.viewer-hotspot-label,
+.viewer-warning-label,
+.viewer-tire-warning {
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.viewer-hotspot-label {
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.86);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 950;
+  padding: 6px 9px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
+}
+
+.viewer-hotspot-label.selected,
+.viewer-hotspot-label:hover {
+  background: #0891b2;
+}
+
+.viewer-hotspot-label.unsafe {
+  border-color: rgba(251, 146, 60, 0.72);
+}
+
+.viewer-warning-label {
+  border-radius: 999px;
+  background: #111827;
+  color: #fee2e2;
+  font-size: 12px;
+  font-weight: 950;
+  padding: 8px 12px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
+}
+
+.viewer-tire-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 950;
+  padding: 8px 11px;
+  box-shadow: 0 16px 34px rgba(220, 38, 38, 0.36);
+}
+
+.viewer-tire-warning strong {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #dc2626;
+}
+
+.interactive-loading-panel {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: 220px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  padding: 16px;
+  text-align: center;
+}
+
+.interactive-loading-panel div {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #67e8f9;
+  border-radius: 999px;
+  animation: interactive-spin 900ms linear infinite;
+}
+
+.interactive-loading-panel p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.interactive-viewer-error {
+  display: grid;
+  min-height: 520px;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: #e2e8f0;
+  padding: 24px;
+  text-align: center;
+}
+
+.interactive-viewer-error svg {
+  width: 34px;
+  height: 34px;
+}
+
+.interactive-viewer-error h3,
+.interactive-viewer-error p {
+  margin: 0;
+}
+
+@keyframes interactive-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .interactive-viewer-canvas-shell {
+    min-height: 500px;
+  }
+
+  .interactive-viewer-toolbar,
+  .viewer-scenario-badge,
+  .interactive-viewer-help {
+    left: 12px;
+    right: 12px;
+  }
+
+  .viewer-scenario-badge {
+    top: auto;
+    bottom: 58px;
+  }
+
+  .interactive-viewer-help {
+    bottom: 12px;
+  }
+}
