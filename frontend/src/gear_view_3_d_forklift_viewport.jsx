@@ -256,7 +256,7 @@ function LoadingPanel() {
   )
 }
 
-export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspots = partsHotspots }) {
+export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspots = partsHotspots, onPartViewed }) {
   const containerRef = useRef(null)
   const [selectedHotspotId, setSelectedHotspotId] = useState(hotspots[0]?.id)
   const [overlaysEnabled, setOverlaysEnabled] = useState(true)
@@ -271,6 +271,12 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspot
     const index = hotspots.findIndex((item) => item.id === selectedHotspot?.id)
     return Math.round(((index + 1) / hotspots.length) * 100)
   }, [hotspots, selectedHotspot])
+
+  useEffect(() => {
+    if (selectedHotspot?.id) {
+      onPartViewed?.(selectedHotspot.id)
+    }
+  }, [onPartViewed, selectedHotspot?.id])
 
   useEffect(() => {
     let active = true

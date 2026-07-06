@@ -1,7 +1,11 @@
 import './TrainingSelectionPage.css'
+import ProgressSummary from './components/ProgressSummary'
+import { useProgress } from './hooks/useProgress'
 import { routes } from './lib/router'
 
 function TrainingSelectionPage({ moduleName, onNavigate, onBack }) {
+  const { summary } = useProgress()
+
   return (
     <div className="training-selection-container">
       <header className="training-header">
@@ -10,6 +14,18 @@ function TrainingSelectionPage({ moduleName, onNavigate, onBack }) {
         </button>
         <h1>{moduleName} Training</h1>
       </header>
+
+      <section className="forklift-overview-progress">
+        <ProgressSummary title="Overall Forklift Progress" compact />
+        <div className="overview-stat-card">
+          <p>Equipment Usage</p>
+          <strong>{summary.equipment}%</strong>
+        </div>
+        <div className="overview-stat-card">
+          <p>Parts Identification</p>
+          <strong>{summary.parts}%</strong>
+        </div>
+      </section>
 
       <main className="training-options">
         <div

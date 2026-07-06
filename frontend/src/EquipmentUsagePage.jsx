@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getTrainingModules } from './lib/api'
+import { useProgress } from './hooks/useProgress'
 import { routes } from './lib/router'
 import './EquipmentUsagePage.css'
 
@@ -11,6 +12,7 @@ const moduleRoutes = {
 
 function EquipmentUsagePage({ moduleName, onBack, onNavigate }) {
   const [modules, setModules] = useState([])
+  const { summary } = useProgress()
 
   useEffect(() => {
     getTrainingModules().then(setModules)
@@ -50,6 +52,10 @@ function EquipmentUsagePage({ moduleName, onBack, onNavigate }) {
                 <h3>{module.title}</h3>
                 <h4>{module.subtitle}</h4>
                 <p>{module.description}</p>
+                <div className="module-progress-inline">
+                  <span>{summary.modules[module.slug] || 0}% complete</span>
+                  <div><i style={{ width: `${summary.modules[module.slug] || 0}%` }} /></div>
+                </div>
                 <button
                   className="start-module-button"
                   onClick={(event) => {

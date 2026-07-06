@@ -121,6 +121,32 @@
   line-height: 1.6;
 }
 
+.module-progress-inline {
+  display: grid;
+  gap: 7px;
+  margin: 16px 18px 0;
+}
+
+.module-progress-inline span {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.module-progress-inline div {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.module-progress-inline i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0891b2;
+}
+
 .start-module-button {
   justify-self: start;
   margin-top: 18px;

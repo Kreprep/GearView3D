@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import ForkliftViewport from './gear_view_3_d_forklift_viewport'
+import ProgressSummary from './components/ProgressSummary'
+import { useProgress } from './hooks/useProgress'
 import { getParts } from './lib/api'
+import { partsHotspots } from './lib/trainingData'
 import './PartsIdentificationPage.css'
 
 function PartsIdentificationPage({ moduleName, onBack }) {
   const [hotspots, setHotspots] = useState([])
+  const { summary, viewPart } = useProgress()
 
   useEffect(() => {
     getParts().then(setHotspots)
@@ -27,6 +31,14 @@ function PartsIdentificationPage({ moduleName, onBack }) {
             This module is designed for familiarization before supervised hands-on training.
           </p>
 
+          <div className="parts-progress-row">
+            <ProgressSummary title="Parts Identification Progress" value={summary.parts} compact />
+            <div className="lesson-card">
+              <h3>Viewed Parts</h3>
+              <p>{summary.viewedParts.length} of {partsHotspots.length} parts viewed.</p>
+            </div>
+          </div>
+
           <div className="lesson-card">
             <h3>Main Components</h3>
             <p>Forks, mast, carriage, lift chain, operator area, overhead guard, tires, counterweight, capacity plate, and warning devices.</p>
@@ -35,7 +47,7 @@ function PartsIdentificationPage({ moduleName, onBack }) {
           <section className="viewport-panel">
             <h3>Live Forklift Parts View</h3>
             <p>Use the controls below to inspect the forklift and select labeled parts.</p>
-            {hotspots.length > 0 && <ForkliftViewport hotspots={hotspots} />}
+            {hotspots.length > 0 && <ForkliftViewport hotspots={hotspots} onPartViewed={viewPart} />}
           </section>
         </div>
       </main>

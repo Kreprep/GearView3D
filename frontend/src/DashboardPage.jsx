@@ -1,28 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
 import AppHeader from './components/AppHeader'
-import { getProgress } from './lib/api'
+import { useProgress } from './hooks/useProgress'
 import { routes } from './lib/router'
 import './DashboardPage.css'
 
-const equipmentSlugs = ['walk-around-check', 'load-handling', 'post-operation']
-
 function DashboardPage({ user, onLogout, onNavigate }) {
-  const [progress, setProgress] = useState([])
-
-  useEffect(() => {
-    getProgress().then(setProgress)
-  }, [])
-
-  const equipmentProgress = useMemo(() => {
-    const rows = progress.filter((item) => equipmentSlugs.includes(item.moduleSlug))
-    if (!rows.length) return 0
-    return Math.round(rows.reduce((sum, item) => sum + item.progress, 0) / equipmentSlugs.length)
-  }, [progress])
-
-  const partsProgress = useMemo(() => {
-    const row = progress.find((item) => item.moduleSlug === 'parts-identification')
-    return row?.progress || 0
-  }, [progress])
+  const { summary, resetProgress } = useProgress()
 
   return (
     <div className="dashboard-page">
@@ -46,13 +28,26 @@ function DashboardPage({ user, onLogout, onNavigate }) {
         <section className="progress-grid" aria-label="Training progress">
           <article className="progress-card">
             <div>
+              <p className="dashboard-kicker">Overall Progress</p>
+              <h2>Forklift Training</h2>
+              <p>Combined progress from equipment usage and parts identification activities.</p>
+            </div>
+            <div className="progress-meter">
+              <span>{summary.overall}%</span>
+              <div><i style={{ width: `${summary.overall}%` }} /></div>
+            </div>
+            <button onClick={() => onNavigate(routes.assessment)}>View final assessment</button>
+          </article>
+
+          <article className="progress-card">
+            <div>
               <p className="dashboard-kicker">Module Progress</p>
               <h2>Equipment Usage</h2>
               <p>Walk-around, load handling, and post-operation familiarization.</p>
             </div>
             <div className="progress-meter">
-              <span>{equipmentProgress}%</span>
-              <div><i style={{ width: `${equipmentProgress}%` }} /></div>
+              <span>{summary.equipment}%</span>
+              <div><i style={{ width: `${summary.equipment}%` }} /></div>
             </div>
             <button onClick={() => onNavigate(routes.equipment)}>Open equipment modules</button>
           </article>
@@ -64,8 +59,8 @@ function DashboardPage({ user, onLogout, onNavigate }) {
               <p>Review major forklift components, functions, and safety reminders.</p>
             </div>
             <div className="progress-meter">
-              <span>{partsProgress}%</span>
-              <div><i style={{ width: `${partsProgress}%` }} /></div>
+              <span>{summary.parts}%</span>
+              <div><i style={{ width: `${summary.parts}%` }} /></div>
             </div>
             <button onClick={() => onNavigate(routes.parts)}>Open parts identification</button>
           </article>
@@ -79,7 +74,10 @@ function DashboardPage({ user, onLogout, onNavigate }) {
               This placeholder will later show recently completed checklists, quiz attempts, and module updates.
             </p>
           </div>
-          <button onClick={() => onNavigate(routes.catalog)}>Browse catalog</button>
+          <div className="recent-actions">
+            <button onClick={() => onNavigate(routes.catalog)}>Browse catalog</button>
+            <button className="reset-progress-button" onClick={resetProgress}>Reset progress</button>
+          </div>
         </section>
       </main>
     </div>

@@ -1,6 +1,7 @@
 import './WalkAroundCheckPage.css'
 import Model3DViewer from './components/Model3DViewer'
 import GuidedChecklist from './components/GuidedChecklist'
+import ProgressSummary from './components/ProgressSummary'
 
 function WalkAroundCheckPage({ moduleName, onBack }) {
   return (
@@ -16,6 +17,8 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
       </header>
 
       <main className="module-content">
+        <ProgressSummary moduleSlug="walk-around-check" title="Walk-Around Progress" compact />
+
         <section className="syllabus-section">
           <h3>Training Reference</h3>
           <div className="syllabus-info">

@@ -47,6 +47,37 @@
   width: 100%;
 }
 
+.forklift-overview-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px 220px;
+  gap: 16px;
+  width: min(1320px, calc(100% - 64px));
+  margin: 28px auto 0;
+}
+
+.overview-stat-card {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  border: 1px solid #dbe3ef;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+  padding: 18px;
+}
+
+.overview-stat-card p {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.overview-stat-card strong {
+  color: #0f172a;
+  font-size: 30px;
+  font-weight: 950;
+}
+
 .option-card {
   background: #ffffff;
   border: 1px solid #dbe3ef;
@@ -126,5 +157,10 @@
     grid-template-columns: 1fr;
     padding: 24px 18px;
     gap: 20px;
+  }
+
+  .forklift-overview-progress {
+    grid-template-columns: 1fr;
+    width: calc(100% - 36px);
   }
 }
