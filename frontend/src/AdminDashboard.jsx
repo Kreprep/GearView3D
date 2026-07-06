@@ -44,7 +44,7 @@ function AdminDashboard({ user, onLogout, onBack, path, onNavigate }) {
     users: [],
     progress: [],
     activityLogs: [],
-    backendOnline: true,
+    localOnly: true,
   })
   const [selectedPart, setSelectedPart] = useState(null)
   const [editingModule, setEditingModule] = useState(null)
@@ -68,7 +68,7 @@ function AdminDashboard({ user, onLogout, onBack, path, onNavigate }) {
         users: [],
         progress: [],
         activityLogs: [],
-        backendOnline: true,
+        localOnly: true,
         ...data,
       })
     })
@@ -181,7 +181,7 @@ function AdminDashboard({ user, onLogout, onBack, path, onNavigate }) {
         ))}
       </nav>
 
-      {!content.backendOnline && (
+      {content.localOnly && (
         <div className="admin-alert">
           Frontend-only prototype mode is active. Admin changes are saved in this browser's localStorage.
         </div>

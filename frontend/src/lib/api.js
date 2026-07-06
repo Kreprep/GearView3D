@@ -67,7 +67,6 @@ function quizRecords() {
 
 function defaultContent() {
   return {
-    backendOnline: false,
     localOnly: true,
     equipment: [forkliftEquipment],
     modules: trainingModules,
@@ -88,7 +87,6 @@ function getLocalContent() {
     return {
       ...fallback,
       ...(saved ? JSON.parse(saved) : {}),
-      backendOnline: false,
       localOnly: true,
     }
   } catch {
@@ -100,7 +98,6 @@ function saveLocalContent(content) {
   const next = {
     ...getLocalContent(),
     ...content,
-    backendOnline: false,
     localOnly: true,
   }
   localStorage.setItem(CONTENT_STORAGE_KEY, JSON.stringify(next))
