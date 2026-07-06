@@ -32,7 +32,6 @@ function ForkliftTrainingPage({ moduleName = 'Forklift', user, onLogout, onNavig
           </div>
           <div className="overall-progress-text">
             <p className="forklift-training-kicker">Overall Progress</p>
-            <h2>{moduleName} Training</h2>
             <p>Combined progress from equipment usage and parts identification activities.</p>
           </div>
           <div className="overall-progress-stat">
@@ -54,7 +53,6 @@ function ForkliftTrainingPage({ moduleName = 'Forklift', user, onLogout, onNavig
             <Truck size={22} />
           </div>
           <div className="progress-card-body">
-            <p className="forklift-training-kicker">Module Progress</p>
             <h2>Equipment Usage</h2>
             <p>Walk-around, load handling, and post-operation familiarization.</p>
           </div>
@@ -72,7 +70,6 @@ function ForkliftTrainingPage({ moduleName = 'Forklift', user, onLogout, onNavig
             <PackageSearch size={22} />
           </div>
           <div className="progress-card-body">
-            <p className="forklift-training-kicker">Module Progress</p>
             <h2>Parts Identification</h2>
             <p>Review major forklift components, functions, and safety reminders.</p>
           </div>
@@ -91,7 +88,6 @@ function ForkliftTrainingPage({ moduleName = 'Forklift', user, onLogout, onNavig
           <ClipboardList size={22} />
         </div>
         <div className="recent-activity-body">
-          <p className="forklift-training-kicker">Recent Activity</p>
           <h2>Training activity will appear here</h2>
           <p>
             This placeholder will later show recently completed checklists, quiz attempts, and module updates.
