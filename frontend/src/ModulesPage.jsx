@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import AppHeader from './components/AppHeader'
 import { getEquipment } from './lib/api'
+import { routes } from './lib/router'
 import './ModulesPage.css'
 
-function ModulesPage({ user, onLogout, onStartTraining, onOpenAdmin }) {
+function ModulesPage({ user, onLogout, onNavigate }) {
   const [modules, setModules] = useState([])
 
   useEffect(() => {
@@ -11,33 +13,14 @@ function ModulesPage({ user, onLogout, onStartTraining, onOpenAdmin }) {
 
   return (
     <div className="modules-container">
-      <header className="modules-header">
-        <div className="brand-block">
-          <span className="brand-mark">GV</span>
-          <div>
-            <h1>GearView3D</h1>
-            <p>Forklift training workspace</p>
-          </div>
-        </div>
-        <div className="header-right">
-          <span className="user-info">Welcome, {user?.fullName || user?.email}</span>
-          {user?.role === 'ADMIN' && (
-            <button className="logout-button" onClick={onOpenAdmin}>
-              Admin
-            </button>
-          )}
-          <button className="logout-button" onClick={onLogout}>
-            Logout
-          </button>
-        </div>
-      </header>
+      <AppHeader user={user} onLogout={onLogout} onNavigate={onNavigate} />
 
       <main className="modules-layout">
         <aside className="browse-sidebar">
           <p className="sidebar-label">Training Catalog</p>
-          <button className="sidebar-filter is-active">Forklift</button>
-          <button className="sidebar-filter">Parts Identification</button>
-          <button className="sidebar-filter">Equipment Usage</button>
+          <button className="sidebar-filter is-active" onClick={() => onNavigate(routes.forklift)}>Forklift</button>
+          <button className="sidebar-filter" onClick={() => onNavigate(routes.parts)}>Parts Identification</button>
+          <button className="sidebar-filter" onClick={() => onNavigate(routes.equipment)}>Equipment Usage</button>
           <div className="sidebar-note">
             <strong>Scope</strong>
             <span>Preparatory learning aid only. Not a certification simulator.</span>
@@ -54,7 +37,7 @@ function ModulesPage({ user, onLogout, onStartTraining, onOpenAdmin }) {
                 load-handling, and post-operation activities.
               </p>
             </div>
-            <button className="hero-button" onClick={() => onStartTraining('Forklift')}>
+            <button className="hero-button" onClick={() => onNavigate(routes.forklift)}>
               Open Forklift
             </button>
           </div>
@@ -66,7 +49,19 @@ function ModulesPage({ user, onLogout, onStartTraining, onOpenAdmin }) {
 
           <div className="modules-grid">
             {modules.map((module) => (
-              <article key={module.id} className="module-card">
+              <article
+                key={module.id}
+                className="module-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => onNavigate(routes.forklift)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onNavigate(routes.forklift)
+                  }
+                }}
+              >
                 <div className="module-image-placeholder module-image-forklift">
                   <span className="placeholder-text">{module.title}</span>
                 </div>
@@ -74,7 +69,13 @@ function ModulesPage({ user, onLogout, onStartTraining, onOpenAdmin }) {
                   <p className="module-type">Training model</p>
                   <h2>{module.title}</h2>
                   <p>{module.description}</p>
-                  <button className="start-button" onClick={() => onStartTraining(module.title)}>
+                  <button
+                    className="start-button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onNavigate(routes.forklift)
+                    }}
+                  >
                     Start Training
                   </button>
                 </div>

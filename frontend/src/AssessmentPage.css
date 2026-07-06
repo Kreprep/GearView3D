@@ -1,0 +1,56 @@
+.assessment-page {
+  min-height: 100vh;
+  background: #f4f7fb;
+}
+
+.assessment-content {
+  width: min(960px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 42px 0;
+}
+
+.assessment-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.1);
+  padding: 30px;
+}
+
+.assessment-kicker {
+  color: #0891b2;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.assessment-card h2 {
+  color: #0f172a;
+  font-size: 32px;
+  font-weight: 950;
+}
+
+.assessment-card p {
+  color: #64748b;
+}
+
+.assessment-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.assessment-actions button {
+  border: 0;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #ffffff;
+  font-weight: 900;
+  padding: 11px 16px;
+}
+
+.assessment-actions button:hover {
+  background: #0891b2;
+}

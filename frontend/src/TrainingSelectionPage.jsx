@@ -1,6 +1,7 @@
 import './TrainingSelectionPage.css'
+import { routes } from './lib/router'
 
-function TrainingSelectionPage({ moduleName, onSelectTraining, onBack }) {
+function TrainingSelectionPage({ moduleName, onNavigate, onBack }) {
   return (
     <div className="training-selection-container">
       <header className="training-header">
@@ -11,25 +12,87 @@ function TrainingSelectionPage({ moduleName, onSelectTraining, onBack }) {
       </header>
 
       <main className="training-options">
-        <div className="option-card">
+        <div
+          className="option-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onNavigate(routes.equipment)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onNavigate(routes.equipment)
+            }
+          }}
+        >
           <div className="option-icon">
             <span>Usage</span>
           </div>
           <h2>Equipment Usage</h2>
           <p>Learn safe forklift familiarization through walk-around checks, load handling, and post-operation steps.</p>
-          <button className="option-button" onClick={() => onSelectTraining('equipment-usage')}>
+          <button
+            className="option-button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onNavigate(routes.equipment)
+            }}
+          >
             Start Equipment Training
           </button>
         </div>
 
-        <div className="option-card">
+        <div
+          className="option-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onNavigate(routes.parts)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onNavigate(routes.parts)
+            }
+          }}
+        >
           <div className="option-icon">
             <span>Parts</span>
           </div>
           <h2>Parts Identification</h2>
           <p>Identify the main forklift components, their functions, and their safety reminders.</p>
-          <button className="option-button" onClick={() => onSelectTraining('parts-identification')}>
+          <button
+            className="option-button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onNavigate(routes.parts)
+            }}
+          >
             Start Parts Training
+          </button>
+        </div>
+
+        <div
+          className="option-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onNavigate(routes.assessment)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onNavigate(routes.assessment)
+            }
+          }}
+        >
+          <div className="option-icon">
+            <span>Check</span>
+          </div>
+          <h2>Knowledge Check</h2>
+          <p>Open the assessment route reserved for forklift quiz and knowledge-check activities.</p>
+          <button
+            className="option-button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onNavigate(routes.assessment)
+            }}
+          >
+            Open Assessment
           </button>
         </div>
       </main>

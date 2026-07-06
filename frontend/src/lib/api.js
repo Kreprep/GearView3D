@@ -86,6 +86,15 @@ export async function saveProgress(payload) {
   }
 }
 
+export async function getProgress() {
+  try {
+    const data = await request('/progress')
+    return data.progress
+  } catch {
+    return []
+  }
+}
+
 export async function adminListContent() {
   try {
     return await request('/admin/content')
