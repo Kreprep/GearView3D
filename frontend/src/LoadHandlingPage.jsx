@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
+import DrivingSimulationViewer from './components/DrivingSimulationViewer'
 import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
+import { drivingCourses } from './data/drivingCourse'
 import { loadHandlingViewerHotspots } from './data/viewerHotspots'
 import { routes } from './lib/router'
 import { equipmentUsageModules, forkliftEquipment, moduleScenarioSteps } from './lib/trainingData'
@@ -11,155 +13,52 @@ import './LoadHandlingPage.css'
 const moduleSlug = 'load-handling'
 const NEXT_MODULE_DELAY_MS = 1400
 const loadViewerActiveHotspots = ['forks', 'carriage', 'mast-assembly', 'tire-condition', 'operator-area']
+const REQUIRED_CONTROL_KEYS = ['w', 'a', 's', 'd']
 
-const positioningChoices = [
-  {
-    id: 'slow-square',
-    label: 'Approach slowly and squarely',
-    correct: true,
-    feedback: 'Correct. A slow, square approach improves alignment and control before entering the pallet.',
-  },
-  {
-    id: 'fast-angle',
-    label: 'Approach quickly at an angle',
-    correct: false,
-    feedback: 'Incorrect. Speed and angled entry increase the chance of striking the pallet or destabilizing the load.',
-  },
-  {
-    id: 'raised-forks',
-    label: 'Travel forward with raised forks',
-    correct: false,
-    feedback: 'Incorrect. Forks and loads should be kept low while traveling to support stability and visibility.',
-  },
-]
-
-const stabilityStates = [
-  {
-    id: 'centered-low',
-    label: 'Centered and low',
-    dot: { left: '50%', top: '58%' },
-    correct: true,
-    feedback: 'Correct. A centered, low load keeps the center of gravity within the stability triangle.',
-  },
-  {
-    id: 'high-forward',
-    label: 'High and forward',
-    dot: { left: '50%', top: '18%' },
-    correct: false,
-    feedback: 'Warning. High or forward load position can move the center of gravity toward the edge of stability.',
-  },
-  {
-    id: 'off-center',
-    label: 'Off-center',
-    dot: { left: '76%', top: '48%' },
-    correct: false,
-    feedback: 'Warning. Off-center loads reduce stability and should be corrected before travel.',
-  },
-]
-
-const hydraulicControlSteps = [
-  {
-    id: 'fork-height',
-    label: 'Set forks to pallet height',
-    feedback: 'Fork height is set before entering the pallet.',
-  },
-  {
-    id: 'lift-smoothly',
-    label: 'Lift smoothly',
-    feedback: 'The load is raised with controlled movement.',
-  },
-  {
-    id: 'tilt-back',
-    label: 'Tilt mast slightly back',
-    feedback: 'Slight back tilt helps keep the load stable on the forks.',
-  },
-  {
-    id: 'travel-low',
-    label: 'Travel with load low',
-    feedback: 'Travel posture is correct for stability and visibility.',
-  },
-]
-
-const worksiteHazards = [
-  {
-    id: 'pedestrian',
-    label: 'Pedestrian in path',
-    x: 66,
-    y: 28,
-    feedback: 'Pedestrian traffic must be cleared before moving with a load.',
-  },
-  {
-    id: 'spill',
-    label: 'Floor spill',
-    x: 38,
-    y: 62,
-    feedback: 'A spill can affect traction and should be avoided or reported.',
-  },
-  {
-    id: 'blocked-aisle',
-    label: 'Blocked aisle',
-    x: 78,
-    y: 70,
-    feedback: 'Blocked travel paths reduce maneuvering space and visibility.',
-  },
-  {
-    id: 'overhead',
-    label: 'Overhead obstruction',
-    x: 28,
-    y: 26,
-    feedback: 'Overhead hazards matter when lifting or traveling near racks and doors.',
-  },
-]
-
-function unique(items) {
-  return [...new Set(items)]
+const completionFieldByStep = {
+  'accelerate-course': 'accelerateComplete',
+  'accelerate-brake': 'brakeComplete',
+  'turning-practice': 'turningComplete',
+  'driving-course': 'drivingCourseComplete',
 }
 
 function calculateSimulationState(nextState) {
-  const positioning = nextState.positioningChoice === 'slow-square' ? 20 : 0
-  const stability = nextState.stabilityChoice === 'centered-low' ? 20 : 0
-  const controls = ((nextState.controlsCompleted?.length || 0) / hydraulicControlSteps.length) * 25
-  const hazards = ((nextState.hazardsFound?.length || 0) / worksiteHazards.length) * 25
-  const checkpoint = nextState.checkpointPassed ? 10 : 0
-  const percentage = Math.round(positioning + stability + controls + hazards + checkpoint)
+  const flags = [
+    nextState.engineStarted,
+    nextState.accelerateComplete,
+    nextState.brakeComplete,
+    nextState.turningComplete,
+    nextState.drivingCourseComplete,
+  ]
+  const percentage = Math.round((flags.filter(Boolean).length / flags.length) * 100)
   const complete = percentage === 100
 
   return { ...nextState, percentage, complete }
 }
 
-function StabilityDiagram({ state }) {
-  const selected = stabilityStates.find((item) => item.id === state) || stabilityStates[1]
-
-  return (
-    <div className="stability-diagram">
-      <div className="triangle-shape" />
-      <div className="cg-dot" style={selected.dot}>CG</div>
-      <div className="triangle-label front">Front Axle</div>
-      <div className="triangle-label rear-left">Rear Pivot</div>
-      <div className="triangle-label rear-right">Rear Pivot</div>
-    </div>
-  )
+function unique(items) {
+  return [...new Set(items)]
 }
 
-function WorksiteSurvey({ foundHazards, onFindHazard }) {
+function ControlsDiagram() {
   return (
-    <div className="worksite-scene" aria-label="Clickable worksite hazard survey">
-      <div className="aisle-line main" />
-      <div className="aisle-line cross" />
-      <div className="pallet-stack one">Pallets</div>
-      <div className="pallet-stack two">Rack</div>
-      {worksiteHazards.map((hazard) => (
-        <button
-          key={hazard.id}
-          type="button"
-          className={foundHazards.includes(hazard.id) ? 'hazard-pin found' : 'hazard-pin'}
-          style={{ left: `${hazard.x}%`, top: `${hazard.y}%` }}
-          onClick={() => onFindHazard(hazard)}
-          aria-label={hazard.label}
-        >
-          !
-        </button>
-      ))}
+    <div className="controls-diagram">
+      <div className="controls-diagram-pad">
+        <span className="controls-diagram-key key-w">W</span>
+        <span className="controls-diagram-key key-a">A</span>
+        <span className="controls-diagram-key key-s">S</span>
+        <span className="controls-diagram-key key-d">D</span>
+      </div>
+      <ul className="controls-diagram-legend">
+        <li><strong>W</strong> Accelerate forward</li>
+        <li><strong>A</strong> Steer left</li>
+        <li><strong>S</strong> Brake / reverse</li>
+        <li><strong>D</strong> Steer right</li>
+      </ul>
+      <div className="controls-diagram-engine">
+        <span className="controls-diagram-key key-e">E</span>
+        <p>Start or stop the engine</p>
+      </div>
     </div>
   )
 }
@@ -173,59 +72,23 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
   const [feedback, setFeedback] = useState({
     type: 'neutral',
     title: 'Scenario Briefing',
-    message: 'Review the load-handling objectives before starting the guided tasks.',
+    message: 'Review the guided driving objectives before starting the WASD control practice.',
   })
   const simulation = calculateSimulationState({
-    positioningChoice: savedSimulation.positioningChoice || '',
-    stabilityChoice: savedSimulation.stabilityChoice || '',
-    controlsCompleted: savedSimulation.controlsCompleted || [],
-    hazardsFound: savedSimulation.hazardsFound || [],
-    checkpointPassed: savedSimulation.checkpointPassed || false,
+    engineStarted: savedSimulation.engineStarted || false,
+    keysUsed: savedSimulation.keysUsed || [],
+    accelerateComplete: savedSimulation.accelerateComplete || false,
+    brakeComplete: savedSimulation.brakeComplete || false,
+    turningComplete: savedSimulation.turningComplete || false,
+    drivingCourseComplete: savedSimulation.drivingCourseComplete || false,
     percentage: savedSimulation.percentage || 0,
     complete: savedSimulation.complete || false,
   })
-  const foundHazardSet = useMemo(() => new Set(simulation.hazardsFound), [simulation.hazardsFound])
 
   const saveSimulation = (partial) => {
     const next = calculateSimulationState({ ...simulation, ...partial })
     updateSimulation(moduleSlug, next)
     return next
-  }
-
-  const choosePositioning = (choice) => {
-    saveSimulation({ positioningChoice: choice.id })
-    setFeedback({
-      type: choice.correct ? 'correct' : 'warning',
-      title: choice.correct ? 'Safe positioning' : 'Positioning risk',
-      message: choice.feedback,
-    })
-  }
-
-  const chooseStability = (state) => {
-    saveSimulation({ stabilityChoice: state.id })
-    setFeedback({
-      type: state.correct ? 'correct' : 'warning',
-      title: state.correct ? 'Stable load position' : 'Stability warning',
-      message: state.feedback,
-    })
-  }
-
-  const completeControlStep = (step) => {
-    saveSimulation({ controlsCompleted: unique([...simulation.controlsCompleted, step.id]) })
-    setFeedback({
-      type: 'correct',
-      title: step.label,
-      message: step.feedback,
-    })
-  }
-
-  const findHazard = (hazard) => {
-    saveSimulation({ hazardsFound: unique([...simulation.hazardsFound, hazard.id]) })
-    setFeedback({
-      type: 'warning',
-      title: hazard.label,
-      message: hazard.feedback,
-    })
   }
 
   const handleViewerHotspot = (hotspot) => {
@@ -236,13 +99,62 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
     })
   }
 
-  const passCheckpoint = () => {
-    saveSimulation({ checkpointPassed: true })
-    setFeedback({
-      type: 'correct',
-      title: 'Checkpoint Passed',
-      message: 'You selected the safe load-handling decision: keep the load centered, low, and within rated capacity.',
-    })
+  const handleDrivingEvent = (currentStep) => (event) => {
+    if (event.type === 'key-active') {
+      if (currentStep.id === 'controls-intro' && !simulation.keysUsed.includes(event.key)) {
+        saveSimulation({ keysUsed: unique([...simulation.keysUsed, event.key]) })
+      }
+      return
+    }
+
+    if (event.type === 'engine-on') {
+      if (currentStep.id === 'controls-intro') {
+        saveSimulation({ engineStarted: true })
+        setFeedback({
+          type: 'correct',
+          title: 'Engine Started',
+          message: 'Engine start confirmed. Now try W, A, S, and D to finish this step.',
+        })
+      } else {
+        setFeedback({
+          type: 'neutral',
+          title: 'Engine Started',
+          message: 'Engine is running. Use W to accelerate.',
+        })
+      }
+      return
+    }
+
+    if (event.type === 'engine-off') {
+      setFeedback({
+        type: 'neutral',
+        title: 'Engine Stopped',
+        message: 'Press E to start the engine again before driving.',
+      })
+      return
+    }
+
+    if (event.type === 'checkpoint') {
+      setFeedback({
+        type: 'correct',
+        title: event.label || 'Checkpoint Reached',
+        message: event.message || 'Checkpoint reached - continue to the next one.',
+      })
+      return
+    }
+
+    if (event.type === 'course-complete') {
+      const completionField = completionFieldByStep[currentStep.id]
+      if (completionField) {
+        saveSimulation({ [completionField]: true })
+      }
+
+      setFeedback({
+        type: 'completed',
+        title: 'Step Complete',
+        message: event.message || 'You completed this driving task.',
+      })
+    }
   }
 
   const completeModule = () => {
@@ -250,7 +162,7 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
       setFeedback({
         type: 'warning',
         title: 'Module not complete yet',
-        message: 'Finish positioning, stability, hydraulic controls, hazard survey, and checkpoint tasks.',
+        message: 'Finish starting the engine, the acceleration course, the braking course, turning practice, and the combined driving course.',
       })
       return
     }
@@ -258,33 +170,34 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
     setFeedback({
       type: 'completed',
       title: 'Load Handling Complete',
-      message: 'You completed the guided load-handling simulation. Moving to Post-Operation Shutdown next.',
+      message: 'You completed the guided driving control simulation. Moving to Post-Operation Shutdown next.',
     })
 
     setTimeout(() => onNavigate?.(routes.postOperation), NEXT_MODULE_DELAY_MS)
   }
 
   const getStepCanProceed = (stepId) => {
-    if (stepId === 'maneuvering-positioning') return Boolean(simulation.positioningChoice)
-    if (stepId === 'stability-triangle') return Boolean(simulation.stabilityChoice)
-    if (stepId === 'hydraulic-controls') return simulation.controlsCompleted.length === hydraulicControlSteps.length
-    if (stepId === 'area-safety-survey') return simulation.hazardsFound.length === worksiteHazards.length
+    if (stepId === 'controls-intro') {
+      return simulation.engineStarted && REQUIRED_CONTROL_KEYS.every((key) => simulation.keysUsed.includes(key))
+    }
+    if (stepId === 'accelerate-course') return simulation.accelerateComplete
+    if (stepId === 'accelerate-brake') return simulation.brakeComplete
+    if (stepId === 'turning-practice') return simulation.turningComplete
+    if (stepId === 'driving-course') return simulation.drivingCourseComplete
     return true
   }
 
   const renderScene = ({ currentStep }) => {
-    if (currentStep.id === 'stability-triangle') {
-      return (
-        <div className="load-diagram-stage">
-          <StabilityDiagram state={simulation.stabilityChoice} />
-        </div>
-      )
+    if (currentStep.id === 'briefing') {
+      return <ControlsDiagram />
     }
 
-    if (currentStep.id === 'area-safety-survey') {
+    const course = drivingCourses[currentStep.id]
+
+    if (course) {
       return (
-        <div className="load-diagram-stage">
-          <WorksiteSurvey foundHazards={simulation.hazardsFound} onFindHazard={findHazard} />
+        <div className="load-scene-wrap">
+          <DrivingSimulationViewer course={course} onEvent={handleDrivingEvent(currentStep)} />
         </div>
       )
     }
@@ -318,94 +231,59 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
     </div>
   )
 
-  const renderPositioning = () => (
-    <div className="load-task-stack">
-      <p className="task-note">Choose the safest way to approach a pallet before handling a load.</p>
-      {positioningChoices.map((choice) => (
-        <button
-          key={choice.id}
-          type="button"
-          className={simulation.positioningChoice === choice.id ? 'load-choice selected' : 'load-choice'}
-          onClick={() => choosePositioning(choice)}
-        >
-          {choice.label}
-        </button>
-      ))}
-    </div>
-  )
+  const renderDrivingTask = (currentStep) => {
+    const course = drivingCourses[currentStep.id]
+    const checkpointCount = course?.checkpoints?.length || 0
+    const done = getStepCanProceed(currentStep.id)
 
-  const renderStability = () => (
-    <div className="load-task-stack">
-      <p className="task-note">Select the load position that keeps the center of gravity in the safest zone.</p>
-      {stabilityStates.map((state) => (
-        <button
-          key={state.id}
-          type="button"
-          className={simulation.stabilityChoice === state.id ? 'load-choice selected' : 'load-choice'}
-          onClick={() => chooseStability(state)}
-        >
-          {state.label}
-        </button>
-      ))}
-    </div>
-  )
+    if (currentStep.id === 'controls-intro') {
+      const remainingKeys = REQUIRED_CONTROL_KEYS.filter((key) => !simulation.keysUsed.includes(key))
+      return (
+        <div className="load-task-stack">
+          <p className={done ? 'completion-ready' : 'task-note'}>
+            {done
+              ? 'Step complete. Use Next to continue.'
+              : !simulation.engineStarted
+                ? 'Press E to start the engine.'
+                : `Try each control key: ${remainingKeys.map((key) => key.toUpperCase()).join(', ')} remaining.`}
+          </p>
+        </div>
+      )
+    }
 
-  const renderControls = () => (
-    <div className="load-task-stack">
-      <div className="hydraulic-panel">
-        {hydraulicControlSteps.map((step) => (
-          <button
-            key={step.id}
-            type="button"
-            className={simulation.controlsCompleted.includes(step.id) ? 'control-lever done' : 'control-lever'}
-            onClick={() => completeControlStep(step)}
-          >
-            {step.label}
-          </button>
-        ))}
+    return (
+      <div className="load-task-stack">
+        <p className={done ? 'completion-ready' : 'task-note'}>
+          {done
+            ? 'Step complete. Use Next to continue.'
+            : checkpointCount
+              ? `Drive through ${checkpointCount} checkpoint${checkpointCount > 1 ? 's' : ''} to finish this step.`
+              : 'Press E to start the engine to finish this step.'}
+        </p>
       </div>
-      <p className="task-note">These controls are conceptual UI practice only. Real equipment must be handled under supervision.</p>
-    </div>
-  )
-
-  const renderHazardSurvey = () => (
-    <div className="load-task-stack">
-      <p className="task-note">Click all visible hazards in the worksite scene.</p>
-      <div className="hazard-list">
-        {worksiteHazards.map((hazard) => (
-          <span key={hazard.id} className={foundHazardSet.has(hazard.id) ? 'found' : ''}>
-            {hazard.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
+    )
+  }
 
   const renderSummary = () => (
     <div className="load-task-stack">
       <div className="summary-grid">
-        <div><span>Positioning</span><strong>{simulation.positioningChoice === 'slow-square' ? 'Safe' : 'Open'}</strong></div>
-        <div><span>Stability</span><strong>{simulation.stabilityChoice === 'centered-low' ? 'Safe' : 'Open'}</strong></div>
-        <div><span>Controls</span><strong>{simulation.controlsCompleted.length}/{hydraulicControlSteps.length}</strong></div>
-        <div><span>Hazards</span><strong>{simulation.hazardsFound.length}/{worksiteHazards.length}</strong></div>
+        <div><span>Engine Start</span><strong>{simulation.engineStarted ? 'Complete' : 'Open'}</strong></div>
+        <div><span>Accelerate</span><strong>{simulation.accelerateComplete ? 'Complete' : 'Open'}</strong></div>
+        <div><span>Brake</span><strong>{simulation.brakeComplete ? 'Complete' : 'Open'}</strong></div>
+        <div><span>Turning</span><strong>{simulation.turningComplete ? 'Complete' : 'Open'}</strong></div>
+        <div><span>Driving Course</span><strong>{simulation.drivingCourseComplete ? 'Complete' : 'Open'}</strong></div>
       </div>
-      <button type="button" className={simulation.checkpointPassed ? 'checkpoint-button done' : 'checkpoint-button'} onClick={passCheckpoint}>
-        Checkpoint: load is centered, low, and within rated capacity
-      </button>
       <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
         {simulation.complete
           ? 'All requirements are complete. Submit the module to record completion feedback.'
-          : 'Complete all load-handling tasks and pass the checkpoint to finish this module.'}
+          : 'Complete all guided driving tasks to finish this module.'}
       </p>
     </div>
   )
 
   const renderTask = ({ currentStep }) => {
     if (currentStep.id === 'briefing') return renderBriefing()
-    if (currentStep.id === 'maneuvering-positioning') return renderPositioning()
-    if (currentStep.id === 'stability-triangle') return renderStability()
-    if (currentStep.id === 'hydraulic-controls') return renderControls()
-    if (currentStep.id === 'area-safety-survey') return renderHazardSurvey()
+    if (drivingCourses[currentStep.id]) return renderDrivingTask(currentStep)
     return null
   }
 

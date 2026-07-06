@@ -1,0 +1,161 @@
+.driving-simulation {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 460px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.driving-simulation canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.driving-hud-top {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.driving-engine-badge,
+.driving-speed-badge,
+.driving-checkpoint-badge {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 900;
+  font-size: 13px;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.driving-engine-badge.on {
+  background: rgba(22, 163, 74, 0.85);
+  border-color: rgba(187, 247, 208, 0.5);
+}
+
+.driving-engine-badge.off {
+  background: rgba(220, 38, 38, 0.75);
+  border-color: rgba(254, 202, 202, 0.5);
+}
+
+.driving-checkpoint-badge {
+  background: rgba(8, 145, 178, 0.75);
+}
+
+.driving-hud-bottom {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.driving-reset-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.driving-keys {
+  display: flex;
+  gap: 8px;
+}
+
+.driving-key-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.driving-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.driving-key.active {
+  background: #facc15;
+  color: #111827;
+  border-color: #facc15;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.35);
+}
+
+.driving-key-caption {
+  font-size: 10px;
+  color: #cbd5e1;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.driving-hud-help {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.driving-checkpoint-label {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+  color: #111827;
+  background: rgba(250, 204, 21, 0.92);
+  border: 2px solid #ffffff;
+}
+
+.driving-checkpoint-label.pending {
+  background: rgba(148, 163, 184, 0.85);
+}
+
+@media (max-width: 760px) {
+  .driving-hud-bottom {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .driving-hud-help {
+    order: 3;
+  }
+
+  .driving-key {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+}
