@@ -1,5 +1,5 @@
-import React, { Suspense, useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import React, { Suspense, useMemo } from 'react'
+import { Canvas } from '@react-three/fiber'
 import {
   ContactShadows,
   Environment,
@@ -9,20 +9,20 @@ import {
   OrbitControls,
   PerspectiveCamera,
   useGLTF,
-} from "@react-three/drei";
-import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { BadgeInfo } from "lucide-react";
+} from '@react-three/drei'
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { BadgeInfo } from 'lucide-react'
 
-const DEFAULT_MODEL_URL = "/models/forklift_machine_onirix.glb";
+const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
 
 class ViewportErrorBoundary extends React.Component {
   constructor(props) {
-    super(props);
-    this.state = { hasError: false };
+    super(props)
+    this.state = { hasError: false }
   }
 
   static getDerivedStateFromError() {
-    return { hasError: true };
+    return { hasError: true }
   }
 
   render() {
@@ -35,18 +35,18 @@ class ViewportErrorBoundary extends React.Component {
             <p className="text-xs">The 3D model could not be loaded at this time.</p>
           </div>
         </div>
-      );
+      )
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }
 
 function Model3D({ modelUrl }) {
-  const { scene } = useGLTF(modelUrl);
-  const model = useMemo(() => cloneSkeleton(scene), [scene]);
+  const { scene } = useGLTF(modelUrl)
+  const model = useMemo(() => cloneSkeleton(scene), [scene])
 
-  return <primitive object={model} />;
+  return <primitive object={model} />
 }
 
 function LoadingOverlay() {
@@ -57,7 +57,7 @@ function LoadingOverlay() {
         <p className="text-xs font-medium">Loading 3D model...</p>
       </div>
     </Html>
-  );
+  )
 }
 
 function ModelScene({ modelUrl }) {
@@ -101,13 +101,13 @@ function ModelScene({ modelUrl }) {
         maxDistance={4}
       />
     </>
-  );
+  )
 }
 
 export default function Model3DViewer({
   modelUrl = DEFAULT_MODEL_URL,
-  height = "300px",
-  className = "",
+  height = '300px',
+  className = '',
 }) {
   return (
     <div
@@ -123,8 +123,8 @@ export default function Model3DViewer({
       </ViewportErrorBoundary>
       <Loader />
       <div className="absolute bottom-2 left-2 z-10 rounded-lg border border-slate-300 bg-white/80 px-2 py-1 text-xs text-slate-600 shadow-sm backdrop-blur">
-        Drag to rotate · Scroll to zoom
+        Drag to rotate - Scroll to zoom
       </div>
     </div>
-  );
+  )
 }

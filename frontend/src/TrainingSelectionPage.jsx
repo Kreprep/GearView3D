@@ -5,7 +5,7 @@ function TrainingSelectionPage({ moduleName, onSelectTraining, onBack }) {
     <div className="training-selection-container">
       <header className="training-header">
         <button className="back-button" onClick={onBack}>
-          ← Back to Modules
+          Back to Modules
         </button>
         <h1>{moduleName} Training</h1>
       </header>
@@ -13,10 +13,10 @@ function TrainingSelectionPage({ moduleName, onSelectTraining, onBack }) {
       <main className="training-options">
         <div className="option-card">
           <div className="option-icon">
-            <span>⚙️</span>
+            <span>Usage</span>
           </div>
           <h2>Equipment Usage</h2>
-          <p>Learn how to operate and maintain the equipment safely and effectively.</p>
+          <p>Learn safe forklift familiarization through walk-around checks, load handling, and post-operation steps.</p>
           <button className="option-button" onClick={() => onSelectTraining('equipment-usage')}>
             Start Equipment Training
           </button>
@@ -24,10 +24,10 @@ function TrainingSelectionPage({ moduleName, onSelectTraining, onBack }) {
 
         <div className="option-card">
           <div className="option-icon">
-            <span>🔧</span>
+            <span>Parts</span>
           </div>
           <h2>Parts Identification</h2>
-          <p>Identify and understand the different components and their functions.</p>
+          <p>Identify the main forklift components, their functions, and their safety reminders.</p>
           <button className="option-button" onClick={() => onSelectTraining('parts-identification')}>
             Start Parts Training
           </button>

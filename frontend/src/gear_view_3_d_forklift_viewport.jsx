@@ -1,5 +1,5 @@
-import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
 import {
   Bounds,
   Center,
@@ -14,10 +14,9 @@ import {
   PerspectiveCamera,
   useBounds,
   useGLTF,
-} from "@react-three/drei";
-import * as THREE from "three";
-import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { motion } from "framer-motion";
+} from '@react-three/drei'
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { motion } from 'framer-motion'
 import {
   BadgeInfo,
   BookOpen,
@@ -27,65 +26,34 @@ import {
   RotateCcw,
   ShieldCheck,
   Wrench,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { partsHotspots } from './lib/trainingData'
 
-/**
- * GearView3D forklift viewport
- *
- * Setup:
- * 1. Put the uploaded GLB in your app's public folder:
- *    public/models/forklift_machine_onirix.glb
- * 2. Render:
- *    <ForkliftViewport modelUrl="/models/forklift_machine_onirix.glb" />
- */
+const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
 
-const DEFAULT_MODEL_URL = "/models/forklift_machine_onirix.glb";
-
-const HOTSPOTS = [
-  {
-    id: "forks",
-    label: "Forks",
-    icon: Wrench,
-    position: [0, 0.1, 0.62],
-    objective: "Inspect tine spacing, cracks, and load contact points before lifting.",
-    checklist: ["Check fork tips", "Confirm locking pins", "Keep load centered"],
-  },
-  {
-    id: "mast",
-    label: "Mast & Lift Chain",
-    icon: ShieldCheck,
-    position: [0, 0.42, 0.48],
-    objective: "Review the lifting path, chain condition, and safe clearance zone.",
-    checklist: ["Look for chain slack", "Keep hands clear", "Raise load smoothly"],
-  },
-  {
-    id: "operator",
-    label: "Operator Area",
-    icon: BookOpen,
-    position: [0, 0.36, 0.08],
-    objective: "Identify seat, steering, pedals, visibility checks, and restraint use.",
-    checklist: ["Fasten seat belt", "Check mirrors", "Test horn and brakes"],
-  },
-  {
-    id: "counterweight",
-    label: "Counterweight",
-    icon: BadgeInfo,
-    position: [0, 0.18, -0.22],
-    objective: "Understand load stability and why rear counterweight clearance matters.",
-    checklist: ["Avoid overloading", "Watch rear swing", "Respect capacity plate"],
-  },
-];
+const iconMap = {
+  forks: Wrench,
+  mast: ShieldCheck,
+  'lift-chain': ShieldCheck,
+  carriage: Wrench,
+  'operator-area': BookOpen,
+  'overhead-guard': ShieldCheck,
+  counterweight: BadgeInfo,
+  tires: Wrench,
+  'capacity-plate': BadgeInfo,
+  'warning-devices': ShieldCheck,
+}
 
 class ViewportErrorBoundary extends React.Component {
   constructor(props) {
-    super(props);
-    this.state = { hasError: false };
+    super(props)
+    this.state = { hasError: false }
   }
 
   static getDerivedStateFromError() {
-    return { hasError: true };
+    return { hasError: true }
   }
 
   render() {
@@ -96,91 +64,97 @@ class ViewportErrorBoundary extends React.Component {
             <BadgeInfo className="mx-auto h-8 w-8" />
             <h3 className="text-xl font-semibold">Forklift model could not be loaded</h3>
             <p className="text-sm text-slate-300">
-              Confirm the GLB is available at <code className="rounded bg-white/10 px-1.5 py-0.5">/models/forklift_machine_onirix.glb</code>,
-              or pass the correct <code className="rounded bg-white/10 px-1.5 py-0.5">modelUrl</code> prop.
+              Confirm the GLB is available at{' '}
+              <code className="rounded bg-white/10 px-1.5 py-0.5">/models/Forklift_SEPERATED.glb</code>.
             </p>
           </div>
         </div>
-      );
+      )
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }
 
 function AutoFit({ resetToken }) {
-  const bounds = useBounds();
+  const bounds = useBounds()
 
   useEffect(() => {
-    bounds.refresh().fit();
-  }, [bounds, resetToken]);
+    bounds.refresh().fit()
+  }, [bounds, resetToken])
 
-  return null;
+  return null
 }
 
 function ForkliftModel({ modelUrl, wireframe }) {
-  const { scene } = useGLTF(modelUrl);
-  const forklift = useMemo(() => cloneSkeleton(scene), [scene]);
+  const { scene } = useGLTF(modelUrl)
+  const forklift = useMemo(() => cloneSkeleton(scene), [scene])
 
   useEffect(() => {
     forklift.traverse((object) => {
-      if (!object.isMesh) return;
+      if (!object.isMesh) return
 
-      object.castShadow = true;
-      object.receiveShadow = true;
+      object.castShadow = true
+      object.receiveShadow = true
 
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      const materials = Array.isArray(object.material) ? object.material : [object.material]
       const cloned = materials.map((material) => {
-        const next = material.clone();
-        next.wireframe = wireframe;
-        next.roughness = Math.max(next.roughness ?? 0.55, 0.45);
-        return next;
-      });
+        const next = material.clone()
+        next.wireframe = wireframe
+        next.roughness = Math.max(next.roughness ?? 0.55, 0.45)
+        return next
+      })
 
-      object.material = Array.isArray(object.material) ? cloned : cloned[0];
-    });
-  }, [forklift, wireframe]);
+      object.material = Array.isArray(object.material) ? cloned : cloned[0]
+    })
+  }, [forklift, wireframe])
 
-  return <primitive object={forklift} />;
+  return <primitive object={forklift} />
 }
 
 function HotspotPin({ hotspot, selected, onSelect }) {
-  const glowRef = useRef(null);
+  const glowRef = useRef(null)
 
   useFrame(({ clock }) => {
-    if (!glowRef.current) return;
+    if (!glowRef.current) return
 
-    const pulse = selected ? 1.08 + Math.sin(clock.elapsedTime * 3.4) * 0.03 : 1.0;
-    glowRef.current.scale.setScalar(pulse);
-  });
+    const pulse = selected ? 1.08 + Math.sin(clock.elapsedTime * 3.4) * 0.03 : 1
+    glowRef.current.scale.setScalar(pulse)
+  })
 
   return (
     <group position={hotspot.position}>
       <mesh
         ref={glowRef}
         onClick={(event) => {
-          event.stopPropagation();
-          onSelect(hotspot);
+          event.stopPropagation()
+          onSelect(hotspot)
         }}
         castShadow={false}
         receiveShadow={false}
       >
         <ringGeometry args={[0.018, 0.04, 24]} />
-        <meshBasicMaterial color={selected ? "#67e8f9" : "#e0f2fe"} transparent opacity={0.9} />
+        <meshBasicMaterial color={selected ? '#67e8f9' : '#e0f2fe'} transparent opacity={0.9} />
       </mesh>
       <mesh
         onClick={(event) => {
-          event.stopPropagation();
-          onSelect(hotspot);
+          event.stopPropagation()
+          onSelect(hotspot)
         }}
         castShadow={false}
         receiveShadow={false}
       >
         <sphereGeometry args={[0.02, 12, 12]} />
-        <meshStandardMaterial color={selected ? "#22d3ee" : "#f8fafc"} emissive={selected ? "#0ea5e9" : "#111827"} emissiveIntensity={selected ? 0.6 : 0.2} metalness={0.1} roughness={0.35} />
+        <meshStandardMaterial
+          color={selected ? '#22d3ee' : '#f8fafc'}
+          emissive={selected ? '#0ea5e9' : '#111827'}
+          emissiveIntensity={selected ? 0.6 : 0.2}
+          metalness={0.1}
+          roughness={0.35}
+        />
       </mesh>
     </group>
-  );
+  )
 }
 
 function FallbackForkliftScene() {
@@ -219,7 +193,15 @@ function FallbackForkliftScene() {
   )
 }
 
-function ForkliftScene({ modelUrl, overlaysEnabled, selectedId, onSelectHotspot, resetToken, wireframe }) {
+function ForkliftScene({
+  modelUrl,
+  hotspots,
+  overlaysEnabled,
+  selectedId,
+  onSelectHotspot,
+  resetToken,
+  wireframe,
+}) {
   return (
     <>
       <PerspectiveCamera makeDefault position={[1.25, 0.85, 1.55]} fov={42} />
@@ -233,7 +215,7 @@ function ForkliftScene({ modelUrl, overlaysEnabled, selectedId, onSelectHotspot,
           <group rotation={[0, -0.18, 0]}>
             <ForkliftModel modelUrl={modelUrl} wireframe={wireframe} />
             {overlaysEnabled &&
-              HOTSPOTS.map((hotspot) => (
+              hotspots.map((hotspot) => (
                 <HotspotPin
                   key={hotspot.id}
                   hotspot={hotspot}
@@ -256,10 +238,10 @@ function ForkliftScene({ modelUrl, overlaysEnabled, selectedId, onSelectHotspot,
       <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={0.55} maxDistance={4} />
       <GizmoHelper alignment="bottom-right" margin={[88, 88]}>
-        <GizmoViewport axisColors={["#ef4444", "#22c55e", "#3b82f6"]} labelColor="#f8fafc" />
+        <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>
     </>
-  );
+  )
 }
 
 function LoadingPanel() {
@@ -271,55 +253,65 @@ function LoadingPanel() {
         <p className="mt-1 text-xs text-slate-400">Preparing GearView3D viewport...</p>
       </div>
     </Html>
-  );
+  )
 }
 
-export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
-  const containerRef = useRef(null);
-  const [selectedHotspot, setSelectedHotspot] = useState(HOTSPOTS[0]);
-  const [overlaysEnabled, setOverlaysEnabled] = useState(true);
-  const [wireframe, setWireframe] = useState(false);
-  const [resetToken, setResetToken] = useState(0);
-  const [modelReady, setModelReady] = useState(false);
-  const progress = useMemo(() => Math.round(((HOTSPOTS.findIndex((item) => item.id === selectedHotspot?.id) + 1) / HOTSPOTS.length) * 100), [selectedHotspot]);
+export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspots = partsHotspots }) {
+  const containerRef = useRef(null)
+  const [selectedHotspotId, setSelectedHotspotId] = useState(hotspots[0]?.id)
+  const [overlaysEnabled, setOverlaysEnabled] = useState(true)
+  const [wireframe, setWireframe] = useState(false)
+  const [resetToken, setResetToken] = useState(0)
+  const [modelReady, setModelReady] = useState(false)
+  const selectedHotspot = useMemo(
+    () => hotspots.find((item) => item.id === selectedHotspotId) || hotspots[0],
+    [hotspots, selectedHotspotId],
+  )
+  const progress = useMemo(() => {
+    const index = hotspots.findIndex((item) => item.id === selectedHotspot?.id)
+    return Math.round(((index + 1) / hotspots.length) * 100)
+  }, [hotspots, selectedHotspot])
 
   useEffect(() => {
-    let active = true;
+    let active = true
 
     fetch(modelUrl, { cache: 'no-store' })
       .then((response) => {
         if (active) {
-          setModelReady(response.ok);
+          setModelReady(response.ok)
         }
       })
       .catch(() => {
         if (active) {
-          setModelReady(false);
+          setModelReady(false)
         }
-      });
+      })
 
     return () => {
-      active = false;
-    };
-  }, [modelUrl]);
+      active = false
+    }
+  }, [modelUrl])
 
   const enterFullscreen = async () => {
-    if (!containerRef.current || document.fullscreenElement) return;
-    await containerRef.current.requestFullscreen?.();
-  };
+    if (!containerRef.current || document.fullscreenElement) return
+    await containerRef.current.requestFullscreen?.()
+  }
 
   const Scene = modelReady ? (
     <ForkliftScene
       modelUrl={modelUrl}
+      hotspots={hotspots}
       overlaysEnabled={overlaysEnabled}
       selectedId={selectedHotspot?.id}
-      onSelectHotspot={setSelectedHotspot}
+      onSelectHotspot={(hotspot) => setSelectedHotspotId(hotspot.id)}
       resetToken={resetToken}
       wireframe={wireframe}
     />
   ) : (
     <FallbackForkliftScene />
-  );
+  )
+
+  const SelectedIcon = selectedHotspot ? iconMap[selectedHotspot.id] || BadgeInfo : BadgeInfo
 
   return (
     <section className="mx-auto w-full max-w-7xl rounded-[2rem] bg-slate-950 p-3 text-slate-100 shadow-2xl">
@@ -330,10 +322,10 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
               <RotateCcw className="h-4 w-4" /> Reset view
             </Button>
             <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setOverlaysEnabled((value) => !value)}>
-              <Eye className="h-4 w-4" /> {overlaysEnabled ? "Hide" : "Show"} hotspots
+              <Eye className="h-4 w-4" /> {overlaysEnabled ? 'Hide' : 'Show'} hotspots
             </Button>
             <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setWireframe((value) => !value)}>
-              <Wrench className="h-4 w-4" /> {wireframe ? "Solid" : "Wireframe"}
+              <Wrench className="h-4 w-4" /> {wireframe ? 'Solid' : 'Wireframe'}
             </Button>
             <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={enterFullscreen}>
               <Maximize className="h-4 w-4" /> Fullscreen
@@ -341,14 +333,12 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
           </div>
 
           <div className="absolute bottom-4 left-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs text-slate-200 shadow-xl backdrop-blur">
-            Drag to rotate · Scroll to zoom · Right-drag to pan
+            Drag to rotate - Scroll to zoom - Right-drag to pan
           </div>
 
           <ViewportErrorBoundary>
             <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
-              <Suspense fallback={<LoadingPanel />}>
-                {Scene}
-              </Suspense>
+              <Suspense fallback={<LoadingPanel />}>{Scene}</Suspense>
             </Canvas>
           </ViewportErrorBoundary>
           <Loader />
@@ -359,15 +349,15 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
             <CardContent className="space-y-4 p-5">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">GearView3D Module</p>
-                <h1 className="mt-1 text-2xl font-bold tracking-tight">Forklift Safety Walkthrough</h1>
+                <h1 className="mt-1 text-2xl font-bold tracking-tight">Forklift Parts Walkthrough</h1>
                 <p className="mt-2 text-sm text-slate-600">
-                  Explore the forklift in 3D, select hotspots, and guide learners through inspection and operation basics.
+                  Explore the forklift in 3D, select hotspots, and review each part's function and safety reminder.
                 </p>
               </div>
 
               <div className="rounded-2xl bg-slate-100 p-3">
                 <div className="mb-2 flex items-center justify-between text-xs font-medium text-slate-600">
-                  <span>Lesson progress</span>
+                  <span>Parts progress</span>
                   <span>{progress}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-200">
@@ -375,7 +365,7 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
                     className="h-full rounded-full bg-cyan-600"
                     initial={false}
                     animate={{ width: `${progress}%` }}
-                    transition={{ type: "spring", stiffness: 120, damping: 18 }}
+                    transition={{ type: 'spring', stiffness: 120, damping: 18 }}
                   />
                 </div>
               </div>
@@ -386,15 +376,18 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
             <CardContent className="p-5">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700">
-                  {selectedHotspot ? React.createElement(selectedHotspot.icon, { className: "h-5 w-5" }) : <BadgeInfo className="h-5 w-5" />}
+                  <SelectedIcon className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Selected hotspot</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Selected part</p>
                   <h2 className="text-lg font-semibold">{selectedHotspot?.label}</h2>
                 </div>
               </div>
 
-              <p className="text-sm leading-6 text-slate-600">{selectedHotspot?.objective}</p>
+              <p className="text-sm leading-6 text-slate-600">{selectedHotspot?.functionText}</p>
+              <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+                Safety: {selectedHotspot?.safetyNote}
+              </p>
 
               <div className="mt-5 space-y-2">
                 {selectedHotspot?.checklist.map((item) => (
@@ -410,20 +403,20 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
           <Card className="rounded-[1.5rem] border-white/10 bg-white text-slate-950 shadow-xl">
             <CardContent className="p-4">
               <div className="grid gap-2">
-                {HOTSPOTS.map((hotspot) => {
-                  const Icon = hotspot.icon;
-                  const active = hotspot.id === selectedHotspot?.id;
+                {hotspots.map((hotspot) => {
+                  const Icon = iconMap[hotspot.id] || BadgeInfo
+                  const active = hotspot.id === selectedHotspot?.id
 
                   return (
                     <button
                       key={hotspot.id}
                       type="button"
-                      onClick={() => setSelectedHotspot(hotspot)}
+                      onClick={() => setSelectedHotspotId(hotspot.id)}
                       className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${
-                        active ? "border-cyan-500 bg-cyan-50 text-cyan-950" : "border-slate-200 bg-white hover:border-cyan-300 hover:bg-slate-50"
+                        active ? 'border-cyan-500 bg-cyan-50 text-cyan-950' : 'border-slate-200 bg-white hover:border-cyan-300 hover:bg-slate-50'
                       }`}
                     >
-                      <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${active ? "bg-cyan-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                      <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                         <Icon className="h-4 w-4" />
                       </span>
                       <span>
@@ -431,7 +424,7 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
                         <span className="block text-xs text-slate-500">Tap marker or list item to review</span>
                       </span>
                     </button>
-                  );
+                  )
                 })}
               </div>
             </CardContent>
@@ -439,7 +432,7 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL }) {
         </aside>
       </div>
     </section>
-  );
+  )
 }
 
-useGLTF.preload(DEFAULT_MODEL_URL);
+useGLTF.preload(DEFAULT_MODEL_URL)

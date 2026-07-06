@@ -1,111 +1,81 @@
 import './LoadHandlingPage.css'
 import Model3DViewer from './components/Model3DViewer'
+import GuidedChecklist from './components/GuidedChecklist'
 
 function LoadHandlingPage({ moduleName, onBack }) {
   return (
     <div className="module-page-container">
       <header className="module-page-header">
         <button className="back-button" onClick={onBack}>
-          ← Back to Modules
+          Back to Modules
         </button>
         <div className="module-title-section">
           <h1>Module 2: Load Handling</h1>
-          <h2>Operational Controls</h2>
+          <h2>{moduleName} Operational Controls</h2>
         </div>
       </header>
 
       <main className="module-content">
         <section className="syllabus-section">
-          <h3>Syllabus Reference</h3>
+          <h3>Training Reference</h3>
           <div className="syllabus-info">
-            <p><strong>Unit Code:</strong> 505833315 - Perform productive operation for forklift</p>
-            <p><strong>Element:</strong> Element 4 - Perform load handling operation</p>
-            <p><strong>Page References:</strong> pp. 55, 57–58</p>
+            <p><strong>Reference:</strong> OSHA Powered Industrial Trucks eTool - Operating a Forklift: Load Handling</p>
+            <p><strong>URL:</strong> https://www.osha.gov/etools/powered-industrial-trucks/operating-forklift/load-handling</p>
           </div>
         </section>
 
         <section className="learning-objectives">
           <h3>Learning Objectives</h3>
-          <p>Master the primary visual interactive bridge for spatial maneuvering and safety protocols in load handling operations.</p>
+          <p>Practice the basic thinking sequence for approaching, lifting, stabilizing, and traveling with a load.</p>
         </section>
 
         <section className="operation-section">
           <div className="operation-module maneuvering">
-            <h3>🎯 Maneuvering and Positioning</h3>
-            <p className="reference">Page 55, Element 4.1</p>
-            
+            <h3>Maneuvering and Positioning</h3>
             <div className="operation-area">
               <h4>Positioning the Forklift</h4>
-              <p>Practice positioning the forklift squarely and correctly toward a load based on proximity guidelines:</p>
+              <p>Approach the load slowly and squarely before inserting the forks.</p>
               <ul>
-                <li>Align forklift perpendicular to load</li>
-                <li>Maintain proper distance based on load size</li>
-                <li>Ensure stable approach angle</li>
-                <li>Position forks at correct height before engagement</li>
+                <li>Align the forklift perpendicular to the load</li>
+                <li>Maintain safe approach speed</li>
+                <li>Position forks at the correct height</li>
+                <li>Confirm the path is clear before moving</li>
               </ul>
               <Model3DViewer height="280px" />
             </div>
           </div>
 
           <div className="operation-module stability">
-            <h3>⚖️ Load Center of Gravity</h3>
-            <p className="reference">Page 55, Element 4.2</p>
-            
+            <h3>Load Stability</h3>
             <div className="operation-area">
               <h4>Stability Triangle Concept</h4>
-              <p>Visually demonstrate and understand the forklift's Stability Triangle:</p>
+              <p>Understand that the load changes the forklift center of gravity and affects stability.</p>
               <ul>
-                <li>Stability Triangle defined by contact points and load center</li>
-                <li>Center of gravity shifts with load position</li>
-                <li>Impact on maximum rated lifting capacity</li>
-                <li>How palletized cargo affects balance</li>
-                <li>How containerized cargo affects balance</li>
+                <li>Keep the load centered</li>
+                <li>Respect the rated capacity plate</li>
+                <li>Keep the load low when traveling</li>
+                <li>Avoid sudden turns or stops with a raised load</li>
               </ul>
               <Model3DViewer height="280px" />
             </div>
           </div>
 
           <div className="operation-module controls">
-            <h3>🎮 Lever and Control Mastery</h3>
-            <p className="reference">Page 58, Critical Aspects 1.2</p>
-            
+            <h3>Basic Control Familiarization</h3>
             <div className="operation-area">
-              <h4>Hydraulic Lever Operations</h4>
-              <p>Virtual dashboard with interactive lever controls:</p>
+              <h4>Fork and Mast Controls</h4>
+              <p>Review the purpose of the lift, tilt, and travel controls before hands-on training.</p>
               <ul>
-                <li><strong>Lift Lever:</strong> Practice smooth vertical lifting movements</li>
-                <li><strong>Tilt Lever:</strong> Control mast tilt angle with precision</li>
-                <li><strong>Side-Shift Controls:</strong> Fine-tune lateral positioning</li>
-              </ul>
-              <Model3DViewer height="280px" />
-            </div>
-          </div>
-
-          <div className="operation-module safety">
-            <h3>⚠️ Operational Area Safety</h3>
-            <p className="reference">Page 55, Element 3</p>
-            
-            <div className="operation-area">
-              <h4>Worksite Hazard Assessment</h4>
-              <p>Survey the virtual worksite and identify safety considerations:</p>
-              <ul>
-                <li>Spot unsafe ground conditions</li>
-                <li>Check overhead clearances</li>
-                <li>Verify proximity clearances with other equipment</li>
-                <li>Identify floor obstructions and hazards</li>
-                <li>Verify proper safety barriers deployment</li>
-                <li>Confirm hazard signage placement</li>
+                <li><strong>Lift:</strong> Raises or lowers the forks</li>
+                <li><strong>Tilt:</strong> Adjusts mast angle for load stability</li>
+                <li><strong>Travel:</strong> Moves the forklift while maintaining visibility and control</li>
               </ul>
               <Model3DViewer height="280px" />
             </div>
           </div>
         </section>
 
-        <section className="action-section">
-          <button className="start-interactive-button">
-            Start Load Handling Simulation
-          </button>
-        </section>
+        <GuidedChecklist moduleSlug="load-handling" title="Interactive Load Handling Checklist" />
       </main>
     </div>
   )

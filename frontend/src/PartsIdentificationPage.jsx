@@ -1,15 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ForkliftViewport from './gear_view_3_d_forklift_viewport'
+import { getParts } from './lib/api'
 import './PartsIdentificationPage.css'
 
 function PartsIdentificationPage({ moduleName, onBack }) {
-  const [showViewport, setShowViewport] = useState(false)
+  const [hotspots, setHotspots] = useState([])
+
+  useEffect(() => {
+    getParts().then(setHotspots)
+  }, [])
 
   return (
     <div className="training-page-container">
       <header className="training-page-header">
         <button className="back-button" onClick={onBack}>
-          ← Back
+          Back
         </button>
         <h1>{moduleName} - Parts Identification</h1>
       </header>
@@ -17,34 +22,21 @@ function PartsIdentificationPage({ moduleName, onBack }) {
       <main className="training-content">
         <div className="content-section">
           <h2>Parts Identification Module</h2>
-          <p>This is a placeholder for the {moduleName} parts identification training module.</p>
-          
-          <div className="lesson-card">
-            <h3>Part 1: Main Components</h3>
-            <p>Identify the major components of the equipment.</p>
-          </div>
+          <p>
+            Explore the forklift model and review the function, safety reminder, and inspection focus for each major component.
+            This module is designed for familiarization before supervised hands-on training.
+          </p>
 
           <div className="lesson-card">
-            <h3>Part 2: Secondary Components</h3>
-            <p>Learn about supporting components and their locations.</p>
+            <h3>Main Components</h3>
+            <p>Forks, mast, carriage, lift chain, operator area, overhead guard, tires, counterweight, capacity plate, and warning devices.</p>
           </div>
 
-          <div className="lesson-card">
-            <h3>Part 3: Wear Items & Maintenance</h3>
-            <p>Understand which parts require regular maintenance and replacement.</p>
-          </div>
-
-          <button className="start-lesson-button" onClick={() => setShowViewport(true)}>
-            {showViewport ? 'Part 1 viewport is open' : 'Start Part 1'}
-          </button>
-
-          {showViewport && (
-            <section className="viewport-panel">
-              <h3>Part 1: Live Forklift View</h3>
-              <p>Use the controls below to inspect the forklift and review the main components.</p>
-              <ForkliftViewport />
-            </section>
-          )}
+          <section className="viewport-panel">
+            <h3>Live Forklift Parts View</h3>
+            <p>Use the controls below to inspect the forklift and select labeled parts.</p>
+            {hotspots.length > 0 && <ForkliftViewport hotspots={hotspots} />}
+          </section>
         </div>
       </main>
     </div>
