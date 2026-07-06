@@ -46,6 +46,10 @@ import './PageLayout.css'
  *   <section className="assessment-card">...</section>
  * </PageLayout>
  *
+ * Pass `wide` for pages that host a large fixed-aspect element (e.g. a 3D
+ * viewport) that gets cramped inside the default 1400px column — see
+ * PartsIdentificationPage.jsx.
+ *
  * Rules learned from prior cleanup:
  * - Don't redefine width/padding/gap on a page container class — PageLayout.css
  *   already owns that via .page-layout.
@@ -56,11 +60,11 @@ import './PageLayout.css'
  *   the h1 doesn't), but progress-card / recent-activity sections skip it
  *   since their own <h2> already names the section.
  */
-function PageLayout({ user, onLogout, onNavigate, className = '', children }) {
+function PageLayout({ user, onLogout, onNavigate, wide = false, className = '', children }) {
   return (
     <div className="page-shell">
       <AppHeader user={user} onLogout={onLogout} onNavigate={onNavigate} />
-      <main className={`page-layout ${className}`.trim()}>{children}</main>
+      <main className={`page-layout ${wide ? 'page-layout-wide' : ''} ${className}`.trim()}>{children}</main>
     </div>
   )
 }
