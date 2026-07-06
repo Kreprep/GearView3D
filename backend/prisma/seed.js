@@ -72,7 +72,7 @@ const parts = [
   {
     id: 'forks',
     label: 'Forks',
-    position: [0, 0.1, 0.62],
+    position: [0, 0.08, 0.58],
     functionText: 'Support and lift pallets or loads when correctly inserted and spaced.',
     safetyNote: 'Never stand under raised forks, and keep the load centered before lifting.',
     checklist: ['Check fork tips', 'Confirm locking pins', 'Keep load centered'],
@@ -80,7 +80,7 @@ const parts = [
   {
     id: 'mast',
     label: 'Mast',
-    position: [0, 0.42, 0.48],
+    position: [0, 0.44, 0.25],
     functionText: 'Guides the vertical movement of the carriage and forks.',
     safetyNote: 'Keep hands, feet, and loose clothing away from the mast and lift chain path.',
     checklist: ['Look for visible damage', 'Check lift path clearance', 'Raise load smoothly'],
@@ -88,7 +88,7 @@ const parts = [
   {
     id: 'lift-chain',
     label: 'Lift Chain',
-    position: [-0.08, 0.54, 0.46],
+    position: [0.08, 0.54, 0.18],
     functionText: 'Transfers lifting force through the mast assembly.',
     safetyNote: 'Do not touch or inspect the chain while the engine is running or the forks are moving.',
     checklist: ['Look for slack', 'Check for uneven movement', 'Keep clear while lifting'],
@@ -96,7 +96,7 @@ const parts = [
   {
     id: 'carriage',
     label: 'Carriage',
-    position: [0, 0.28, 0.54],
+    position: [0, 0.13, 0.42],
     functionText: 'Holds the forks and moves along the mast during lifting and lowering.',
     safetyNote: 'Confirm the carriage is stable before handling any load.',
     checklist: ['Check fork attachment', 'Check visible cracks', 'Confirm smooth travel'],
@@ -104,7 +104,7 @@ const parts = [
   {
     id: 'operator-area',
     label: 'Operator Area',
-    position: [0, 0.36, 0.08],
+    position: [0, 0.34, -0.04],
     functionText: 'Contains the seat, steering, pedals, levers, and dashboard controls used by the operator.',
     safetyNote: 'Fasten the seat belt and confirm controls are understood before operation.',
     checklist: ['Fasten seat belt', 'Check mirrors', 'Test horn and brakes'],
@@ -112,7 +112,7 @@ const parts = [
   {
     id: 'overhead-guard',
     label: 'Overhead Guard',
-    position: [0, 0.72, 0.05],
+    position: [0, 0.78, -0.02],
     functionText: 'Helps protect the operator from falling objects within the forklift safety limits.',
     safetyNote: 'Do not operate if the overhead guard is visibly damaged.',
     checklist: ['Check structural damage', 'Keep guard unobstructed', 'Never remove the guard'],
@@ -120,7 +120,7 @@ const parts = [
   {
     id: 'counterweight',
     label: 'Counterweight',
-    position: [0, 0.18, -0.22],
+    position: [0, 0.18, -0.26],
     functionText: 'Balances the forklift against the weight of the load.',
     safetyNote: 'Watch rear swing and never exceed the rated load capacity.',
     checklist: ['Avoid overloading', 'Watch rear swing', 'Respect capacity plate'],
@@ -128,7 +128,7 @@ const parts = [
   {
     id: 'tires',
     label: 'Tires',
-    position: [0.34, 0.08, 0.03],
+    position: [0.12, 0.08, 0.19],
     functionText: 'Support forklift movement and stability across the work surface.',
     safetyNote: 'Damaged or underinflated tires can affect stability and steering.',
     checklist: ['Check visible wear', 'Check inflation or damage', 'Report unsafe tire condition'],
@@ -136,7 +136,7 @@ const parts = [
   {
     id: 'capacity-plate',
     label: 'Capacity Plate',
-    position: [0.18, 0.34, 0.15],
+    position: [0.1, 0.32, 0.03],
     functionText: 'Shows rated load capacity and important forklift specifications.',
     safetyNote: 'Do not lift a load beyond the capacity shown on the plate.',
     checklist: ['Read rated capacity', 'Confirm load center', 'Follow plate limits'],
@@ -144,7 +144,7 @@ const parts = [
   {
     id: 'warning-devices',
     label: 'Warning Devices',
-    position: [0, 0.53, -0.08],
+    position: [0, 0.66, -0.08],
     functionText: 'Includes lights, horn, and backup alarm used to alert nearby workers.',
     safetyNote: 'Do not operate if required warning devices are not working.',
     checklist: ['Test horn', 'Check lights', 'Check backup alarm'],

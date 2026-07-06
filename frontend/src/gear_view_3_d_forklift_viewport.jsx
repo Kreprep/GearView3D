@@ -314,9 +314,9 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspot
   const SelectedIcon = selectedHotspot ? iconMap[selectedHotspot.id] || BadgeInfo : BadgeInfo
 
   return (
-    <section className="mx-auto w-full max-w-7xl rounded-[2rem] bg-slate-950 p-3 text-slate-100 shadow-2xl">
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div ref={containerRef} className="relative min-h-[560px] overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
+    <section className="w-full rounded-[1.25rem] bg-slate-950 p-3 text-slate-100 shadow-2xl">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_390px]">
+        <div ref={containerRef} className="relative min-h-[min(76vh,820px)] overflow-hidden rounded-[1rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
           <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setResetToken((value) => value + 1)}>
               <RotateCcw className="h-4 w-4" /> Reset view
@@ -345,7 +345,7 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspot
         </div>
 
         <aside className="grid content-start gap-3">
-          <Card className="rounded-[1.5rem] border-white/10 bg-white text-slate-950 shadow-xl">
+          <Card className="rounded-[1rem] border-white/10 bg-white text-slate-950 shadow-xl">
             <CardContent className="space-y-4 p-5">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">GearView3D Module</p>
@@ -372,7 +372,7 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspot
             </CardContent>
           </Card>
 
-          <Card className="rounded-[1.5rem] border-white/10 bg-white text-slate-950 shadow-xl">
+          <Card className="rounded-[1rem] border-white/10 bg-white text-slate-950 shadow-xl">
             <CardContent className="p-5">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700">
@@ -400,7 +400,7 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspot
             </CardContent>
           </Card>
 
-          <Card className="rounded-[1.5rem] border-white/10 bg-white text-slate-950 shadow-xl">
+          <Card className="rounded-[1rem] border-white/10 bg-white text-slate-950 shadow-xl">
             <CardContent className="p-4">
               <div className="grid gap-2">
                 {hotspots.map((hotspot) => {
