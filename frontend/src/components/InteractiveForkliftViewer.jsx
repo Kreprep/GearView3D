@@ -1,5 +1,5 @@
 import React, { Suspense, useMemo, useRef, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   Bounds,
   Center,
@@ -14,6 +14,7 @@ import {
   useBounds,
   useGLTF,
 } from '@react-three/drei'
+import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { BadgeInfo, Eye, Maximize, RotateCcw } from 'lucide-react'
 import './InteractiveForkliftViewer.css'
@@ -71,6 +72,42 @@ function AutoFit({ resetToken }) {
   return null
 }
 
+function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
+  const { camera } = useThree()
+  const desiredCamPos = useRef(new Vector3())
+  const desiredTarget = useRef(new Vector3())
+  const framesRemaining = useRef(0)
+  const activeId = useRef(null)
+
+  React.useEffect(() => {
+    activeId.current = null
+  }, [resetToken])
+
+  useFrame(() => {
+    const controls = controlsRef.current
+
+    if (controls && targetId && targetId !== activeId.current) {
+      const object = hotspotRefs.current.get(targetId)
+      if (object) {
+        activeId.current = targetId
+        object.getWorldPosition(desiredTarget.current)
+        const direction = camera.position.clone().sub(controls.target).normalize()
+        desiredCamPos.current.copy(desiredTarget.current).add(direction.multiplyScalar(0.5))
+        framesRemaining.current = 40
+      }
+    }
+
+    if (framesRemaining.current > 0 && controls) {
+      controls.target.lerp(desiredTarget.current, 0.15)
+      camera.position.lerp(desiredCamPos.current, 0.15)
+      controls.update()
+      framesRemaining.current -= 1
+    }
+  })
+
+  return null
+}
+
 function ForkliftModel({ modelUrl }) {
   const { scene } = useGLTF(modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
@@ -98,24 +135,32 @@ function ForkliftModel({ modelUrl }) {
   return <primitive object={forklift} />
 }
 
-function TrainingHotspot({ hotspot, selected, scenario, onSelect }) {
+function TrainingHotspot({ hotspot, selected, scenario, onSelect, hotspotRefs }) {
   const result = getScenarioResult(hotspot, scenario)
 
   return (
-    <Html position={hotspot.position} center zIndexRange={[100, 0]} occlude={false}>
-      <div className="hotspot-marker-wrap">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            onSelect(result)
-          }}
-          className={`hotspot-marker ${result.result === 'unsafe' ? 'unsafe' : ''} ${selected ? 'selected' : ''}`}
-          aria-label={hotspot.label}
-        />
-        <span className="hotspot-marker-tooltip">{hotspot.label}</span>
-      </div>
-    </Html>
+    <group
+      position={hotspot.position}
+      ref={(node) => {
+        if (node) hotspotRefs.current.set(hotspot.id, node)
+        else hotspotRefs.current.delete(hotspot.id)
+      }}
+    >
+      <Html center zIndexRange={[100, 0]} occlude={false}>
+        <div className="hotspot-marker-wrap">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onSelect(result)
+            }}
+            className={`hotspot-marker ${result.result === 'unsafe' ? 'unsafe' : ''} ${selected ? 'selected' : ''}`}
+            aria-label={hotspot.label}
+          />
+          <span className="hotspot-marker-tooltip">{hotspot.label}</span>
+        </div>
+      </Html>
+    </group>
   )
 }
 
@@ -183,6 +228,9 @@ function InteractiveScene({
   onHotspotSelect,
   onScenarioAction,
 }) {
+  const hotspotRefs = useRef(new Map())
+  const controlsRef = useRef(null)
+
   return (
     <>
       <PerspectiveCamera makeDefault position={cameraPreset.position} fov={cameraPreset.fov} />
@@ -213,15 +261,17 @@ function InteractiveScene({
                   scenario={scenario}
                   selected={selectedHotspotId === hotspot.id}
                   onSelect={onHotspotSelect}
+                  hotspotRefs={hotspotRefs}
                 />
               ))}
           </group>
         </Center>
       </Bounds>
 
+      <CameraFocus targetId={selectedHotspotId} hotspotRefs={hotspotRefs} controlsRef={controlsRef} resetToken={resetToken} />
       <Grid infiniteGrid cellSize={0.12} sectionSize={0.6} fadeDistance={6} fadeStrength={1.6} position={[0, -0.01, 0]} />
       <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={cameraPreset.minDistance} maxDistance={cameraPreset.maxDistance} />
+      <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.18} minDistance={cameraPreset.minDistance} maxDistance={cameraPreset.maxDistance} />
       <GizmoHelper alignment="bottom-right" margin={[84, 84]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>

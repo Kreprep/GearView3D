@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   Bounds,
   Center,
@@ -14,6 +14,7 @@ import {
   useBounds,
   useGLTF,
 } from '@react-three/drei'
+import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { motion } from 'framer-motion'
 import {
@@ -85,6 +86,42 @@ function AutoFit({ resetToken }) {
   return null
 }
 
+function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
+  const { camera } = useThree()
+  const desiredCamPos = useRef(new Vector3())
+  const desiredTarget = useRef(new Vector3())
+  const framesRemaining = useRef(0)
+  const activeId = useRef(null)
+
+  useEffect(() => {
+    activeId.current = null
+  }, [resetToken])
+
+  useFrame(() => {
+    const controls = controlsRef.current
+
+    if (controls && targetId && targetId !== activeId.current) {
+      const object = hotspotRefs.current.get(targetId)
+      if (object) {
+        activeId.current = targetId
+        object.getWorldPosition(desiredTarget.current)
+        const direction = camera.position.clone().sub(controls.target).normalize()
+        desiredCamPos.current.copy(desiredTarget.current).add(direction.multiplyScalar(0.5))
+        framesRemaining.current = 40
+      }
+    }
+
+    if (framesRemaining.current > 0 && controls) {
+      controls.target.lerp(desiredTarget.current, 0.15)
+      camera.position.lerp(desiredCamPos.current, 0.15)
+      controls.update()
+      framesRemaining.current -= 1
+    }
+  })
+
+  return null
+}
+
 function ForkliftModel({ modelUrl, wireframe }) {
   const { scene } = useGLTF(modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
@@ -111,28 +148,36 @@ function ForkliftModel({ modelUrl, wireframe }) {
   return <primitive object={forklift} />
 }
 
-function HotspotPin({ hotspot, selected, onSelect }) {
+function HotspotPin({ hotspot, selected, onSelect, hotspotRefs }) {
   return (
-    <Html position={hotspot.position} center zIndexRange={[100, 0]} occlude={false}>
-      <div className="group relative flex items-center justify-center">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            onSelect(hotspot)
-          }}
-          className={`block h-4 w-4 rounded-full border-2 transition-transform ${
-            selected
-              ? 'scale-125 animate-pulse border-cyan-300 bg-cyan-400 shadow-[0_0_10px_3px_rgba(34,211,238,0.7)]'
-              : 'border-white/80 bg-white/90 hover:scale-110'
-          }`}
-          aria-label={hotspot.label}
-        />
-        <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900/90 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
-          {hotspot.label}
-        </span>
-      </div>
-    </Html>
+    <group
+      position={hotspot.position}
+      ref={(node) => {
+        if (node) hotspotRefs.current.set(hotspot.id, node)
+        else hotspotRefs.current.delete(hotspot.id)
+      }}
+    >
+      <Html center zIndexRange={[100, 0]} occlude={false}>
+        <div className="group relative flex items-center justify-center">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onSelect(hotspot)
+            }}
+            className={`block h-4 w-4 rounded-full border-2 transition-transform ${
+              selected
+                ? 'scale-125 animate-pulse border-cyan-300 bg-cyan-400 shadow-[0_0_10px_3px_rgba(34,211,238,0.7)]'
+                : 'border-white/80 bg-white/90 hover:scale-110'
+            }`}
+            aria-label={hotspot.label}
+          />
+          <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900/90 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+            {hotspot.label}
+          </span>
+        </div>
+      </Html>
+    </group>
   )
 }
 
@@ -181,6 +226,9 @@ function ForkliftScene({
   resetToken,
   wireframe,
 }) {
+  const hotspotRefs = useRef(new Map())
+  const controlsRef = useRef(null)
+
   return (
     <>
       <PerspectiveCamera makeDefault position={[1.25, 0.85, 1.55]} fov={42} />
@@ -201,11 +249,14 @@ function ForkliftScene({
                   hotspot={hotspot}
                   selected={selectedId === hotspot.id}
                   onSelect={onSelectHotspot}
+                  hotspotRefs={hotspotRefs}
                 />
               ))}
           </group>
         </Center>
       </Bounds>
+
+      <CameraFocus targetId={selectedId} hotspotRefs={hotspotRefs} controlsRef={controlsRef} resetToken={resetToken} />
 
       <Grid
         infiniteGrid
@@ -216,7 +267,7 @@ function ForkliftScene({
         position={[0, -0.01, 0]}
       />
       <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={0.55} maxDistance={4} />
+      <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.18} minDistance={0.55} maxDistance={4} />
       <GizmoHelper alignment="bottom-right" margin={[88, 88]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>
