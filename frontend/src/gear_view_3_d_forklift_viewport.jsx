@@ -4,7 +4,6 @@ import {
   Bounds,
   Center,
   ContactShadows,
-  Environment,
   GizmoHelper,
   GizmoViewport,
   Grid,
@@ -113,19 +112,17 @@ function ForkliftModel({ modelUrl, wireframe }) {
 }
 
 function HotspotPin({ hotspot, selected, onSelect }) {
-  const glowRef = useRef(null)
+  const glowMaterialRef = useRef(null)
 
   useFrame(({ clock }) => {
-    if (!glowRef.current) return
+    if (!glowMaterialRef.current) return
 
-    const pulse = selected ? 1.08 + Math.sin(clock.elapsedTime * 3.4) * 0.03 : 1
-    glowRef.current.scale.setScalar(pulse)
+    glowMaterialRef.current.opacity = selected ? 0.75 + Math.sin(clock.elapsedTime * 3.4) * 0.15 : 0.9
   })
 
   return (
     <group position={hotspot.position}>
       <mesh
-        ref={glowRef}
         onClick={(event) => {
           event.stopPropagation()
           onSelect(hotspot)
@@ -134,7 +131,12 @@ function HotspotPin({ hotspot, selected, onSelect }) {
         receiveShadow={false}
       >
         <ringGeometry args={[0.018, 0.04, 24]} />
-        <meshBasicMaterial color={selected ? '#67e8f9' : '#e0f2fe'} transparent opacity={0.9} />
+        <meshBasicMaterial
+          ref={glowMaterialRef}
+          color={selected ? '#67e8f9' : '#e0f2fe'}
+          transparent
+          opacity={0.9}
+        />
       </mesh>
       <mesh
         onClick={(event) => {
@@ -188,7 +190,7 @@ function FallbackForkliftScene() {
       </group>
       <Grid infiniteGrid cellSize={0.12} sectionSize={0.6} fadeDistance={6} fadeStrength={1.4} position={[0, -0.02, 0]} />
       <ContactShadows position={[0, -0.02, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={0.75} maxDistance={4.2} />
+      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={0.75} maxDistance={4.2} />
     </>
   )
 }
@@ -205,11 +207,12 @@ function ForkliftScene({
   return (
     <>
       <PerspectiveCamera makeDefault position={[1.25, 0.85, 1.55]} fov={42} />
-      <ambientLight intensity={0.75} />
+      <ambientLight intensity={1.05} />
+      <hemisphereLight args={['#f8fafc', '#1e293b', 1.05]} />
       <directionalLight castShadow position={[2.2, 3, 1.8]} intensity={2.4} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-      <Environment preset="warehouse" />
+      <directionalLight position={[-2.4, 1.8, -2]} intensity={1} />
 
-      <Bounds fit clip observe margin={1.25}>
+      <Bounds fit clip margin={1.25}>
         <AutoFit resetToken={resetToken} />
         <Center position={[0, 0, 0]} top>
           <group rotation={[0, -0.18, 0]}>
@@ -236,7 +239,7 @@ function ForkliftScene({
         position={[0, -0.01, 0]}
       />
       <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={0.55} maxDistance={4} />
+      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={0.55} maxDistance={4} />
       <GizmoHelper alignment="bottom-right" margin={[88, 88]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>

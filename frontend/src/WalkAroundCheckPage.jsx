@@ -1,25 +1,27 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
-import { walkAroundViewerHotspots } from './data/viewerHotspots'
+import { walkAroundDefectOverlays, walkAroundViewerHotspots } from './data/viewerHotspots'
+import { routes } from './lib/router'
 import {
+  defectRecognitionScenarios,
   engineOffInspectionChecks,
   engineOnGaugeChecks,
   equipmentUsageModules,
   forkliftEquipment,
   moduleScenarioSteps,
   safetyDeviceTests,
-  walkAroundDefects,
 } from './lib/trainingData'
 import './WalkAroundCheckPage.css'
+
+const NEXT_MODULE_DELAY_MS = 1400
 
 const moduleSlug = 'walk-around-check'
 const noViewerHotspots = []
 const engineOffViewerHotspots = engineOffInspectionChecks.map((check) => check.id)
 const engineOnViewerHotspots = ['operator-area', 'warning-devices']
-const defectSeedKey = 'gearview_walkaround_defect_seed'
 
 function unique(items) {
   return [...new Set(items)]
@@ -28,35 +30,31 @@ function unique(items) {
 function calculateSimulationState(nextState) {
   const engineOffTotal = engineOffInspectionChecks.length
   const engineOnTotal = engineOnGaugeChecks.length + safetyDeviceTests.length
-  const scenarioTotal = 1
+  const scenarioTotal = defectRecognitionScenarios.length
   const engineOffCount = nextState.engineOffChecks?.length || 0
   const engineOnCount = nextState.engineOnChecks?.length || 0
-  const scenarioScore = nextState.scenarioScore || 0
+  const defectScenarioAnswers = nextState.defectScenarioAnswers || {}
+  const defectScenarioScore = defectRecognitionScenarios.filter(
+    (scenario) => defectScenarioAnswers[scenario.id] === scenario.answer,
+  ).length
   const percentage = Math.round(
     (engineOffCount / engineOffTotal) * 35 +
       (engineOnCount / engineOnTotal) * 35 +
-      (scenarioScore / scenarioTotal) * 30,
+      (defectScenarioScore / scenarioTotal) * 30,
   )
-  const complete = engineOffCount === engineOffTotal && engineOnCount === engineOnTotal && scenarioScore === scenarioTotal
+  const complete = engineOffCount === engineOffTotal && engineOnCount === engineOnTotal && defectScenarioScore === scenarioTotal
 
-  return { ...nextState, percentage, complete }
+  return { ...nextState, defectScenarioAnswers, defectScenarioScore, percentage, complete }
 }
 
-function WalkAroundCheckPage({ moduleName, onBack }) {
+function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
   const steps = moduleScenarioSteps[moduleSlug]
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [inspectionState, setInspectionState] = useState(savedSimulation.activeState || 'engine-off')
-  const [randomDefectId] = useState(() => {
-    if (savedSimulation.randomDefectId) return savedSimulation.randomDefectId
-    const saved = localStorage.getItem(defectSeedKey)
-    if (saved) return saved
-    const next = walkAroundDefects[Math.floor(Math.random() * walkAroundDefects.length)].id
-    localStorage.setItem(defectSeedKey, next)
-    return next
-  })
+  const [defectScenarioIndex, setDefectScenarioIndex] = useState(0)
   const [feedback, setFeedback] = useState({
     type: 'neutral',
     title: 'Scenario Briefing',
@@ -65,13 +63,11 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
   const simulation = calculateSimulationState({
     engineOffChecks: savedSimulation.engineOffChecks || [],
     engineOnChecks: savedSimulation.engineOnChecks || [],
-    defectAnswer: savedSimulation.defectAnswer || '',
-    randomDefectId,
-    scenarioScore: savedSimulation.scenarioScore || 0,
+    defectScenarioAnswers: savedSimulation.defectScenarioAnswers || {},
     complete: savedSimulation.complete || false,
     percentage: savedSimulation.percentage || 0,
   })
-  const activeDefect = walkAroundDefects.find((defect) => defect.id === randomDefectId) || walkAroundDefects[0]
+  const activeDefectScenario = defectRecognitionScenarios[defectScenarioIndex]
 
   const completedEngineOnSet = useMemo(() => new Set(simulation.engineOnChecks), [simulation.engineOnChecks])
   const completedEngineOffSet = useMemo(() => new Set(simulation.engineOffChecks), [simulation.engineOffChecks])
@@ -81,13 +77,6 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
     updateSimulation(moduleSlug, next)
     return next
   }
-
-  useEffect(() => {
-    if (!savedSimulation.randomDefectId) {
-      saveSimulation({ randomDefectId })
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [randomDefectId])
 
   const switchInspectionState = (nextState) => {
     setInspectionState(nextState)
@@ -144,13 +133,15 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
     })
   }
 
-  const answerScenario = (choice) => {
-    const scenarioScore = choice === activeDefect.label ? 1 : 0
-    saveSimulation({ defectAnswer: choice, scenarioScore })
+  const answerDefectScenario = (scenario, choice) => {
+    const correct = choice === scenario.answer
+    saveSimulation({
+      defectScenarioAnswers: { ...simulation.defectScenarioAnswers, [scenario.id]: choice },
+    })
     setFeedback({
-      type: choice === activeDefect.label ? 'correct' : 'incorrect',
-      title: choice === activeDefect.label ? 'Correct defect identified' : 'Review the visible defect',
-      message: activeDefect.feedback,
+      type: correct ? 'correct' : 'incorrect',
+      title: correct ? 'Correct' : 'Review this scenario',
+      message: scenario.feedback,
     })
   }
 
@@ -167,13 +158,22 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
     setFeedback({
       type: 'completed',
       title: 'Walk-Around Check Complete',
-      message: 'You completed the visual inspection simulation and can explain when a forklift must be reported as unsafe.',
+      message: 'You completed the visual inspection simulation. Moving to Load Handling and Operational Controls next.',
     })
+
+    setTimeout(() => onNavigate?.(routes.loadHandling), NEXT_MODULE_DELAY_MS)
+  }
+
+  const getStepCanProceed = (stepId) => {
+    if (stepId === 'engine-off-inspection') return simulation.engineOffChecks.length === engineOffInspectionChecks.length
+    if (stepId === 'engine-on-inspection') return simulation.engineOnChecks.length === engineOnGaugeChecks.length + safetyDeviceTests.length
+    if (stepId === 'defect-recognition') return defectRecognitionScenarios.every((scenario) => Boolean(simulation.defectScenarioAnswers[scenario.id]))
+    return true
   }
 
   const renderScene = ({ currentStep }) => {
     const scenario = currentStep.id === 'defect-recognition'
-      ? activeDefect.visualState
+      ? (activeDefectScenario.visualState === 'normal' ? 'good-forklift' : activeDefectScenario.visualState)
       : inspectionState === 'engine-on'
         ? 'engine-on'
         : 'engine-off'
@@ -190,6 +190,7 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
           scenario={scenario}
           activeHotspots={activeHotspots}
           hotspots={walkAroundViewerHotspots}
+          defectOverlays={walkAroundDefectOverlays}
           modelUrl={forkliftEquipment.modelUrl}
           cameraPreset={inspectionState === 'engine-on' ? { position: [1.25, 0.95, 1.15], maxDistance: 3.4 } : undefined}
           onHotspotSelect={handleViewerHotspot}
@@ -292,25 +293,44 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
   )
 
   const renderDefectTest = () => {
-    const savedAnswer = simulation.defectAnswer
+    const savedAnswer = simulation.defectScenarioAnswers[activeDefectScenario.id]
 
     return (
       <div className="walkaround-task-stack">
-        <h4>{activeDefect.title}</h4>
-        <p>A defect has been randomly injected into the forklift scene. Identify the defect shown.</p>
+        <div className="scenario-picker" role="tablist" aria-label="Defect recognition scenarios">
+          {defectRecognitionScenarios.map((scenario, index) => {
+            const answer = simulation.defectScenarioAnswers[scenario.id]
+            return (
+              <button
+                key={scenario.id}
+                type="button"
+                className={index === defectScenarioIndex ? 'active' : ''}
+                aria-label={scenario.title}
+                onClick={() => setDefectScenarioIndex(index)}
+              >
+                {answer ? (answer === scenario.answer ? '✓' : '✕') : index + 1}
+              </button>
+            )
+          })}
+        </div>
+        <h4>{activeDefectScenario.title}</h4>
+        <p>{activeDefectScenario.question}</p>
         <div className="scenario-choice-row">
-          {activeDefect.choices.map((choice) => (
+          {activeDefectScenario.choices.map((choice) => (
             <button
               key={choice}
               type="button"
               className={savedAnswer === choice ? 'selected' : ''}
-              onClick={() => answerScenario(choice)}
+              onClick={() => answerDefectScenario(activeDefectScenario, choice)}
             >
               {choice}
             </button>
           ))}
         </div>
-        <p className="task-note">Defect recognition score: {simulation.scenarioScore}/1</p>
+        {savedAnswer && <p className="task-note">{activeDefectScenario.feedback}</p>}
+        <p className="task-note">
+          Defect recognition score: {simulation.defectScenarioScore}/{defectRecognitionScenarios.length}
+        </p>
       </div>
     )
   }
@@ -320,7 +340,7 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
       <div className="summary-grid">
         <div><span>Engine-Off Checks</span><strong>{simulation.engineOffChecks.length}/{engineOffInspectionChecks.length}</strong></div>
         <div><span>Engine-On Checks</span><strong>{simulation.engineOnChecks.length}/{engineOnGaugeChecks.length + safetyDeviceTests.length}</strong></div>
-        <div><span>Defect Test</span><strong>{simulation.scenarioScore}/1</strong></div>
+        <div><span>Defect Recognition</span><strong>{simulation.defectScenarioScore}/{defectRecognitionScenarios.length}</strong></div>
       </div>
       <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
         {simulation.complete
@@ -335,7 +355,7 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
     if (currentStep.id === 'engine-off-inspection') return renderEngineOff()
     if (currentStep.id === 'engine-on-inspection') return renderEngineOn()
     if (currentStep.id === 'defect-recognition') return renderDefectTest()
-    return renderSummary()
+    return null
   }
 
   return (
@@ -357,8 +377,9 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
           currentStepIndex={currentStepIndex}
           objectives={module.learningObjectives}
           progress={simulation.percentage}
-          score={simulation.scenarioScore}
+          score={simulation.defectScenarioScore}
           feedback={feedback}
+          canProceed={getStepCanProceed(steps[currentStepIndex].id)}
           onBackStep={() => setCurrentStepIndex((index) => Math.max(index - 1, 0))}
           onNextStep={() => setCurrentStepIndex((index) => Math.min(index + 1, steps.length - 1))}
           onComplete={completeModule}

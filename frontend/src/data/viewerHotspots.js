@@ -100,6 +100,43 @@ export const walkAroundViewerHotspots = [
   },
 ]
 
+export const walkAroundDefectOverlays = [
+  {
+    id: 'oil-leak',
+    scenario: 'oil-leak',
+    type: 'puddle',
+    position: [0, 0.004, -0.1],
+    rotation: [-Math.PI / 2, 0, 0.18],
+    radius: 0.19,
+    label: 'Fluid leak detected',
+    feedback: 'Fluid leak detected. Forklift is unsafe for operation.',
+  },
+  {
+    id: 'flat-tire',
+    scenario: 'flat-tire',
+    type: 'marker',
+    position: [0.16, 0.16, 0.2],
+    label: 'Unsafe tire condition',
+    feedback: 'Unsafe tire condition affects steering and stability.',
+  },
+  {
+    id: 'mast-crack',
+    scenario: 'mast-crack',
+    type: 'marker',
+    position: [0, 0.56, 0.2],
+    label: 'Mast crack warning',
+    feedback: 'Mast assembly crack detected. Forklift must be reported and removed from operation.',
+  },
+  {
+    id: 'loose-bolt',
+    scenario: 'loose-bolt',
+    type: 'marker',
+    position: [0.05, 0.72, -0.02],
+    label: 'Loose bolt warning',
+    feedback: 'Loose or missing structural bolt detected. Report before operation.',
+  },
+]
+
 export const loadHandlingViewerHotspots = [
   {
     id: 'forks',

@@ -24,7 +24,7 @@ function EquipmentUsagePage({ moduleName, onBack, onNavigate }) {
     <div className="training-page-container">
       <header className="training-page-header">
         <button className="back-button" onClick={onBack}>
-          Back
+          Back to Modules
         </button>
         <h1>{moduleName} - Equipment Usage Modules</h1>
       </header>

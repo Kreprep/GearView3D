@@ -4,7 +4,6 @@ import {
   Bounds,
   Center,
   ContactShadows,
-  Environment,
   GizmoHelper,
   GizmoViewport,
   Grid,
@@ -101,15 +100,15 @@ function ForkliftModel({ modelUrl }) {
 }
 
 function TrainingHotspot({ hotspot, selected, scenario, onSelect, onProject }) {
-  const pulseRef = useRef(null)
+  const ringMaterialRef = useRef(null)
   const anchorRef = useRef(null)
   const vectorRef = useRef(new Vector3())
   const result = getScenarioResult(hotspot, scenario)
 
   useFrame(({ clock, camera, size }) => {
-    if (!pulseRef.current) return
-    const pulse = selected ? 1.16 + Math.sin(clock.elapsedTime * 4) * 0.05 : 1
-    pulseRef.current.scale.setScalar(pulse)
+    if (ringMaterialRef.current) {
+      ringMaterialRef.current.opacity = selected ? 0.65 + Math.sin(clock.elapsedTime * 4) * 0.25 : 0.9
+    }
 
     if (!anchorRef.current) return
     const projected = vectorRef.current
@@ -127,14 +126,18 @@ function TrainingHotspot({ hotspot, selected, scenario, onSelect, onProject }) {
   return (
     <group ref={anchorRef} position={hotspot.position}>
       <mesh
-        ref={pulseRef}
         onClick={(event) => {
           event.stopPropagation()
           onSelect(result)
         }}
       >
         <ringGeometry args={[0.02, 0.052, 32]} />
-        <meshBasicMaterial color={result.result === 'unsafe' ? '#f97316' : '#67e8f9'} transparent opacity={0.9} />
+        <meshBasicMaterial
+          ref={ringMaterialRef}
+          color={result.result === 'unsafe' ? '#f97316' : '#67e8f9'}
+          transparent
+          opacity={0.9}
+        />
       </mesh>
       <mesh
         onClick={(event) => {
@@ -154,95 +157,32 @@ function TrainingHotspot({ hotspot, selected, scenario, onSelect, onProject }) {
   )
 }
 
-function OilLeakOverlay({ onScenarioAction }) {
+function PuddleOverlay({ id, position, rotation, radius, label, feedback, onScenarioAction }) {
+  const emit = () => onScenarioAction?.({ id, type: 'defect', feedback })
+
   return (
     <group>
-      <mesh
-        position={[0, 0.004, -0.1]}
-        rotation={[-Math.PI / 2, 0, 0.18]}
-        onClick={(event) => {
-          event.stopPropagation()
-          onScenarioAction?.({
-            id: 'oil-leak',
-            type: 'defect',
-            feedback: 'Fluid leak detected. Forklift is unsafe for operation.',
-          })
-        }}
-      >
-        <circleGeometry args={[0.19, 48]} />
+      <mesh position={position} rotation={rotation} onClick={(event) => { event.stopPropagation(); emit() }}>
+        <circleGeometry args={[radius, 48]} />
         <meshBasicMaterial color="#111111" transparent opacity={0.72} />
       </mesh>
-      <Html center position={[0, 0.06, -0.1]} distanceFactor={5.6}>
-        <button
-          type="button"
-          className="viewer-warning-label"
-          onClick={() =>
-            onScenarioAction?.({
-              id: 'oil-leak',
-              type: 'defect',
-              feedback: 'Fluid leak detected. Forklift is unsafe for operation.',
-            })
-          }
-        >
-          Fluid leak detected
+      <Html center position={[position[0], position[1] + 0.056, position[2]]} distanceFactor={2.4}>
+        <button type="button" className="viewer-warning-label" onClick={emit}>
+          {label}
         </button>
       </Html>
     </group>
   )
 }
 
-function FlatTireMarker({ onScenarioAction }) {
-  return (
-    <Html center position={[0.16, 0.16, 0.2]} distanceFactor={5.6}>
-      <button
-        type="button"
-        className="viewer-tire-warning"
-        onClick={() =>
-          onScenarioAction?.({
-            id: 'flat-tire',
-            type: 'defect',
-            feedback: 'Unsafe tire condition affects steering and stability.',
-          })
-        }
-      >
-        <strong>!</strong>
-        <span>Unsafe tire condition</span>
-      </button>
-    </Html>
-  )
-}
-
-function DefectWarningMarker({ scenario, onScenarioAction }) {
-  const config = {
-    'mast-crack': {
-      position: [0, 0.56, 0.2],
-      label: 'Mast crack warning',
-      feedback: 'Mast assembly crack detected. Forklift must be reported and removed from operation.',
-    },
-    'loose-bolt': {
-      position: [0.05, 0.72, -0.02],
-      label: 'Loose bolt warning',
-      feedback: 'Loose or missing structural bolt detected. Report before operation.',
-    },
-  }[scenario]
-
-  if (!config) return null
+function MarkerOverlay({ id, position, label, feedback, onScenarioAction }) {
+  const emit = () => onScenarioAction?.({ id, type: 'defect', feedback })
 
   return (
-    <Html center position={config.position} distanceFactor={5.6}>
-      <button
-        type="button"
-        className="viewer-tire-warning"
-        onClick={() =>
-          onScenarioAction?.({
-            id: scenario,
-            type: 'defect',
-            feedback: config.feedback,
-          })
-        }
-      >
+    <Html center position={position} distanceFactor={2.4}>
+      <button type="button" className="viewer-tire-warning" onClick={emit}>
         <strong>!</strong>
-        <span>{config.label}</span>
+        <span>{label}</span>
       </button>
     </Html>
   )
@@ -273,6 +213,7 @@ function InteractiveScene({
   modelUrl,
   scenario,
   hotspots,
+  defectOverlays,
   selectedHotspotId,
   resetToken,
   showHotspots,
@@ -284,20 +225,25 @@ function InteractiveScene({
   return (
     <>
       <PerspectiveCamera makeDefault position={cameraPreset.position} fov={cameraPreset.fov} />
-      <ambientLight intensity={1.05} />
-      <hemisphereLight args={['#f8fafc', '#1e293b', 1.15]} />
+      <ambientLight intensity={1.2} />
+      <hemisphereLight args={['#f8fafc', '#1e293b', 1.25]} />
       <directionalLight castShadow position={[2.2, 3, 1.8]} intensity={2.8} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <directionalLight position={[-2.4, 1.8, -2]} intensity={1.2} />
-      <Environment preset="warehouse" />
 
-      <Bounds fit clip observe margin={1.25}>
+      <Bounds fit clip margin={1.25}>
         <AutoFit resetToken={resetToken} />
         <Center top>
           <group rotation={[0, -0.18, 0]}>
             <ForkliftModel modelUrl={modelUrl} />
-            {scenario === 'oil-leak' && <OilLeakOverlay onScenarioAction={onScenarioAction} />}
-            {scenario === 'flat-tire' && <FlatTireMarker onScenarioAction={onScenarioAction} />}
-            <DefectWarningMarker scenario={scenario} onScenarioAction={onScenarioAction} />
+            {defectOverlays
+              .filter((overlay) => overlay.scenario === scenario)
+              .map((overlay) =>
+                overlay.type === 'puddle' ? (
+                  <PuddleOverlay key={overlay.id} {...overlay} onScenarioAction={onScenarioAction} />
+                ) : (
+                  <MarkerOverlay key={overlay.id} {...overlay} onScenarioAction={onScenarioAction} />
+                ),
+              )}
             {showHotspots &&
               hotspots.map((hotspot) => (
                 <TrainingHotspot
@@ -315,7 +261,7 @@ function InteractiveScene({
 
       <Grid infiniteGrid cellSize={0.12} sectionSize={0.6} fadeDistance={6} fadeStrength={1.6} position={[0, -0.01, 0]} />
       <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={cameraPreset.minDistance} maxDistance={cameraPreset.maxDistance} />
+      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={cameraPreset.minDistance} maxDistance={cameraPreset.maxDistance} />
       <GizmoHelper alignment="bottom-right" margin={[84, 84]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>
@@ -348,6 +294,7 @@ export default function InteractiveForkliftViewer({
   scenario = 'good-forklift',
   activeHotspots,
   hotspots: configuredHotspots = [],
+  defectOverlays = [],
   cameraPreset: configuredCameraPreset,
   onHotspotSelect,
   onScenarioAction,
@@ -415,6 +362,7 @@ export default function InteractiveForkliftViewer({
                 modelUrl={modelUrl}
                 scenario={scenario}
                 hotspots={hotspots}
+                defectOverlays={defectOverlays}
                 selectedHotspotId={activeSelectedHotspotId}
                 resetToken={resetToken}
                 showHotspots={showHotspots}

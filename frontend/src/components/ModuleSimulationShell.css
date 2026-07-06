@@ -1,9 +1,103 @@
 .simulation-shell {
+  position: relative;
   display: grid;
+  grid-template-rows: auto 1fr;
   gap: 18px;
   width: 100%;
-  min-height: calc(100vh - 112px);
+  height: calc(100vh - 112px);
+  min-height: 700px;
   margin: 0;
+}
+
+.simulation-toast {
+  position: fixed;
+  top: 96px;
+  right: 24px;
+  z-index: 500;
+  display: grid;
+  gap: 6px;
+  width: min(360px, calc(100vw - 48px));
+  border: 1px solid #dbe3ef;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
+  padding: 14px 16px;
+  animation: simulation-toast-in 180ms ease;
+}
+
+.simulation-toast-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.simulation-toast-header strong {
+  color: #0f172a;
+}
+
+.simulation-toast-close {
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+}
+
+.simulation-toast p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.simulation-toast.correct,
+.simulation-toast.completed {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.simulation-toast.correct strong,
+.simulation-toast.completed strong {
+  color: #166534;
+}
+
+.simulation-toast.incorrect {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.simulation-toast.incorrect strong {
+  color: #991b1b;
+}
+
+.simulation-toast.warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.simulation-toast.warning strong {
+  color: #92400e;
+}
+
+.simulation-required-note {
+  margin: 0;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+
+@keyframes simulation-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .simulation-briefing {
@@ -73,6 +167,7 @@
 .simulation-workspace {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(520px, 1fr) minmax(320px, 420px);
+  grid-template-rows: minmax(0, 1fr);
   gap: 18px;
   align-items: stretch;
   min-height: 0;
@@ -81,11 +176,14 @@
 .simulation-left-panel,
 .simulation-right-panel {
   display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
   gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-.simulation-panel,
-.simulation-feedback {
+.simulation-panel {
   border: 1px solid #dbe3ef;
   border-radius: 16px;
   background: #ffffff;
@@ -189,8 +287,10 @@
 
 .simulation-center-panel {
   display: grid;
+  grid-template-rows: auto 1fr;
   gap: 12px;
   min-width: 0;
+  min-height: 0;
 }
 
 .simulation-progress-bar {
@@ -208,7 +308,7 @@
 }
 
 .simulation-scene {
-  min-height: calc(100vh - 280px);
+  min-height: 0;
   overflow: hidden;
   border: 1px solid #dbe3ef;
   border-radius: 18px;
@@ -235,50 +335,6 @@
   min-height: 220px;
 }
 
-.simulation-feedback {
-  display: grid;
-  gap: 6px;
-}
-
-.simulation-feedback strong {
-  color: #0f172a;
-}
-
-.simulation-feedback p {
-  margin: 0;
-  color: #475569;
-  line-height: 1.6;
-}
-
-.simulation-feedback.correct,
-.simulation-feedback.completed {
-  border-color: #86efac;
-  background: #f0fdf4;
-}
-
-.simulation-feedback.correct strong,
-.simulation-feedback.completed strong {
-  color: #166534;
-}
-
-.simulation-feedback.incorrect {
-  border-color: #fecaca;
-  background: #fef2f2;
-}
-
-.simulation-feedback.incorrect strong {
-  color: #991b1b;
-}
-
-.simulation-feedback.warning {
-  border-color: #fde68a;
-  background: #fffbeb;
-}
-
-.simulation-feedback.warning strong {
-  color: #92400e;
-}
-
 .simulation-navigation {
   display: flex;
   justify-content: space-between;
@@ -297,8 +353,23 @@
 }
 
 @media (max-width: 1180px) {
+  .simulation-shell {
+    height: auto;
+    min-height: calc(100vh - 112px);
+  }
+
   .simulation-workspace {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .simulation-left-panel,
+  .simulation-right-panel {
+    overflow-y: visible;
+  }
+
+  .simulation-center-panel {
+    grid-template-rows: auto auto;
   }
 
   .simulation-scene {
@@ -321,5 +392,13 @@
 
   .simulation-navigation {
     flex-direction: column;
+  }
+
+  .simulation-toast {
+    top: auto;
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
   }
 }

@@ -4,10 +4,12 @@ import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
 import { loadHandlingViewerHotspots } from './data/viewerHotspots'
+import { routes } from './lib/router'
 import { equipmentUsageModules, forkliftEquipment, moduleScenarioSteps } from './lib/trainingData'
 import './LoadHandlingPage.css'
 
 const moduleSlug = 'load-handling'
+const NEXT_MODULE_DELAY_MS = 1400
 const loadViewerActiveHotspots = ['forks', 'carriage', 'mast-assembly', 'tire-condition', 'operator-area']
 
 const positioningChoices = [
@@ -162,7 +164,7 @@ function WorksiteSurvey({ foundHazards, onFindHazard }) {
   )
 }
 
-function LoadHandlingPage({ moduleName, onBack }) {
+function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
   const steps = moduleScenarioSteps[moduleSlug]
   const { progress, updateSimulation } = useProgress()
@@ -175,7 +177,7 @@ function LoadHandlingPage({ moduleName, onBack }) {
   })
   const simulation = calculateSimulationState({
     positioningChoice: savedSimulation.positioningChoice || '',
-    stabilityChoice: savedSimulation.stabilityChoice || 'high-forward',
+    stabilityChoice: savedSimulation.stabilityChoice || '',
     controlsCompleted: savedSimulation.controlsCompleted || [],
     hazardsFound: savedSimulation.hazardsFound || [],
     checkpointPassed: savedSimulation.checkpointPassed || false,
@@ -256,8 +258,18 @@ function LoadHandlingPage({ moduleName, onBack }) {
     setFeedback({
       type: 'completed',
       title: 'Load Handling Complete',
-      message: 'You completed the guided load-handling and operational controls simulation.',
+      message: 'You completed the guided load-handling simulation. Moving to Post-Operation Shutdown next.',
     })
+
+    setTimeout(() => onNavigate?.(routes.postOperation), NEXT_MODULE_DELAY_MS)
+  }
+
+  const getStepCanProceed = (stepId) => {
+    if (stepId === 'maneuvering-positioning') return Boolean(simulation.positioningChoice)
+    if (stepId === 'stability-triangle') return Boolean(simulation.stabilityChoice)
+    if (stepId === 'hydraulic-controls') return simulation.controlsCompleted.length === hydraulicControlSteps.length
+    if (stepId === 'area-safety-survey') return simulation.hazardsFound.length === worksiteHazards.length
+    return true
   }
 
   const renderScene = ({ currentStep }) => {
@@ -394,7 +406,7 @@ function LoadHandlingPage({ moduleName, onBack }) {
     if (currentStep.id === 'stability-triangle') return renderStability()
     if (currentStep.id === 'hydraulic-controls') return renderControls()
     if (currentStep.id === 'area-safety-survey') return renderHazardSurvey()
-    return renderSummary()
+    return null
   }
 
   return (
@@ -418,6 +430,7 @@ function LoadHandlingPage({ moduleName, onBack }) {
           progress={simulation.percentage}
           score={simulation.percentage}
           feedback={feedback}
+          canProceed={getStepCanProceed(steps[currentStepIndex].id)}
           onBackStep={() => setCurrentStepIndex((index) => Math.max(index - 1, 0))}
           onNextStep={() => setCurrentStepIndex((index) => Math.min(index + 1, steps.length - 1))}
           onComplete={completeModule}

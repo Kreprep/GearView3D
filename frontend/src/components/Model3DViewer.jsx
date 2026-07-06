@@ -2,7 +2,6 @@ import React, { Suspense, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import {
   ContactShadows,
-  Environment,
   Grid,
   Html,
   Loader,
@@ -64,7 +63,8 @@ function ModelScene({ modelUrl }) {
   return (
     <>
       <PerspectiveCamera makeDefault position={[1.25, 0.85, 1.55]} fov={42} />
-      <ambientLight intensity={0.75} />
+      <ambientLight intensity={1.05} />
+      <hemisphereLight args={['#f8fafc', '#1e293b', 1.05]} />
       <directionalLight
         castShadow
         position={[2.2, 3, 1.8]}
@@ -72,7 +72,7 @@ function ModelScene({ modelUrl }) {
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
       />
-      <Environment preset="warehouse" />
+      <directionalLight position={[-2.4, 1.8, -2]} intensity={1} />
 
       <group rotation={[0, -0.18, 0]}>
         <Model3D modelUrl={modelUrl} />

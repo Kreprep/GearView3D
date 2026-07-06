@@ -34,7 +34,7 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(url)
 }
 
-function AdminDashboard({ user, onLogout, onBack, path, onNavigate }) {
+function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [content, setContent] = useState({
     equipment: [],
     modules: [],
@@ -165,7 +165,6 @@ function AdminDashboard({ user, onLogout, onBack, path, onNavigate }) {
         </div>
         <div className="admin-actions">
           <button onClick={onBack}>Back to App</button>
-          <button onClick={onLogout}>Logout</button>
         </div>
       </header>
 

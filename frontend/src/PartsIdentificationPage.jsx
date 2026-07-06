@@ -69,7 +69,7 @@ function PartsIdentificationPage({ moduleName, onBack }) {
     <div className="training-page-container">
       <header className="training-page-header">
         <button className="back-button" onClick={onBack}>
-          Back
+          Back to Modules
         </button>
         <h1>{moduleName} - Parts Identification</h1>
       </header>

@@ -27,7 +27,7 @@ function AssessmentPage({ moduleName, onBack, onNavigate }) {
     <div className="assessment-page">
       <header className="training-page-header">
         <button className="back-button" onClick={onBack}>
-          Back
+          Back to Modules
         </button>
         <h1>{moduleName} - Final Assessment</h1>
       </header>

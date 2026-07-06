@@ -1,19 +1,29 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './ModuleSimulationShell.css'
 
-function FeedbackPanel({ feedback }) {
-  if (!feedback?.message) {
-    return (
-      <div className="simulation-feedback neutral">
-        <strong>Instruction</strong>
-        <p>Follow the current task and use hints when needed.</p>
-      </div>
-    )
-  }
+const TOAST_DURATION_MS = 5000
+
+function FeedbackToast({ feedback }) {
+  const [dismissed, setDismissed] = useState(null)
+
+  useEffect(() => {
+    if (!feedback?.message) return undefined
+    const timer = setTimeout(() => setDismissed(feedback), TOAST_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
+  const visible = Boolean(feedback?.message) && feedback !== dismissed
+
+  if (!visible) return null
 
   return (
-    <div className={`simulation-feedback ${feedback.type || 'neutral'}`}>
-      <strong>{feedback.title || 'Feedback'}</strong>
+    <div className={`simulation-toast ${feedback.type || 'neutral'}`} role="status">
+      <div className="simulation-toast-header">
+        <strong>{feedback.title || 'Feedback'}</strong>
+        <button type="button" className="simulation-toast-close" onClick={() => setDismissed(feedback)} aria-label="Dismiss notification">
+          &times;
+        </button>
+      </div>
       <p>{feedback.message}</p>
     </div>
   )
@@ -27,6 +37,7 @@ function ModuleSimulationShell({
   progress = 0,
   score,
   feedback,
+  canProceed = true,
   onBackStep,
   onNextStep,
   onComplete,
@@ -41,6 +52,7 @@ function ModuleSimulationShell({
 
   return (
     <section className="simulation-shell">
+      <FeedbackToast feedback={feedback} />
       <header className="simulation-briefing">
         <div>
           <p className="simulation-kicker">Guided Simulation</p>
@@ -114,8 +126,6 @@ function ModuleSimulationShell({
             {renderTask?.({ currentStep, currentStepIndex })}
           </section>
 
-          <FeedbackPanel feedback={feedback} />
-
           {isLastStep && completionSummary && (
             <section className="simulation-panel completion-panel">
               <p className="simulation-panel-label">Completion Summary</p>
@@ -132,11 +142,14 @@ function ModuleSimulationShell({
                 Complete Module
               </button>
             ) : (
-              <button type="button" className="primary" onClick={onNextStep}>
+              <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
                 Next
               </button>
             )}
           </div>
+          {!isLastStep && !canProceed && (
+            <p className="simulation-required-note">Complete this step's required items to continue.</p>
+          )}
         </aside>
       </div>
     </section>
