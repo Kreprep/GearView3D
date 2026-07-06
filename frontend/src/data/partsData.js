@@ -121,7 +121,7 @@ export const partCategories = [
 export const partsPracticeQuestions = [
   {
     id: 'select-capacity-plate',
-    prompt: 'Select the capacity plate.',
+    prompt: 'Which part shows the rated load capacity and forklift specifications?',
     options: ['Capacity Plate', 'Counterweight', 'Operator Area', 'Mast'],
     answer: 'Capacity Plate',
   },

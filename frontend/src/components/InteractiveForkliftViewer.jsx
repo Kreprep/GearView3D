@@ -1,5 +1,5 @@
 import React, { Suspense, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import {
   Bounds,
   Center,
@@ -14,7 +14,6 @@ import {
   useBounds,
   useGLTF,
 } from '@react-three/drei'
-import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { BadgeInfo, Eye, Maximize, RotateCcw } from 'lucide-react'
 import './InteractiveForkliftViewer.css'
@@ -99,61 +98,24 @@ function ForkliftModel({ modelUrl }) {
   return <primitive object={forklift} />
 }
 
-function TrainingHotspot({ hotspot, selected, scenario, onSelect, onProject }) {
-  const ringMaterialRef = useRef(null)
-  const anchorRef = useRef(null)
-  const vectorRef = useRef(new Vector3())
+function TrainingHotspot({ hotspot, selected, scenario, onSelect }) {
   const result = getScenarioResult(hotspot, scenario)
 
-  useFrame(({ clock, camera, size }) => {
-    if (ringMaterialRef.current) {
-      ringMaterialRef.current.opacity = selected ? 0.65 + Math.sin(clock.elapsedTime * 4) * 0.25 : 0.9
-    }
-
-    if (!anchorRef.current) return
-    const projected = vectorRef.current
-    anchorRef.current.getWorldPosition(projected)
-    projected.project(camera)
-    const visible = projected.z > -1 && projected.z < 1
-    onProject(hotspot.id, {
-      x: (projected.x * 0.5 + 0.5) * size.width,
-      y: (-projected.y * 0.5 + 0.5) * size.height,
-      visible,
-      hotspot: result,
-    })
-  })
-
   return (
-    <group ref={anchorRef} position={hotspot.position}>
-      <mesh
-        onClick={(event) => {
-          event.stopPropagation()
-          onSelect(result)
-        }}
-      >
-        <ringGeometry args={[0.02, 0.052, 32]} />
-        <meshBasicMaterial
-          ref={ringMaterialRef}
-          color={result.result === 'unsafe' ? '#f97316' : '#67e8f9'}
-          transparent
-          opacity={0.9}
+    <Html position={hotspot.position} center zIndexRange={[100, 0]} occlude={false}>
+      <div className="hotspot-marker-wrap">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onSelect(result)
+          }}
+          className={`hotspot-marker ${result.result === 'unsafe' ? 'unsafe' : ''} ${selected ? 'selected' : ''}`}
+          aria-label={hotspot.label}
         />
-      </mesh>
-      <mesh
-        onClick={(event) => {
-          event.stopPropagation()
-          onSelect(result)
-        }}
-      >
-        <sphereGeometry args={[0.023, 16, 16]} />
-        <meshStandardMaterial
-          color={selected ? '#22d3ee' : '#ffffff'}
-          emissive={result.result === 'unsafe' ? '#dc2626' : '#0891b2'}
-          emissiveIntensity={selected ? 0.65 : 0.28}
-          roughness={0.35}
-        />
-      </mesh>
-    </group>
+        <span className="hotspot-marker-tooltip">{hotspot.label}</span>
+      </div>
+    </Html>
   )
 }
 
@@ -220,7 +182,6 @@ function InteractiveScene({
   cameraPreset,
   onHotspotSelect,
   onScenarioAction,
-  onHotspotProject,
 }) {
   return (
     <>
@@ -252,7 +213,6 @@ function InteractiveScene({
                   scenario={scenario}
                   selected={selectedHotspotId === hotspot.id}
                   onSelect={onHotspotSelect}
-                  onProject={onHotspotProject}
                 />
               ))}
           </group>
@@ -305,7 +265,6 @@ export default function InteractiveForkliftViewer({
   const [resetToken, setResetToken] = useState(0)
   const [showHotspots, setShowHotspots] = useState(true)
   const [selectedHotspotId, setSelectedHotspotId] = useState(null)
-  const [screenHotspots, setScreenHotspots] = useState({})
   const cameraPreset = { ...DEFAULT_CAMERA_PRESET, ...(configuredCameraPreset || {}) }
   const hotspots = useMemo(() => filterHotspots(configuredHotspots, activeHotspots), [configuredHotspots, activeHotspots])
 
@@ -314,23 +273,6 @@ export default function InteractiveForkliftViewer({
   const handleHotspotSelect = (hotspot) => {
     setSelectedHotspotId(hotspot.id)
     onHotspotSelect?.(hotspot)
-  }
-
-  const handleHotspotProject = (id, next) => {
-    setScreenHotspots((current) => {
-      const previous = current[id]
-      if (
-        previous &&
-        Math.abs(previous.x - next.x) < 0.5 &&
-        Math.abs(previous.y - next.y) < 0.5 &&
-        previous.visible === next.visible &&
-        previous.hotspot.result === next.hotspot.result
-      ) {
-        return current
-      }
-
-      return { ...current, [id]: next }
-    })
   }
 
   const enterFullscreen = async () => {
@@ -369,33 +311,11 @@ export default function InteractiveForkliftViewer({
                 cameraPreset={cameraPreset}
                 onHotspotSelect={handleHotspotSelect}
                 onScenarioAction={onScenarioAction}
-                onHotspotProject={handleHotspotProject}
               />
             </Suspense>
           </Canvas>
         </InteractiveViewerErrorBoundary>
         <Loader />
-
-        {showHotspots && (
-          <div className="viewer-hotspot-overlay" aria-label="Projected forklift hotspot labels">
-            {hotspots.map((hotspot) => {
-              const projected = screenHotspots[hotspot.id]
-              if (!projected?.visible) return null
-
-              return (
-                <button
-                  key={hotspot.id}
-                  type="button"
-                  className={`viewer-hotspot-label ${activeSelectedHotspotId === hotspot.id ? 'selected' : ''} ${projected.hotspot.result}`}
-                  style={{ transform: `translate(${projected.x}px, ${projected.y}px) translate(-50%, -50%)` }}
-                  onClick={() => handleHotspotSelect(projected.hotspot)}
-                >
-                  {hotspot.label}
-                </button>
-              )
-            })}
-          </div>
-        )}
 
         <div className="interactive-viewer-help">
           Drag to rotate - Scroll to zoom - Right-drag to pan
