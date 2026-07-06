@@ -1,7 +1,4 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useEffect, useState } from 'react'
 import LoginPage from './LoginPage'
 import ModulesPage from './ModulesPage'
 import TrainingSelectionPage from './TrainingSelectionPage'
@@ -10,22 +7,52 @@ import WalkAroundCheckPage from './WalkAroundCheckPage'
 import LoadHandlingPage from './LoadHandlingPage'
 import PostOperationPage from './PostOperationPage'
 import PartsIdentificationPage from './PartsIdentificationPage'
+import AdminDashboard from './AdminDashboard'
+import { getCurrentUser, loginUser, setAuthToken } from './lib/api'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user, setUser] = useState(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(localStorage.getItem('gearview_token')))
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('gearview_user')
+    return saved ? JSON.parse(saved) : null
+  })
   const [currentPage, setCurrentPage] = useState('modules') // 'modules', 'training-selection', 'equipment-usage', 'equipment-usage-module-1/2/3', 'parts-identification'
   const [selectedModule, setSelectedModule] = useState(null)
-  const [selectedEquipmentModule, setSelectedEquipmentModule] = useState(null)
+  const [loginError, setLoginError] = useState('')
 
-  const handleLogin = (credentials) => {
-    setUser(credentials)
+  useEffect(() => {
+    const token = localStorage.getItem('gearview_token')
+
+    if (!token || user) return
+
+    setAuthToken(token)
+    getCurrentUser()
+      .then((currentUser) => {
+        setUser(currentUser)
+        localStorage.setItem('gearview_user', JSON.stringify(currentUser))
+      })
+      .catch(() => {
+        localStorage.removeItem('gearview_token')
+        localStorage.removeItem('gearview_user')
+        setIsLoggedIn(false)
+      })
+  }, [user])
+
+  const handleLogin = async (credentials) => {
+    setLoginError('')
+    const auth = await loginUser(credentials)
+    localStorage.setItem('gearview_token', auth.token)
+    localStorage.setItem('gearview_user', JSON.stringify(auth.user))
+    setAuthToken(auth.token)
+    setUser(auth.user)
     setIsLoggedIn(true)
   }
 
   const handleLogout = () => {
+    localStorage.removeItem('gearview_token')
+    localStorage.removeItem('gearview_user')
+    setAuthToken(null)
     setIsLoggedIn(false)
     setUser(null)
     setCurrentPage('modules')
@@ -45,7 +72,6 @@ function App() {
   }
 
   const handleSelectEquipmentModule = (moduleId) => {
-    setSelectedEquipmentModule(moduleId)
     if (moduleId === 1) {
       setCurrentPage('equipment-usage-module-1')
     } else if (moduleId === 2) {
@@ -57,7 +83,6 @@ function App() {
 
   const handleBackToEquipmentUsage = () => {
     setCurrentPage('equipment-usage')
-    setSelectedEquipmentModule(null)
   }
 
   const handleBackToModules = () => {
@@ -70,7 +95,11 @@ function App() {
   }
 
   if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />
+    return <LoginPage onLogin={handleLogin} loginError={loginError} setLoginError={setLoginError} />
+  }
+
+  if (currentPage === 'admin') {
+    return <AdminDashboard user={user} onLogout={handleLogout} onBack={handleBackToModules} />
   }
 
   if (currentPage === 'training-selection') {
@@ -117,7 +146,14 @@ function App() {
     />
   }
 
-  return <ModulesPage user={user} onLogout={handleLogout} onStartTraining={handleStartTraining} />
+  return (
+    <ModulesPage
+      user={user}
+      onLogout={handleLogout}
+      onStartTraining={handleStartTraining}
+      onOpenAdmin={() => setCurrentPage('admin')}
+    />
+  )
 }
 
 export default App
