@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import {
   Bounds,
   Center,
@@ -112,50 +112,27 @@ function ForkliftModel({ modelUrl, wireframe }) {
 }
 
 function HotspotPin({ hotspot, selected, onSelect }) {
-  const glowMaterialRef = useRef(null)
-
-  useFrame(({ clock }) => {
-    if (!glowMaterialRef.current) return
-
-    glowMaterialRef.current.opacity = selected ? 0.75 + Math.sin(clock.elapsedTime * 3.4) * 0.15 : 0.9
-  })
-
   return (
-    <group position={hotspot.position}>
-      <mesh
-        onClick={(event) => {
-          event.stopPropagation()
-          onSelect(hotspot)
-        }}
-        castShadow={false}
-        receiveShadow={false}
-      >
-        <ringGeometry args={[0.018, 0.04, 24]} />
-        <meshBasicMaterial
-          ref={glowMaterialRef}
-          color={selected ? '#67e8f9' : '#e0f2fe'}
-          transparent
-          opacity={0.9}
+    <Html position={hotspot.position} center zIndexRange={[100, 0]} occlude={false}>
+      <div className="group relative flex items-center justify-center">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onSelect(hotspot)
+          }}
+          className={`block h-4 w-4 rounded-full border-2 transition-transform ${
+            selected
+              ? 'scale-125 animate-pulse border-cyan-300 bg-cyan-400 shadow-[0_0_10px_3px_rgba(34,211,238,0.7)]'
+              : 'border-white/80 bg-white/90 hover:scale-110'
+          }`}
+          aria-label={hotspot.label}
         />
-      </mesh>
-      <mesh
-        onClick={(event) => {
-          event.stopPropagation()
-          onSelect(hotspot)
-        }}
-        castShadow={false}
-        receiveShadow={false}
-      >
-        <sphereGeometry args={[0.02, 12, 12]} />
-        <meshStandardMaterial
-          color={selected ? '#22d3ee' : '#f8fafc'}
-          emissive={selected ? '#0ea5e9' : '#111827'}
-          emissiveIntensity={selected ? 0.6 : 0.2}
-          metalness={0.1}
-          roughness={0.35}
-        />
-      </mesh>
-    </group>
+        <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900/90 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+          {hotspot.label}
+        </span>
+      </div>
+    </Html>
   )
 }
 
