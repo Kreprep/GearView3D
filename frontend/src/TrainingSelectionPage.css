@@ -55,6 +55,11 @@
   margin: 28px auto 0;
 }
 
+.forklift-overview-progress .scope-notice {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
 .overview-stat-card {
   display: grid;
   gap: 4px;

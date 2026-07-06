@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getTrainingModules } from './lib/api'
 import { useProgress } from './hooks/useProgress'
 import { routes } from './lib/router'
+import ScopeNotice from './components/ScopeNotice'
 import './EquipmentUsagePage.css'
 
 const moduleRoutes = {
@@ -12,10 +13,11 @@ const moduleRoutes = {
 
 function EquipmentUsagePage({ moduleName, onBack, onNavigate }) {
   const [modules, setModules] = useState([])
+  const [loading, setLoading] = useState(true)
   const { summary } = useProgress()
 
   useEffect(() => {
-    getTrainingModules().then(setModules)
+    getTrainingModules().then(setModules).finally(() => setLoading(false))
   }, [])
 
   return (
@@ -29,10 +31,13 @@ function EquipmentUsagePage({ moduleName, onBack, onNavigate }) {
 
       <main className="training-content">
         <div className="content-section">
+          <ScopeNotice />
           <p className="intro-text">Select a module to begin your forklift training:</p>
 
           <div className="modules-grid">
-            {modules.map((module) => (
+            {loading && <div className="catalog-state">Loading equipment modules...</div>}
+            {!loading && modules.length === 0 && <div className="catalog-state">No equipment modules are available yet.</div>}
+            {!loading && modules.map((module) => (
               <div
                 key={module.id}
                 className="module-card"

@@ -22,6 +22,9 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   progress     Progress[]
+  userProgress UserProgress[]
+  quizAttempts QuizAttempt[]
+  activityLogs ActivityLog[]
 }
 
 model Equipment {
@@ -45,29 +48,86 @@ model TrainingModule {
   description String
   sortOrder   Int
   equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
   checklist   ChecklistItem[]
   progress    Progress[]
+  quizQuestions QuizQuestion[]
 }
 
 model ChecklistItem {
   id        String         @id @default(uuid())
   moduleId  Int
+  lessonId  String?
   text      String
   sortOrder Int
   module    TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson    Lesson?        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 }
 
 model Part {
-  id           String    @id
-  equipmentId  String
-  label        String
-  functionText String
-  safetyNote   String
-  positionX    Float
-  positionY    Float
-  positionZ    Float
-  checklist    String[]
-  equipment    Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  id                 String        @id
+  equipmentId        String
+  label              String
+  category           String        @default("General")
+  functionText       String
+  inspectionReminder String        @default("")
+  safetyNote         String
+  relatedModule      String        @default("")
+  positionX          Float
+  positionY          Float
+  positionZ          Float
+  checklist          String[]
+  equipment          Equipment     @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  hotspots           PartHotspot[]
+}
+
+model Lesson {
+  id          String          @id
+  moduleId    Int
+  slug        String          @unique
+  title       String
+  summary     String
+  sortOrder   Int
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  module      TrainingModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  sections    LessonSection[]
+  checklist   ChecklistItem[]
+}
+
+model LessonSection {
+  id        String   @id @default(uuid())
+  lessonId  String
+  heading   String
+  body      String
+  sortOrder Int
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model PartHotspot {
+  id        String   @id @default(uuid())
+  partId    String
+  label     String
+  positionX Float
+  positionY Float
+  positionZ Float
+  meshName  String?
+  part      Part     @relation(fields: [partId], references: [id], onDelete: Cascade)
+}
+
+model UserProgress {
+  id        String   @id @default(uuid())
+  userId    String
+  scope     String
+  scopeId   String
+  status    String   @default("in_progress")
+  value     Int      @default(0)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scope, scopeId])
 }
 
 model Progress {
@@ -83,4 +143,44 @@ model Progress {
   module         TrainingModule? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
 
   @@unique([userId, moduleSlug])
+}
+
+model QuizQuestion {
+  id          String         @id
+  moduleId    Int
+  prompt      String
+  answer      String
+  sortOrder   Int
+  module      TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  options     QuizOption[]
+}
+
+model QuizOption {
+  id         String       @id @default(uuid())
+  questionId String
+  text       String
+  sortOrder  Int
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id         String   @id @default(uuid())
+  userId     String
+  moduleSlug String
+  score      Int
+  total      Int
+  percentage Int
+  answers    Json?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  detail    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -114,3 +114,47 @@ export async function adminUpdatePart(partId, payload) {
     body: JSON.stringify(payload),
   })
 }
+
+export async function adminCreatePart(payload) {
+  return request('/admin/parts', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function adminDeletePart(partId) {
+  return request(`/admin/parts/${partId}`, { method: 'DELETE' })
+}
+
+export async function adminUpdateModule(moduleId, payload) {
+  return request(`/admin/modules/${moduleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function adminDeleteModule(moduleId) {
+  return request(`/admin/modules/${moduleId}`, { method: 'DELETE' })
+}
+
+export async function adminUpdateChecklistItem(itemId, payload) {
+  return request(`/admin/checklists/${itemId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function adminDeleteChecklistItem(itemId) {
+  return request(`/admin/checklists/${itemId}`, { method: 'DELETE' })
+}
+
+export async function adminUpdateQuizQuestion(questionId, payload) {
+  return request(`/admin/quizzes/${questionId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function adminDeleteQuizQuestion(questionId) {
+  return request(`/admin/quizzes/${questionId}`, { method: 'DELETE' })
+}

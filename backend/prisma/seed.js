@@ -41,6 +41,42 @@ const modules = [
   },
 ]
 
+const lessons = [
+  {
+    id: 'lesson-walk-around',
+    moduleId: 1,
+    slug: 'walk-around-check',
+    title: 'Walk-Around Check',
+    summary: 'Pre-operation visual inspection and safety device checks.',
+    sections: [
+      ['Engine-Off Visual Checks', 'Check leaks, tires, forks, mast, carriage, and lift chain before operation.'],
+      ['Engine-On Functional Checks', 'Confirm gauges, brakes, steering, lights, horn, beacon, and backup alarm respond correctly.'],
+    ],
+  },
+  {
+    id: 'lesson-load-handling',
+    moduleId: 2,
+    slug: 'load-handling',
+    title: 'Load Handling',
+    summary: 'Safe approach, lifting, stability, and travel concepts.',
+    sections: [
+      ['Approach and Fork Positioning', 'Approach slowly and squarely, then set the forks to the correct height before entering the pallet.'],
+      ['Load Stability', 'Keep the load centered and low while traveling, and respect the rated capacity plate.'],
+    ],
+  },
+  {
+    id: 'lesson-post-operation',
+    moduleId: 3,
+    slug: 'post-operation',
+    title: 'Post-Operation',
+    summary: 'Safe parking, shutdown, and reporting sequence.',
+    sections: [
+      ['Safe Parking', 'Park on a level surface, lower forks, set controls to neutral, and engage the parking brake.'],
+      ['Reporting', 'Report unsafe conditions or visible damage to the supervisor.'],
+    ],
+  },
+]
+
 const checklists = {
   1: [
     'Check for engine oil, hydraulic oil, coolant, and battery leaks.',
@@ -56,15 +92,46 @@ const checklists = {
     'Keep the load centered and stable on the forks.',
     'Tilt the mast slightly back after lifting the load.',
     'Travel with the load low and maintain clear visibility.',
-    'Follow safe load handling practices from OSHA powered industrial truck guidance.',
+    'Follow safe load handling practices.',
   ],
   3: [
-    'Park on a level surface away from traffic and hazards.',
-    'Lower forks completely to the ground.',
-    'Place directional controls in neutral.',
+    'Park on a level surface.',
+    'Lower forks completely.',
+    'Set controls to neutral.',
     'Engage the parking brake.',
-    'Turn off the ignition and secure the forklift.',
-    'Report unsafe conditions or minor operational issues to the supervisor.',
+    'Turn off the equipment.',
+    'Report unsafe conditions or visible damage.',
+  ],
+}
+
+const partDetails = {
+  forks: ['Load Handling Parts', 'Check fork tips, heel area, visible cracks, and locking pins before use.', 'Load Handling'],
+  mast: ['Load Handling Parts', 'Look for visible damage, obstruction, or unsafe movement in the lift path.', 'Walk-Around Check'],
+  'lift-chain': ['Load Handling Parts', 'Observe for slack, uneven movement, or visible damage before operation.', 'Walk-Around Check'],
+  carriage: ['Load Handling Parts', 'Check fork attachment points and confirm there is no visible damage.', 'Load Handling'],
+  'operator-area': ['Operator and Controls', 'Confirm controls are understood, accessible, and checked before operation.', 'Walk-Around Check'],
+  'overhead-guard': ['Stability and Structure', 'Check for visible bending, cracks, or missing sections.', 'Walk-Around Check'],
+  counterweight: ['Stability and Structure', 'Confirm rear clearance and observe rear swing when maneuvering.', 'Load Handling'],
+  tires: ['Stability and Structure', 'Check for visible wear, damage, or unsafe tire condition.', 'Walk-Around Check'],
+  'capacity-plate': ['Safety and Identification', 'Read the rated capacity and load center before handling loads.', 'Load Handling'],
+  'warning-devices': ['Safety and Identification', 'Test horn, lights, beacon, and backup alarm during pre-operation checks.', 'Walk-Around Check'],
+}
+
+const quizQuestions = {
+  1: [
+    ['walk-fluid-leaks', 'What should be checked during a walk-around inspection?', ['Fluid leaks', 'Lunch schedule', 'Paint color', 'Radio volume'], 'Fluid leaks'],
+    ['walk-warning-devices', 'Which devices should be tested before operation?', ['Horn and lights', 'Cup holder', 'Seat fabric', 'Dashboard color'], 'Horn and lights'],
+    ['walk-tires', 'Why inspect tires before operation?', ['They affect stability and steering', 'They change the training score', 'They control the horn', 'They identify the operator'], 'They affect stability and steering'],
+  ],
+  2: [
+    ['load-approach', 'How should the forklift approach a load?', ['Slowly and squarely', 'Quickly at an angle', 'With raised forks', 'Without checking the path'], 'Slowly and squarely'],
+    ['load-travel', 'How should a forklift travel with a load?', ['With the load low', 'With the load high', 'With sudden turns', 'With blocked visibility'], 'With the load low'],
+    ['load-capacity', 'What should be respected before lifting?', ['Rated capacity plate', 'Paint finish', 'Operator preference', 'Parking location only'], 'Rated capacity plate'],
+  ],
+  3: [
+    ['post-forks', 'What should be done to the forks after operation?', ['Lower them completely', 'Leave them raised', 'Remove them', 'Paint them'], 'Lower them completely'],
+    ['post-controls', 'Where should controls be placed during shutdown?', ['Neutral', 'Reverse', 'Lift position', 'Tilt position'], 'Neutral'],
+    ['post-report', 'What should be reported after operation?', ['Unsafe conditions or visible damage', 'Only the weather', 'Only the operator name', 'Nothing ever'], 'Unsafe conditions or visible damage'],
   ],
 }
 
@@ -194,6 +261,7 @@ async function main() {
     })
 
     await prisma.checklistItem.deleteMany({ where: { moduleId: module.id } })
+    await prisma.quizQuestion.deleteMany({ where: { moduleId: module.id } })
 
     for (const [index, text] of checklists[module.id].entries()) {
       await prisma.checklistItem.create({
@@ -204,16 +272,78 @@ async function main() {
         },
       })
     }
+
+    for (const [index, [id, prompt, options, answer]] of quizQuestions[module.id].entries()) {
+      await prisma.quizQuestion.create({
+        data: {
+          id,
+          moduleId: module.id,
+          prompt,
+          answer,
+          sortOrder: index + 1,
+          options: {
+            create: options.map((text, optionIndex) => ({
+              text,
+              sortOrder: optionIndex + 1,
+            })),
+          },
+        },
+      })
+    }
+  }
+
+  for (const [index, lesson] of lessons.entries()) {
+    await prisma.lesson.upsert({
+      where: { id: lesson.id },
+      update: {
+        moduleId: lesson.moduleId,
+        slug: lesson.slug,
+        title: lesson.title,
+        summary: lesson.summary,
+        sortOrder: index + 1,
+      },
+      create: {
+        id: lesson.id,
+        moduleId: lesson.moduleId,
+        slug: lesson.slug,
+        title: lesson.title,
+        summary: lesson.summary,
+        sortOrder: index + 1,
+      },
+    })
+
+    await prisma.lessonSection.deleteMany({ where: { lessonId: lesson.id } })
+
+    for (const [sectionIndex, [heading, body]] of lesson.sections.entries()) {
+      await prisma.lessonSection.create({
+        data: {
+          lessonId: lesson.id,
+          heading,
+          body,
+          sortOrder: sectionIndex + 1,
+        },
+      })
+    }
+
+    await prisma.checklistItem.updateMany({
+      where: { moduleId: lesson.moduleId },
+      data: { lessonId: lesson.id },
+    })
   }
 
   for (const part of parts) {
+    const [category, inspectionReminder, relatedModule] = partDetails[part.id]
+
     await prisma.part.upsert({
       where: { id: part.id },
       update: {
         equipmentId: equipment.id,
         label: part.label,
+        category,
         functionText: part.functionText,
+        inspectionReminder,
         safetyNote: part.safetyNote,
+        relatedModule,
         positionX: part.position[0],
         positionY: part.position[1],
         positionZ: part.position[2],
@@ -223,12 +353,26 @@ async function main() {
         id: part.id,
         equipmentId: equipment.id,
         label: part.label,
+        category,
         functionText: part.functionText,
+        inspectionReminder,
         safetyNote: part.safetyNote,
+        relatedModule,
         positionX: part.position[0],
         positionY: part.position[1],
         positionZ: part.position[2],
         checklist: part.checklist,
+      },
+    })
+
+    await prisma.partHotspot.deleteMany({ where: { partId: part.id } })
+    await prisma.partHotspot.create({
+      data: {
+        partId: part.id,
+        label: part.label,
+        positionX: part.position[0],
+        positionY: part.position[1],
+        positionZ: part.position[2],
       },
     })
   }

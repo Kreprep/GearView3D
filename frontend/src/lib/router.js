@@ -10,6 +10,12 @@ export const routes = {
   parts: '/training/forklift/parts',
   assessment: '/training/forklift/assessment',
   admin: '/admin',
+  adminModules: '/admin/modules',
+  adminParts: '/admin/parts',
+  adminChecklists: '/admin/checklists',
+  adminQuizzes: '/admin/quizzes',
+  adminUsers: '/admin/users',
+  adminReports: '/admin/reports',
 }
 
 export function normalizePath(pathname) {

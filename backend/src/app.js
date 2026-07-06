@@ -4,6 +4,7 @@ import authRoutes from './routes/auth.routes.js'
 import contentRoutes from './routes/content.routes.js'
 import progressRoutes from './routes/progress.routes.js'
 import adminRoutes from './routes/admin.routes.js'
+import quizRoutes from './routes/quiz.routes.js'
 
 const app = express()
 
@@ -20,6 +21,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api', contentRoutes)
 app.use('/api/progress', progressRoutes)
+app.use('/api/quizzes', quizRoutes)
 app.use('/api/admin', adminRoutes)
 
 app.use((err, _req, res, _next) => {

@@ -1,4 +1,5 @@
 import AppHeader from './components/AppHeader'
+import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
 import { routes } from './lib/router'
 import './DashboardPage.css'
@@ -11,6 +12,7 @@ function DashboardPage({ user, onLogout, onNavigate }) {
       <AppHeader user={user} onLogout={onLogout} onNavigate={onNavigate} />
 
       <main className="dashboard-layout">
+        <ScopeNotice />
         <section className="dashboard-hero">
           <div>
             <p className="dashboard-kicker">Learner Dashboard</p>

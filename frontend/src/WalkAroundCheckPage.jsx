@@ -2,8 +2,11 @@ import './WalkAroundCheckPage.css'
 import Model3DViewer from './components/Model3DViewer'
 import GuidedChecklist from './components/GuidedChecklist'
 import ProgressSummary from './components/ProgressSummary'
+import ModuleQuiz from './components/ModuleQuiz'
+import ModuleCompletionSummary from './components/ModuleCompletionSummary'
+import { routes } from './lib/router'
 
-function WalkAroundCheckPage({ moduleName, onBack }) {
+function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
   return (
     <div className="module-page-container">
       <header className="module-page-header">
@@ -90,6 +93,13 @@ function WalkAroundCheckPage({ moduleName, onBack }) {
         </section>
 
         <GuidedChecklist moduleSlug="walk-around-check" title="Interactive Walk-Around Checklist" />
+        <ModuleQuiz moduleSlug="walk-around-check" title="Walk-Around Knowledge Check" />
+        <ModuleCompletionSummary
+          moduleSlug="walk-around-check"
+          moduleTitle="Walk-Around Check"
+          nextLabel="Next: Load Handling"
+          onNext={() => onNavigate(routes.loadHandling)}
+        />
       </main>
     </div>
   )

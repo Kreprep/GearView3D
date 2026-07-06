@@ -2,8 +2,11 @@ import './LoadHandlingPage.css'
 import Model3DViewer from './components/Model3DViewer'
 import GuidedChecklist from './components/GuidedChecklist'
 import ProgressSummary from './components/ProgressSummary'
+import ModuleQuiz from './components/ModuleQuiz'
+import ModuleCompletionSummary from './components/ModuleCompletionSummary'
+import { routes } from './lib/router'
 
-function LoadHandlingPage({ moduleName, onBack }) {
+function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
   return (
     <div className="module-page-container">
       <header className="module-page-header">
@@ -79,6 +82,13 @@ function LoadHandlingPage({ moduleName, onBack }) {
         </section>
 
         <GuidedChecklist moduleSlug="load-handling" title="Interactive Load Handling Checklist" />
+        <ModuleQuiz moduleSlug="load-handling" title="Load Handling Knowledge Check" />
+        <ModuleCompletionSummary
+          moduleSlug="load-handling"
+          moduleTitle="Load Handling"
+          nextLabel="Next: Post-Operation"
+          onNext={() => onNavigate(routes.postOperation)}
+        />
       </main>
     </div>
   )

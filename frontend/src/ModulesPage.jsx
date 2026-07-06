@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import AppHeader from './components/AppHeader'
+import ScopeNotice from './components/ScopeNotice'
 import { getEquipment } from './lib/api'
 import { routes } from './lib/router'
 import './ModulesPage.css'
 
 function ModulesPage({ user, onLogout, onNavigate }) {
   const [modules, setModules] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getEquipment().then(setModules)
+    getEquipment().then(setModules).finally(() => setLoading(false))
   }, [])
 
   return (
@@ -28,6 +30,7 @@ function ModulesPage({ user, onLogout, onNavigate }) {
         </aside>
 
         <section className="module-browser">
+          <ScopeNotice />
           <div className="catalog-hero">
             <div>
               <p className="catalog-kicker">Featured Training Model</p>
@@ -48,7 +51,9 @@ function ModulesPage({ user, onLogout, onNavigate }) {
           </div>
 
           <div className="modules-grid">
-            {modules.map((module) => (
+            {loading && <div className="catalog-state">Loading training models...</div>}
+            {!loading && modules.length === 0 && <div className="catalog-state">No training models are available yet.</div>}
+            {!loading && modules.map((module) => (
               <article
                 key={module.id}
                 className="module-card"

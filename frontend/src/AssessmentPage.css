@@ -4,7 +4,7 @@
 }
 
 .assessment-content {
-  width: min(960px, calc(100% - 36px));
+  width: min(1280px, calc(100% - 36px));
   margin: 0 auto;
   padding: 42px 0;
 }
@@ -80,6 +80,10 @@
   margin: 10px 0 0 18px;
   color: #475569;
   line-height: 1.7;
+}
+
+.assessment-review-grid p {
+  line-height: 1.6;
 }
 
 .completion-badge {

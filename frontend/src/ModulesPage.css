@@ -199,6 +199,17 @@
   gap: 20px;
 }
 
+.catalog-state {
+  grid-column: 1 / -1;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #64748b;
+  font-weight: 800;
+  padding: 26px;
+  text-align: center;
+}
+
 .module-card {
   overflow: hidden;
   border: 1px solid #dbe3ef;

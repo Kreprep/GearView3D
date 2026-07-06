@@ -127,15 +127,15 @@ function App() {
   }
 
   if (path === routes.walkAround) {
-    return <WalkAroundCheckPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} />
+    return <WalkAroundCheckPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.loadHandling) {
-    return <LoadHandlingPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} />
+    return <LoadHandlingPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.postOperation) {
-    return <PostOperationPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} />
+    return <PostOperationPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.parts) {
@@ -152,8 +152,20 @@ function App() {
     )
   }
 
-  if (path === routes.admin) {
-    return <AdminDashboard user={user} onLogout={handleLogout} onBack={() => navigate(routes.dashboard)} />
+  if (path === routes.admin || path.startsWith('/admin/')) {
+    if (user?.role !== 'ADMIN') {
+      return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
+    }
+
+    return (
+      <AdminDashboard
+        user={user}
+        onLogout={handleLogout}
+        onBack={() => navigate(routes.dashboard)}
+        path={path}
+        onNavigate={navigate}
+      />
+    )
   }
 
   return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />

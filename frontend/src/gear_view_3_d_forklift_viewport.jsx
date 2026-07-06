@@ -256,16 +256,23 @@ function LoadingPanel() {
   )
 }
 
-export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspots = partsHotspots, onPartViewed }) {
+export default function ForkliftViewport({
+  modelUrl = DEFAULT_MODEL_URL,
+  hotspots = partsHotspots,
+  selectedPartId,
+  onPartSelect,
+  onPartViewed,
+}) {
   const containerRef = useRef(null)
   const [selectedHotspotId, setSelectedHotspotId] = useState(hotspots[0]?.id)
   const [overlaysEnabled, setOverlaysEnabled] = useState(true)
   const [wireframe, setWireframe] = useState(false)
   const [resetToken, setResetToken] = useState(0)
   const [modelReady, setModelReady] = useState(false)
+  const effectiveSelectedHotspotId = selectedPartId || selectedHotspotId
   const selectedHotspot = useMemo(
-    () => hotspots.find((item) => item.id === selectedHotspotId) || hotspots[0],
-    [hotspots, selectedHotspotId],
+    () => hotspots.find((item) => item.id === effectiveSelectedHotspotId) || hotspots[0],
+    [hotspots, effectiveSelectedHotspotId],
   )
   const progress = useMemo(() => {
     const index = hotspots.findIndex((item) => item.id === selectedHotspot?.id)
@@ -303,13 +310,19 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspot
     await containerRef.current.requestFullscreen?.()
   }
 
+  const handleSelectHotspot = (hotspot) => {
+    setSelectedHotspotId(hotspot.id)
+    onPartSelect?.(hotspot.id)
+    onPartViewed?.(hotspot.id)
+  }
+
   const Scene = modelReady ? (
     <ForkliftScene
       modelUrl={modelUrl}
       hotspots={hotspots}
       overlaysEnabled={overlaysEnabled}
       selectedId={selectedHotspot?.id}
-      onSelectHotspot={(hotspot) => setSelectedHotspotId(hotspot.id)}
+      onSelectHotspot={handleSelectHotspot}
       resetToken={resetToken}
       wireframe={wireframe}
     />
@@ -391,9 +404,19 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspot
               </div>
 
               <p className="text-sm leading-6 text-slate-600">{selectedHotspot?.functionText}</p>
+              {selectedHotspot?.category && (
+                <p className="mt-3 rounded-xl bg-cyan-50 p-3 text-sm leading-6 text-cyan-950">
+                  Category: {selectedHotspot.category}
+                </p>
+              )}
               <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-900">
                 Safety: {selectedHotspot?.safetyNote}
               </p>
+              {selectedHotspot?.inspectionReminder && (
+                <p className="mt-3 rounded-xl bg-slate-100 p-3 text-sm leading-6 text-slate-700">
+                  Inspection reminder: {selectedHotspot.inspectionReminder}
+                </p>
+              )}
 
               <div className="mt-5 space-y-2">
                 {selectedHotspot?.checklist.map((item) => (
@@ -417,7 +440,7 @@ export default function ForkliftViewport({ modelUrl = DEFAULT_MODEL_URL, hotspot
                     <button
                       key={hotspot.id}
                       type="button"
-                      onClick={() => setSelectedHotspotId(hotspot.id)}
+                      onClick={() => handleSelectHotspot(hotspot)}
                       className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${
                         active ? 'border-cyan-500 bg-cyan-50 text-cyan-950' : 'border-slate-200 bg-white hover:border-cyan-300 hover:bg-slate-50'
                       }`}

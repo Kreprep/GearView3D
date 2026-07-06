@@ -1,5 +1,6 @@
 import './TrainingSelectionPage.css'
 import ProgressSummary from './components/ProgressSummary'
+import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
 import { routes } from './lib/router'
 
@@ -16,6 +17,7 @@ function TrainingSelectionPage({ moduleName, onNavigate, onBack }) {
       </header>
 
       <section className="forklift-overview-progress">
+        <ScopeNotice />
         <ProgressSummary title="Overall Forklift Progress" compact />
         <div className="overview-stat-card">
           <p>Equipment Usage</p>

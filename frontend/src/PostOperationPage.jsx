@@ -2,8 +2,11 @@ import './PostOperationPage.css'
 import Model3DViewer from './components/Model3DViewer'
 import GuidedChecklist from './components/GuidedChecklist'
 import ProgressSummary from './components/ProgressSummary'
+import ModuleQuiz from './components/ModuleQuiz'
+import ModuleCompletionSummary from './components/ModuleCompletionSummary'
+import { routes } from './lib/router'
 
-function PostOperationPage({ moduleName, onBack }) {
+function PostOperationPage({ moduleName, onBack, onNavigate }) {
   return (
     <div className="module-page-container">
       <header className="module-page-header">
@@ -74,6 +77,13 @@ function PostOperationPage({ moduleName, onBack }) {
         </section>
 
         <GuidedChecklist moduleSlug="post-operation" title="Interactive Post-Operation Checklist" />
+        <ModuleQuiz moduleSlug="post-operation" title="Post-Operation Knowledge Check" />
+        <ModuleCompletionSummary
+          moduleSlug="post-operation"
+          moduleTitle="Post-Operation"
+          nextLabel="Review Final Assessment"
+          onNext={() => onNavigate(routes.assessment)}
+        />
       </main>
     </div>
   )
