@@ -1,59 +1,11 @@
-.training-page-container {
-  min-height: 100vh;
-  background: #f4f7fb;
-}
-
-.training-page-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 16px 32px;
-  border-bottom: 1px solid #dbe3ef;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(14px);
-}
-
-.training-page-header h1 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 24px;
-  font-weight: 900;
-}
-
-.back-button {
-  border: 1px solid #a5f3fc;
-  border-radius: 999px;
-  background: #ecfeff;
-  color: #155e75;
-  font-size: 14px;
-  font-weight: 800;
-  padding: 9px 14px;
-}
-
-.back-button:hover {
-  background: #cffafe;
-}
-
-.training-content {
-  padding: 24px 32px 40px;
-}
-
-.content-section {
-  width: min(1760px, 100%);
-  margin: 0 auto;
-}
-
-.content-section h2 {
+.parts-intro h2 {
   margin-bottom: 8px;
   color: #0f172a;
-  font-size: clamp(30px, 3vw, 48px);
+  font-size: clamp(28px, 3vw, 40px);
   font-weight: 900;
 }
 
-.content-section > p {
+.parts-intro p {
   max-width: 920px;
   color: #64748b;
   font-size: 16px;
@@ -326,20 +278,10 @@
 
 .parts-detail-panel {
   position: sticky;
-  top: 88px;
+  top: 76px;
 }
 
 @media (max-width: 760px) {
-  .training-page-header {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 14px 18px;
-  }
-
-  .training-content {
-    padding: 18px;
-  }
-
   .parts-progress-row {
     grid-template-columns: 1fr;
   }
