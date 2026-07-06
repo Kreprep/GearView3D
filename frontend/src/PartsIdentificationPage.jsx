@@ -81,7 +81,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
       </div>
 
       <section className="parts-learning-layout">
-        <div className="lesson-card mode-panel">
+        <div className="lesson-card mode-panel accordion-card">
           <button
             type="button"
             className="accordion-header"
@@ -96,7 +96,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
           </button>
 
           {expandedSections.explore && (
-            <>
+            <div className="accordion-body">
               <div className="category-grid">
                 {partCategories.map((category) => (
                   <div key={category} className="category-group">
@@ -118,7 +118,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
                 ))}
               </div>
               <p className="todo-note">TODO: Add mesh highlighting after model part names are verified against the GLB hierarchy.</p>
-            </>
+            </div>
           )}
         </div>
       </section>
@@ -135,7 +135,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
       </section>
 
       <section className="parts-learning-layout">
-        <div className="lesson-card mode-panel">
+        <div className="lesson-card mode-panel accordion-card">
           <button
             type="button"
             className="accordion-header"
@@ -155,7 +155,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
           </button>
 
           {expandedSections.practice && (
-            <>
+            <div className="accordion-body">
               <div className="practice-list">
                 {partsPracticeQuestions.map((question) => {
                   const selected = practiceAnswers[question.id]
@@ -199,7 +199,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
                   Retry
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       </section>
