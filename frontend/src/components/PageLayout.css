@@ -17,6 +17,10 @@
   padding: 28px 32px 56px;
 }
 
+.page-layout-wide {
+  width: min(1680px, 100%);
+}
+
 @media (max-width: 980px) {
   .page-layout {
     padding: 22px 24px 44px;

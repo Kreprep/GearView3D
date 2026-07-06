@@ -337,8 +337,8 @@ export default function ForkliftViewport({
 
   return (
     <section className="w-full rounded-[1.25rem] bg-slate-950 p-3 text-slate-100 shadow-2xl">
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <div ref={containerRef} className="relative min-h-[min(76vh,820px)] overflow-hidden rounded-[1rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div ref={containerRef} className="relative min-h-[min(86vh,960px)] overflow-hidden rounded-[1rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
           <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setResetToken((value) => value + 1)}>
               <RotateCcw className="h-4 w-4" /> Reset view
@@ -368,28 +368,18 @@ export default function ForkliftViewport({
 
         <aside className="grid content-start gap-3">
           <Card className="rounded-[1rem] border-white/10 bg-white text-slate-950 shadow-xl">
-            <CardContent className="space-y-4 p-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">GearView3D Module</p>
-                <h1 className="mt-1 text-2xl font-bold tracking-tight">Forklift Parts Walkthrough</h1>
-                <p className="mt-2 text-sm text-slate-600">
-                  Explore the forklift in 3D, select hotspots, and review each part's function and safety reminder.
-                </p>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                <span>Walkthrough position</span>
+                <span>{progress}%</span>
               </div>
-
-              <div className="rounded-2xl bg-slate-100 p-3">
-                <div className="mb-2 flex items-center justify-between text-xs font-medium text-slate-600">
-                  <span>Parts progress</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                  <motion.div
-                    className="h-full rounded-full bg-cyan-600"
-                    initial={false}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ type: 'spring', stiffness: 120, damping: 18 }}
-                  />
-                </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                <motion.div
+                  className="h-full rounded-full bg-cyan-600"
+                  initial={false}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -418,6 +408,11 @@ export default function ForkliftViewport({
               {selectedHotspot?.inspectionReminder && (
                 <p className="mt-3 rounded-xl bg-slate-100 p-3 text-sm leading-6 text-slate-700">
                   Inspection reminder: {selectedHotspot.inspectionReminder}
+                </p>
+              )}
+              {selectedHotspot?.relatedModule && (
+                <p className="mt-3 rounded-xl bg-slate-100 p-3 text-sm leading-6 text-slate-700">
+                  Related training: {selectedHotspot.relatedModule}
                 </p>
               )}
 

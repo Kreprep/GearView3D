@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import ForkliftViewport from './gear_view_3_d_forklift_viewport'
 import PageLayout from './components/PageLayout'
 import ProgressSummary from './components/ProgressSummary'
@@ -8,19 +9,17 @@ import { getParts } from './lib/api'
 import { partCategories, partsHotspots, partsPracticeQuestions } from './lib/trainingData'
 import './PartsIdentificationPage.css'
 
-function getPartById(partId, hotspots) {
-  return hotspots.find((part) => part.id === partId) || hotspots[0]
-}
-
 function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigate }) {
   const [hotspots, setHotspots] = useState(partsHotspots)
-  const [activeMode, setActiveMode] = useState('learn')
   const [selectedPartId, setSelectedPartId] = useState(partsHotspots[0]?.id)
-  const [walkthroughStarted, setWalkthroughStarted] = useState(false)
-  const [walkthroughIndex, setWalkthroughIndex] = useState(0)
   const [practiceAnswers, setPracticeAnswers] = useState({})
   const [practiceSubmitted, setPracticeSubmitted] = useState(false)
+  const [expandedSections, setExpandedSections] = useState({ explore: false, practice: true })
   const { progress, summary, viewPart, savePartsPracticeAttempt } = useProgress()
+
+  const toggleSection = (section) => {
+    setExpandedSections((sections) => ({ ...sections, [section]: !sections[section] }))
+  }
 
   useEffect(() => {
     getParts().then((items) => {
@@ -31,8 +30,6 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
     })
   }, [])
 
-  const selectedPart = useMemo(() => getPartById(selectedPartId, hotspots), [hotspots, selectedPartId])
-  const guidedPart = hotspots[walkthroughIndex] || hotspots[0]
   const latestPractice = progress.parts.practiceAttempts[0]
   const viewedIds = new Set(summary.viewedParts)
   const practiceScore = partsPracticeQuestions.reduce((score, question) => {
@@ -42,18 +39,6 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
   const selectPart = (partId) => {
     setSelectedPartId(partId)
     viewPart(partId)
-  }
-
-  const startWalkthrough = () => {
-    setWalkthroughStarted(true)
-    setWalkthroughIndex(0)
-    selectPart(hotspots[0]?.id)
-  }
-
-  const moveWalkthrough = (direction) => {
-    const nextIndex = Math.min(Math.max(walkthroughIndex + direction, 0), hotspots.length - 1)
-    setWalkthroughIndex(nextIndex)
-    selectPart(hotspots[nextIndex]?.id)
   }
 
   const submitPractice = () => {
@@ -67,7 +52,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
   }
 
   return (
-    <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
+    <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate} wide>
       <div className="page-back-row">
         <button className="back-button" onClick={onBack}>
           Back to Modules
@@ -79,8 +64,8 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
       <div className="parts-intro">
         <h2>Parts Identification Module</h2>
         <p>
-          Learn major forklift parts through a guided walkthrough, free exploration, and short practice questions.
-          This module supports familiarization only and does not replace supervised hands-on training.
+          Learn major forklift parts through free exploration and short practice questions. This module supports
+          familiarization only and does not replace supervised hands-on training.
         </p>
       </div>
 
@@ -95,67 +80,23 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
         </div>
       </div>
 
-      <div className="mode-tabs" role="tablist" aria-label="Parts identification modes">
-        {[
-          ['learn', 'Learn Mode'],
-          ['explore', 'Explore Mode'],
-          ['practice', 'Practice Mode'],
-        ].map(([mode, label]) => (
-          <button
-            key={mode}
-            type="button"
-            className={activeMode === mode ? 'active' : ''}
-            onClick={() => setActiveMode(mode)}
-            role="tab"
-            aria-selected={activeMode === mode}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
       <section className="parts-learning-layout">
-        <div className="parts-main-panel">
-          {activeMode === 'learn' && (
-            <div className="lesson-card mode-panel">
-              <div className="panel-heading-row">
-                <div>
-                  <h3>Guided Walkthrough</h3>
-                  <p>Move through one part at a time and review its role, inspection reminder, and safety note.</p>
-                </div>
-                <button type="button" className="primary-action" onClick={startWalkthrough}>
-                  {walkthroughStarted ? 'Restart Walkthrough' : 'Start Walkthrough'}
-                </button>
-              </div>
-
-              {walkthroughStarted ? (
-                <div className="guided-part-card">
-                  <p className="eyebrow">Step {walkthroughIndex + 1} of {hotspots.length}</p>
-                  <h4>{guidedPart.label}</h4>
-                  <p><strong>Category:</strong> {guidedPart.category}</p>
-                  <p>{guidedPart.functionText}</p>
-                  <p><strong>Inspection reminder:</strong> {guidedPart.inspectionReminder}</p>
-                  <p><strong>Safety note:</strong> {guidedPart.safetyNote}</p>
-                  <p className="todo-note">TODO: Connect guided steps to camera focus once the GLB mesh names and target coordinates are finalized.</p>
-                  <div className="step-actions">
-                    <button type="button" onClick={() => moveWalkthrough(-1)} disabled={walkthroughIndex === 0}>
-                      Previous
-                    </button>
-                    <button type="button" onClick={() => moveWalkthrough(1)} disabled={walkthroughIndex === hotspots.length - 1}>
-                      Next
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="empty-state">Start the walkthrough to mark each forklift component as viewed.</div>
-              )}
-            </div>
-          )}
-
-          {activeMode === 'explore' && (
-            <div className="lesson-card mode-panel">
+        <div className="lesson-card mode-panel">
+          <button
+            type="button"
+            className="accordion-header"
+            onClick={() => toggleSection('explore')}
+            aria-expanded={expandedSections.explore}
+          >
+            <div>
               <h3>Explore by Category</h3>
               <p>Select a part from the categorized list or from the 3D markers. Viewed parts are saved automatically.</p>
+            </div>
+            <ChevronDown size={18} className={expandedSections.explore ? 'accordion-chevron open' : 'accordion-chevron'} />
+          </button>
+
+          {expandedSections.explore && (
+            <>
               <div className="category-grid">
                 {partCategories.map((category) => (
                   <div key={category} className="category-group">
@@ -177,21 +118,44 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
                 ))}
               </div>
               <p className="todo-note">TODO: Add mesh highlighting after model part names are verified against the GLB hierarchy.</p>
-            </div>
+            </>
           )}
+        </div>
+      </section>
 
-          {activeMode === 'practice' && (
-            <div className="lesson-card mode-panel">
-              <div className="panel-heading-row">
-                <div>
-                  <h3>Practice Questions</h3>
-                  <p>Answer each question to check part recognition. Results are saved to learner progress.</p>
-                </div>
-                {practiceSubmitted && (
-                  <strong className="score-pill">{practiceScore}/{partsPracticeQuestions.length}</strong>
-                )}
-              </div>
+      <section className="viewport-panel">
+        {hotspots.length > 0 && (
+          <ForkliftViewport
+            hotspots={hotspots}
+            selectedPartId={selectedPartId}
+            onPartSelect={selectPart}
+            onPartViewed={viewPart}
+          />
+        )}
+      </section>
 
+      <section className="parts-learning-layout">
+        <div className="lesson-card mode-panel">
+          <button
+            type="button"
+            className="accordion-header"
+            onClick={() => toggleSection('practice')}
+            aria-expanded={expandedSections.practice}
+          >
+            <div>
+              <h3>Practice Questions</h3>
+              <p>Answer each question to check part recognition. Results are saved to learner progress.</p>
+            </div>
+            <div className="accordion-header-right">
+              {practiceSubmitted && (
+                <strong className="score-pill">{practiceScore}/{partsPracticeQuestions.length}</strong>
+              )}
+              <ChevronDown size={18} className={expandedSections.practice ? 'accordion-chevron open' : 'accordion-chevron'} />
+            </div>
+          </button>
+
+          {expandedSections.practice && (
+            <>
               <div className="practice-list">
                 {partsPracticeQuestions.map((question) => {
                   const selected = practiceAnswers[question.id]
@@ -235,32 +199,9 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
                   Retry
                 </button>
               </div>
-            </div>
+            </>
           )}
         </div>
-
-        <aside className="parts-detail-panel lesson-card">
-          <p className="eyebrow">Selected Part</p>
-          <h3>{selectedPart?.label}</h3>
-          <p><strong>Category:</strong> {selectedPart?.category}</p>
-          <p>{selectedPart?.functionText}</p>
-          <p><strong>Inspection reminder:</strong> {selectedPart?.inspectionReminder}</p>
-          <p><strong>Safety note:</strong> {selectedPart?.safetyNote}</p>
-          <p><strong>Related training:</strong> {selectedPart?.relatedModule}</p>
-        </aside>
-      </section>
-
-      <section className="viewport-panel">
-        <h3>Live Forklift Parts View</h3>
-        <p>Use the controls below to inspect the forklift and select labeled parts.</p>
-        {hotspots.length > 0 && (
-          <ForkliftViewport
-            hotspots={hotspots}
-            selectedPartId={selectedPartId}
-            onPartSelect={selectPart}
-            onPartViewed={viewPart}
-          />
-        )}
       </section>
     </PageLayout>
   )
