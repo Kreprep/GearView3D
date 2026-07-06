@@ -1,0 +1,130 @@
+.assessment-page {
+  min-height: 100vh;
+  background: #f4f7fb;
+}
+
+.assessment-content {
+  width: min(1280px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 42px 0;
+}
+
+.assessment-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.1);
+  padding: 30px;
+}
+
+.assessment-kicker {
+  color: #0891b2;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.assessment-card h2 {
+  color: #0f172a;
+  font-size: 32px;
+  font-weight: 950;
+}
+
+.assessment-card p {
+  color: #64748b;
+}
+
+.assessment-status-grid,
+.assessment-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.assessment-review-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.assessment-status-grid div,
+.assessment-review-grid article {
+  border: 1px solid #dbe3ef;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 16px;
+}
+
+.assessment-status-grid span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.assessment-status-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 32px;
+  font-weight: 950;
+}
+
+.assessment-review-grid h3 {
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.assessment-review-grid ul {
+  margin: 10px 0 0 18px;
+  color: #475569;
+  line-height: 1.7;
+}
+
+.assessment-review-grid p {
+  line-height: 1.6;
+}
+
+.completion-badge {
+  display: inline-flex;
+  margin-top: 24px;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #155e75 !important;
+  font-weight: 950;
+  padding: 10px 14px;
+}
+
+.assessment-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.assessment-actions button {
+  border: 0;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #ffffff;
+  font-weight: 900;
+  padding: 11px 16px;
+}
+
+.assessment-actions button:hover {
+  background: #0891b2;
+}
+
+.secondary-assessment-button {
+  border: 1px solid #a5f3fc !important;
+  background: #ecfeff !important;
+  color: #155e75 !important;
+}
+
+@media (max-width: 820px) {
+  .assessment-status-grid,
+  .assessment-review-grid {
+    grid-template-columns: 1fr;
+  }
+}
