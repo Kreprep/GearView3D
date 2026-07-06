@@ -183,7 +183,9 @@
 
 .wide-simulation-content {
   display: block;
-  width: min(1760px, 100%);
+  width: 100%;
+  min-height: calc(100vh - 78px);
+  padding: 24px;
 }
 
 .walkaround-scene-wrap {
@@ -254,6 +256,45 @@
 .walkaround-task-stack {
   display: grid;
   gap: 14px;
+}
+
+.engine-state-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.engine-state-toggle button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 950;
+  padding: 12px 14px;
+}
+
+.engine-state-toggle button.active {
+  border-color: #06b6d4;
+  background: #ecfeff;
+  color: #155e75;
+}
+
+.engine-state-toggle span {
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+.engine-state-toggle button.active span {
+  background: #0891b2;
+  color: #ffffff;
 }
 
 .reference-card,
@@ -341,14 +382,62 @@
 }
 
 .gauge-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
+}
+
+.gauge-card button {
+  border: 0;
+  border-radius: 999px;
+  background: #0891b2;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 950;
+  padding: 9px 12px;
+}
+
+.gauge-dial {
+  position: relative;
+  width: 48px;
+  height: 32px;
+  overflow: hidden;
+  border: 3px solid #cbd5e1;
+  border-bottom: 0;
+  border-radius: 48px 48px 0 0;
+  background: #ffffff;
+}
+
+.gauge-dial::after {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #0f172a;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.gauge-dial i {
+  position: absolute;
+  left: calc(50% - 2px);
+  bottom: 2px;
+  width: 4px;
+  height: 24px;
+  border-radius: 999px;
+  background: #dc2626;
+  transform-origin: 50% 100%;
+  transition: transform 180ms ease;
 }
 
 .gauge-card strong {
   color: #0891b2;
+  display: block;
+  margin-top: 2px;
 }
 
 .device-test-grid {

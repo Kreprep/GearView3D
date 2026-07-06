@@ -1,8 +1,9 @@
 .simulation-shell {
   display: grid;
   gap: 18px;
-  width: min(1760px, 100%);
-  margin: 0 auto;
+  width: 100%;
+  min-height: calc(100vh - 112px);
+  margin: 0;
 }
 
 .simulation-briefing {
@@ -73,7 +74,8 @@
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(520px, 1fr) minmax(320px, 420px);
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
+  min-height: 0;
 }
 
 .simulation-left-panel,
@@ -206,7 +208,7 @@
 }
 
 .simulation-scene {
-  min-height: min(72vh, 760px);
+  min-height: calc(100vh - 280px);
   overflow: hidden;
   border: 1px solid #dbe3ef;
   border-radius: 18px;

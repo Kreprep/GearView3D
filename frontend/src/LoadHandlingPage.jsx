@@ -3,10 +3,12 @@ import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
-import { equipmentUsageModules, moduleScenarioSteps } from './lib/trainingData'
+import { loadHandlingViewerHotspots } from './data/viewerHotspots'
+import { equipmentUsageModules, forkliftEquipment, moduleScenarioSteps } from './lib/trainingData'
 import './LoadHandlingPage.css'
 
 const moduleSlug = 'load-handling'
+const loadViewerActiveHotspots = ['forks', 'carriage', 'mast-assembly', 'tire-condition', 'operator-area']
 
 const positioningChoices = [
   {
@@ -280,7 +282,9 @@ function LoadHandlingPage({ moduleName, onBack }) {
         <InteractiveForkliftViewer
           mode="load-handling"
           scenario="good-forklift"
-          activeHotspots={['forks', 'carriage', 'mast-assembly', 'tires', 'operator-area']}
+          activeHotspots={loadViewerActiveHotspots}
+          hotspots={loadHandlingViewerHotspots}
+          modelUrl={forkliftEquipment.modelUrl}
           onHotspotSelect={handleViewerHotspot}
         />
       </div>

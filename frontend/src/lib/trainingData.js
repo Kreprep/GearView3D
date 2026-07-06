@@ -15,5 +15,6 @@ export {
   engineOffInspectionChecks,
   engineOnGaugeChecks,
   safetyDeviceTests,
+  walkAroundDefects,
 } from '../data/inspectionScenarios'
 export { moduleScenarioSteps } from '../data/moduleScenarios'

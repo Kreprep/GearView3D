@@ -67,15 +67,15 @@ function ModulesPage({ user, onLogout, onNavigate }) {
                   }
                 }}
               >
-                <div className="module-image-placeholder module-image-forklift">
-                  <span className="placeholder-text">{module.title}</span>
+                <div className="catalog-module-image module-image-forklift">
+                  <span className="catalog-placeholder-text">{module.title}</span>
                 </div>
-                <div className="module-content">
+                <div className="catalog-card-content">
                   <p className="module-type">Training model</p>
                   <h2>{module.title}</h2>
                   <p>{module.description}</p>
                   <button
-                    className="start-button"
+                    className="catalog-start-button"
                     onClick={(event) => {
                       event.stopPropagation()
                       onNavigate(routes.forklift)

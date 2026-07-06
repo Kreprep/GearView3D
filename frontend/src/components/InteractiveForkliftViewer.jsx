@@ -15,107 +15,21 @@ import {
   useBounds,
   useGLTF,
 } from '@react-three/drei'
+import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { BadgeInfo, Eye, Maximize, RotateCcw } from 'lucide-react'
 import './InteractiveForkliftViewer.css'
 
 const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
-
-const inspectionHotspots = [
-  {
-    id: 'underside-fluid-leaks',
-    label: 'Underside / Fluid Leaks',
-    position: [0, 0.05, -0.08],
-    inspect: 'Look under the forklift for engine oil, hydraulic oil, coolant, or battery electrolyte leaks.',
-    safeFeedback: 'No visible leak is shown. Continue the inspection.',
-    unsafeFeedback: 'Fluid leak detected. Forklift is unsafe for operation.',
-    unsafeScenarios: ['oil-leak'],
-  },
-  {
-    id: 'engine-bay',
-    label: 'Engine Bay',
-    position: [-0.12, 0.32, -0.12],
-    inspect: 'Check oil, coolant, and visible engine-area condition.',
-    safeFeedback: 'Engine bay check is clear in this scenario.',
-    unsafeFeedback: 'Engine bay concern detected. Report before operation.',
-    unsafeScenarios: ['oil-leak'],
-  },
-  {
-    id: 'battery-area',
-    label: 'Battery Area',
-    position: [0.14, 0.34, -0.05],
-    inspect: 'Check for electrolyte leakage, corrosion, or unsafe battery condition.',
-    safeFeedback: 'Battery area appears safe in this scenario.',
-    unsafeFeedback: 'Battery area concern detected. Do not use until cleared.',
-    unsafeScenarios: ['oil-leak'],
-  },
-  {
-    id: 'tires',
-    label: 'Tires',
-    position: [0.12, 0.08, 0.19],
-    inspect: 'Check tire wear, damage, inflation issues, and unsafe tire condition.',
-    safeFeedback: 'Tire condition appears acceptable in this scenario.',
-    unsafeFeedback: 'Unsafe tire condition affects steering and stability.',
-    unsafeScenarios: ['flat-tire'],
-  },
-  {
-    id: 'mast-assembly',
-    label: 'Mast Assembly',
-    position: [0, 0.44, 0.25],
-    inspect: 'Inspect mast channels, lift chain path, and visible cracks or damage.',
-    safeFeedback: 'No visible mast defect is shown.',
-    unsafeFeedback: 'Mast damage should be reported before operation.',
-    unsafeScenarios: [],
-  },
-  {
-    id: 'forks',
-    label: 'Forks',
-    position: [0, 0.08, 0.58],
-    inspect: 'Check fork tips, heels, locking pins, and visible cracks.',
-    safeFeedback: 'Forks appear usable in this scenario.',
-    unsafeFeedback: 'Fork damage should be reported before load handling.',
-    unsafeScenarios: [],
-  },
-  {
-    id: 'carriage',
-    label: 'Carriage',
-    position: [0, 0.13, 0.42],
-    inspect: 'Check fork attachment points and carriage condition.',
-    safeFeedback: 'Carriage attachment appears normal in this scenario.',
-    unsafeFeedback: 'Carriage damage can make load handling unsafe.',
-    unsafeScenarios: [],
-  },
-  {
-    id: 'structural-bolts',
-    label: 'Structural Bolts',
-    position: [0, 0.68, -0.02],
-    inspect: 'Look for loose, missing, or visibly unsafe structural bolts.',
-    safeFeedback: 'No loose or missing structural bolt is shown.',
-    unsafeFeedback: 'Loose or missing structural bolts must be reported.',
-    unsafeScenarios: [],
-  },
-  {
-    id: 'operator-area',
-    label: 'Operator Area',
-    position: [0, 0.34, -0.04],
-    inspect: 'Check seat, dashboard visibility, and control area condition.',
-    safeFeedback: 'Operator area appears ready for engine-on checks.',
-    unsafeFeedback: 'Operator area issue detected. Report before operation.',
-    unsafeScenarios: [],
-  },
-  {
-    id: 'warning-devices',
-    label: 'Warning Devices',
-    position: [0, 0.66, -0.08],
-    inspect: 'Check horn, lights, warning beacon, and backup alarm during engine-on inspection.',
-    safeFeedback: 'Warning-device area is ready for functional tests.',
-    unsafeFeedback: 'Warning device failure should stop operation until reported.',
-    unsafeScenarios: [],
-  },
-]
+const DEFAULT_CAMERA_PRESET = {
+  position: [2.2, 1.35, 2.45],
+  fov: 42,
+  minDistance: 0.65,
+  maxDistance: 5.5,
+}
 
 function getScenarioResult(hotspot, scenario) {
-  const unsafe = hotspot.unsafeScenarios.includes(scenario)
+  const unsafe = (hotspot.unsafeScenarios || []).includes(scenario)
 
   return {
     ...hotspot,
@@ -140,7 +54,7 @@ class InteractiveViewerErrorBoundary extends React.Component {
         <div className="interactive-viewer-error">
           <BadgeInfo />
           <h3>Forklift model could not be loaded</h3>
-          <p>Confirm the GLB exists at /models/Forklift_SEPERATED.glb.</p>
+      <p>Confirm the configured GLB model path resolves correctly.</p>
         </div>
       )
     }
@@ -168,24 +82,50 @@ function ForkliftModel({ modelUrl }) {
       if (!object.isMesh) return
       object.castShadow = true
       object.receiveShadow = true
+      object.frustumCulled = false
+
+      const materials = Array.isArray(object.material) ? object.material : [object.material]
+      const cloned = materials.map((material) => {
+        const next = material.clone()
+        next.roughness = Math.max(next.roughness ?? 0.55, 0.45)
+        next.metalness = Math.min(next.metalness ?? 0.2, 0.35)
+        next.needsUpdate = true
+        return next
+      })
+
+      object.material = Array.isArray(object.material) ? cloned : cloned[0]
     })
   }, [forklift])
 
   return <primitive object={forklift} />
 }
 
-function TrainingHotspot({ hotspot, selected, scenario, onSelect }) {
+function TrainingHotspot({ hotspot, selected, scenario, onSelect, onProject }) {
   const pulseRef = useRef(null)
+  const anchorRef = useRef(null)
+  const vectorRef = useRef(new Vector3())
   const result = getScenarioResult(hotspot, scenario)
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera, size }) => {
     if (!pulseRef.current) return
     const pulse = selected ? 1.16 + Math.sin(clock.elapsedTime * 4) * 0.05 : 1
     pulseRef.current.scale.setScalar(pulse)
+
+    if (!anchorRef.current) return
+    const projected = vectorRef.current
+    anchorRef.current.getWorldPosition(projected)
+    projected.project(camera)
+    const visible = projected.z > -1 && projected.z < 1
+    onProject(hotspot.id, {
+      x: (projected.x * 0.5 + 0.5) * size.width,
+      y: (-projected.y * 0.5 + 0.5) * size.height,
+      visible,
+      hotspot: result,
+    })
   })
 
   return (
-    <group position={hotspot.position}>
+    <group ref={anchorRef} position={hotspot.position}>
       <mesh
         ref={pulseRef}
         onClick={(event) => {
@@ -210,18 +150,6 @@ function TrainingHotspot({ hotspot, selected, scenario, onSelect }) {
           roughness={0.35}
         />
       </mesh>
-      <Html center distanceFactor={7} position={[0, 0.065, 0]}>
-        <button
-          type="button"
-          className={`viewer-hotspot-label ${selected ? 'selected' : ''} ${result.result}`}
-          onClick={(event) => {
-            event.stopPropagation()
-            onSelect(result)
-          }}
-        >
-          {hotspot.label}
-        </button>
-      </Html>
     </group>
   )
 }
@@ -284,11 +212,49 @@ function FlatTireMarker({ onScenarioAction }) {
   )
 }
 
+function DefectWarningMarker({ scenario, onScenarioAction }) {
+  const config = {
+    'mast-crack': {
+      position: [0, 0.56, 0.2],
+      label: 'Mast crack warning',
+      feedback: 'Mast assembly crack detected. Forklift must be reported and removed from operation.',
+    },
+    'loose-bolt': {
+      position: [0.05, 0.72, -0.02],
+      label: 'Loose bolt warning',
+      feedback: 'Loose or missing structural bolt detected. Report before operation.',
+    },
+  }[scenario]
+
+  if (!config) return null
+
+  return (
+    <Html center position={config.position} distanceFactor={5.6}>
+      <button
+        type="button"
+        className="viewer-tire-warning"
+        onClick={() =>
+          onScenarioAction?.({
+            id: scenario,
+            type: 'defect',
+            feedback: config.feedback,
+          })
+        }
+      >
+        <strong>!</strong>
+        <span>{config.label}</span>
+      </button>
+    </Html>
+  )
+}
+
 function ScenarioBadge({ mode, scenario }) {
   const label = {
     'good-forklift': 'Good forklift',
     'oil-leak': 'Oil leak defect',
     'flat-tire': 'Flat or worn tire',
+    'mast-crack': 'Mast crack defect',
+    'loose-bolt': 'Loose bolt defect',
     'engine-off': 'Engine-off inspection',
     'engine-on': 'Engine-on checks',
     stability: 'Stability demo',
@@ -310,14 +276,18 @@ function InteractiveScene({
   selectedHotspotId,
   resetToken,
   showHotspots,
+  cameraPreset,
   onHotspotSelect,
   onScenarioAction,
+  onHotspotProject,
 }) {
   return (
     <>
-      <PerspectiveCamera makeDefault position={[1.25, 0.85, 1.55]} fov={42} />
-      <ambientLight intensity={0.78} />
-      <directionalLight castShadow position={[2.2, 3, 1.8]} intensity={2.4} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <PerspectiveCamera makeDefault position={cameraPreset.position} fov={cameraPreset.fov} />
+      <ambientLight intensity={1.05} />
+      <hemisphereLight args={['#f8fafc', '#1e293b', 1.15]} />
+      <directionalLight castShadow position={[2.2, 3, 1.8]} intensity={2.8} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <directionalLight position={[-2.4, 1.8, -2]} intensity={1.2} />
       <Environment preset="warehouse" />
 
       <Bounds fit clip observe margin={1.25}>
@@ -327,6 +297,7 @@ function InteractiveScene({
             <ForkliftModel modelUrl={modelUrl} />
             {scenario === 'oil-leak' && <OilLeakOverlay onScenarioAction={onScenarioAction} />}
             {scenario === 'flat-tire' && <FlatTireMarker onScenarioAction={onScenarioAction} />}
+            <DefectWarningMarker scenario={scenario} onScenarioAction={onScenarioAction} />
             {showHotspots &&
               hotspots.map((hotspot) => (
                 <TrainingHotspot
@@ -335,6 +306,7 @@ function InteractiveScene({
                   scenario={scenario}
                   selected={selectedHotspotId === hotspot.id}
                   onSelect={onHotspotSelect}
+                  onProject={onHotspotProject}
                 />
               ))}
           </group>
@@ -343,7 +315,7 @@ function InteractiveScene({
 
       <Grid infiniteGrid cellSize={0.12} sectionSize={0.6} fadeDistance={6} fadeStrength={1.6} position={[0, -0.01, 0]} />
       <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={0.55} maxDistance={4} />
+      <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={cameraPreset.minDistance} maxDistance={cameraPreset.maxDistance} />
       <GizmoHelper alignment="bottom-right" margin={[84, 84]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>
@@ -362,19 +334,21 @@ function LoadingPanel() {
   )
 }
 
-function filterHotspots(activeHotspots) {
-  if (!activeHotspots || activeHotspots.length === 0) {
-    return inspectionHotspots
+function filterHotspots(hotspots, activeHotspots) {
+  if (!activeHotspots) {
+    return hotspots
   }
 
   const active = new Set(activeHotspots)
-  return inspectionHotspots.filter((hotspot) => active.has(hotspot.id))
+  return hotspots.filter((hotspot) => active.has(hotspot.id))
 }
 
 export default function InteractiveForkliftViewer({
   mode = 'inspection',
   scenario = 'good-forklift',
   activeHotspots,
+  hotspots: configuredHotspots = [],
+  cameraPreset: configuredCameraPreset,
   onHotspotSelect,
   onScenarioAction,
   modelUrl = DEFAULT_MODEL_URL,
@@ -384,11 +358,32 @@ export default function InteractiveForkliftViewer({
   const [resetToken, setResetToken] = useState(0)
   const [showHotspots, setShowHotspots] = useState(true)
   const [selectedHotspotId, setSelectedHotspotId] = useState(null)
-  const hotspots = useMemo(() => filterHotspots(activeHotspots), [activeHotspots])
+  const [screenHotspots, setScreenHotspots] = useState({})
+  const cameraPreset = { ...DEFAULT_CAMERA_PRESET, ...(configuredCameraPreset || {}) }
+  const hotspots = useMemo(() => filterHotspots(configuredHotspots, activeHotspots), [configuredHotspots, activeHotspots])
+
+  const activeSelectedHotspotId = hotspots.some((hotspot) => hotspot.id === selectedHotspotId) ? selectedHotspotId : null
 
   const handleHotspotSelect = (hotspot) => {
     setSelectedHotspotId(hotspot.id)
     onHotspotSelect?.(hotspot)
+  }
+
+  const handleHotspotProject = (id, next) => {
+    setScreenHotspots((current) => {
+      const previous = current[id]
+      if (
+        previous &&
+        Math.abs(previous.x - next.x) < 0.5 &&
+        Math.abs(previous.y - next.y) < 0.5 &&
+        previous.visible === next.visible &&
+        previous.hotspot.result === next.hotspot.result
+      ) {
+        return current
+      }
+
+      return { ...current, [id]: next }
+    })
   }
 
   const enterFullscreen = async () => {
@@ -414,22 +409,45 @@ export default function InteractiveForkliftViewer({
         <ScenarioBadge mode={mode} scenario={scenario} />
 
         <InteractiveViewerErrorBoundary>
-          <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
+          <Canvas shadows dpr={[1, 1.35]} camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}>
             <Suspense fallback={<LoadingPanel />}>
               <InteractiveScene
                 modelUrl={modelUrl}
                 scenario={scenario}
                 hotspots={hotspots}
-                selectedHotspotId={selectedHotspotId}
+                selectedHotspotId={activeSelectedHotspotId}
                 resetToken={resetToken}
                 showHotspots={showHotspots}
+                cameraPreset={cameraPreset}
                 onHotspotSelect={handleHotspotSelect}
                 onScenarioAction={onScenarioAction}
+                onHotspotProject={handleHotspotProject}
               />
             </Suspense>
           </Canvas>
         </InteractiveViewerErrorBoundary>
         <Loader />
+
+        {showHotspots && (
+          <div className="viewer-hotspot-overlay" aria-label="Projected forklift hotspot labels">
+            {hotspots.map((hotspot) => {
+              const projected = screenHotspots[hotspot.id]
+              if (!projected?.visible) return null
+
+              return (
+                <button
+                  key={hotspot.id}
+                  type="button"
+                  className={`viewer-hotspot-label ${activeSelectedHotspotId === hotspot.id ? 'selected' : ''} ${projected.hotspot.result}`}
+                  style={{ transform: `translate(${projected.x}px, ${projected.y}px) translate(-50%, -50%)` }}
+                  onClick={() => handleHotspotSelect(projected.hotspot)}
+                >
+                  {hotspot.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         <div className="interactive-viewer-help">
           Drag to rotate - Scroll to zoom - Right-drag to pan
