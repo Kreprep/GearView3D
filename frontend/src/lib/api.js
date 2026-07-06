@@ -26,6 +26,7 @@ const demoUsers = [
   },
 ]
 
+// Mock authentication is for frontend prototype/demo only. Backend authentication will be implemented separately.
 function clone(value) {
   return JSON.parse(JSON.stringify(value))
 }
