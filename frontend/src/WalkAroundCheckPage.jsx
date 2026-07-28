@@ -1,9 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
-import { walkAroundDefectOverlays, walkAroundViewerHotspots } from './data/viewerHotspots'
+import {
+  engineOnDeviceEffects,
+  resolveEffectLamps,
+  walkAroundDefectOverlays,
+  walkAroundViewerHotspots,
+} from './data/viewerHotspots'
+import { playDeviceSound, stopDeviceSound } from './lib/deviceAudio'
 import { routes } from './lib/router'
 import {
   defectRecognitionScenarios,
@@ -21,9 +27,16 @@ const NEXT_MODULE_DELAY_MS = 1400
 
 const moduleSlug = 'walk-around-check'
 const noViewerHotspots = []
+const ENGINE_START_DELAY_MS = 1500
 const engineOffViewerHotspots = engineOffInspectionChecks.map((check) => check.id)
-const engineOnViewerHotspots = ['operator-area', 'warning-devices']
-const engineOnTotalChecks = engineOnGaugeChecks.length + safetyDeviceTests.length + engineOnControlChecks.length
+// Kept as a stable module-level array so the viewer's hotspot memo isn't
+// invalidated on every render.
+const engineOffViewerHotspotsWithIgnition = [...engineOffViewerHotspots, 'ignition']
+const engineOnDeviceChecks = [...safetyDeviceTests, ...engineOnControlChecks]
+const engineOnViewerHotspots = ['dashboard', ...engineOnDeviceChecks.map((item) => item.id)]
+const engineOnTotalChecks = engineOnGaugeChecks.length + engineOnDeviceChecks.length
+// Pulled in close to the operator station so the cockpit hotspots are readable.
+const ENGINE_ON_CAMERA = { position: [1.05, 0.82, 0.95], fov: 46, minDistance: 0.4, maxDistance: 2.8 }
 
 function unique(items) {
   return [...new Set(items)]
@@ -31,22 +44,43 @@ function unique(items) {
 
 function calculateSimulationState(nextState) {
   const engineOffTotal = engineOffInspectionChecks.length
-  const engineOnTotal = engineOnTotalChecks
+  const gaugeTotal = engineOnGaugeChecks.length
   const scenarioTotal = defectRecognitionScenarios.length
   const engineOffCount = nextState.engineOffChecks?.length || 0
-  const engineOnCount = nextState.engineOnChecks?.length || 0
+  const deviceCount = nextState.engineOnChecks?.length || 0
+  const gaugeAnswers = nextState.gaugeAnswers || {}
+  // Gauges are judgment calls, so a wrong call still counts as answered for the
+  // counter but only a correct call counts toward completing the module.
+  const gaugeAnsweredCount = engineOnGaugeChecks.filter((gauge) => gaugeAnswers[gauge.id]).length
+  const gaugeScore = engineOnGaugeChecks.filter((gauge) => gaugeAnswers[gauge.id] === gauge.answer).length
+  const engineOnCount = deviceCount + gaugeAnsweredCount
   const defectScenarioAnswers = nextState.defectScenarioAnswers || {}
   const defectScenarioScore = defectRecognitionScenarios.filter(
     (scenario) => defectScenarioAnswers[scenario.id] === scenario.answer,
   ).length
   const percentage = Math.round(
     (engineOffCount / engineOffTotal) * 35 +
-      (engineOnCount / engineOnTotal) * 35 +
+      (engineOnCount / engineOnTotalChecks) * 35 +
       (defectScenarioScore / scenarioTotal) * 30,
   )
-  const complete = engineOffCount === engineOffTotal && engineOnCount === engineOnTotal && defectScenarioScore === scenarioTotal
+  const engineOffComplete = engineOffCount === engineOffTotal
+  const complete =
+    engineOffComplete &&
+    deviceCount === engineOnDeviceChecks.length &&
+    gaugeScore === gaugeTotal &&
+    defectScenarioScore === scenarioTotal
 
-  return { ...nextState, defectScenarioAnswers, defectScenarioScore, percentage, complete }
+  return {
+    ...nextState,
+    engineOffComplete,
+    gaugeAnswers,
+    gaugeScore,
+    engineOnCount,
+    defectScenarioAnswers,
+    defectScenarioScore,
+    percentage,
+    complete,
+  }
 }
 
 function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
@@ -55,21 +89,36 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [inspectionState, setInspectionState] = useState(savedSimulation.activeState || 'engine-off')
   const [defectScenarioIndex, setDefectScenarioIndex] = useState(0)
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [focusedHotspotId, setFocusedHotspotId] = useState(null)
+  const [activeDeviceEffect, setActiveDeviceEffect] = useState(null)
+  const deviceEffectTimer = useRef(null)
+  const engineStartTimer = useRef(null)
   const simulation = calculateSimulationState({
     engineOffChecks: savedSimulation.engineOffChecks || [],
     engineOnChecks: savedSimulation.engineOnChecks || [],
+    engineStarted: savedSimulation.engineStarted || false,
+    gaugeAnswers: savedSimulation.gaugeAnswers || {},
     defectScenarioAnswers: savedSimulation.defectScenarioAnswers || {},
     complete: savedSimulation.complete || false,
     percentage: savedSimulation.percentage || 0,
   })
   const activeDefectScenario = defectRecognitionScenarios[defectScenarioIndex]
+  // Derived from the step rather than tracked separately, so Back/Next can never
+  // leave the scene showing the wrong set of hotspots.
+  const currentStepId = steps[currentStepIndex]?.id
+  const inspectionState = currentStepId === 'engine-on-inspection' ? 'engine-on' : 'engine-off'
 
   const completedEngineOnSet = useMemo(() => new Set(simulation.engineOnChecks), [simulation.engineOnChecks])
   const completedEngineOffSet = useMemo(() => new Set(simulation.engineOffChecks), [simulation.engineOffChecks])
+
+  useEffect(() => () => {
+    clearTimeout(deviceEffectTimer.current)
+    clearTimeout(engineStartTimer.current)
+    stopDeviceSound()
+  }, [])
+
 
   const saveSimulation = (partial) => {
     const next = calculateSimulationState({ ...simulation, ...partial })
@@ -77,17 +126,27 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     return next
   }
 
-  const switchInspectionState = (nextState) => {
-    setInspectionState(nextState)
-    saveSimulation({ activeState: nextState })
-    setCurrentStepIndex(nextState === 'engine-off' ? 1 : 2)
+  // Every step change clears the detail panel and camera focus, so a selection
+  // made in one step can never carry over into another.
+  const goToStep = (index) => {
+    setCurrentStepIndex(Math.min(Math.max(index, 0), steps.length - 1))
     setSelectedDetail(null)
     setFocusedHotspotId(null)
   }
 
+  const switchInspectionState = (nextState) => {
+    saveSimulation({ activeState: nextState })
+    goToStep(nextState === 'engine-off' ? 1 : 2)
+  }
+
   const completeEngineOffCheck = (check) => {
-    saveSimulation({ engineOffChecks: unique([...simulation.engineOffChecks, check.id]) })
-    setFocusedHotspotId(check.id)
+    const engineOffChecks = unique([...simulation.engineOffChecks, check.id])
+    saveSimulation({ engineOffChecks })
+
+    // The final check hands the learner over to the ignition, so point the camera
+    // there instead of leaving the next required action hidden.
+    const justCompleted = engineOffChecks.length === engineOffInspectionChecks.length && !simulation.engineStarted
+    setFocusedHotspotId(justCompleted ? 'ignition' : check.id)
     setSelectedDetail({
       title: check.label,
       subtitle: check.targetArea,
@@ -98,11 +157,45 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     })
   }
 
+  const startEngine = () => {
+    if (!simulation.engineOffComplete || simulation.engineStarted) return
+
+    saveSimulation({ engineStarted: true })
+    setFocusedHotspotId('ignition')
+    triggerDeviceEffect('ignition')
+    setSelectedDetail({
+      title: 'Ignition Switch',
+      subtitle: 'Engine start',
+      description: 'Key turned. The starter cranks and the engine settles to idle.',
+      status: 'Engine started. Continue with the engine-on checks.',
+      statusType: 'correct',
+    })
+
+    // Let the start-up sound play before moving into the operational checks.
+    clearTimeout(engineStartTimer.current)
+    engineStartTimer.current = setTimeout(() => switchInspectionState('engine-on'), ENGINE_START_DELAY_MS)
+  }
+
   const handleViewerHotspot = (hotspot) => {
-    if (steps[currentStepIndex]?.id === 'engine-off-inspection') {
+    const stepId = steps[currentStepIndex]?.id
+
+    if (hotspot.id === 'ignition') {
+      startEngine()
+      return
+    }
+
+    if (stepId === 'engine-off-inspection') {
       const check = engineOffInspectionChecks.find((item) => item.id === hotspot.id)
       if (check) {
         completeEngineOffCheck(check)
+        return
+      }
+    }
+
+    if (stepId === 'engine-on-inspection') {
+      const device = engineOnDeviceChecks.find((item) => item.id === hotspot.id)
+      if (device) {
+        completeEngineOnCheck(device, hotspot)
         return
       }
     }
@@ -120,8 +213,47 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
 
   const clearSelectedDetail = () => setSelectedDetail(null)
 
-  const completeEngineOnCheck = (item) => {
+  const triggerDeviceEffect = (deviceId) => {
+    const effect = engineOnDeviceEffects[deviceId]
+    if (!effect) return
+
+    // Lamps follow the hotspot, so repositioning a hotspot keeps the effect aligned.
+    const hotspot = walkAroundViewerHotspots.find((entry) => entry.id === deviceId)
+    clearTimeout(deviceEffectTimer.current)
+    setActiveDeviceEffect({ ...effect, lamps: resolveEffectLamps(effect, hotspot) })
+
+    if (effect.sound) {
+      playDeviceSound(effect.sound)
+    }
+
+    deviceEffectTimer.current = setTimeout(() => setActiveDeviceEffect(null), effect.duration)
+  }
+
+  const completeEngineOnCheck = (item, hotspot) => {
     saveSimulation({ engineOnChecks: unique([...simulation.engineOnChecks, item.id]) })
+    setFocusedHotspotId(item.id)
+    triggerDeviceEffect(item.id)
+    setSelectedDetail({
+      title: hotspot?.label || item.label,
+      subtitle: hotspot?.category || 'Engine-on check',
+      description: hotspot?.inspect,
+      image: hotspot?.image,
+      status: item.feedback,
+      statusType: 'correct',
+    })
+  }
+
+  const answerGauge = (gauge, choice) => {
+    saveSimulation({ gaugeAnswers: { ...simulation.gaugeAnswers, [gauge.id]: choice } })
+    const correct = choice === gauge.answer
+    setFocusedHotspotId('dashboard')
+    setSelectedDetail({
+      title: gauge.label,
+      subtitle: 'Dashboard indicator',
+      description: `Reading: ${gauge.reading}`,
+      status: correct ? gauge.correctFeedback : gauge.incorrectFeedback,
+      statusType: correct ? 'correct' : 'incorrect',
+    })
   }
 
   const answerDefectScenario = (scenario, choice) => {
@@ -136,37 +268,67 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     setTimeout(() => onNavigate?.(routes.loadHandling), NEXT_MODULE_DELAY_MS)
   }
 
+  const getStepRequiredNote = (stepId) => {
+    if (stepId === 'engine-off-inspection' && simulation.engineOffComplete && !simulation.engineStarted) {
+      return 'Walk-around complete. Turn the ignition switch to start the engine before continuing.'
+    }
+    if (stepId === 'engine-on-inspection' && simulation.gaugeScore < engineOnGaugeChecks.length) {
+      return 'Re-read any gauge marked incorrect, then finish the remaining device and control tests.'
+    }
+    return "Complete this step's required items to continue."
+  }
+
   const getStepCanProceed = (stepId) => {
-    if (stepId === 'engine-off-inspection') return simulation.engineOffChecks.length === engineOffInspectionChecks.length
-    if (stepId === 'engine-on-inspection') return simulation.engineOnChecks.length === engineOnTotalChecks
+    // The engine must be started from the ignition hotspot, not skipped past.
+    if (stepId === 'engine-off-inspection') return simulation.engineOffComplete && simulation.engineStarted
+    if (stepId === 'engine-on-inspection') {
+      return (
+        simulation.engineOnChecks.length === engineOnDeviceChecks.length &&
+        simulation.gaugeScore === engineOnGaugeChecks.length
+      )
+    }
     if (stepId === 'defect-recognition') return defectRecognitionScenarios.every((scenario) => Boolean(simulation.defectScenarioAnswers[scenario.id]))
     return true
   }
 
   const renderScene = ({ currentStep }) => {
-    const scenario = currentStep.id === 'defect-recognition'
+    const stepId = currentStep.id
+    const isDefectStep = stepId === 'defect-recognition'
+    const isEngineOnStep = stepId === 'engine-on-inspection'
+    const isEngineOffStep = stepId === 'engine-off-inspection'
+
+    const scenario = isDefectStep
       ? (activeDefectScenario.visualState === 'normal' ? 'good-forklift' : activeDefectScenario.visualState)
-      : inspectionState === 'engine-on'
+      : isEngineOnStep
         ? 'engine-on'
         : 'engine-off'
-    const activeHotspots = inspectionState === 'engine-off' && currentStep.id !== 'defect-recognition'
-      ? engineOffViewerHotspots
-      : inspectionState === 'engine-on' && currentStep.id !== 'defect-recognition'
-        ? engineOnViewerHotspots
-        : noViewerHotspots
+
+    // Hotspots belong to the step that uses them - the briefing, defect test and
+    // summary steps show the model with no markers at all.
+    let activeHotspots = noViewerHotspots
+
+    if (isEngineOffStep) {
+      // The ignition only appears once the walk-around inspection is done.
+      activeHotspots = simulation.engineOffComplete && !simulation.engineStarted
+        ? engineOffViewerHotspotsWithIgnition
+        : engineOffViewerHotspots
+    } else if (isEngineOnStep) {
+      activeHotspots = engineOnViewerHotspots
+    }
 
     return (
       <div className="walkaround-scene-wrap">
         <InteractiveForkliftViewer
-          mode={currentStep.id === 'defect-recognition' ? 'defect-test' : 'inspection'}
+          mode={isDefectStep ? 'defect-test' : 'inspection'}
           scenario={scenario}
           activeHotspots={activeHotspots}
           hotspots={walkAroundViewerHotspots}
           defectOverlays={walkAroundDefectOverlays}
           modelUrl={forkliftEquipment.modelUrl}
-          cameraPreset={inspectionState === 'engine-on' ? { position: [1.25, 0.95, 1.15], maxDistance: 3.4 } : undefined}
+          cameraPreset={isEngineOnStep ? ENGINE_ON_CAMERA : undefined}
           onHotspotSelect={handleViewerHotspot}
           selectedHotspotId={focusedHotspotId}
+          deviceEffect={activeDeviceEffect}
         />
       </div>
     )
@@ -202,9 +364,11 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
         type="button"
         className={inspectionState === 'engine-on' ? 'active' : ''}
         onClick={() => switchInspectionState('engine-on')}
+        disabled={!simulation.engineStarted}
+        title={simulation.engineStarted ? undefined : 'Start the engine first'}
       >
         Engine-On
-        <span>{simulation.engineOnChecks.length}/{engineOnTotalChecks}</span>
+        <span>{simulation.engineOnCount}/{engineOnTotalChecks}</span>
       </button>
     </div>
   )
@@ -226,55 +390,81 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
           </button>
         ))}
       </div>
+      {simulation.engineOffComplete && !simulation.engineStarted && (
+        <button type="button" className="start-engine-button" onClick={startEngine}>
+          <strong>Start Engine</strong>
+          <small>Walk-around complete. Turn the key here or click the ignition on the model.</small>
+        </button>
+      )}
+    </div>
+  )
+
+  const renderDeviceGroup = (items) => (
+    <div className="device-test-grid">
+      {items.map((item) => {
+        const hotspot = walkAroundViewerHotspots.find((entry) => entry.id === item.id)
+        return (
+          <button
+            key={item.id}
+            type="button"
+            className={completedEngineOnSet.has(item.id) ? 'device-test done' : 'device-test'}
+            onClick={() => completeEngineOnCheck(item, hotspot)}
+          >
+            {item.label}
+          </button>
+        )
+      })}
     </div>
   )
 
   const renderEngineOn = () => (
     <div className="walkaround-task-stack">
       {renderInspectionToggle()}
+      <p className="task-note">
+        Read each gauge and decide if the reading is normal. Then test the devices and controls, in the panel or
+        directly on the 3D model.
+      </p>
       <div className="virtual-dashboard">
         <h4>Dashboard Indicators</h4>
-        {engineOnGaugeChecks.map((gauge) => (
-          <div key={gauge.id} className={completedEngineOnSet.has(gauge.id) ? 'gauge-card done' : 'gauge-card'}>
-            <div className="gauge-dial" aria-hidden="true">
-              <i style={{ transform: completedEngineOnSet.has(gauge.id) ? 'rotate(42deg)' : 'rotate(-42deg)' }} />
+        {engineOnGaugeChecks.map((gauge) => {
+          const answer = simulation.gaugeAnswers[gauge.id]
+          const correct = answer === gauge.answer
+
+          return (
+            <div key={gauge.id} className={answer ? (correct ? 'gauge-card done' : 'gauge-card wrong') : 'gauge-card'}>
+              <div className="gauge-dial" aria-hidden="true">
+                <i style={{ transform: `rotate(${gauge.dialAngle}deg)` }} />
+              </div>
+              <div className="gauge-readout">
+                <span>{gauge.label}</span>
+                <strong>{gauge.reading}</strong>
+              </div>
+              <div className="gauge-answer-row">
+                {['Normal', 'Abnormal'].map((choice) => (
+                  <button
+                    key={choice}
+                    type="button"
+                    className={answer === choice ? 'selected' : ''}
+                    onClick={() => answerGauge(gauge, choice)}
+                  >
+                    {choice}
+                  </button>
+                ))}
+              </div>
+              {answer && (
+                <p className={correct ? 'gauge-verdict correct' : 'gauge-verdict incorrect'}>
+                  {correct ? 'Correct' : 'Re-read this gauge'}
+                </p>
+              )}
             </div>
-            <div>
-              <span>{gauge.label}</span>
-              <strong>{completedEngineOnSet.has(gauge.id) ? gauge.normalReading : 'Unchecked'}</strong>
-            </div>
-            <button type="button" onClick={() => completeEngineOnCheck(gauge)}>
-              Check
-            </button>
-          </div>
-        ))}
+          )
+        })}
+        <p className="gauge-score">Gauge readings correct: {simulation.gaugeScore}/{engineOnGaugeChecks.length}</p>
       </div>
       <p className="subsection-label">Safety Devices</p>
-      <div className="device-test-grid">
-        {safetyDeviceTests.map((device) => (
-          <button
-            key={device.id}
-            type="button"
-            className={completedEngineOnSet.has(device.id) ? 'device-test done' : 'device-test'}
-            onClick={() => completeEngineOnCheck(device)}
-          >
-            {device.label}
-          </button>
-        ))}
-      </div>
+      {renderDeviceGroup(safetyDeviceTests)}
       <p className="subsection-label">Operational Controls</p>
-      <div className="device-test-grid">
-        {engineOnControlChecks.map((control) => (
-          <button
-            key={control.id}
-            type="button"
-            className={completedEngineOnSet.has(control.id) ? 'device-test done' : 'device-test'}
-            onClick={() => completeEngineOnCheck(control)}
-          >
-            {control.label}
-          </button>
-        ))}
-      </div>
+      {renderDeviceGroup(engineOnControlChecks)}
     </div>
   )
 
@@ -325,7 +515,8 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     <div className="walkaround-task-stack">
       <div className="summary-grid">
         <div><span>Engine-Off Checks</span><strong>{simulation.engineOffChecks.length}/{engineOffInspectionChecks.length}</strong></div>
-        <div><span>Engine-On Checks</span><strong>{simulation.engineOnChecks.length}/{engineOnTotalChecks}</strong></div>
+        <div><span>Engine-On Checks</span><strong>{simulation.engineOnCount}/{engineOnTotalChecks}</strong></div>
+        <div><span>Gauge Readings</span><strong>{simulation.gaugeScore}/{engineOnGaugeChecks.length}</strong></div>
         <div><span>Defect Recognition</span><strong>{simulation.defectScenarioScore}/{defectRecognitionScenarios.length}</strong></div>
       </div>
       <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
@@ -365,16 +556,9 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
           progress={simulation.percentage}
           score={simulation.defectScenarioScore}
           canProceed={getStepCanProceed(steps[currentStepIndex].id)}
-          onBackStep={() => {
-            setSelectedDetail(null)
-            setFocusedHotspotId(null)
-            setCurrentStepIndex((index) => Math.max(index - 1, 0))
-          }}
-          onNextStep={() => {
-            setSelectedDetail(null)
-            setFocusedHotspotId(null)
-            setCurrentStepIndex((index) => Math.min(index + 1, steps.length - 1))
-          }}
+          requiredNote={getStepRequiredNote(steps[currentStepIndex].id)}
+          onBackStep={() => goToStep(currentStepIndex - 1)}
+          onNextStep={() => goToStep(currentStepIndex + 1)}
           onComplete={completeModule}
           renderScene={renderScene}
           renderTask={renderTask}

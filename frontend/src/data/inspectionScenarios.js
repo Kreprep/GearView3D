@@ -91,36 +91,54 @@ export const engineOffInspectionChecks = [
   },
 ]
 
+// Each gauge is a judgment call, not a click-to-confirm. `dialAngle` places the
+// needle (-45 = low end of the dial, 45 = high end) and `answer` is the correct
+// Normal/Abnormal call for that reading.
 export const engineOnGaugeChecks = [
   {
     id: 'warning-lights',
     label: 'Warning Lights',
-    normalReading: 'No warning lights active',
-    feedback: 'No dashboard warning light is active in this training scenario.',
+    reading: 'No warning lights active',
+    dialAngle: -30,
+    answer: 'Normal',
+    correctFeedback: 'Correct. No warning light is lit, so the forklift is clear to continue the check.',
+    incorrectFeedback: 'A dashboard with no active warning light is a normal reading.',
   },
   {
     id: 'battery-charge-indicator',
     label: 'Battery Charge Indicator',
-    normalReading: 'Normal charge',
-    feedback: 'The battery charge indicator is within the expected training range.',
+    reading: 'Charge warning light stays lit',
+    dialAngle: -42,
+    answer: 'Abnormal',
+    correctFeedback: 'Correct. A charge light that stays on means the charging system is not keeping up. Report it.',
+    incorrectFeedback: 'A charge warning that stays lit is abnormal. It means the battery is not charging.',
   },
   {
     id: 'lpg-level-gauge',
     label: 'LPG Level Gauge',
-    normalReading: 'Sufficient LPG level',
-    feedback: 'LPG level is sufficient for the training scenario.',
+    reading: 'Sufficient LPG level',
+    dialAngle: 24,
+    answer: 'Normal',
+    correctFeedback: 'Correct. There is enough LPG to complete the shift.',
+    incorrectFeedback: 'A sufficient LPG level is a normal reading. Only a near-empty tank needs action.',
   },
   {
     id: 'hour-meter',
     label: 'Hour Meter',
-    normalReading: 'Reading logged',
-    feedback: 'Hour meter reading has been noted for maintenance tracking.',
+    reading: 'Reading logged for maintenance tracking',
+    dialAngle: 0,
+    answer: 'Normal',
+    correctFeedback: 'Correct. The hour meter is a record, not a fault indicator. Log it and continue.',
+    incorrectFeedback: 'The hour meter only records running hours. Logging the reading is a normal step.',
   },
   {
     id: 'engine-temperature-gauge',
     label: 'Engine Temperature Gauge',
-    normalReading: 'Normal temperature',
-    feedback: 'The engine temperature gauge is not showing an overheat condition.',
+    reading: 'Needle in the red zone',
+    dialAngle: 44,
+    answer: 'Abnormal',
+    correctFeedback: 'Correct. An overheating engine must be shut down and reported before operation.',
+    incorrectFeedback: 'A needle in the red zone means overheating. That is an abnormal reading and must be reported.',
   },
 ]
 
