@@ -1,33 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import './ModuleSimulationShell.css'
-
-const TOAST_DURATION_MS = 5000
-
-function FeedbackToast({ feedback }) {
-  const [dismissed, setDismissed] = useState(null)
-
-  useEffect(() => {
-    if (!feedback?.message) return undefined
-    const timer = setTimeout(() => setDismissed(feedback), TOAST_DURATION_MS)
-    return () => clearTimeout(timer)
-  }, [feedback])
-
-  const visible = Boolean(feedback?.message) && feedback !== dismissed
-
-  if (!visible) return null
-
-  return (
-    <div className={`simulation-toast ${feedback.type || 'neutral'}`} role="status">
-      <div className="simulation-toast-header">
-        <strong>{feedback.title || 'Feedback'}</strong>
-        <button type="button" className="simulation-toast-close" onClick={() => setDismissed(feedback)} aria-label="Dismiss notification">
-          &times;
-        </button>
-      </div>
-      <p>{feedback.message}</p>
-    </div>
-  )
-}
 
 function ModuleSimulationShell({
   module,
@@ -36,7 +8,6 @@ function ModuleSimulationShell({
   objectives = [],
   progress = 0,
   score,
-  feedback,
   canProceed = true,
   onBackStep,
   onNextStep,
@@ -44,6 +15,8 @@ function ModuleSimulationShell({
   renderScene,
   renderTask,
   completionSummary,
+  selectedDetail,
+  onClearDetail,
 }) {
   const [showHint, setShowHint] = useState(false)
   const currentStep = steps[currentStepIndex] || steps[0]
@@ -52,7 +25,6 @@ function ModuleSimulationShell({
 
   return (
     <section className="simulation-shell">
-      <FeedbackToast feedback={feedback} />
       <header className="simulation-briefing">
         <div>
           <p className="simulation-kicker">Guided Simulation</p>
@@ -120,10 +92,36 @@ function ModuleSimulationShell({
 
         <aside className="simulation-right-panel">
           <section className="simulation-panel current-task-panel">
-            <p className="simulation-panel-label">Current Task</p>
-            <h3>{currentStep?.title}</h3>
-            <p>{currentStep?.instructions}</p>
-            {renderTask?.({ currentStep, currentStepIndex })}
+            {selectedDetail ? (
+              <>
+                <div className="hotspot-detail-header">
+                  <p className="simulation-panel-label">Part Details</p>
+                  <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
+                    Back to Task
+                  </button>
+                </div>
+                <div className="hotspot-detail">
+                  {selectedDetail.image ? (
+                    <img className="hotspot-detail-image" src={selectedDetail.image} alt={selectedDetail.title} />
+                  ) : (
+                    <div className="hotspot-detail-image hotspot-detail-image-placeholder">No reference image yet</div>
+                  )}
+                  <h3>{selectedDetail.title}</h3>
+                  {selectedDetail.subtitle && <p className="hotspot-detail-subtitle">{selectedDetail.subtitle}</p>}
+                  {selectedDetail.description && <p>{selectedDetail.description}</p>}
+                  {selectedDetail.status && (
+                    <p className={`hotspot-detail-status ${selectedDetail.statusType || 'neutral'}`}>{selectedDetail.status}</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="simulation-panel-label">Current Task</p>
+                <h3>{currentStep?.title}</h3>
+                <p>{currentStep?.instructions}</p>
+                {renderTask?.({ currentStep, currentStepIndex })}
+              </>
+            )}
           </section>
 
           {isLastStep && completionSummary && (

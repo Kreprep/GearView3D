@@ -55,11 +55,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [inspectionState, setInspectionState] = useState(savedSimulation.activeState || 'engine-off')
   const [defectScenarioIndex, setDefectScenarioIndex] = useState(0)
-  const [feedback, setFeedback] = useState({
-    type: 'neutral',
-    title: 'Scenario Briefing',
-    message: 'Start by reviewing the purpose of the walk-around inspection.',
-  })
+  const [selectedDetail, setSelectedDetail] = useState(null)
   const simulation = calculateSimulationState({
     engineOffChecks: savedSimulation.engineOffChecks || [],
     engineOnChecks: savedSimulation.engineOnChecks || [],
@@ -82,21 +78,18 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     setInspectionState(nextState)
     saveSimulation({ activeState: nextState })
     setCurrentStepIndex(nextState === 'engine-off' ? 1 : 2)
-    setFeedback({
-      type: 'neutral',
-      title: nextState === 'engine-off' ? 'Engine-Off Inspection' : 'Engine-On Inspection',
-      message: nextState === 'engine-off'
-        ? 'Only engine-off visual inspection hotspots are active.'
-        : 'Cockpit dashboard checks and safety device tests are active.',
-    })
+    setSelectedDetail(null)
   }
 
   const completeEngineOffCheck = (check) => {
     saveSimulation({ engineOffChecks: unique([...simulation.engineOffChecks, check.id]) })
-    setFeedback({
-      type: check.status === 'safe' ? 'correct' : 'warning',
+    setSelectedDetail({
       title: check.label,
-      message: `${check.found} ${check.feedback}`,
+      subtitle: check.targetArea,
+      description: check.found,
+      image: check.image,
+      status: check.feedback,
+      statusType: check.status === 'safe' ? 'correct' : 'warning',
     })
   }
 
@@ -109,57 +102,30 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
       }
     }
 
-    setFeedback({
-      type: hotspot.result === 'unsafe' ? 'warning' : 'correct',
+    setSelectedDetail({
       title: hotspot.label,
-      message: `${hotspot.inspect} ${hotspot.feedback}`,
+      subtitle: hotspot.category,
+      description: hotspot.inspect,
+      image: hotspot.image,
+      status: hotspot.feedback,
+      statusType: hotspot.result === 'unsafe' ? 'warning' : 'correct',
     })
   }
 
-  const handleScenarioAction = (action) => {
-    setFeedback({
-      type: 'warning',
-      title: action.id === 'oil-leak' ? 'Fluid Leak Detected' : 'Tire Warning',
-      message: action.feedback,
-    })
-  }
+  const clearSelectedDetail = () => setSelectedDetail(null)
 
   const completeEngineOnCheck = (item) => {
     saveSimulation({ engineOnChecks: unique([...simulation.engineOnChecks, item.id]) })
-    setFeedback({
-      type: 'correct',
-      title: item.label,
-      message: item.feedback,
-    })
   }
 
   const answerDefectScenario = (scenario, choice) => {
-    const correct = choice === scenario.answer
     saveSimulation({
       defectScenarioAnswers: { ...simulation.defectScenarioAnswers, [scenario.id]: choice },
-    })
-    setFeedback({
-      type: correct ? 'correct' : 'incorrect',
-      title: correct ? 'Correct' : 'Review this scenario',
-      message: scenario.feedback,
     })
   }
 
   const completeModule = () => {
-    if (!simulation.complete) {
-      setFeedback({
-        type: 'warning',
-        title: 'Module not complete yet',
-        message: 'Finish all engine-off checks, engine-on checks, and answer all defect scenarios correctly.',
-      })
-      return
-    }
-
-    setFeedback({
-      type: 'completed',
-      title: 'Walk-Around Check Complete',
-      message: 'You completed the visual inspection simulation. Moving to Load Handling and Operational Controls next.',
-    })
+    if (!simulation.complete) return
 
     setTimeout(() => onNavigate?.(routes.loadHandling), NEXT_MODULE_DELAY_MS)
   }
@@ -194,7 +160,6 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
           modelUrl={forkliftEquipment.modelUrl}
           cameraPreset={inspectionState === 'engine-on' ? { position: [1.25, 0.95, 1.15], maxDistance: 3.4 } : undefined}
           onHotspotSelect={handleViewerHotspot}
-          onScenarioAction={handleScenarioAction}
         />
       </div>
     )
@@ -378,14 +343,21 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
           objectives={module.learningObjectives}
           progress={simulation.percentage}
           score={simulation.defectScenarioScore}
-          feedback={feedback}
           canProceed={getStepCanProceed(steps[currentStepIndex].id)}
-          onBackStep={() => setCurrentStepIndex((index) => Math.max(index - 1, 0))}
-          onNextStep={() => setCurrentStepIndex((index) => Math.min(index + 1, steps.length - 1))}
+          onBackStep={() => {
+            setSelectedDetail(null)
+            setCurrentStepIndex((index) => Math.max(index - 1, 0))
+          }}
+          onNextStep={() => {
+            setSelectedDetail(null)
+            setCurrentStepIndex((index) => Math.min(index + 1, steps.length - 1))
+          }}
           onComplete={completeModule}
           renderScene={renderScene}
           renderTask={renderTask}
           completionSummary={renderSummary()}
+          selectedDetail={selectedDetail}
+          onClearDetail={clearSelectedDetail}
         />
       </main>
     </div>

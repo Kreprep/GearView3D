@@ -69,11 +69,6 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [feedback, setFeedback] = useState({
-    type: 'neutral',
-    title: 'Scenario Briefing',
-    message: 'Review the guided driving objectives before starting the WASD control practice.',
-  })
   const simulation = calculateSimulationState({
     engineStarted: savedSimulation.engineStarted || false,
     keysUsed: savedSimulation.keysUsed || [],
@@ -91,13 +86,7 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
     return next
   }
 
-  const handleViewerHotspot = (hotspot) => {
-    setFeedback({
-      type: hotspot.result === 'unsafe' ? 'warning' : 'correct',
-      title: hotspot.label,
-      message: `${hotspot.inspect} ${hotspot.feedback}`,
-    })
-  }
+  const handleViewerHotspot = () => {}
 
   const handleDrivingEvent = (currentStep) => (event) => {
     if (event.type === 'key-active') {
@@ -110,36 +99,15 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
     if (event.type === 'engine-on') {
       if (currentStep.id === 'controls-intro') {
         saveSimulation({ engineStarted: true })
-        setFeedback({
-          type: 'correct',
-          title: 'Engine Started',
-          message: 'Engine start confirmed. Now try W, A, S, and D to finish this step.',
-        })
-      } else {
-        setFeedback({
-          type: 'neutral',
-          title: 'Engine Started',
-          message: 'Engine is running. Use W to accelerate.',
-        })
       }
       return
     }
 
     if (event.type === 'engine-off') {
-      setFeedback({
-        type: 'neutral',
-        title: 'Engine Stopped',
-        message: 'Press E to start the engine again before driving.',
-      })
       return
     }
 
     if (event.type === 'checkpoint') {
-      setFeedback({
-        type: 'correct',
-        title: event.label || 'Checkpoint Reached',
-        message: event.message || 'Checkpoint reached - continue to the next one.',
-      })
       return
     }
 
@@ -148,30 +116,11 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
       if (completionField) {
         saveSimulation({ [completionField]: true })
       }
-
-      setFeedback({
-        type: 'completed',
-        title: 'Step Complete',
-        message: event.message || 'You completed this driving task.',
-      })
     }
   }
 
   const completeModule = () => {
-    if (!simulation.complete) {
-      setFeedback({
-        type: 'warning',
-        title: 'Module not complete yet',
-        message: 'Finish starting the engine, the acceleration course, the braking course, turning practice, and the combined driving course.',
-      })
-      return
-    }
-
-    setFeedback({
-      type: 'completed',
-      title: 'Load Handling Complete',
-      message: 'You completed the guided driving control simulation. Moving to Post-Operation Shutdown next.',
-    })
+    if (!simulation.complete) return
 
     setTimeout(() => onNavigate?.(routes.postOperation), NEXT_MODULE_DELAY_MS)
   }
@@ -307,7 +256,6 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
           objectives={module.learningObjectives}
           progress={simulation.percentage}
           score={simulation.percentage}
-          feedback={feedback}
           canProceed={getStepCanProceed(steps[currentStepIndex].id)}
           onBackStep={() => setCurrentStepIndex((index) => Math.max(index - 1, 0))}
           onNextStep={() => setCurrentStepIndex((index) => Math.min(index + 1, steps.length - 1))}

@@ -48,6 +48,12 @@ When adding a new page: add its path to `routes` in `router.js`, add an `if (pat
 
 Progress percentage per module is computed in `progressService.js` (`getModuleProgress`): simulation-reported percentage takes priority if present, otherwise it's derived from checklist completion averaged with the latest quiz score.
 
+#### Hotspot detail panel (`ModuleSimulationShell` "Current Task" panel)
+Clicking a hotspot (in `InteractiveForkliftViewer` or an inspection card) swaps the Current Task panel's default title/instructions for a detail card (image slot + title + subtitle + description + status line), via `selectedDetail`/`onClearDetail` props on `ModuleSimulationShell`. It auto-clears on Next/Back step or inspection-state toggle. To edit what shows up per part, edit the source data, not the component:
+- **Engine-off inspection hotspots** (engine-oil, hydraulic-oil, tire-condition, etc.) → `data/inspectionScenarios.js`, `engineOffInspectionChecks` array. Maps `label`→title, `targetArea`→subtitle, `found`→description, `feedback`→status line.
+- **Engine-on hotspots** (operator-area, warning-devices) → `data/viewerHotspots.js`, `walkAroundViewerHotspots` array. Maps `label`→title, `category`→subtitle, `inspect`→description, `safeFeedback`/`unsafeFeedback`→status line.
+- Add an `image: '/path/to/img.png'` field to either entry shape to fill the image slot (currently unset everywhere, shows a placeholder).
+
 ### 3D viewers
 Three.js is used via `@react-three/fiber`/`@react-three/drei`, with `.glb` models served from `frontend/public/models/`. There are several distinct viewer components, not one shared abstraction — check which one a page already uses before adding a new one:
 - `components/Model3DViewer.jsx` — generic model loader/viewer.
