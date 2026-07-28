@@ -8,6 +8,7 @@ import { routes } from './lib/router'
 import {
   defectRecognitionScenarios,
   engineOffInspectionChecks,
+  engineOnControlChecks,
   engineOnGaugeChecks,
   equipmentUsageModules,
   forkliftEquipment,
@@ -22,6 +23,7 @@ const moduleSlug = 'walk-around-check'
 const noViewerHotspots = []
 const engineOffViewerHotspots = engineOffInspectionChecks.map((check) => check.id)
 const engineOnViewerHotspots = ['operator-area', 'warning-devices']
+const engineOnTotalChecks = engineOnGaugeChecks.length + safetyDeviceTests.length + engineOnControlChecks.length
 
 function unique(items) {
   return [...new Set(items)]
@@ -29,7 +31,7 @@ function unique(items) {
 
 function calculateSimulationState(nextState) {
   const engineOffTotal = engineOffInspectionChecks.length
-  const engineOnTotal = engineOnGaugeChecks.length + safetyDeviceTests.length
+  const engineOnTotal = engineOnTotalChecks
   const scenarioTotal = defectRecognitionScenarios.length
   const engineOffCount = nextState.engineOffChecks?.length || 0
   const engineOnCount = nextState.engineOnChecks?.length || 0
@@ -56,6 +58,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
   const [inspectionState, setInspectionState] = useState(savedSimulation.activeState || 'engine-off')
   const [defectScenarioIndex, setDefectScenarioIndex] = useState(0)
   const [selectedDetail, setSelectedDetail] = useState(null)
+  const [focusedHotspotId, setFocusedHotspotId] = useState(null)
   const simulation = calculateSimulationState({
     engineOffChecks: savedSimulation.engineOffChecks || [],
     engineOnChecks: savedSimulation.engineOnChecks || [],
@@ -79,10 +82,12 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     saveSimulation({ activeState: nextState })
     setCurrentStepIndex(nextState === 'engine-off' ? 1 : 2)
     setSelectedDetail(null)
+    setFocusedHotspotId(null)
   }
 
   const completeEngineOffCheck = (check) => {
     saveSimulation({ engineOffChecks: unique([...simulation.engineOffChecks, check.id]) })
+    setFocusedHotspotId(check.id)
     setSelectedDetail({
       title: check.label,
       subtitle: check.targetArea,
@@ -102,6 +107,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
       }
     }
 
+    setFocusedHotspotId(hotspot.id)
     setSelectedDetail({
       title: hotspot.label,
       subtitle: hotspot.category,
@@ -132,7 +138,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
 
   const getStepCanProceed = (stepId) => {
     if (stepId === 'engine-off-inspection') return simulation.engineOffChecks.length === engineOffInspectionChecks.length
-    if (stepId === 'engine-on-inspection') return simulation.engineOnChecks.length === engineOnGaugeChecks.length + safetyDeviceTests.length
+    if (stepId === 'engine-on-inspection') return simulation.engineOnChecks.length === engineOnTotalChecks
     if (stepId === 'defect-recognition') return defectRecognitionScenarios.every((scenario) => Boolean(simulation.defectScenarioAnswers[scenario.id]))
     return true
   }
@@ -160,6 +166,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
           modelUrl={forkliftEquipment.modelUrl}
           cameraPreset={inspectionState === 'engine-on' ? { position: [1.25, 0.95, 1.15], maxDistance: 3.4 } : undefined}
           onHotspotSelect={handleViewerHotspot}
+          selectedHotspotId={focusedHotspotId}
         />
       </div>
     )
@@ -197,7 +204,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
         onClick={() => switchInspectionState('engine-on')}
       >
         Engine-On
-        <span>{simulation.engineOnChecks.length}/{engineOnGaugeChecks.length + safetyDeviceTests.length}</span>
+        <span>{simulation.engineOnChecks.length}/{engineOnTotalChecks}</span>
       </button>
     </div>
   )
@@ -226,7 +233,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     <div className="walkaround-task-stack">
       {renderInspectionToggle()}
       <div className="virtual-dashboard">
-        <h4>Virtual Dashboard Panel</h4>
+        <h4>Dashboard Indicators</h4>
         {engineOnGaugeChecks.map((gauge) => (
           <div key={gauge.id} className={completedEngineOnSet.has(gauge.id) ? 'gauge-card done' : 'gauge-card'}>
             <div className="gauge-dial" aria-hidden="true">
@@ -242,6 +249,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
           </div>
         ))}
       </div>
+      <p className="subsection-label">Safety Devices</p>
       <div className="device-test-grid">
         {safetyDeviceTests.map((device) => (
           <button
@@ -251,6 +259,19 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
             onClick={() => completeEngineOnCheck(device)}
           >
             {device.label}
+          </button>
+        ))}
+      </div>
+      <p className="subsection-label">Operational Controls</p>
+      <div className="device-test-grid">
+        {engineOnControlChecks.map((control) => (
+          <button
+            key={control.id}
+            type="button"
+            className={completedEngineOnSet.has(control.id) ? 'device-test done' : 'device-test'}
+            onClick={() => completeEngineOnCheck(control)}
+          >
+            {control.label}
           </button>
         ))}
       </div>
@@ -304,7 +325,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     <div className="walkaround-task-stack">
       <div className="summary-grid">
         <div><span>Engine-Off Checks</span><strong>{simulation.engineOffChecks.length}/{engineOffInspectionChecks.length}</strong></div>
-        <div><span>Engine-On Checks</span><strong>{simulation.engineOnChecks.length}/{engineOnGaugeChecks.length + safetyDeviceTests.length}</strong></div>
+        <div><span>Engine-On Checks</span><strong>{simulation.engineOnChecks.length}/{engineOnTotalChecks}</strong></div>
         <div><span>Defect Recognition</span><strong>{simulation.defectScenarioScore}/{defectRecognitionScenarios.length}</strong></div>
       </div>
       <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
@@ -346,10 +367,12 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
           canProceed={getStepCanProceed(steps[currentStepIndex].id)}
           onBackStep={() => {
             setSelectedDetail(null)
+            setFocusedHotspotId(null)
             setCurrentStepIndex((index) => Math.max(index - 1, 0))
           }}
           onNextStep={() => {
             setSelectedDetail(null)
+            setFocusedHotspotId(null)
             setCurrentStepIndex((index) => Math.min(index + 1, steps.length - 1))
           }}
           onComplete={completeModule}
