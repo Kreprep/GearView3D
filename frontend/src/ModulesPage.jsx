@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ArrowRight, Clock } from 'lucide-react'
 import PageLayout from './components/PageLayout'
 import ScopeNotice from './components/ScopeNotice'
 import { getEquipment } from './lib/api'
@@ -43,11 +44,8 @@ function ModulesPage({ user, onLogout, onNavigate }) {
                 }
               }}
             >
-              <div className="catalog-module-image module-image-forklift">
-                <span className="catalog-placeholder-text">{module.title}</span>
-              </div>
-              <div className="catalog-card-content">
-                <p className="module-type">Training model</p>
+              <div className="catalog-module-image" />
+              <div className="catalog-card-body">
                 <h2>{module.title}</h2>
                 <p>{module.description}</p>
                 <button
@@ -57,21 +55,20 @@ function ModulesPage({ user, onLogout, onNavigate }) {
                     onNavigate(routes.forklift)
                   }}
                 >
-                  Start Training
+                  Start Training <ArrowRight size={15} />
                 </button>
               </div>
             </article>
           ))}
           {comingSoonEquipment.map((equipment) => (
             <article key={equipment.id} className="module-card module-card-disabled">
-              <div className="catalog-module-image module-image-placeholder">
-                <span className="catalog-placeholder-text">{equipment.title}</span>
-              </div>
-              <div className="catalog-card-content">
-                <p className="module-type">Training model</p>
+              <div className="catalog-module-image module-image-placeholder" />
+              <div className="catalog-card-body">
                 <h2>{equipment.title}</h2>
                 <p>{equipment.description}</p>
-                <span className="catalog-coming-soon-badge">Coming Soon</span>
+                <span className="catalog-coming-soon-badge">
+                  <Clock size={12} /> Coming Soon
+                </span>
               </div>
             </article>
           ))}
