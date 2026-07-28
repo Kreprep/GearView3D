@@ -156,7 +156,7 @@ export const walkAroundViewerHotspots = [
   {
     id: 'tail-lights',
     label: 'Tail Lights',
-    position: [0, 0.2, -0.28],
+    position: [0, 0.48, -0.15],
     inspect: 'Confirm the tail lights light up at the rear of the forklift.',
     safeFeedback: 'Tail lights respond. Lighting check passes.',
     unsafeFeedback: 'A tail light that does not light must be reported.',
@@ -268,14 +268,14 @@ export const engineOnDeviceEffects = {
   },
   headlights: {
     duration: 2200,
-    mirrorX: true,
+    mirrorX: false,
     color: '#fff6d5',
     mode: 'steady',
     radius: 0.045,
   },
   'tail-lights': {
     duration: 2200,
-    spreadX: 0.1,
+    spreadX: 0.05,
     color: '#ff3b30',
     mode: 'steady',
     radius: 0.04,

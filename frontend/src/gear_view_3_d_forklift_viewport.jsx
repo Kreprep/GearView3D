@@ -212,7 +212,7 @@ function FallbackForkliftScene() {
       </group>
       <Grid infiniteGrid cellSize={0.12} sectionSize={0.6} fadeDistance={6} fadeStrength={1.4} position={[0, -0.02, 0]} />
       <ContactShadows position={[0, -0.02, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={0.75} maxDistance={4.2} />
+      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={0.75} maxDistance={4.2} maxPolarAngle={Math.PI / 2} />
     </>
   )
 }
@@ -267,7 +267,7 @@ function ForkliftScene({
         position={[0, -0.01, 0]}
       />
       <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.18} minDistance={0.55} maxDistance={4} />
+      <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.18} minDistance={0.55} maxDistance={4} maxPolarAngle={Math.PI / 2} />
       <GizmoHelper alignment="bottom-right" margin={[88, 88]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>

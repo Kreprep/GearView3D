@@ -23,7 +23,7 @@ import {
 } from './lib/trainingData'
 import './WalkAroundCheckPage.css'
 
-const NEXT_MODULE_DELAY_MS = 1400
+const MODULE_EXIT_DELAY_MS = 1400
 
 const moduleSlug = 'walk-around-check'
 const noViewerHotspots = []
@@ -95,6 +95,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
   const [activeDeviceEffect, setActiveDeviceEffect] = useState(null)
   const deviceEffectTimer = useRef(null)
   const engineStartTimer = useRef(null)
+  const moduleExitTimer = useRef(null)
   const simulation = calculateSimulationState({
     engineOffChecks: savedSimulation.engineOffChecks || [],
     engineOnChecks: savedSimulation.engineOnChecks || [],
@@ -116,6 +117,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
   useEffect(() => () => {
     clearTimeout(deviceEffectTimer.current)
     clearTimeout(engineStartTimer.current)
+    clearTimeout(moduleExitTimer.current)
     stopDeviceSound()
   }, [])
 
@@ -265,7 +267,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
   const completeModule = () => {
     if (!simulation.complete) return
 
-    setTimeout(() => onNavigate?.(routes.loadHandling), NEXT_MODULE_DELAY_MS)
+    moduleExitTimer.current = setTimeout(() => onNavigate?.(routes.equipment), MODULE_EXIT_DELAY_MS)
   }
 
   const getStepRequiredNote = (stepId) => {
@@ -327,6 +329,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
           modelUrl={forkliftEquipment.modelUrl}
           cameraPreset={isEngineOnStep ? ENGINE_ON_CAMERA : undefined}
           onHotspotSelect={handleViewerHotspot}
+          onResetView={() => setFocusedHotspotId(null)}
           selectedHotspotId={focusedHotspotId}
           deviceEffect={activeDeviceEffect}
         />

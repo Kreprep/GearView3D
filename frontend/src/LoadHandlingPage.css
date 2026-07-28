@@ -34,8 +34,13 @@
   justify-content: center;
 }
 
+/* Size lives on the key itself, not on the grid tracks, so keys keep their
+   shape outside the WASD pad (the engine row is a flex row). */
 .controls-diagram-key {
   display: flex;
+  width: 64px;
+  height: 64px;
+  flex: none;
   align-items: center;
   justify-content: center;
   border-radius: 12px;
@@ -64,6 +69,13 @@
 .key-d {
   grid-column: 3;
   grid-row: 2;
+}
+
+/* Slightly smaller than the WASD pad - it sits inline with a line of text. */
+.key-e {
+  width: 46px;
+  height: 46px;
+  font-size: 18px;
 }
 
 .controls-diagram-legend {

@@ -20,11 +20,36 @@ import { BadgeInfo, Eye, Maximize, RotateCcw } from 'lucide-react'
 import './InteractiveForkliftViewer.css'
 
 const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
+
+// ---------------------------------------------------------------------------
+// Floor tuning - safe to edit by hand.
+//
+// The model is placed with its bottom at y = 0, so these are all relative to
+// the forklift's wheels/forks touching the ground.
+// ---------------------------------------------------------------------------
+
+/** Height of the floor. LOWER (more negative) = forklift sits higher above the
+ *  floor. HIGHER (toward 0) = floor rises toward the wheels. Go above 0 and the
+ *  floor starts covering the bottom of the model. Try steps of 0.005. */
+const FLOOR_Y = -0.11
+
+/** How far the floor extends. Larger = edge sits further away at the horizon.
+ *  Too small and the far edge cuts across the middle of the forklift. */
+const FLOOR_RADIUS = 9
+
+/** Floor colour. Light greys make the dark oil puddle easy to see. */
+const FLOOR_COLOR = '#b8c0cc'
+
+/** Darkness of the shadow under the forklift, 0 (none) to 1 (black). */
+const FLOOR_SHADOW_OPACITY = 0.5
 const DEFAULT_CAMERA_PRESET = {
   position: [2.2, 1.35, 2.45],
   fov: 42,
   minDistance: 0.65,
   maxDistance: 5.5,
+  // Stop the orbit at floor level. Below it the camera looks up from under the
+  // ground plane and the grid appears to cut across the forklift.
+  maxPolarAngle: Math.PI / 2,
 }
 
 function getScenarioResult(hotspot, scenario) {
@@ -62,12 +87,31 @@ class InteractiveViewerErrorBoundary extends React.Component {
   }
 }
 
-function AutoFit({ resetToken }) {
+/**
+ * Frames the model on mount. On reset it first restores the configured camera
+ * position and target, because `fit()` alone keeps whatever direction the user
+ * has orbited to and would never return to the default view.
+ */
+function ViewReset({ cameraPreset, controlsRef, resetToken }) {
   const bounds = useBounds()
+  const { camera } = useThree()
+  const isFirstRun = React.useRef(true)
 
   React.useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false
+      bounds.refresh().fit()
+      return
+    }
+
+    camera.position.set(...cameraPreset.position)
+    const controls = controlsRef.current
+    if (controls) {
+      controls.target.set(0, 0, 0)
+      controls.update()
+    }
     bounds.refresh().fit()
-  }, [bounds, resetToken])
+  }, [bounds, camera, cameraPreset, controlsRef, resetToken])
 
   return null
 }
@@ -295,7 +339,7 @@ function InteractiveScene({
       <directionalLight position={[-2.4, 1.8, -2]} intensity={1.2} />
 
       <Bounds fit clip margin={1.25}>
-        <AutoFit resetToken={resetToken} />
+        <ViewReset cameraPreset={cameraPreset} controlsRef={controlsRef} resetToken={resetToken} />
         <Center top>
           <group rotation={[0, -0.18, 0]}>
             <ForkliftModel modelUrl={modelUrl} />
@@ -325,13 +369,59 @@ function InteractiveScene({
       </Bounds>
 
       <CameraFocus targetId={selectedHotspotId} hotspotRefs={hotspotRefs} controlsRef={controlsRef} resetToken={resetToken} />
-      <Grid infiniteGrid cellSize={0.12} sectionSize={0.6} fadeDistance={6} fadeStrength={1.6} position={[0, -0.01, 0]} />
-      <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.18} minDistance={cameraPreset.minDistance} maxDistance={cameraPreset.maxDistance} />
+      <WarehouseFloor />
+      <ContactShadows position={[0, FLOOR_Y + 0.003, 0]} opacity={FLOOR_SHADOW_OPACITY} scale={3} blur={2.2} far={1.2} />
+      <OrbitControls
+        ref={controlsRef}
+        makeDefault
+        enableDamping
+        dampingFactor={0.18}
+        minDistance={cameraPreset.minDistance}
+        maxDistance={cameraPreset.maxDistance}
+        maxPolarAngle={cameraPreset.maxPolarAngle}
+      />
       <GizmoHelper alignment="bottom-right" margin={[84, 84]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>
     </>
+  )
+}
+
+/**
+ * Light concrete slab instead of the old dark grid. Dark defects such as the oil
+ * puddle were nearly invisible against a dark navy grid; a pale, matte floor
+ * gives them contrast and reads as a warehouse bay.
+ */
+function WarehouseFloor() {
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, FLOOR_Y, 0]} receiveShadow>
+        <circleGeometry args={[FLOOR_RADIUS, 64]} />
+        {/* polygonOffset pushes the floor back in the depth buffer so it can never
+            poke through geometry resting on it, such as the fork tips. */}
+        <meshStandardMaterial
+          color={FLOOR_COLOR}
+          roughness={0.96}
+          metalness={0}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
+        />
+      </mesh>
+      {/* Faint joint lines keep a sense of scale without competing with the model. */}
+      <Grid
+        infiniteGrid
+        cellSize={0.25}
+        sectionSize={1}
+        cellThickness={0.6}
+        sectionThickness={1}
+        cellColor="#93a0b0"
+        sectionColor="#7c8b9d"
+        fadeDistance={9}
+        fadeStrength={1.4}
+        position={[0, FLOOR_Y + 0.002, 0]}
+      />
+    </group>
   )
 }
 
@@ -364,6 +454,7 @@ export default function InteractiveForkliftViewer({
   cameraPreset: configuredCameraPreset,
   onHotspotSelect,
   onScenarioAction,
+  onResetView,
   selectedHotspotId: controlledHotspotId,
   deviceEffect,
   modelUrl = DEFAULT_MODEL_URL,
@@ -373,7 +464,12 @@ export default function InteractiveForkliftViewer({
   const [resetToken, setResetToken] = useState(0)
   const [showHotspots, setShowHotspots] = useState(true)
   const [internalHotspotId, setInternalHotspotId] = useState(null)
-  const cameraPreset = { ...DEFAULT_CAMERA_PRESET, ...(configuredCameraPreset || {}) }
+  // Memoized so ViewReset's effect doesn't re-run (and re-snap the camera) on
+  // every render.
+  const cameraPreset = useMemo(
+    () => ({ ...DEFAULT_CAMERA_PRESET, ...(configuredCameraPreset || {}) }),
+    [configuredCameraPreset],
+  )
   const hotspots = useMemo(() => filterHotspots(configuredHotspots, activeHotspots), [configuredHotspots, activeHotspots])
 
   // Selection can be driven from outside (e.g. clicking an inspection card in the
@@ -384,6 +480,14 @@ export default function InteractiveForkliftViewer({
   const handleHotspotSelect = (hotspot) => {
     setInternalHotspotId(hotspot.id)
     onHotspotSelect?.(hotspot)
+  }
+
+  // Clearing the selection matters: a still-selected hotspot would make
+  // CameraFocus fly straight back to it and undo the reset.
+  const resetView = () => {
+    setInternalHotspotId(null)
+    onResetView?.()
+    setResetToken((value) => value + 1)
   }
 
   const enterFullscreen = async () => {
@@ -398,7 +502,7 @@ export default function InteractiveForkliftViewer({
     <section className={`interactive-forklift-viewer ${className}`}>
       <div ref={containerRef} className="interactive-viewer-canvas-shell">
         <div className="interactive-viewer-toolbar">
-          <button type="button" onClick={() => setResetToken((value) => value + 1)}>
+          <button type="button" onClick={resetView}>
             <RotateCcw size={16} /> Reset
           </button>
           <button type="button" onClick={() => setShowHotspots((value) => !value)}>
