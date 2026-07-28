@@ -200,14 +200,11 @@ export function getEquipmentProgress(progress) {
 
 export function getPartsProgress(progress) {
   const viewedCount = progress.parts.viewedPartIds.length
-  const viewedPercentage = Math.round((viewedCount / partsHotspots.length) * 100)
+  const viewedPercentage = partsHotspots.length ? (viewedCount / partsHotspots.length) * 100 : 0
   const latestPractice = progress.parts.practiceAttempts[0]
+  const practicePercentage = latestPractice ? latestPractice.percentage : 0
 
-  if (latestPractice) {
-    return Math.round((viewedPercentage + latestPractice.percentage) / 2)
-  }
-
-  return viewedPercentage
+  return Math.round(viewedPercentage * 0.5 + practicePercentage * 0.5)
 }
 
 export function getOverallProgress(progress) {

@@ -11,8 +11,7 @@ function NotFoundPage({ user, onLogout, onNavigate }) {
         <h1>Page not found</h1>
         <p>The page you opened is not part of the current GearView3D training flow.</p>
         <div className="not-found-actions">
-          <button onClick={() => onNavigate(routes.dashboard)}>Go to dashboard</button>
-          <button onClick={() => onNavigate(routes.catalog)}>Browse catalog</button>
+          <button onClick={() => onNavigate(routes.catalog)}>Go to equipment selection</button>
         </div>
       </main>
     </div>

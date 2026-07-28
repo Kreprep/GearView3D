@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   Bounds,
   Center,
@@ -14,6 +14,7 @@ import {
   useBounds,
   useGLTF,
 } from '@react-three/drei'
+import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { motion } from 'framer-motion'
 import {
@@ -85,6 +86,42 @@ function AutoFit({ resetToken }) {
   return null
 }
 
+function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
+  const { camera } = useThree()
+  const desiredCamPos = useRef(new Vector3())
+  const desiredTarget = useRef(new Vector3())
+  const framesRemaining = useRef(0)
+  const activeId = useRef(null)
+
+  useEffect(() => {
+    activeId.current = null
+  }, [resetToken])
+
+  useFrame(() => {
+    const controls = controlsRef.current
+
+    if (controls && targetId && targetId !== activeId.current) {
+      const object = hotspotRefs.current.get(targetId)
+      if (object) {
+        activeId.current = targetId
+        object.getWorldPosition(desiredTarget.current)
+        const direction = camera.position.clone().sub(controls.target).normalize()
+        desiredCamPos.current.copy(desiredTarget.current).add(direction.multiplyScalar(0.5))
+        framesRemaining.current = 40
+      }
+    }
+
+    if (framesRemaining.current > 0 && controls) {
+      controls.target.lerp(desiredTarget.current, 0.15)
+      camera.position.lerp(desiredCamPos.current, 0.15)
+      controls.update()
+      framesRemaining.current -= 1
+    }
+  })
+
+  return null
+}
+
 function ForkliftModel({ modelUrl, wireframe }) {
   const { scene } = useGLTF(modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
@@ -111,50 +148,35 @@ function ForkliftModel({ modelUrl, wireframe }) {
   return <primitive object={forklift} />
 }
 
-function HotspotPin({ hotspot, selected, onSelect }) {
-  const glowMaterialRef = useRef(null)
-
-  useFrame(({ clock }) => {
-    if (!glowMaterialRef.current) return
-
-    glowMaterialRef.current.opacity = selected ? 0.75 + Math.sin(clock.elapsedTime * 3.4) * 0.15 : 0.9
-  })
-
+function HotspotPin({ hotspot, selected, onSelect, hotspotRefs }) {
   return (
-    <group position={hotspot.position}>
-      <mesh
-        onClick={(event) => {
-          event.stopPropagation()
-          onSelect(hotspot)
-        }}
-        castShadow={false}
-        receiveShadow={false}
-      >
-        <ringGeometry args={[0.018, 0.04, 24]} />
-        <meshBasicMaterial
-          ref={glowMaterialRef}
-          color={selected ? '#67e8f9' : '#e0f2fe'}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-      <mesh
-        onClick={(event) => {
-          event.stopPropagation()
-          onSelect(hotspot)
-        }}
-        castShadow={false}
-        receiveShadow={false}
-      >
-        <sphereGeometry args={[0.02, 12, 12]} />
-        <meshStandardMaterial
-          color={selected ? '#22d3ee' : '#f8fafc'}
-          emissive={selected ? '#0ea5e9' : '#111827'}
-          emissiveIntensity={selected ? 0.6 : 0.2}
-          metalness={0.1}
-          roughness={0.35}
-        />
-      </mesh>
+    <group
+      position={hotspot.position}
+      ref={(node) => {
+        if (node) hotspotRefs.current.set(hotspot.id, node)
+        else hotspotRefs.current.delete(hotspot.id)
+      }}
+    >
+      <Html center zIndexRange={[100, 0]} occlude={false}>
+        <div className="group relative flex items-center justify-center">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onSelect(hotspot)
+            }}
+            className={`block h-4 w-4 rounded-full border-2 transition-transform ${
+              selected
+                ? 'scale-125 animate-pulse border-cyan-300 bg-cyan-400 shadow-[0_0_10px_3px_rgba(34,211,238,0.7)]'
+                : 'border-white/80 bg-white/90 hover:scale-110'
+            }`}
+            aria-label={hotspot.label}
+          />
+          <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900/90 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+            {hotspot.label}
+          </span>
+        </div>
+      </Html>
     </group>
   )
 }
@@ -190,7 +212,7 @@ function FallbackForkliftScene() {
       </group>
       <Grid infiniteGrid cellSize={0.12} sectionSize={0.6} fadeDistance={6} fadeStrength={1.4} position={[0, -0.02, 0]} />
       <ContactShadows position={[0, -0.02, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={0.75} maxDistance={4.2} />
+      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={0.75} maxDistance={4.2} maxPolarAngle={Math.PI / 2} />
     </>
   )
 }
@@ -204,6 +226,9 @@ function ForkliftScene({
   resetToken,
   wireframe,
 }) {
+  const hotspotRefs = useRef(new Map())
+  const controlsRef = useRef(null)
+
   return (
     <>
       <PerspectiveCamera makeDefault position={[1.25, 0.85, 1.55]} fov={42} />
@@ -224,11 +249,14 @@ function ForkliftScene({
                   hotspot={hotspot}
                   selected={selectedId === hotspot.id}
                   onSelect={onSelectHotspot}
+                  hotspotRefs={hotspotRefs}
                 />
               ))}
           </group>
         </Center>
       </Bounds>
+
+      <CameraFocus targetId={selectedId} hotspotRefs={hotspotRefs} controlsRef={controlsRef} resetToken={resetToken} />
 
       <Grid
         infiniteGrid
@@ -239,7 +267,7 @@ function ForkliftScene({
         position={[0, -0.01, 0]}
       />
       <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={0.55} maxDistance={4} />
+      <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.18} minDistance={0.55} maxDistance={4} maxPolarAngle={Math.PI / 2} />
       <GizmoHelper alignment="bottom-right" margin={[88, 88]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>
@@ -265,6 +293,7 @@ export default function ForkliftViewport({
   selectedPartId,
   onPartSelect,
   onPartViewed,
+  viewedPartIds,
 }) {
   const containerRef = useRef(null)
   const [selectedHotspotId, setSelectedHotspotId] = useState(hotspots[0]?.id)
@@ -278,9 +307,11 @@ export default function ForkliftViewport({
     [hotspots, effectiveSelectedHotspotId],
   )
   const progress = useMemo(() => {
-    const index = hotspots.findIndex((item) => item.id === selectedHotspot?.id)
-    return Math.round(((index + 1) / hotspots.length) * 100)
-  }, [hotspots, selectedHotspot])
+    if (!hotspots.length) return 0
+    const viewedIds = new Set(viewedPartIds || [])
+    if (selectedHotspot?.id) viewedIds.add(selectedHotspot.id)
+    return Math.round((viewedIds.size / hotspots.length) * 100)
+  }, [hotspots, selectedHotspot, viewedPartIds])
 
   useEffect(() => {
     if (selectedHotspot?.id) {
@@ -337,8 +368,8 @@ export default function ForkliftViewport({
 
   return (
     <section className="w-full rounded-[1.25rem] bg-slate-950 p-3 text-slate-100 shadow-2xl">
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <div ref={containerRef} className="relative min-h-[min(76vh,820px)] overflow-hidden rounded-[1rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div ref={containerRef} className="relative min-h-[min(86vh,960px)] overflow-hidden rounded-[1rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
           <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setResetToken((value) => value + 1)}>
               <RotateCcw className="h-4 w-4" /> Reset view
@@ -368,28 +399,18 @@ export default function ForkliftViewport({
 
         <aside className="grid content-start gap-3">
           <Card className="rounded-[1rem] border-white/10 bg-white text-slate-950 shadow-xl">
-            <CardContent className="space-y-4 p-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">GearView3D Module</p>
-                <h1 className="mt-1 text-2xl font-bold tracking-tight">Forklift Parts Walkthrough</h1>
-                <p className="mt-2 text-sm text-slate-600">
-                  Explore the forklift in 3D, select hotspots, and review each part's function and safety reminder.
-                </p>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                <span>Walkthrough position</span>
+                <span>{progress}%</span>
               </div>
-
-              <div className="rounded-2xl bg-slate-100 p-3">
-                <div className="mb-2 flex items-center justify-between text-xs font-medium text-slate-600">
-                  <span>Parts progress</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                  <motion.div
-                    className="h-full rounded-full bg-cyan-600"
-                    initial={false}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ type: 'spring', stiffness: 120, damping: 18 }}
-                  />
-                </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                <motion.div
+                  className="h-full rounded-full bg-cyan-600"
+                  initial={false}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -418,6 +439,11 @@ export default function ForkliftViewport({
               {selectedHotspot?.inspectionReminder && (
                 <p className="mt-3 rounded-xl bg-slate-100 p-3 text-sm leading-6 text-slate-700">
                   Inspection reminder: {selectedHotspot.inspectionReminder}
+                </p>
+              )}
+              {selectedHotspot?.relatedModule && (
+                <p className="mt-3 rounded-xl bg-slate-100 p-3 text-sm leading-6 text-slate-700">
+                  Related training: {selectedHotspot.relatedModule}
                 </p>
               )}
 

@@ -1,14 +1,3 @@
-.assessment-page {
-  min-height: 100vh;
-  background: #f4f7fb;
-}
-
-.assessment-content {
-  width: min(1280px, calc(100% - 36px));
-  margin: 0 auto;
-  padding: 42px 0;
-}
-
 .assessment-card {
   border: 1px solid #dbe3ef;
   border-radius: 20px;

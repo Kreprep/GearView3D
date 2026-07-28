@@ -1,26 +1,34 @@
 .scope-notice {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 12px;
   margin: 0 0 18px;
   border: 1px solid #a5f3fc;
+  border-left: 3px solid #06b6d4;
   border-radius: 14px;
   background: #ecfeff;
-  color: #155e75;
-  padding: 12px 14px;
+  padding: 14px 16px;
+}
+
+.scope-notice-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #0891b2;
 }
 
 .scope-notice strong {
+  display: block;
+  margin-bottom: 4px;
   color: #0e7490;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
-.scope-notice span {
+.scope-notice p {
+  margin: 0;
   color: #155e75;
-}
-
-@media (max-width: 640px) {
-  .scope-notice {
-    align-items: flex-start;
-    flex-direction: column;
-  }
+  font-size: 14px;
+  line-height: 1.55;
 }

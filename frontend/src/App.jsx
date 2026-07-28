@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import LoginPage from './LoginPage'
-import DashboardPage from './DashboardPage'
+import ForkliftTrainingPage from './ForkliftTrainingPage'
 import ModulesPage from './ModulesPage'
-import TrainingSelectionPage from './TrainingSelectionPage'
 import EquipmentUsagePage from './EquipmentUsagePage'
 import WalkAroundCheckPage from './WalkAroundCheckPage'
 import LoadHandlingPage from './LoadHandlingPage'
@@ -56,7 +55,7 @@ function App() {
     }
 
     if (isLoggedIn && (path === '/' || path === routes.login)) {
-      goTo(routes.dashboard, { replace: true })
+      goTo(routes.catalog, { replace: true })
     }
   }, [isLoggedIn, path])
 
@@ -72,7 +71,7 @@ function App() {
     setAuthToken(auth.token)
     setUser(auth.user)
     setIsLoggedIn(true)
-    navigate(routes.dashboard, { replace: true })
+    navigate(routes.catalog, { replace: true })
   }
 
   const handleLogout = () => {
@@ -92,8 +91,8 @@ function App() {
     return null
   }
 
-  if (path === routes.dashboard) {
-    return <DashboardPage user={user} onLogout={handleLogout} onNavigate={navigate} />
+  if (path === routes.forklift) {
+    return <ForkliftTrainingPage moduleName="Forklift" user={user} onLogout={handleLogout} onNavigate={navigate} />
   }
 
   if (path === routes.catalog) {
@@ -106,20 +105,12 @@ function App() {
     )
   }
 
-  if (path === routes.forklift) {
-    return (
-      <TrainingSelectionPage
-        moduleName="Forklift"
-        onNavigate={navigate}
-        onBack={() => navigate(routes.catalog)}
-      />
-    )
-  }
-
   if (path === routes.equipment) {
     return (
       <EquipmentUsagePage
         moduleName="Forklift"
+        user={user}
+        onLogout={handleLogout}
         onBack={() => navigate(routes.forklift)}
         onNavigate={navigate}
       />
@@ -139,13 +130,23 @@ function App() {
   }
 
   if (path === routes.parts) {
-    return <PartsIdentificationPage moduleName="Forklift" onBack={() => navigate(routes.forklift)} />
+    return (
+      <PartsIdentificationPage
+        moduleName="Forklift"
+        user={user}
+        onLogout={handleLogout}
+        onBack={() => navigate(routes.forklift)}
+        onNavigate={navigate}
+      />
+    )
   }
 
   if (path === routes.assessment) {
     return (
       <AssessmentPage
         moduleName="Forklift"
+        user={user}
+        onLogout={handleLogout}
         onBack={() => navigate(routes.forklift)}
         onNavigate={navigate}
       />
@@ -161,7 +162,7 @@ function App() {
       <AdminDashboard
         user={user}
         onLogout={handleLogout}
-        onBack={() => navigate(routes.dashboard)}
+        onBack={() => navigate(routes.catalog)}
         path={path}
         onNavigate={navigate}
       />
