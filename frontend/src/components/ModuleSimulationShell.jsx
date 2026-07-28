@@ -9,6 +9,7 @@ function ModuleSimulationShell({
   progress = 0,
   score,
   canProceed = true,
+  requiredNote = "Complete this step's required items to continue.",
   onBackStep,
   onNextStep,
   onComplete,
@@ -147,7 +148,7 @@ function ModuleSimulationShell({
           )}
         </div>
         {!isLastStep && !canProceed && (
-          <p className="simulation-required-note">Complete this step's required items to continue.</p>
+          <p className="simulation-required-note">{requiredNote}</p>
         )}
       </div>
     </section>

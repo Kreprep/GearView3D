@@ -170,6 +170,54 @@ function TrainingHotspot({ hotspot, selected, scenario, onSelect, hotspotRefs })
   )
 }
 
+/** Glowing lamp played on the model while a safety device is being tested. */
+function DeviceLamp({ position, color, radius, blink }) {
+  const meshRef = useRef(null)
+  const lightRef = useRef(null)
+
+  useFrame(({ clock }) => {
+    // 5 Hz square-ish flash for blinking devices, steady otherwise.
+    const on = blink ? Math.sin(clock.getElapsedTime() * 16) > 0 : true
+    const level = on ? 1 : 0.05
+
+    if (meshRef.current) {
+      meshRef.current.material.opacity = 0.35 + level * 0.55
+      meshRef.current.material.emissiveIntensity = level * 3
+    }
+    if (lightRef.current) {
+      lightRef.current.intensity = level * 1.6
+    }
+  })
+
+  return (
+    <group position={position}>
+      <mesh ref={meshRef}>
+        <sphereGeometry args={[radius, 18, 18]} />
+        <meshStandardMaterial color={color} emissive={color} transparent toneMapped={false} />
+      </mesh>
+      <pointLight ref={lightRef} color={color} distance={0.7} decay={2} />
+    </group>
+  )
+}
+
+function DeviceEffect({ effect }) {
+  if (!effect?.lamps?.length) return null
+
+  return (
+    <group>
+      {effect.lamps.map((position, index) => (
+        <DeviceLamp
+          key={`${position.join(',')}-${index}`}
+          position={position}
+          color={effect.color}
+          radius={effect.radius ?? 0.04}
+          blink={effect.mode === 'blink'}
+        />
+      ))}
+    </group>
+  )
+}
+
 function PuddleOverlay({ id, position, rotation, radius, label, feedback, onScenarioAction }) {
   const emit = () => onScenarioAction?.({ id, type: 'defect', feedback })
 
@@ -231,6 +279,7 @@ function InteractiveScene({
   resetToken,
   showHotspots,
   cameraPreset,
+  deviceEffect,
   onHotspotSelect,
   onScenarioAction,
 }) {
@@ -250,6 +299,7 @@ function InteractiveScene({
         <Center top>
           <group rotation={[0, -0.18, 0]}>
             <ForkliftModel modelUrl={modelUrl} />
+            <DeviceEffect effect={deviceEffect} />
             {defectOverlays
               .filter((overlay) => overlay.scenario === scenario)
               .map((overlay) =>
@@ -315,6 +365,7 @@ export default function InteractiveForkliftViewer({
   onHotspotSelect,
   onScenarioAction,
   selectedHotspotId: controlledHotspotId,
+  deviceEffect,
   modelUrl = DEFAULT_MODEL_URL,
   className = '',
 }) {
@@ -372,6 +423,7 @@ export default function InteractiveForkliftViewer({
                 resetToken={resetToken}
                 showHotspots={showHotspots}
                 cameraPreset={cameraPreset}
+                deviceEffect={deviceEffect}
                 onHotspotSelect={handleHotspotSelect}
                 onScenarioAction={onScenarioAction}
               />

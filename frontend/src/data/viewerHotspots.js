@@ -110,28 +110,210 @@ export const walkAroundViewerHotspots = [
     category: 'Ground inspection',
   },
   {
-    id: 'operator-area',
-    label: 'Operator Area',
-    position: [0, 0.34, -0.04],
-    inspect: 'Use this area to transition into dashboard and control checks.',
-    safeFeedback: 'Operator area is ready for engine-on checks.',
-    unsafeFeedback: 'Operator area concern detected.',
+    id: 'ignition',
+    label: 'Ignition Switch',
+    position: [-0.07, 0.34, 0.04],
+    inspect: 'Turn the key to start the engine before beginning the operational checks.',
+    safeFeedback: 'Engine started. Continue with the engine-on checks.',
+    unsafeFeedback: 'The engine must be running before operational checks can be made.',
     unsafeScenarios: [],
-    state: 'engine-on',
-    category: 'Engine-on controls',
+    state: 'ignition',
+    category: 'Engine start',
   },
   {
-    id: 'warning-devices',
-    label: 'Warning Devices',
-    position: [0, 0.66, -0.08],
-    inspect: 'Confirm horn, lights, warning beacon, and backup alarm respond.',
-    safeFeedback: 'Warning-device area is ready for functional tests.',
-    unsafeFeedback: 'Warning-device failure should be reported.',
+    id: 'dashboard',
+    label: 'Dashboard',
+    position: [0, 0.28, 0.12],
+    inspect: 'Read the dashboard gauges and decide whether each reading is normal.',
+    safeFeedback: 'Dashboard gauges are ready to be read.',
+    unsafeFeedback: 'A dashboard warning must be reported before operation.',
     unsafeScenarios: [],
     state: 'engine-on',
-    category: 'Engine-on controls',
+    category: 'Dashboard indicators',
+  },
+  {
+    id: 'horn',
+    label: 'Horn',
+    position: [0, 0.32, 0.08],
+    inspect: 'Press the horn and confirm an audible warning sounds.',
+    safeFeedback: 'Horn responds. Audible warning device is working.',
+    unsafeFeedback: 'A horn that does not sound must be reported.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Safety devices',
+  },
+  {
+    id: 'headlights',
+    label: 'Headlights',
+    position: [0.117, 0.388, 0.168],
+    inspect: 'Switch on the headlights and confirm both lamps light up.',
+    safeFeedback: 'Headlights respond. Lighting check passes.',
+    unsafeFeedback: 'A headlight that does not light must be reported.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Safety devices',
+  },
+  {
+    id: 'tail-lights',
+    label: 'Tail Lights',
+    position: [0, 0.2, -0.28],
+    inspect: 'Confirm the tail lights light up at the rear of the forklift.',
+    safeFeedback: 'Tail lights respond. Lighting check passes.',
+    unsafeFeedback: 'A tail light that does not light must be reported.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Safety devices',
+  },
+  {
+    id: 'turn-signals',
+    label: 'Turn Signals',
+    position: [-0.039, 0.306, 0.09],
+    inspect: 'Operate the turn signals and confirm they flash on both sides.',
+    safeFeedback: 'Turn signals respond. Signal check passes.',
+    unsafeFeedback: 'A turn signal that does not flash must be reported.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Safety devices',
+  },
+  {
+    id: 'warning-beacon',
+    label: 'Warning Beacon',
+    position: [0, 0.52, -0.08],
+    inspect: 'Confirm the warning beacon flashes so nearby workers can see the forklift.',
+    safeFeedback: 'Warning beacon responds. Visual warning check passes.',
+    unsafeFeedback: 'A beacon that does not flash must be reported.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Safety devices',
+  },
+  {
+    id: 'backup-alarm',
+    label: 'Backup Alarm',
+    position: [0, 0.24, -0.3],
+    inspect: 'Select reverse and confirm the backup alarm sounds.',
+    safeFeedback: 'Backup alarm responds. Reverse warning check passes.',
+    unsafeFeedback: 'A silent backup alarm must be reported.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Safety devices',
+  },
+  {
+    id: 'steering-response',
+    label: 'Steering Response',
+    position: [0, 0.34, 0.11],
+    inspect: 'Turn the steering wheel and check for smooth response with no excessive play.',
+    safeFeedback: 'Steering responds smoothly with no excessive play.',
+    unsafeFeedback: 'Excessive steering play must be reported before operation.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Operational controls',
+  },
+  {
+    id: 'brakes',
+    label: 'Brakes',
+    position: [0.01, 0.18, 0.13],
+    inspect: 'Test the service brake and the parking brake for correct response.',
+    safeFeedback: 'Service brake and parking brake respond correctly.',
+    unsafeFeedback: 'A brake that does not hold must be reported immediately.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Operational controls',
+  },
+  {
+    id: 'lift-tilt-functions',
+    label: 'Lift and Tilt Functions',
+    position: [-0.07, 0.3, 0.10],
+    inspect: 'Raise, lower, and tilt the mast and listen for unusual noise.',
+    safeFeedback: 'Mast raises, lowers, and tilts smoothly with no unusual noise.',
+    unsafeFeedback: 'Jerky mast movement or unusual noise must be reported.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Operational controls',
+  },
+  {
+    id: 'forward-reverse-travel',
+    label: 'Forward/Reverse Travel',
+    position: [-0.02, 0.26, -0.02],
+    inspect: 'Select forward and reverse and confirm the forklift responds to the accelerator.',
+    safeFeedback: 'Forward/reverse selector and accelerator respond correctly.',
+    unsafeFeedback: 'A travel control that does not respond must be reported.',
+    unsafeScenarios: [],
+    state: 'engine-on',
+    category: 'Operational controls',
   },
 ]
+
+// Visual/audible reaction played on the model when an engine-on safety device is
+// tested. `mode: 'blink'` flashes the lamps, 'steady' holds them lit.
+//
+// Lamp positions are DERIVED from the matching hotspot above, so moving a hotspot
+// moves its lamp automatically - do not hardcode coordinates here. For paired
+// lamps use one of:
+//   mirrorX  - two lamps at +x and -x of the hotspot (hotspot sits on one side)
+//   spreadX  - two lamps offset +/- this much from the hotspot (hotspot is centred)
+export const engineOnDeviceEffects = {
+  ignition: {
+    duration: 2400,
+    sound: 'engine-start',
+    color: '#4ade80',
+    mode: 'blink',
+    radius: 0.03,
+  },
+  horn: {
+    duration: 900,
+    sound: 'horn',
+    color: '#67e8f9',
+    mode: 'blink',
+    radius: 0.035,
+  },
+  headlights: {
+    duration: 2200,
+    mirrorX: true,
+    color: '#fff6d5',
+    mode: 'steady',
+    radius: 0.045,
+  },
+  'tail-lights': {
+    duration: 2200,
+    spreadX: 0.1,
+    color: '#ff3b30',
+    mode: 'steady',
+    radius: 0.04,
+  },
+  'turn-signals': {
+    duration: 2600,
+    mirrorX: true,
+    color: '#ffa000',
+    mode: 'blink',
+    radius: 0.04,
+  },
+  'warning-beacon': {
+    duration: 2600,
+    color: '#ffb300',
+    mode: 'blink',
+    radius: 0.05,
+  },
+  'backup-alarm': {
+    duration: 2400,
+    sound: 'alarm',
+    color: '#ff3b30',
+    mode: 'blink',
+    radius: 0.045,
+  },
+}
+
+/** Resolves an effect's lamp positions from its hotspot. */
+export function resolveEffectLamps(effect, hotspot) {
+  if (effect?.lamps?.length) return effect.lamps
+  if (!hotspot?.position) return []
+
+  const [x, y, z] = hotspot.position
+
+  if (effect.mirrorX) return [[x, y, z], [-x, y, z]]
+  if (effect.spreadX) return [[x + effect.spreadX, y, z], [x - effect.spreadX, y, z]]
+
+  return [[x, y, z]]
+}
 
 export const walkAroundDefectOverlays = [
   {

@@ -13,16 +13,16 @@ export const moduleScenarioSteps = {
       title: 'Engine-Off Inspection',
       objective: 'Inspect visible components before starting or moving the equipment.',
       instructions:
-        'Use hotspots or inspection cards to check forks, mast, lift chains, hydraulic hoses, tires and wheels, counterweight, LPG tank and battery, seat belt, overhead guard, and ground leaks.',
-      hint: 'Visible leaks, unsafe tires, or damaged lifting parts should stop operation.',
+        'Use hotspots or inspection cards to check forks, mast, lift chains, hydraulic hoses, tires and wheels, counterweight, LPG tank and battery, seat belt, overhead guard, and ground leaks. Start the engine once every area is clear.',
+      hint: 'Visible leaks, unsafe tires, or damaged lifting parts should stop operation. The engine is only started after the walk-around is complete.',
     },
     {
       id: 'engine-on-inspection',
       title: 'Engine-On Inspection',
-      objective: 'Confirm gauges and controls respond correctly before entering the work area.',
+      objective: 'Judge gauge readings and confirm controls respond before entering the work area.',
       instructions:
-        'Check dashboard indicators, then test steering, brakes, lift and tilt functions, forward/reverse travel, horn, lights, beacon, and backup alarm.',
-      hint: 'A control or warning device that does not respond should be reported before use.',
+        'Read each dashboard gauge and decide whether it is normal or abnormal, then test the horn, lights, beacon, backup alarm, steering, brakes, lift and tilt, and travel controls.',
+      hint: 'Not every gauge reads normal. A warning light that stays lit or a needle in the red zone must be reported.',
     },
     {
       id: 'defect-recognition',
