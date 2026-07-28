@@ -1,87 +1,16 @@
 .simulation-shell {
   position: relative;
   display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 18px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
   width: 100%;
   height: calc(100vh - 112px);
-  min-height: 700px;
+  min-height: 640px;
   margin: 0;
-}
-
-.simulation-toast {
-  position: fixed;
-  top: 96px;
-  right: 24px;
-  z-index: 500;
-  display: grid;
-  gap: 6px;
-  width: min(360px, calc(100vw - 48px));
-  border: 1px solid #dbe3ef;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
-  padding: 14px 16px;
-  animation: simulation-toast-in 180ms ease;
-}
-
-.simulation-toast-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.simulation-toast-header strong {
-  color: #0f172a;
-}
-
-.simulation-toast-close {
-  border: 0;
-  background: transparent;
-  color: #94a3b8;
-  cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-  padding: 0;
-}
-
-.simulation-toast p {
-  margin: 0;
-  color: #475569;
-  line-height: 1.5;
-}
-
-.simulation-toast.correct,
-.simulation-toast.completed {
-  border-color: #86efac;
-  background: #f0fdf4;
-}
-
-.simulation-toast.correct strong,
-.simulation-toast.completed strong {
-  color: #166534;
-}
-
-.simulation-toast.incorrect {
-  border-color: #fecaca;
-  background: #fef2f2;
-}
-
-.simulation-toast.incorrect strong {
-  color: #991b1b;
-}
-
-.simulation-toast.warning {
-  border-color: #fde68a;
-  background: #fffbeb;
-}
-
-.simulation-toast.warning strong {
-  color: #92400e;
 }
 
 .simulation-required-note {
+  grid-column: 1 / -1;
   margin: 0;
   color: #92400e;
   font-size: 13px;
@@ -89,38 +18,31 @@
   text-align: right;
 }
 
-@keyframes simulation-toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .simulation-briefing {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
   border: 1px solid #dbe3ef;
-  border-radius: 18px;
+  border-radius: 14px;
   background:
     linear-gradient(120deg, rgba(15, 23, 42, 0.96), rgba(8, 47, 73, 0.9)),
     radial-gradient(circle at 82% 20%, rgba(103, 232, 249, 0.22), transparent 34%);
-  box-shadow: 0 20px 52px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
   color: #ffffff;
-  padding: 24px;
+  padding: 10px 16px;
+}
+
+.simulation-briefing > div:first-child {
+  min-width: 0;
 }
 
 .simulation-kicker,
 .simulation-panel-label {
   color: #0891b2;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 950;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -129,122 +51,189 @@
 }
 
 .simulation-briefing h2 {
-  margin: 6px 0 10px;
+  margin: 1px 0 2px;
   color: #ffffff;
-  font-size: clamp(30px, 3vw, 48px);
+  font-size: clamp(16px, 1.3vw, 20px);
   font-weight: 950;
 }
 
+/* Long module descriptions are reference text, not headline copy - cap them
+   so the briefing bar never eats the viewport's vertical space. */
 .simulation-briefing p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   max-width: 900px;
+  overflow: hidden;
   color: #cbd5e1;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.simulation-briefing .simulation-kicker {
+  font-size: 10px;
 }
 
 .simulation-score-card {
-  display: grid;
-  min-width: 170px;
-  align-content: center;
-  justify-items: center;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 18px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
-  padding: 18px;
+  padding: 6px 14px;
 }
 
 .simulation-score-card span,
 .simulation-score-card small {
   color: #cbd5e1;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .simulation-score-card strong {
   color: #ffffff;
-  font-size: 42px;
+  font-size: 20px;
   font-weight: 950;
 }
 
 .simulation-workspace {
-  display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(520px, 1fr) minmax(320px, 420px);
-  grid-template-rows: minmax(0, 1fr);
-  gap: 18px;
-  align-items: stretch;
+  position: relative;
+  min-width: 0;
   min-height: 0;
 }
 
-.simulation-left-panel,
-.simulation-right-panel {
+/* The whole shell goes fullscreen (not just the canvas) so the overlay panels
+   and the control bar stay on screen. */
+.simulation-shell:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+  background: #f4f7fb;
+  padding: 12px;
+}
+
+.simulation-shell:fullscreen .simulation-briefing {
+  display: none;
+}
+
+.simulation-overlay {
+  position: absolute;
+  z-index: 5;
   display: grid;
   grid-auto-rows: max-content;
   align-content: start;
-  gap: 14px;
-  min-height: 0;
+  gap: 10px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Top offset clears the viewer's own toolbar / scenario badge row. */
+.simulation-overlay-left,
+.simulation-overlay-right {
+  top: 64px;
+  bottom: 12px;
+}
+
+.simulation-overlay-left {
+  left: 12px;
+  width: min(250px, 23%);
+}
+
+.simulation-overlay-right {
+  right: 12px;
+  width: min(330px, 29%);
+}
+
+/* Viewer chrome lives inside the scene, so keep it out of the overlay lanes. */
+.simulation-workspace .interactive-viewer-help {
+  font-size: 11px;
+  padding: 7px 10px;
+}
+
+/* The scope notice is sized for full-width pages; tighten it inside an overlay. */
+.simulation-overlay .scope-notice {
+  gap: 8px;
+  margin-bottom: 0;
+  padding: 10px 12px;
+}
+
+.simulation-overlay .scope-notice strong {
+  font-size: 11px;
+}
+
+.simulation-overlay .scope-notice p {
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .simulation-panel {
   border: 1px solid #dbe3ef;
-  border-radius: 16px;
+  border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-  padding: 16px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.32);
+  padding: 12px;
 }
 
 .simulation-panel h3 {
-  margin: 6px 0 8px;
+  margin: 4px 0 6px;
   color: #0f172a;
-  font-size: 22px;
+  font-size: 17px;
   font-weight: 950;
 }
 
 .simulation-panel p {
   color: #64748b;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .simulation-objectives {
   display: grid;
-  gap: 10px;
-  margin: 12px 0 0 18px;
+  gap: 6px;
+  margin: 8px 0 0 16px;
   color: #475569;
-  line-height: 1.5;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .simulation-step-list {
   display: grid;
-  gap: 10px;
-  margin: 12px 0 0;
+  gap: 6px;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
 }
 
 .simulation-step-list li {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
   align-items: center;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #f8fafc;
-  padding: 10px;
+  padding: 7px 8px;
 }
 
 .simulation-step-list span {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   background: #e2e8f0;
   color: #334155;
+  font-size: 12px;
   font-weight: 950;
 }
 
 .simulation-step-list p {
   margin: 0;
   color: #475569;
+  font-size: 12.5px;
   font-weight: 800;
 }
 
@@ -270,31 +259,41 @@
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
+  font-size: 13px;
   font-weight: 900;
-  padding: 10px 14px;
+  padding: 8px 14px;
 }
 
 .simulation-hint-button {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .simulation-hint-text {
-  margin-top: 10px;
+  margin-top: 8px;
   border-left: 3px solid #06b6d4;
   background: #ecfeff;
-  padding: 10px 12px;
+  padding: 8px 10px;
 }
 
-.simulation-center-panel {
+/* Sits below the viewport as its own row so it never covers the scene. */
+.simulation-control-bar {
   display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 12px;
-  min-width: 0;
-  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  padding: 10px 14px;
+}
+
+.simulation-control-bar .simulation-required-note {
+  grid-column: 1 / -1;
 }
 
 .simulation-progress-bar {
-  height: 12px;
+  height: 9px;
   overflow: hidden;
   border-radius: 999px;
   background: #dbe3ef;
@@ -307,7 +306,12 @@
   background: linear-gradient(90deg, #0891b2, #67e8f9);
 }
 
+/* Absolutely positioned so the canvas's intrinsic size can never keep the
+   workspace from shrinking when the window is resized down. */
 .simulation-scene {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   border: 1px solid #dbe3ef;
@@ -335,6 +339,78 @@
   min-height: 220px;
 }
 
+.hotspot-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hotspot-detail-back {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 6px 12px;
+}
+
+.hotspot-detail {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.hotspot-detail-image {
+  width: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.hotspot-detail-image-placeholder {
+  display: grid;
+  place-items: center;
+  height: 108px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hotspot-detail-subtitle {
+  margin: 0;
+  color: #0891b2;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hotspot-detail-status {
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-weight: 800;
+}
+
+.hotspot-detail-status.correct {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.hotspot-detail-status.warning,
+.hotspot-detail-status.incorrect {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.hotspot-detail-status.neutral {
+  background: #f1f5f9;
+  color: #334155;
+}
+
 .simulation-navigation {
   display: flex;
   justify-content: space-between;
@@ -359,20 +435,26 @@
   }
 
   .simulation-workspace {
-    grid-template-columns: 1fr;
-    grid-template-rows: none;
+    display: grid;
+    gap: 18px;
   }
 
-  .simulation-left-panel,
-  .simulation-right-panel {
+  .simulation-overlay {
+    position: static;
+    width: auto;
+    max-height: none;
     overflow-y: visible;
   }
 
-  .simulation-center-panel {
-    grid-template-rows: auto auto;
+  .simulation-overlay-left,
+  .simulation-overlay-right {
+    top: auto;
+    bottom: auto;
   }
 
   .simulation-scene {
+    position: static;
+    height: auto;
     min-height: 560px;
   }
 }
@@ -390,15 +472,11 @@
     min-height: 460px;
   }
 
-  .simulation-navigation {
-    flex-direction: column;
+  .simulation-control-bar {
+    grid-template-columns: 1fr;
   }
 
-  .simulation-toast {
-    top: auto;
-    bottom: 16px;
-    right: 16px;
-    left: 16px;
-    width: auto;
+  .simulation-navigation {
+    flex-direction: column;
   }
 }

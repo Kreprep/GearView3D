@@ -1,5 +1,6 @@
 import { routes } from './lib/router'
 import { useProgress } from './hooks/useProgress'
+import PageLayout from './components/PageLayout'
 import ScopeNotice from './components/ScopeNotice'
 import { partsHotspots, trainingModules } from './lib/trainingData'
 import './AssessmentPage.css'
@@ -9,7 +10,7 @@ const moduleLabels = trainingModules.reduce((labels, module) => {
   return labels
 }, {})
 
-function AssessmentPage({ moduleName, onBack, onNavigate }) {
+function AssessmentPage({ moduleName, user, onLogout, onBack, onNavigate }) {
   const { summary } = useProgress()
   const latestAttempts = Object.entries(summary.quizAttempts).flatMap(([moduleSlug, attempts]) =>
     attempts.map((attempt) => ({ ...attempt, moduleSlug })),
@@ -24,101 +25,99 @@ function AssessmentPage({ moduleName, onBack, onNavigate }) {
       : 'Review remaining forklift parts and complete parts practice.'
 
   return (
-    <div className="assessment-page">
-      <header className="training-page-header">
+    <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
+      <div className="page-back-row">
         <button className="back-button" onClick={onBack}>
           Back to Modules
         </button>
-        <h1>{moduleName} - Final Assessment</h1>
-      </header>
+        <h1 className="page-heading">{moduleName} - Final Assessment</h1>
+      </div>
 
-      <main className="assessment-content">
-        <ScopeNotice />
-        <section className="assessment-card">
-          <p className="assessment-kicker">Progress Review</p>
-          <h2>{requiredComplete ? 'Prototype Module Completion' : 'Training still in progress'}</h2>
-          <p>
-            This page summarizes GearView3D learner progress for thesis demonstration. The completion badge is
-            only for prototype module completion and does not imply official TESDA certification.
-          </p>
+      <ScopeNotice />
+      <section className="assessment-card">
+        <p className="assessment-kicker">Progress Review</p>
+        <h2>{requiredComplete ? 'Prototype Module Completion' : 'Training still in progress'}</h2>
+        <p>
+          This page summarizes GearView3D learner progress for thesis demonstration. The completion badge is
+          only for prototype module completion and does not imply official TESDA certification.
+        </p>
 
-          <div className="assessment-status-grid">
-            <div>
-              <span>Overall</span>
-              <strong>{summary.overall}%</strong>
-            </div>
-            <div>
-              <span>Equipment Usage</span>
-              <strong>{summary.equipment}%</strong>
-            </div>
-            <div>
-              <span>Parts Identification</span>
-              <strong>{summary.parts}%</strong>
-            </div>
+        <div className="assessment-status-grid">
+          <div>
+            <span>Overall</span>
+            <strong>{summary.overall}%</strong>
           </div>
+          <div>
+            <span>Equipment Usage</span>
+            <strong>{summary.equipment}%</strong>
+          </div>
+          <div>
+            <span>Parts Identification</span>
+            <strong>{summary.parts}%</strong>
+          </div>
+        </div>
 
-          <div className="assessment-review-grid">
-            <article>
-              <h3>Equipment Usage Review</h3>
-              <ul>
-                {trainingModules.map((module) => {
-                  const checklist = summary.checklist[module.slug]
-                  const latestQuiz = summary.quizAttempts[module.slug]?.[0]
-                  return (
-                    <li key={module.slug}>
-                      {module.title}: {checklist.completedCount}/{checklist.totalCount} checklist items,
-                      {' '}quiz {latestQuiz ? `${latestQuiz.score}/${latestQuiz.total}` : 'not attempted'}
-                    </li>
-                  )
-                })}
-              </ul>
-            </article>
+        <div className="assessment-review-grid">
+          <article>
+            <h3>Equipment Usage Review</h3>
+            <ul>
+              {trainingModules.map((module) => {
+                const checklist = summary.checklist[module.slug]
+                const latestQuiz = summary.quizAttempts[module.slug]?.[0]
+                return (
+                  <li key={module.slug}>
+                    {module.title}: {checklist.completedCount}/{checklist.totalCount} checklist items,
+                    {' '}quiz {latestQuiz ? `${latestQuiz.score}/${latestQuiz.total}` : 'not attempted'}
+                  </li>
+                )
+              })}
+            </ul>
+          </article>
 
-            <article>
-              <h3>Parts Review</h3>
-              <p>{summary.viewedParts.length} of {partsHotspots.length} parts viewed.</p>
+          <article>
+            <h3>Parts Review</h3>
+            <p>{summary.viewedParts.length} of {partsHotspots.length} parts viewed.</p>
+            <ul>
+              {partsHotspots.map((part) => (
+                <li key={part.id}>{part.label}: {viewedPartSet.has(part.id) ? 'viewed' : 'not viewed'}</li>
+              ))}
+            </ul>
+          </article>
+
+          <article>
+            <h3>Quiz Scores</h3>
+            {latestAttempts.length ? (
               <ul>
-                {partsHotspots.map((part) => (
-                  <li key={part.id}>{part.label}: {viewedPartSet.has(part.id) ? 'viewed' : 'not viewed'}</li>
+                {latestAttempts.slice(0, 8).map((attempt) => (
+                  <li key={attempt.id}>
+                    {moduleLabels[attempt.moduleSlug] || attempt.moduleSlug}: {attempt.score}/{attempt.total} ({attempt.percentage}%)
+                  </li>
                 ))}
               </ul>
-            </article>
+            ) : (
+              <p>No equipment quiz attempts saved yet.</p>
+            )}
+          </article>
 
-            <article>
-              <h3>Quiz Scores</h3>
-              {latestAttempts.length ? (
-                <ul>
-                  {latestAttempts.slice(0, 8).map((attempt) => (
-                    <li key={attempt.id}>
-                      {moduleLabels[attempt.moduleSlug] || attempt.moduleSlug}: {attempt.score}/{attempt.total} ({attempt.percentage}%)
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No equipment quiz attempts saved yet.</p>
-              )}
-            </article>
+          <article>
+            <h3>Recommended Next Action</h3>
+            <p>{recommendedAction}</p>
+            <p>
+              Parts practice: {latestPartsPractice ? `${latestPartsPractice.score}/${latestPartsPractice.total} (${latestPartsPractice.percentage}%)` : 'not attempted'}.
+            </p>
+          </article>
+        </div>
 
-            <article>
-              <h3>Recommended Next Action</h3>
-              <p>{recommendedAction}</p>
-              <p>
-                Parts practice: {latestPartsPractice ? `${latestPartsPractice.score}/${latestPartsPractice.total} (${latestPartsPractice.percentage}%)` : 'not attempted'}.
-              </p>
-            </article>
-          </div>
+        {requiredComplete && (
+          <p className="completion-badge">GearView3D Training Completion</p>
+        )}
 
-          {requiredComplete && (
-            <p className="completion-badge">GearView3D Training Completion</p>
-          )}
-
-          <div className="assessment-actions">
-            <button onClick={() => onNavigate(routes.equipment)}>Review equipment usage</button>
-            <button onClick={() => onNavigate(routes.parts)}>Review parts identification</button>
-          </div>
-        </section>
-      </main>
-    </div>
+        <div className="assessment-actions">
+          <button onClick={() => onNavigate(routes.equipment)}>Review equipment usage</button>
+          <button onClick={() => onNavigate(routes.parts)}>Review parts identification</button>
+        </div>
+      </section>
+    </PageLayout>
   )
 }
 

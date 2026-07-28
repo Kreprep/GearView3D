@@ -1,33 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import './ModuleSimulationShell.css'
-
-const TOAST_DURATION_MS = 5000
-
-function FeedbackToast({ feedback }) {
-  const [dismissed, setDismissed] = useState(null)
-
-  useEffect(() => {
-    if (!feedback?.message) return undefined
-    const timer = setTimeout(() => setDismissed(feedback), TOAST_DURATION_MS)
-    return () => clearTimeout(timer)
-  }, [feedback])
-
-  const visible = Boolean(feedback?.message) && feedback !== dismissed
-
-  if (!visible) return null
-
-  return (
-    <div className={`simulation-toast ${feedback.type || 'neutral'}`} role="status">
-      <div className="simulation-toast-header">
-        <strong>{feedback.title || 'Feedback'}</strong>
-        <button type="button" className="simulation-toast-close" onClick={() => setDismissed(feedback)} aria-label="Dismiss notification">
-          &times;
-        </button>
-      </div>
-      <p>{feedback.message}</p>
-    </div>
-  )
-}
 
 function ModuleSimulationShell({
   module,
@@ -36,14 +8,16 @@ function ModuleSimulationShell({
   objectives = [],
   progress = 0,
   score,
-  feedback,
   canProceed = true,
+  requiredNote = "Complete this step's required items to continue.",
   onBackStep,
   onNextStep,
   onComplete,
   renderScene,
   renderTask,
   completionSummary,
+  selectedDetail,
+  onClearDetail,
 }) {
   const [showHint, setShowHint] = useState(false)
   const currentStep = steps[currentStepIndex] || steps[0]
@@ -52,12 +26,10 @@ function ModuleSimulationShell({
 
   return (
     <section className="simulation-shell">
-      <FeedbackToast feedback={feedback} />
       <header className="simulation-briefing">
         <div>
           <p className="simulation-kicker">Guided Simulation</p>
           <h2>{module.fullTitle || module.title}</h2>
-          <p>{module.description}</p>
         </div>
         <div className="simulation-score-card">
           <span>Progress</span>
@@ -67,7 +39,16 @@ function ModuleSimulationShell({
       </header>
 
       <div className="simulation-workspace">
-        <aside className="simulation-left-panel">
+        <div className="simulation-scene">
+          {renderScene ? renderScene({ currentStep, currentStepIndex }) : (
+            <div className="simulation-placeholder-scene">
+              <strong>Interactive task area</strong>
+              <p>3D viewer, diagram, or activity scene will appear here.</p>
+            </div>
+          )}
+        </div>
+
+        <aside className="simulation-overlay simulation-overlay-left">
           <section className="simulation-panel">
             <p className="simulation-panel-label">Objectives</p>
             <ul className="simulation-objectives">
@@ -104,26 +85,38 @@ function ModuleSimulationShell({
           </section>
         </aside>
 
-        <main className="simulation-center-panel">
-          <div className="simulation-progress-bar" aria-label={`Simulation progress ${progress}%`}>
-            <i style={{ width: `${progress}%` }} />
-          </div>
-          <div className="simulation-scene">
-            {renderScene ? renderScene({ currentStep, currentStepIndex }) : (
-              <div className="simulation-placeholder-scene">
-                <strong>Interactive task area</strong>
-                <p>3D viewer, diagram, or activity scene will appear here.</p>
-              </div>
-            )}
-          </div>
-        </main>
-
-        <aside className="simulation-right-panel">
+        <aside className="simulation-overlay simulation-overlay-right">
           <section className="simulation-panel current-task-panel">
-            <p className="simulation-panel-label">Current Task</p>
-            <h3>{currentStep?.title}</h3>
-            <p>{currentStep?.instructions}</p>
-            {renderTask?.({ currentStep, currentStepIndex })}
+            {selectedDetail ? (
+              <>
+                <div className="hotspot-detail-header">
+                  <p className="simulation-panel-label">Part Details</p>
+                  <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
+                    Back to Task
+                  </button>
+                </div>
+                <div className="hotspot-detail">
+                  {selectedDetail.image ? (
+                    <img className="hotspot-detail-image" src={selectedDetail.image} alt={selectedDetail.title} />
+                  ) : (
+                    <div className="hotspot-detail-image hotspot-detail-image-placeholder">No reference image yet</div>
+                  )}
+                  <h3>{selectedDetail.title}</h3>
+                  {selectedDetail.subtitle && <p className="hotspot-detail-subtitle">{selectedDetail.subtitle}</p>}
+                  {selectedDetail.description && <p>{selectedDetail.description}</p>}
+                  {selectedDetail.status && (
+                    <p className={`hotspot-detail-status ${selectedDetail.statusType || 'neutral'}`}>{selectedDetail.status}</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="simulation-panel-label">Current Task</p>
+                <h3>{currentStep?.title}</h3>
+                <p>{currentStep?.instructions}</p>
+                {renderTask?.({ currentStep, currentStepIndex })}
+              </>
+            )}
           </section>
 
           {isLastStep && completionSummary && (
@@ -132,25 +125,31 @@ function ModuleSimulationShell({
               {completionSummary}
             </section>
           )}
-
-          <div className="simulation-navigation">
-            <button type="button" onClick={onBackStep} disabled={isFirstStep}>
-              Back
-            </button>
-            {isLastStep ? (
-              <button type="button" className="primary" onClick={onComplete}>
-                Complete Module
-              </button>
-            ) : (
-              <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
-                Next
-              </button>
-            )}
-          </div>
-          {!isLastStep && !canProceed && (
-            <p className="simulation-required-note">Complete this step's required items to continue.</p>
-          )}
         </aside>
+
+      </div>
+
+      <div className="simulation-control-bar">
+        <div className="simulation-progress-bar" aria-label={`Simulation progress ${progress}%`}>
+          <i style={{ width: `${progress}%` }} />
+        </div>
+        <div className="simulation-navigation">
+          <button type="button" onClick={onBackStep} disabled={isFirstStep}>
+            Back
+          </button>
+          {isLastStep ? (
+            <button type="button" className="primary" onClick={onComplete}>
+              Complete Module
+            </button>
+          ) : (
+            <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
+              Next
+            </button>
+          )}
+        </div>
+        {!isLastStep && !canProceed && (
+          <p className="simulation-required-note">{requiredNote}</p>
+        )}
       </div>
     </section>
   )

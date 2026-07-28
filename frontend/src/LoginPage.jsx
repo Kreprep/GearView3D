@@ -33,7 +33,7 @@ function LoginPage({ onLogin, loginError, setLoginError }) {
     <div className="login-page">
       <div className="login-box">
         <div className="login-content">
-          <h1>Welcome to GearView 3D!</h1>
+          <h1>Welcome to GearView 3D</h1>
           <p className="login-subtitle">Sign in to continue your learning journey</p>
 
           <form onSubmit={handleSubmit}>
