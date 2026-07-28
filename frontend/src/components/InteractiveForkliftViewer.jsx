@@ -86,6 +86,12 @@ function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
   useFrame(() => {
     const controls = controlsRef.current
 
+    // Clearing the selection must reset this, otherwise re-picking the same
+    // hotspot later is treated as "already focused" and the camera won't move.
+    if (!targetId) {
+      activeId.current = null
+    }
+
     if (controls && targetId && targetId !== activeId.current) {
       const object = hotspotRefs.current.get(targetId)
       if (object) {
@@ -308,26 +314,33 @@ export default function InteractiveForkliftViewer({
   cameraPreset: configuredCameraPreset,
   onHotspotSelect,
   onScenarioAction,
+  selectedHotspotId: controlledHotspotId,
   modelUrl = DEFAULT_MODEL_URL,
   className = '',
 }) {
   const containerRef = useRef(null)
   const [resetToken, setResetToken] = useState(0)
   const [showHotspots, setShowHotspots] = useState(true)
-  const [selectedHotspotId, setSelectedHotspotId] = useState(null)
+  const [internalHotspotId, setInternalHotspotId] = useState(null)
   const cameraPreset = { ...DEFAULT_CAMERA_PRESET, ...(configuredCameraPreset || {}) }
   const hotspots = useMemo(() => filterHotspots(configuredHotspots, activeHotspots), [configuredHotspots, activeHotspots])
 
+  // Selection can be driven from outside (e.g. clicking an inspection card in the
+  // task panel) so the camera focuses the same way as clicking the marker.
+  const selectedHotspotId = controlledHotspotId !== undefined ? controlledHotspotId : internalHotspotId
   const activeSelectedHotspotId = hotspots.some((hotspot) => hotspot.id === selectedHotspotId) ? selectedHotspotId : null
 
   const handleHotspotSelect = (hotspot) => {
-    setSelectedHotspotId(hotspot.id)
+    setInternalHotspotId(hotspot.id)
     onHotspotSelect?.(hotspot)
   }
 
   const enterFullscreen = async () => {
     if (!containerRef.current || document.fullscreenElement) return
-    await containerRef.current.requestFullscreen?.()
+    // Inside a simulation shell the panels and control bar are siblings of the
+    // scene, so fullscreen the whole shell to keep them visible.
+    const target = containerRef.current.closest('.simulation-shell') || containerRef.current
+    await target.requestFullscreen?.()
   }
 
   return (

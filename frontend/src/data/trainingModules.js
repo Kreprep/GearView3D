@@ -13,7 +13,7 @@ export const equipmentUsageModules = [
     fullTitle: 'Walk-Around Check (Visual Inspection)',
     subtitle: 'Visual Inspection',
     description:
-      'Inspect the forklift before use by checking leaks, tires, mast, forks, gauges, lights, horn, brakes, and warning devices.',
+      'Inspect a Class V (LPG) forklift before use: forks, mast, chains, hydraulic hoses, tires, counterweight, LPG tank/battery, seat belt, overhead guard, and ground leaks, then confirm dashboard indicators, steering, brakes, lift/tilt, travel, and warning devices.',
     syllabusLocation: 'Section 2',
     unitCode: 'CON833309',
     unitTitle: 'Perform pre- and post-operation procedures for lifting equipment',
@@ -26,8 +26,8 @@ export const equipmentUsageModules = [
     ],
     lessonContent: [
       'Forklift walk-around inspection adapts familiar vehicle inspection routines into equipment-specific safety checks.',
-      'Engine-off checks focus on leaks, fluids, tires, mast, forks, carriage, and visible structural condition.',
-      'Engine-on checks confirm gauges, warning indicators, horn, lights, beacon, and backup alarm before entering the work area.',
+      'Engine-off checks cover forks, mast, lift chains, hydraulic hoses, tires and wheels, counterweight, LPG tank and battery, seat belt, overhead guard, and ground leaks.',
+      'Engine-on checks confirm dashboard indicators, steering, brakes, lift and tilt functions, forward/reverse travel, horn, lights, beacon, and backup alarm before entering the work area.',
     ],
     interactiveActivities: [
       'Engine-off hotspot inspection',

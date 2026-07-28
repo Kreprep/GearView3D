@@ -29,7 +29,6 @@ function ModuleSimulationShell({
         <div>
           <p className="simulation-kicker">Guided Simulation</p>
           <h2>{module.fullTitle || module.title}</h2>
-          <p>{module.description}</p>
         </div>
         <div className="simulation-score-card">
           <span>Progress</span>
@@ -39,7 +38,16 @@ function ModuleSimulationShell({
       </header>
 
       <div className="simulation-workspace">
-        <aside className="simulation-left-panel">
+        <div className="simulation-scene">
+          {renderScene ? renderScene({ currentStep, currentStepIndex }) : (
+            <div className="simulation-placeholder-scene">
+              <strong>Interactive task area</strong>
+              <p>3D viewer, diagram, or activity scene will appear here.</p>
+            </div>
+          )}
+        </div>
+
+        <aside className="simulation-overlay simulation-overlay-left">
           <section className="simulation-panel">
             <p className="simulation-panel-label">Objectives</p>
             <ul className="simulation-objectives">
@@ -76,21 +84,7 @@ function ModuleSimulationShell({
           </section>
         </aside>
 
-        <main className="simulation-center-panel">
-          <div className="simulation-progress-bar" aria-label={`Simulation progress ${progress}%`}>
-            <i style={{ width: `${progress}%` }} />
-          </div>
-          <div className="simulation-scene">
-            {renderScene ? renderScene({ currentStep, currentStepIndex }) : (
-              <div className="simulation-placeholder-scene">
-                <strong>Interactive task area</strong>
-                <p>3D viewer, diagram, or activity scene will appear here.</p>
-              </div>
-            )}
-          </div>
-        </main>
-
-        <aside className="simulation-right-panel">
+        <aside className="simulation-overlay simulation-overlay-right">
           <section className="simulation-panel current-task-panel">
             {selectedDetail ? (
               <>
@@ -130,25 +124,31 @@ function ModuleSimulationShell({
               {completionSummary}
             </section>
           )}
-
-          <div className="simulation-navigation">
-            <button type="button" onClick={onBackStep} disabled={isFirstStep}>
-              Back
-            </button>
-            {isLastStep ? (
-              <button type="button" className="primary" onClick={onComplete}>
-                Complete Module
-              </button>
-            ) : (
-              <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
-                Next
-              </button>
-            )}
-          </div>
-          {!isLastStep && !canProceed && (
-            <p className="simulation-required-note">Complete this step's required items to continue.</p>
-          )}
         </aside>
+
+      </div>
+
+      <div className="simulation-control-bar">
+        <div className="simulation-progress-bar" aria-label={`Simulation progress ${progress}%`}>
+          <i style={{ width: `${progress}%` }} />
+        </div>
+        <div className="simulation-navigation">
+          <button type="button" onClick={onBackStep} disabled={isFirstStep}>
+            Back
+          </button>
+          {isLastStep ? (
+            <button type="button" className="primary" onClick={onComplete}>
+              Complete Module
+            </button>
+          ) : (
+            <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
+              Next
+            </button>
+          )}
+        </div>
+        {!isLastStep && !canProceed && (
+          <p className="simulation-required-note">Complete this step's required items to continue.</p>
+        )}
       </div>
     </section>
   )

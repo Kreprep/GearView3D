@@ -50,7 +50,7 @@ Progress percentage per module is computed in `progressService.js` (`getModulePr
 
 #### Hotspot detail panel (`ModuleSimulationShell` "Current Task" panel)
 Clicking a hotspot (in `InteractiveForkliftViewer` or an inspection card) swaps the Current Task panel's default title/instructions for a detail card (image slot + title + subtitle + description + status line), via `selectedDetail`/`onClearDetail` props on `ModuleSimulationShell`. It auto-clears on Next/Back step or inspection-state toggle. To edit what shows up per part, edit the source data, not the component:
-- **Engine-off inspection hotspots** (engine-oil, hydraulic-oil, tire-condition, etc.) → `data/inspectionScenarios.js`, `engineOffInspectionChecks` array. Maps `label`→title, `targetArea`→subtitle, `found`→description, `feedback`→status line.
+- **Engine-off inspection hotspots** (forks, mast, lift-chain, hydraulic-hoses, tires, counterweight, lpg-tank, seat-belt, overhead-guard, ground-leaks) → `data/inspectionScenarios.js`, `engineOffInspectionChecks` array. Maps `label`→title, `targetArea`→subtitle, `found`→description, `feedback`→status line.
 - **Engine-on hotspots** (operator-area, warning-devices) → `data/viewerHotspots.js`, `walkAroundViewerHotspots` array. Maps `label`→title, `category`→subtitle, `inspect`→description, `safeFeedback`/`unsafeFeedback`→status line.
 - Add an `image: '/path/to/img.png'` field to either entry shape to fill the image slot (currently unset everywhere, shows a placeholder).
 

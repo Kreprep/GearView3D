@@ -13,6 +13,7 @@ export {
 export {
   defectRecognitionScenarios,
   engineOffInspectionChecks,
+  engineOnControlChecks,
   engineOnGaugeChecks,
   safetyDeviceTests,
   walkAroundDefects,

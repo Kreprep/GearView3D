@@ -191,6 +191,7 @@
 .walkaround-scene-wrap {
   position: relative;
   height: 100%;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -256,27 +257,28 @@
 
 .walkaround-task-stack {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .engine-state-toggle {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .engine-state-toggle button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid #cbd5e1;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
+  font-size: 13px;
   font-weight: 950;
-  padding: 12px 14px;
+  padding: 9px 11px;
 }
 
 .engine-state-toggle button.active {
@@ -302,11 +304,12 @@
 .lesson-bubble,
 .task-note {
   border: 1px solid #dbe3ef;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #f8fafc;
   color: #475569;
-  line-height: 1.6;
-  padding: 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  padding: 10px 12px;
 }
 
 .reference-card {
@@ -330,34 +333,45 @@
   gap: 10px;
 }
 
+.subsection-label {
+  margin: 4px 0 -4px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .inspection-card,
 .gauge-card,
 .device-test,
 .scenario-choice-row button,
 .scenario-picker button {
   border: 1px solid #cbd5e1;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
+  font-size: 12.5px;
   font-weight: 850;
-  padding: 12px;
+  padding: 9px 10px;
   text-align: left;
 }
 
 .inspection-card {
   display: grid;
-  gap: 5px;
+  gap: 3px;
 }
 
 .inspection-card span {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 950;
 }
 
 .inspection-card small {
   color: #64748b;
-  line-height: 1.4;
+  font-size: 11.5px;
+  line-height: 1.35;
 }
 
 .inspection-card.done,
@@ -369,12 +383,13 @@
 
 .virtual-dashboard {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid #dbe3ef;
-  border-radius: 16px;
+  border-radius: 14px;
   background: #0f172a;
   color: #ffffff;
-  padding: 14px;
+  font-size: 13px;
+  padding: 11px;
 }
 
 .virtual-dashboard h4 {
@@ -384,9 +399,9 @@
 
 .gauge-card {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
 }
 
 .gauge-card button {
@@ -395,19 +410,19 @@
   background: #0891b2;
   color: #ffffff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 950;
-  padding: 9px 12px;
+  padding: 7px 10px;
 }
 
 .gauge-dial {
   position: relative;
-  width: 48px;
-  height: 32px;
+  width: 36px;
+  height: 24px;
   overflow: hidden;
   border: 3px solid #cbd5e1;
   border-bottom: 0;
-  border-radius: 48px 48px 0 0;
+  border-radius: 36px 36px 0 0;
   background: #ffffff;
 }
 
@@ -425,10 +440,10 @@
 
 .gauge-dial i {
   position: absolute;
-  left: calc(50% - 2px);
+  left: calc(50% - 1.5px);
   bottom: 2px;
-  width: 4px;
-  height: 24px;
+  width: 3px;
+  height: 17px;
   border-radius: 999px;
   background: #dc2626;
   transform-origin: 50% 100%;
@@ -454,11 +469,12 @@
 
 .scenario-picker button {
   display: inline-flex;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
+  padding: 0;
   text-align: center;
 }
 
@@ -476,37 +492,38 @@
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
 }
 
 .summary-grid div {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   border: 1px solid #dbe3ef;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #f8fafc;
-  padding: 14px;
+  padding: 9px 10px;
 }
 
 .summary-grid span {
   color: #64748b;
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 850;
 }
 
 .summary-grid strong {
   color: #0f172a;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 950;
 }
 
 .completion-ready,
 .completion-warning {
-  border-radius: 14px;
+  border-radius: 12px;
+  font-size: 12.5px;
   font-weight: 850;
-  line-height: 1.6;
-  padding: 14px;
+  line-height: 1.5;
+  padding: 10px 12px;
 }
 
 .completion-ready {
