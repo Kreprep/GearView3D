@@ -32,6 +32,12 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
 
   const latestPractice = progress.parts.practiceAttempts[0]
   const viewedIds = new Set(summary.viewedParts)
+  const viewedPercentage = partsHotspots.length ? Math.round((summary.viewedParts.length / partsHotspots.length) * 100) : 0
+  const practicePercentage = latestPractice ? latestPractice.percentage : 0
+  const partsProgressBreakdown = [
+    { label: 'Parts viewed', rawValue: viewedPercentage, share: viewedPercentage / 2, color: '#0891b2' },
+    { label: 'Practice score', rawValue: practicePercentage, share: practicePercentage / 2, color: '#f59e0b' },
+  ]
   const practiceScore = partsPracticeQuestions.reduce((score, question) => {
     return score + (practiceAnswers[question.id] === question.answer ? 1 : 0)
   }, 0)
@@ -70,7 +76,14 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
       </div>
 
       <div className="parts-progress-row">
-        <ProgressSummary title="Parts Identification Progress" value={summary.parts} compact />
+        <div className="parts-progress-card-wrap">
+          <ProgressSummary
+            title="Parts Identification Progress"
+            value={summary.parts}
+            breakdown={partsProgressBreakdown}
+            compact
+          />
+        </div>
         <div className="lesson-card">
           <h3>Viewed Parts</h3>
           <p>{summary.viewedParts.length} of {partsHotspots.length} parts viewed.</p>
@@ -130,6 +143,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
             selectedPartId={selectedPartId}
             onPartSelect={selectPart}
             onPartViewed={viewPart}
+            viewedPartIds={summary.viewedParts}
           />
         )}
       </section>

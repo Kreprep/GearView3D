@@ -293,6 +293,7 @@ export default function ForkliftViewport({
   selectedPartId,
   onPartSelect,
   onPartViewed,
+  viewedPartIds,
 }) {
   const containerRef = useRef(null)
   const [selectedHotspotId, setSelectedHotspotId] = useState(hotspots[0]?.id)
@@ -306,9 +307,11 @@ export default function ForkliftViewport({
     [hotspots, effectiveSelectedHotspotId],
   )
   const progress = useMemo(() => {
-    const index = hotspots.findIndex((item) => item.id === selectedHotspot?.id)
-    return Math.round(((index + 1) / hotspots.length) * 100)
-  }, [hotspots, selectedHotspot])
+    if (!hotspots.length) return 0
+    const viewedIds = new Set(viewedPartIds || [])
+    if (selectedHotspot?.id) viewedIds.add(selectedHotspot.id)
+    return Math.round((viewedIds.size / hotspots.length) * 100)
+  }, [hotspots, selectedHotspot, viewedPartIds])
 
   useEffect(() => {
     if (selectedHotspot?.id) {
