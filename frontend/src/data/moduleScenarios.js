@@ -85,10 +85,18 @@ export const moduleScenarioSteps = {
       hint: 'Take the turns slowly - smooth control matters more than speed.',
     },
     {
+      id: 'pallet-pickup',
+      title: 'Pallet Pickup & Placement',
+      objective: 'Pick up a pallet with the forks and place it in the marked drop zone.',
+      instructions:
+        'Drive up to the pallet with the forks lowered (F), slide them under the load, raise with R to lift, carry the pallet to the drop zone, lower with F, then reverse away to release it.',
+      hint: 'Approach the pallet slowly and squarely - the forks only engage when they are low and centered under the load.',
+    },
+    {
       id: 'summary',
       title: 'Completion Summary',
       objective: 'Review completed driving control tasks.',
-      instructions: 'Confirm engine start, acceleration, braking, turning, and the combined driving course are complete.',
+      instructions: 'Confirm engine start, acceleration, braking, turning, the driving course, and the pallet pickup task are complete.',
       hint: 'Completion means you can identify and use the basic forklift operating controls in this simplified simulation.',
     },
   ],

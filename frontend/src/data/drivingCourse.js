@@ -119,4 +119,18 @@ export const drivingCourses = {
       },
     ],
   },
+  'pallet-pickup': {
+    id: 'pallet-pickup',
+    start: { position: [0, 0, 0], heading: 0 },
+    // No checkpoints - completion is driven by the pallet pickup state machine
+    // in DrivingSimulationViewer (pallet-lifted / pallet-dropped / pallet-delivered).
+    checkpoints: [],
+    pallet: { id: 'pallet-1', position: [0, 0, 10], rotation: 0 },
+    dropZone: { position: [-2.6, 0, 18], radius: 0.9, label: 'Drop Zone' },
+    decorations: [
+      { type: 'cone', position: [-0.9, 0, 6] },
+      { type: 'cone', position: [0.9, 0, 6] },
+      { type: 'wall', position: [4.4, 0, 14], length: 3.2, rotation: 0 },
+    ],
+  },
 }
