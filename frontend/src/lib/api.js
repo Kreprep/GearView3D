@@ -79,16 +79,30 @@ function defaultContent() {
   }
 }
 
+// Records added to the defaults after a browser has already saved a content
+// store would otherwise disappear (the saved array replaces the default one),
+// so append any default record whose key is missing from the saved list.
+function mergeMissingRecords(savedRecords, defaultRecords, keyOf) {
+  if (!Array.isArray(savedRecords)) return defaultRecords
+  const savedKeys = new Set(savedRecords.map(keyOf))
+  return [...savedRecords, ...defaultRecords.filter((record) => !savedKeys.has(keyOf(record)))]
+}
+
 function getLocalContent() {
   const fallback = defaultContent()
 
   try {
     const saved = localStorage.getItem(CONTENT_STORAGE_KEY)
-    return {
+    const parsed = saved ? JSON.parse(saved) : {}
+    const merged = {
       ...fallback,
-      ...(saved ? JSON.parse(saved) : {}),
+      ...parsed,
       localOnly: true,
     }
+    merged.modules = mergeMissingRecords(parsed.modules, fallback.modules, (item) => item.slug)
+    merged.checklists = mergeMissingRecords(parsed.checklists, fallback.checklists, (item) => item.id)
+    merged.quizQuestions = mergeMissingRecords(parsed.quizQuestions, fallback.quizQuestions, (item) => item.id)
+    return merged
   } catch {
     return fallback
   }

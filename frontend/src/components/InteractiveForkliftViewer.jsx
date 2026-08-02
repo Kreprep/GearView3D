@@ -17,6 +17,7 @@ import {
 import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { BadgeInfo, Eye, Maximize, RotateCcw } from 'lucide-react'
+import { buildForkliftRig, REAR_WHEEL_KEYS } from '../lib/forkliftRig'
 import './InteractiveForkliftViewer.css'
 
 const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
@@ -158,9 +159,34 @@ function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
   return null
 }
 
-function ForkliftModel({ modelUrl }) {
+// Control-demo animation tuning (model units - forklift is < 1 unit tall).
+const ANIM_DAMP = 8
+const STEER_SWING = 0.5
+const LIFT_DEMO_HEIGHT = 0.28
+const MAST_LIFT_RATIO = 0.5
+const TILT_SWING = 0.07
+const TRAVEL_DISTANCE = 0.3
+const BRAKE_RUN_SPEED = 0.45
+const BRAKE_STOP_TIME = 0.9
+const BRAKE_DIP = 0.09
+
+function smoothstep(x) {
+  const clamped = Math.min(Math.max(x, 0), 1)
+  return clamped * clamped * (3 - 2 * clamped)
+}
+
+function ForkliftModel({ modelUrl, deviceEffect }) {
   const { scene } = useGLTF(modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
+  const rigRef = useRef(null)
+  const moveGroupRef = useRef(null)
+  const animStateRef = useRef({ start: null, lastZ: 0 })
+
+  // De-skin + pivot rig must run before the material pass so the replacement
+  // meshes get the shadow/material treatment too.
+  React.useEffect(() => {
+    rigRef.current = buildForkliftRig(forklift)
+  }, [forklift])
 
   React.useEffect(() => {
     forklift.traverse((object) => {
@@ -182,7 +208,79 @@ function ForkliftModel({ modelUrl }) {
     })
   }, [forklift])
 
-  return <primitive object={forklift} />
+  const animation = deviceEffect?.animation || null
+
+  React.useEffect(() => {
+    animStateRef.current.start = null
+  }, [deviceEffect])
+
+  useFrame(({ clock }, delta) => {
+    const rig = rigRef.current
+    const move = moveGroupRef.current
+    if (!rig || !move) return
+
+    let steerTarget = 0
+    let liftTarget = 0
+    let tiltTarget = 0
+    let travelTarget = 0
+    let pitchTarget = 0
+
+    if (animation) {
+      if (animStateRef.current.start === null) animStateRef.current.start = clock.elapsedTime
+      const t = clock.elapsedTime - animStateRef.current.start
+
+      if (animation === 'steer') {
+        // Rear wheels sweep left and right (forklifts steer from the rear),
+        // frequency chosen so the sweep ends near centre at the 3s mark.
+        steerTarget = Math.sin(t * 2.1) * STEER_SWING
+      } else if (animation === 'lift-tilt') {
+        // Raise the carriage, tilt the mast back and forward, then lower.
+        const up = smoothstep(t / 1.4)
+        const down = smoothstep((4.4 - t) / 1.0)
+        liftTarget = LIFT_DEMO_HEIGHT * Math.min(up, down)
+        if (t > 1.5 && t < 3.3) tiltTarget = TILT_SWING * Math.sin((t - 1.5) * 3.5)
+      } else if (animation === 'travel') {
+        // Creep forward, reverse back through the start point, and return.
+        travelTarget = TRAVEL_DISTANCE * Math.sin((Math.PI * t) / 1.8)
+      } else if (animation === 'brake') {
+        // Roll forward, stop hard with a nose dip, then reverse back to rest.
+        if (t < BRAKE_STOP_TIME) {
+          travelTarget = BRAKE_RUN_SPEED * t
+        } else {
+          travelTarget = BRAKE_RUN_SPEED * BRAKE_STOP_TIME
+          pitchTarget = BRAKE_DIP * Math.exp(-5 * (t - BRAKE_STOP_TIME))
+          if (t > 2.2) travelTarget *= 1 - smoothstep((t - 2.2) / 1.1)
+        }
+      }
+    }
+
+    const damp = Math.min(ANIM_DAMP * delta, 1)
+
+    REAR_WHEEL_KEYS.forEach((key) => {
+      const wheel = rig.wheels[key]
+      if (wheel?.steer) wheel.steer.rotation.y += (steerTarget - wheel.steer.rotation.y) * damp
+    })
+    if (rig.carriageLift) rig.carriageLift.position.y += (liftTarget - rig.carriageLift.position.y) * damp
+    if (rig.mastLift) rig.mastLift.position.y += (liftTarget * MAST_LIFT_RATIO - rig.mastLift.position.y) * damp
+    if (rig.tiltPivot) rig.tiltPivot.rotation.x += (tiltTarget - rig.tiltPivot.rotation.x) * damp
+    move.position.z += (travelTarget - move.position.z) * damp
+    move.rotation.x += (pitchTarget - move.rotation.x) * damp
+
+    // Roll all four wheels to match the distance actually travelled.
+    const dz = move.position.z - animStateRef.current.lastZ
+    animStateRef.current.lastZ = move.position.z
+    if (dz !== 0) {
+      Object.values(rig.wheels).forEach((wheel) => {
+        wheel.spin.rotation.x += dz / wheel.radius
+      })
+    }
+  })
+
+  return (
+    <group ref={moveGroupRef}>
+      <primitive object={forklift} />
+    </group>
+  )
 }
 
 function TrainingHotspot({ hotspot, selected, scenario, onSelect, hotspotRefs }) {
@@ -342,7 +440,7 @@ function InteractiveScene({
         <ViewReset cameraPreset={cameraPreset} controlsRef={controlsRef} resetToken={resetToken} />
         <Center top>
           <group rotation={[0, -0.18, 0]}>
-            <ForkliftModel modelUrl={modelUrl} />
+            <ForkliftModel modelUrl={modelUrl} deviceEffect={deviceEffect} />
             <DeviceEffect effect={deviceEffect} />
             {defectOverlays
               .filter((overlay) => overlay.scenario === scenario)

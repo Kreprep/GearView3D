@@ -6,6 +6,7 @@ import EquipmentUsagePage from './EquipmentUsagePage'
 import WalkAroundCheckPage from './WalkAroundCheckPage'
 import LoadHandlingPage from './LoadHandlingPage'
 import PostOperationPage from './PostOperationPage'
+import PalletTestingPage from './PalletTestingPage'
 import PartsIdentificationPage from './PartsIdentificationPage'
 import AssessmentPage from './AssessmentPage'
 import AdminDashboard from './AdminDashboard'
@@ -127,6 +128,10 @@ function App() {
 
   if (path === routes.postOperation) {
     return <PostOperationPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+  }
+
+  if (path === routes.palletTesting) {
+    return <PalletTestingPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.parts) {
