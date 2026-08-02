@@ -119,6 +119,82 @@ export const drivingCourses = {
       },
     ],
   },
+  // Module 3 (Post-Operation) parking proficiency course. `parkingBay` enables
+  // the painted-lines bay in DrivingSimulationViewer: the step completes when
+  // the forklift is inside the lines, aligned, stopped, forks lowered, and the
+  // engine is switched off. Cones are live colliders (see failConditions).
+  'secure-parking': {
+    id: 'secure-parking',
+    start: { position: [0, 0, 0], heading: 0 },
+    checkpoints: [],
+    failConditions: { coneCollision: true },
+    parkingBay: { position: [-2.6, 0, 16], width: 1.3, depth: 1.9, heading: 0, label: 'Parking Bay' },
+    obstacles: [
+      { type: 'cone', position: [-1.2, 0, 4] },
+      { type: 'cone', position: [1.2, 0, 4] },
+      { type: 'cone', position: [-1.2, 0, 7] },
+      { type: 'cone', position: [1.2, 0, 7] },
+      { type: 'cone', position: [0.6, 0, 10.5] },
+      { type: 'cone', position: [-4.6, 0, 12] },
+      { type: 'cone', position: [-0.6, 0, 13.5] },
+      { type: 'cone', position: [-4.4, 0, 16] },
+      { type: 'cone', position: [-0.8, 0, 16.6] },
+    ],
+    decorations: [
+      { type: 'wall', position: [-2.6, 0, 18.2], length: 2.6, rotation: Math.PI / 2 },
+      { type: 'wall', position: [4.4, 0, 8], length: 3.2, rotation: 0 },
+    ],
+  },
+  // Module 4 (Pallet Handling Assessment) courses. These enable the kinematic
+  // fail system in DrivingSimulationViewer: `capacityKg` + pallet `weightKg`
+  // drive the overload tip-over, `obstacles` cones are live colliders, and
+  // `failConditions` toggles each fail rule per course.
+  'precision-carry': {
+    id: 'precision-carry',
+    start: { position: [0, 0, 0], heading: 0 },
+    checkpoints: [],
+    capacityKg: 1000,
+    failConditions: { coneCollision: true, suddenStop: true, overload: true },
+    pallets: [{ id: 'carry-pallet', position: [0, 0, 5], rotation: 0, weightKg: 500 }],
+    dropZone: { position: [0, 0, 19], radius: 0.9, label: 'Drop Zone' },
+    obstacles: [
+      { type: 'cone', position: [-1.2, 0, 8] },
+      { type: 'cone', position: [1.2, 0, 8] },
+      { type: 'cone', position: [-1.2, 0, 11] },
+      { type: 'cone', position: [1.2, 0, 11] },
+      { type: 'cone', position: [-1.2, 0, 14] },
+      { type: 'cone', position: [1.2, 0, 14] },
+      { type: 'cone', position: [-1.2, 0, 17] },
+      { type: 'cone', position: [1.2, 0, 17] },
+    ],
+    decorations: [
+      { type: 'wall', position: [4.4, 0, 12], length: 3.2, rotation: 0 },
+      { type: 'wall', position: [-4.4, 0, 12], length: 3.2, rotation: 0 },
+    ],
+  },
+  'load-limits': {
+    id: 'load-limits',
+    start: { position: [0, 0, 0], heading: 0 },
+    checkpoints: [],
+    capacityKg: 1000,
+    failConditions: { coneCollision: true, suddenStop: true, overload: true },
+    pallets: [
+      { id: 'pallet-600', position: [-2.2, 0, 7], rotation: 0, weightKg: 600 },
+      { id: 'pallet-1500', position: [0, 0, 7], rotation: 0, weightKg: 1500 },
+      { id: 'pallet-400', position: [2.2, 0, 7], rotation: 0, weightKg: 400 },
+    ],
+    dropZone: { position: [0, 0, 16], radius: 0.9, label: 'Drop Zone' },
+    obstacles: [
+      { type: 'cone', position: [-3.4, 0, 10] },
+      { type: 'cone', position: [3.4, 0, 10] },
+      { type: 'cone', position: [-1.6, 0, 13] },
+      { type: 'cone', position: [1.6, 0, 13] },
+    ],
+    decorations: [
+      { type: 'wall', position: [4.6, 0, 7], length: 3.2, rotation: 0 },
+      { type: 'wall', position: [-4.6, 0, 7], length: 3.2, rotation: 0 },
+    ],
+  },
   'pallet-pickup': {
     id: 'pallet-pickup',
     start: { position: [0, 0, 0], heading: 0 },
