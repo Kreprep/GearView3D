@@ -20,7 +20,6 @@ import { motion } from 'framer-motion'
 import {
   BadgeInfo,
   BookOpen,
-  CheckCircle2,
   Eye,
   Maximize,
   RotateCcw,
@@ -29,6 +28,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import PartDetailCard from './components/PartDetailCard'
 import { partsHotspots } from './lib/trainingData'
 
 const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
@@ -290,6 +290,7 @@ function LoadingPanel() {
 export default function ForkliftViewport({
   modelUrl = DEFAULT_MODEL_URL,
   hotspots = partsHotspots,
+  partDetails = {},
   selectedPartId,
   onPartSelect,
   onPartViewed,
@@ -306,6 +307,7 @@ export default function ForkliftViewport({
     () => hotspots.find((item) => item.id === effectiveSelectedHotspotId) || hotspots[0],
     [hotspots, effectiveSelectedHotspotId],
   )
+  const selectedDetail = selectedHotspot ? partDetails[selectedHotspot.id] : null
   const progress = useMemo(() => {
     if (!hotspots.length) return 0
     const viewedIds = new Set(viewedPartIds || [])
@@ -427,34 +429,11 @@ export default function ForkliftViewport({
                 </div>
               </div>
 
-              <p className="text-sm leading-6 text-slate-600">{selectedHotspot?.functionText}</p>
-              {selectedHotspot?.category && (
-                <p className="mt-3 rounded-xl bg-cyan-50 p-3 text-sm leading-6 text-cyan-950">
-                  Category: {selectedHotspot.category}
-                </p>
-              )}
-              <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-900">
-                Safety: {selectedHotspot?.safetyNote}
-              </p>
-              {selectedHotspot?.inspectionReminder && (
-                <p className="mt-3 rounded-xl bg-slate-100 p-3 text-sm leading-6 text-slate-700">
-                  Inspection reminder: {selectedHotspot.inspectionReminder}
-                </p>
-              )}
-              {selectedHotspot?.relatedModule && (
-                <p className="mt-3 rounded-xl bg-slate-100 p-3 text-sm leading-6 text-slate-700">
-                  Related training: {selectedHotspot.relatedModule}
-                </p>
-              )}
-
-              <div className="mt-5 space-y-2">
-                {selectedHotspot?.checklist.map((item) => (
-                  <div key={item} className="flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
-                    <CheckCircle2 className="h-4 w-4 text-cyan-700" />
-                    {item}
-                  </div>
-                ))}
-              </div>
+              <PartDetailCard
+                subtitle={selectedDetail?.subtitle || selectedHotspot?.category}
+                image={selectedDetail?.image}
+                description={selectedDetail?.description || selectedHotspot?.functionText}
+              />
             </CardContent>
           </Card>
 

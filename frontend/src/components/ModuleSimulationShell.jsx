@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PartDetailCard from './PartDetailCard'
 import './ModuleSimulationShell.css'
 
 function ModuleSimulationShell({
@@ -95,19 +96,14 @@ function ModuleSimulationShell({
                     Back to Task
                   </button>
                 </div>
-                <div className="hotspot-detail">
-                  {selectedDetail.image ? (
-                    <img className="hotspot-detail-image" src={selectedDetail.image} alt={selectedDetail.title} />
-                  ) : (
-                    <div className="hotspot-detail-image hotspot-detail-image-placeholder">No reference image yet</div>
-                  )}
-                  <h3>{selectedDetail.title}</h3>
-                  {selectedDetail.subtitle && <p className="hotspot-detail-subtitle">{selectedDetail.subtitle}</p>}
-                  {selectedDetail.description && <p>{selectedDetail.description}</p>}
-                  {selectedDetail.status && (
-                    <p className={`hotspot-detail-status ${selectedDetail.statusType || 'neutral'}`}>{selectedDetail.status}</p>
-                  )}
-                </div>
+                <PartDetailCard
+                  title={selectedDetail.title}
+                  subtitle={selectedDetail.subtitle}
+                  image={selectedDetail.image}
+                  description={selectedDetail.description}
+                  status={selectedDetail.status}
+                  statusType={selectedDetail.statusType}
+                />
               </>
             ) : (
               <>

@@ -8,6 +8,7 @@ import {
   adminUpdateChecklistItem,
   adminUpdateModule,
   adminUpdatePart,
+  adminUpdatePartDetail,
   adminUpdateQuizQuestion,
 } from './lib/api'
 import { routes } from './lib/router'
@@ -39,6 +40,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     equipment: [],
     modules: [],
     parts: [],
+    partDetails: {},
     checklists: [],
     quizQuestions: [],
     users: [],
@@ -47,6 +49,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     localOnly: true,
   })
   const [selectedPart, setSelectedPart] = useState(null)
+  const [selectedDetail, setSelectedDetail] = useState(null)
   const [editingModule, setEditingModule] = useState(null)
   const [editingChecklist, setEditingChecklist] = useState(null)
   const [editingQuiz, setEditingQuiz] = useState(null)
@@ -63,6 +66,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         equipment: [],
         modules: [],
         parts: [],
+        partDetails: {},
         checklists: [],
         quizQuestions: [],
         users: [],
@@ -79,14 +83,47 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     window.setTimeout(() => setSaveMessage(''), 2400)
   }
 
-  const handleSavePart = async () => {
-    if (!selectedPart) return
-    const result = await adminUpdatePart(selectedPart.id, selectedPart)
+  // Selecting a part also loads its detail-card entry (image + markdown
+  // description) so both are edited and saved together.
+  const selectPartForEditing = (part) => {
+    setSelectedPart(part)
+    setSelectedDetail(
+      content.partDetails[part.id] || {
+        id: part.id,
+        title: part.label,
+        subtitle: part.category || '',
+        image: '',
+        description: '',
+      },
+    )
+  }
+
+  const selectDetailForEditing = (detail) => {
+    setSelectedPart(null)
+    setSelectedDetail(detail)
+  }
+
+  const handleSaveDetail = async () => {
+    if (!selectedDetail) return null
+    const result = await adminUpdatePartDetail(selectedDetail.id, selectedDetail)
     setContent((current) => ({
       ...current,
-      parts: current.parts.map((part) => (part.id === selectedPart.id ? result.part : part)),
+      partDetails: { ...current.partDetails, [selectedDetail.id]: result.detail },
     }))
-    setSelectedPart(result.part)
+    setSelectedDetail(result.detail)
+    return result.detail
+  }
+
+  const handleSavePart = async () => {
+    if (selectedPart) {
+      const result = await adminUpdatePart(selectedPart.id, selectedPart)
+      setContent((current) => ({
+        ...current,
+        parts: current.parts.map((part) => (part.id === selectedPart.id ? result.part : part)),
+      }))
+      setSelectedPart(result.part)
+    }
+    await handleSaveDetail()
     refreshMessage('Part changes saved.')
   }
 
@@ -95,6 +132,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     await adminDeletePart(partId)
     setContent((current) => ({ ...current, parts: current.parts.filter((part) => part.id !== partId) }))
     setSelectedPart(null)
+    setSelectedDetail(null)
   }
 
   const handleSaveModule = async () => {
@@ -238,14 +276,23 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           <section className="admin-panel admin-parts-list">
             <h2>Forklift Parts</h2>
             {content.parts.map((part) => (
-              <button key={part.id} type="button" className={`admin-part-button ${selectedPart?.id === part.id ? 'is-active' : ''}`} onClick={() => setSelectedPart(part)}>
+              <button key={part.id} type="button" className={`admin-part-button ${selectedPart?.id === part.id ? 'is-active' : ''}`} onClick={() => selectPartForEditing(part)}>
                 {part.label}
               </button>
             ))}
+            <h2>Inspection Hotspots</h2>
+            <p className="admin-panel-note">Walk-around checks that are not standalone parts. Each has the same detail card (image + markdown description).</p>
+            {Object.values(content.partDetails)
+              .filter((detail) => !content.parts.some((part) => part.id === detail.id))
+              .map((detail) => (
+                <button key={detail.id} type="button" className={`admin-part-button ${!selectedPart && selectedDetail?.id === detail.id ? 'is-active' : ''}`} onClick={() => selectDetailForEditing(detail)}>
+                  {detail.title}
+                </button>
+              ))}
           </section>
           <section className="admin-panel admin-editor">
             <h2>Part Editor</h2>
-            {selectedPart ? (
+            {selectedPart && (
               <>
                 <label>Part name<input value={selectedPart.label} onChange={(event) => setSelectedPart({ ...selectedPart, label: event.target.value })} /></label>
                 <label>Category<input value={selectedPart.category || ''} onChange={(event) => setSelectedPart({ ...selectedPart, category: event.target.value })} /></label>
@@ -253,12 +300,33 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 <label>Inspection reminder<textarea value={selectedPart.inspectionReminder || ''} onChange={(event) => setSelectedPart({ ...selectedPart, inspectionReminder: event.target.value })} /></label>
                 <label>Safety note<textarea value={selectedPart.safetyNote} onChange={(event) => setSelectedPart({ ...selectedPart, safetyNote: event.target.value })} /></label>
                 <label>Related module<input value={selectedPart.relatedModule || ''} onChange={(event) => setSelectedPart({ ...selectedPart, relatedModule: event.target.value })} /></label>
+              </>
+            )}
+            {selectedDetail ? (
+              <>
+                <h2>Detail Card</h2>
+                <p className="admin-panel-note">Shown when the part is clicked in the 3D viewers (Parts Identification and Walk-Around Check).</p>
+                {!selectedPart && (
+                  <label>Title<input value={selectedDetail.title || ''} onChange={(event) => setSelectedDetail({ ...selectedDetail, title: event.target.value })} /></label>
+                )}
+                <label>Subtitle<input value={selectedDetail.subtitle || ''} onChange={(event) => setSelectedDetail({ ...selectedDetail, subtitle: event.target.value })} /></label>
+                <label>Reference image URL<input value={selectedDetail.image || ''} placeholder="/images/forks.png" onChange={(event) => setSelectedDetail({ ...selectedDetail, image: event.target.value })} /></label>
+                <label>Description (Markdown)
+                  <textarea rows={10} value={selectedDetail.description || ''} onChange={(event) => setSelectedDetail({ ...selectedDetail, description: event.target.value })} />
+                </label>
+                <p className="admin-panel-note">Supports markdown: **bold**, - bullet points, 1. numbered lists, and inline images anywhere via ![alt](/images/example.png).</p>
                 <div className="admin-row-actions">
-                  <button className="admin-save" onClick={handleSavePart}>Save part</button>
-                  <button onClick={() => handleDeletePart(selectedPart.id)}>Delete part</button>
+                  {selectedPart ? (
+                    <>
+                      <button className="admin-save" onClick={handleSavePart}>Save part</button>
+                      <button onClick={() => handleDeletePart(selectedPart.id)}>Delete part</button>
+                    </>
+                  ) : (
+                    <button className="admin-save" onClick={async () => { await handleSaveDetail(); refreshMessage('Detail card saved.') }}>Save details</button>
+                  )}
                 </div>
               </>
-            ) : <p>Select a forklift part to review or edit its instructional text.</p>}
+            ) : <p>Select a forklift part or inspection hotspot to edit its detail card.</p>}
           </section>
         </main>
       )}

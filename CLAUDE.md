@@ -48,11 +48,16 @@ When adding a new page: add its path to `routes` in `router.js`, add an `if (pat
 
 Progress percentage per module is computed in `progressService.js` (`getModuleProgress`): simulation-reported percentage takes priority if present, otherwise it's derived from checklist completion averaged with the latest quiz score.
 
-#### Hotspot detail panel (`ModuleSimulationShell` "Current Task" panel)
-Clicking a hotspot (in `InteractiveForkliftViewer` or an inspection card) swaps the Current Task panel's default title/instructions for a detail card (image slot + title + subtitle + description + status line), via `selectedDetail`/`onClearDetail` props on `ModuleSimulationShell`. It auto-clears on Next/Back step or inspection-state toggle. To edit what shows up per part, edit the source data, not the component:
-- **Engine-off inspection hotspots** (forks, mast, lift-chain, hydraulic-hoses, tires, counterweight, lpg-tank, seat-belt, overhead-guard, ground-leaks) → `data/inspectionScenarios.js`, `engineOffInspectionChecks` array. Maps `label`→title, `targetArea`→subtitle, `found`→description, `feedback`→status line.
-- **Engine-on hotspots** (operator-area, warning-devices) → `data/viewerHotspots.js`, `walkAroundViewerHotspots` array. Maps `label`→title, `category`→subtitle, `inspect`→description, `safeFeedback`/`unsafeFeedback`→status line.
-- Add an `image: '/path/to/img.png'` field to either entry shape to fill the image slot (currently unset everywhere, shows a placeholder).
+#### Part details system (shared by Walk-Around Check and Parts Identification)
+Clicking a part/hotspot anywhere shows the standard detail card: `components/PartDetailCard.jsx` (reference image slot + title + subtitle + **markdown** description + optional status line). Markdown is rendered by `components/MarkdownContent.jsx` (react-markdown) — bullet points, numbered lists, bold, and inline images (`![alt](/images/x.png)`) anywhere in the description.
+
+Detail content lives in the **`partDetails` content collection** (object keyed by part/hotspot id: `{ id, title, subtitle, image, description }`), seeded by `data/partDetails.js` (`buildDefaultPartDetails()` composes markdown defaults from `partsData.js`, `inspectionScenarios.js`, and `viewerHotspots.js`) and stored/edited through `lib/api.js` (`getPartDetails()`, `adminUpdatePartDetail()`). Saved admin edits are merged per-entry over seed defaults at read time, so new seeded ids still appear after edits. Admins edit these under the dashboard's Parts tab (parts list + "Inspection Hotspots" list for walk-around-only ids like hydraulic-hoses, ignition, horn).
+
+Consumers:
+- `ModuleSimulationShell` "Current Task" panel renders `PartDetailCard` from `selectedDetail`/`onClearDetail` props; `WalkAroundCheckPage` builds `selectedDetail` by overlaying `partDetails[id]` on the scenario data (`engineOffInspectionChecks` / `walkAroundViewerHotspots` remain the fallback + supply the context-specific status/feedback line). Auto-clears on Next/Back step or inspection-state toggle.
+- `gear_view_3_d_forklift_viewport.jsx` (Parts Identification) renders the same `PartDetailCard` in its "Selected part" sidebar, fed by a `partDetails` prop from `PartsIdentificationPage`.
+
+To change what a part shows, edit the seed in `data/partDetails.js` sources (or the admin dashboard for local overrides), not the components.
 
 ### 3D viewers
 Three.js is used via `@react-three/fiber`/`@react-three/drei`, with `.glb` models served from `frontend/public/models/`. There are several distinct viewer components, not one shared abstraction — check which one a page already uses before adding a new one:
