@@ -6,35 +6,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 GearView3D is a thesis prototype for browser-based forklift familiarization training. It supports learner modules, guided checklists, parts identification, progress tracking, quizzes, final assessment review, and local admin content management. It is a preparatory learning tool, not a certification simulator (no TESDA certification implied).
 
-**Current phase: frontend-first.** The plan is to finish the frontend before building the backend, so a real backend is intentionally not implemented yet — `frontend/src/lib/api.js` stands in for it (see below). The `backend/` directory is an empty placeholder (git-ignored `node_modules` only, no source). When backend work does start, expect Express + Prisma + PostgreSQL based on prior planning, but confirm with the user before assuming that stack rather than resurrecting old code.
+**Full-stack:** `frontend/` (React + Vite) plus `backend/` (Express 5 + Prisma 6 + PostgreSQL, plain ESM Node, no TypeScript). Both must run for the app to work; the Vite dev server proxies `/api` to the backend (port 4000, see `vite.config.js`). Deployment is planned as Docker + reverse proxy later — not set up yet.
 
 ## Commands
 
-All commands run from `frontend/`:
+Frontend (from `frontend/`):
 
 ```bash
-cd frontend
-npm install       # install deps
-npm run dev       # start Vite dev server (usually http://localhost:5173)
+npm install
+npm run dev       # Vite dev server (usually http://localhost:5173), proxies /api -> :4000
 npm run build     # production build
-npm run preview   # preview production build
 npm run lint      # ESLint (flat config, eslint.config.js)
 ```
 
-There is no test runner configured in this project.
+Backend (from `backend/`; needs `backend/.env` — copy `.env.example`, set the PostgreSQL password in `DATABASE_URL` percent-encoded):
 
-### Demo accounts (mock auth, no backend)
+```bash
+npm install
+npx prisma migrate dev   # create/update the gearview3d database schema
+npm run seed             # idempotent: create-if-missing only, never overwrites admin edits
+npm run dev              # API on http://localhost:4000 (node --watch)
+npm run studio           # Prisma Studio DB browser
+```
+
+There is no test runner configured in either package.
+
+### Demo accounts (seeded)
 - Admin: `admin@mail.com` / `admin123`
 - Learner: `trainee@mail.com` / `trainee123`
 
 ## Architecture
 
-### No backend yet — `lib/api.js` is the seam
-`frontend/src/lib/api.js` implements every "API" function (`loginUser`, `getTrainingModules`, `adminUpdatePart`, etc.) as a local, synchronous-under-the-hood operation against hardcoded demo users and `localStorage`. There is no HTTP client and no `.env`/base URL config. This is deliberate for the current frontend-first phase, not a gap to fill in — when backend work eventually starts, this file is the single place that needs to change to call real endpoints instead; page components should keep calling these same function names rather than fetching directly.
+### `lib/api.js` is the seam; the backend owns the data
+`frontend/src/lib/api.js` is a thin fetch client — the only file that talks HTTP. Page components call its named functions (`loginUser`, `getTrainingModules`, `adminUpdatePart`, ...) and must not fetch directly. Auth is a JWT stored in `localStorage` (`gearview_token`), sent as a Bearer header via the module-level `setAuthToken()`.
 
-Two separate localStorage-backed stores exist and are merged at read time (see `getContentWithProgress()` in `api.js`):
-- **Content store** (`gearview_local_content_v1`): admin-editable modules/parts/checklists/quiz questions, seeded from `lib/trainingData.js` defaults on first load.
-- **Progress store** (`gearview_progress_v1`, managed by `lib/progressService.js`): per-learner checklist completion, quiz attempts, parts viewed, and simulation progress. Changes dispatch a `gearview-progress-change` custom event; `hooks/useProgress.js` subscribes to this (plus the native `storage` event) to keep React state in sync across the app without a global store library.
+Backend layout (`backend/src/`): `app.js` (Express app), `routes/` (`auth.js`, `content.js`, `progress.js`, `admin.js` — admin routes require the ADMIN role), `lib/auth.js` (JWT + middleware), `lib/progressSummary.js` (server mirror of the frontend's per-module progress math — keep the two in sync). Response shapes intentionally match what the old localStorage implementation returned (e.g. `{ part }`, `{ deleted: true }`, part details keyed by id).
+
+**Content** (equipment, modules, parts, part details, checklist items, quiz questions, users) lives in PostgreSQL (`backend/prisma/schema.prisma`). It is seeded from `frontend/src/data/*.js` by `backend/prisma/seed.js` — those files stay the single source of defaults, so backend seeding imports them directly (which is why `data/` files use explicit `.js` import extensions; keep doing that). Only admin-editable content is in the DB: 3D/simulation config (hotspot coordinates, driving-course geometry, scenario scripts, device effects) deliberately stays in `frontend/src/data/`.
+
+**Progress** is per-user in the DB (`ProgressSnapshot`, one JSON document per user, same shape as the old localStorage copy). `lib/progressService.js` still keeps localStorage (`gearview_progress_v1`) as the synchronous read source: it hydrates from `GET /api/progress` on login/session restore (`hydrateProgressFromServer()`, called in `App.jsx`), pushes debounced `PUT /api/progress` on every change, and clears only the local copy on logout. Changes dispatch a `gearview-progress-change` custom event; `hooks/useProgress.js` subscribes to keep React state in sync.
 
 ### Routing — hand-rolled, no react-router
 `frontend/src/lib/router.js` defines a flat `routes` map (path strings) and a `goTo()`/`normalizePath()` pair that push/replace `window.history` state and dispatch `popstate`. `App.jsx` is the only router: it holds `path` state synced to `popstate`, and renders one page component per `if (path === routes.x)` branch — there is no route table or nested router. Auth gating (redirect to `/login` if logged out, redirect to `/catalog` — the app's home screen — if logged in and on `/` or `/login`) also lives in `App.jsx`. Admin routes (`/admin`, `/admin/*`) are gated on `user.role === 'ADMIN'` and forwarded into `AdminDashboard`, which does its own sub-routing on the raw `path` prop.
@@ -51,7 +61,7 @@ Progress percentage per module is computed in `progressService.js` (`getModulePr
 #### Part details system (shared by Walk-Around Check and Parts Identification)
 Clicking a part/hotspot anywhere shows the standard detail card: `components/PartDetailCard.jsx` (reference image slot + title + subtitle + **markdown** description + optional status line). Markdown is rendered by `components/MarkdownContent.jsx` (react-markdown) — bullet points, numbered lists, bold, and inline images (`![alt](/images/x.png)`) anywhere in the description.
 
-Detail content lives in the **`partDetails` content collection** (object keyed by part/hotspot id: `{ id, title, subtitle, image, description }`), seeded by `data/partDetails.js` (`buildDefaultPartDetails()` composes markdown defaults from `partsData.js`, `inspectionScenarios.js`, and `viewerHotspots.js`) and stored/edited through `lib/api.js` (`getPartDetails()`, `adminUpdatePartDetail()`). Saved admin edits are merged per-entry over seed defaults at read time, so new seeded ids still appear after edits. Admins edit these under the dashboard's Parts tab (parts list + "Inspection Hotspots" list for walk-around-only ids like hydraulic-hoses, ignition, horn).
+Detail content lives in the **`PartDetail` DB table** (keyed by part/hotspot id: `{ id, title, subtitle, image, description }`), fetched/edited through `lib/api.js` (`getPartDetails()` returns an object keyed by id, `adminUpdatePartDetail()`). Seed defaults come from `data/partDetails.js` (`buildDefaultPartDetails()` composes markdown from `partsData.js`, `inspectionScenarios.js`, and `viewerHotspots.js`). Admins edit these under the dashboard's Parts tab (parts list + "Inspection Hotspots" list for walk-around-only ids like hydraulic-hoses, ignition, horn).
 
 Consumers:
 - `ModuleSimulationShell` "Current Task" panel renders `PartDetailCard` from `selectedDetail`/`onClearDetail` props; `WalkAroundCheckPage` builds `selectedDetail` by overlaying `partDetails[id]` on the scenario data (`engineOffInspectionChecks` / `walkAroundViewerHotspots` remain the fallback + supply the context-specific status/feedback line). Auto-clears on Next/Back step or inspection-state toggle.

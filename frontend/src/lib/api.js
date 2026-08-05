@@ -1,363 +1,137 @@
-import {
-  buildDefaultPartDetails,
-  forkliftEquipment,
-  moduleChecklists,
-  moduleQuizQuestions,
-  partsHotspots,
-  trainingModules,
-} from './trainingData'
-import { getProgressSummary, getStoredProgress } from './progressService'
+// HTTP client for the GearView3D backend (backend/, Express + Prisma +
+// PostgreSQL). Every page component calls these functions instead of fetching
+// directly, so this file stays the single seam between frontend and backend.
+//
+// In development the Vite dev server proxies /api to the backend (see
+// vite.config.js), so no base URL configuration is needed. Set VITE_API_URL
+// only when the API is hosted somewhere else entirely.
 
-const CONTENT_STORAGE_KEY = 'gearview_local_content_v1'
+const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
-const demoUsers = [
-  {
-    id: 'admin-demo',
-    email: 'admin@mail.com',
-    password: 'admin123',
-    fullName: 'GearView3D Admin',
-    role: 'ADMIN',
-  },
-  {
-    id: 'trainee-demo',
-    email: 'trainee@mail.com',
-    password: 'trainee123',
-    fullName: 'Sample Trainee',
-    role: 'TRAINEE',
-  },
-]
+let authToken = localStorage.getItem('gearview_token')
 
-// Mock authentication is for frontend prototype/demo only. Backend authentication will be implemented separately.
-function clone(value) {
-  return JSON.parse(JSON.stringify(value))
+export function setAuthToken(token) {
+  authToken = token || null
 }
 
-function checklistRecords() {
-  return Object.entries(moduleChecklists).flatMap(([moduleSlug, items]) => {
-    const module = trainingModules.find((item) => item.slug === moduleSlug)
-
-    return items.map((text, index) => ({
-      id: `${moduleSlug}-check-${index + 1}`,
-      moduleId: module?.id,
-      text,
-      sortOrder: index + 1,
-      module,
-    }))
-  })
-}
-
-function quizRecords() {
-  return Object.entries(moduleQuizQuestions).flatMap(([moduleSlug, questions]) => {
-    const module = trainingModules.find((item) => item.slug === moduleSlug)
-
-    return questions.map((question, index) => ({
-      id: question.id,
-      moduleId: module?.id,
-      prompt: question.prompt,
-      answer: question.answer,
-      sortOrder: index + 1,
-      module,
-      options: question.options.map((text, optionIndex) => ({
-        id: `${question.id}-option-${optionIndex + 1}`,
-        text,
-        sortOrder: optionIndex + 1,
-      })),
-    }))
-  })
-}
-
-function defaultContent() {
-  return {
-    localOnly: true,
-    equipment: [forkliftEquipment],
-    modules: trainingModules,
-    parts: partsHotspots,
-    partDetails: buildDefaultPartDetails(),
-    checklists: checklistRecords(),
-    quizQuestions: quizRecords(),
-    users: demoUsers.map(publicUser),
-    progress: [],
-    activityLogs: [],
+async function request(path, { method = 'GET', body } = {}) {
+  const headers = {}
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json'
   }
-}
-
-function getLocalContent() {
-  const fallback = defaultContent()
-  function mergeMissingRecords(savedArr, fallbackArr, keyFn) {
-    const saved = Array.isArray(savedArr) ? savedArr : []
-    const map = new Map(saved.map((item) => [keyFn(item), item]))
-    for (const item of fallbackArr || []) {
-      const key = keyFn(item)
-      if (!map.has(key)) map.set(key, item)
-    }
-    return Array.from(map.values())
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`
   }
 
+  let response
   try {
-    const saved = localStorage.getItem(CONTENT_STORAGE_KEY)
-    const parsed = saved ? JSON.parse(saved) : {}
-
-    const merged = {
-      ...fallback,
-      ...parsed,
-      localOnly: true,
-    }
-
-    merged.modules = mergeMissingRecords(parsed.modules, fallback.modules, (item) => item.slug)
-    merged.checklists = mergeMissingRecords(parsed.checklists, fallback.checklists, (item) => item.id)
-    merged.quizQuestions = mergeMissingRecords(parsed.quizQuestions, fallback.quizQuestions, (item) => item.id)
-    merged.partDetails = { ...(fallback.partDetails || {}), ...(parsed.partDetails || {}) }
-
-    return merged
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
   } catch {
-    return fallback
+    throw new Error('Cannot reach the GearView3D API. Is the backend running? (cd backend && npm run dev)')
   }
-}
 
-function saveLocalContent(content) {
-  const next = {
-    ...getLocalContent(),
-    ...content,
-    localOnly: true,
-  }
-  localStorage.setItem(CONTENT_STORAGE_KEY, JSON.stringify(next))
-  return next
-}
-
-function getContentWithProgress() {
-  const content = getLocalContent()
-  const progress = getStoredProgress()
-  const summary = getProgressSummary(progress)
-  const user = getSavedUser()
-
-  return {
-    ...content,
-    progress: Object.entries(summary.modules).map(([moduleSlug, value]) => ({
-      id: `local-${moduleSlug}`,
-      moduleSlug,
-      progress: value,
-      updatedAt: progress.updatedAt,
-      user: {
-        email: user?.email || 'local-user',
-        fullName: user?.fullName || 'Local Learner',
-      },
-    })),
-    activityLogs: [
-      ...Object.entries(summary.quizAttempts).flatMap(([moduleSlug, attempts]) =>
-        attempts.map((attempt) => ({
-          id: attempt.id,
-          action: 'quiz_attempt',
-          detail: moduleSlug,
-          createdAt: attempt.attemptedAt,
-          user: { email: user?.email, fullName: user?.fullName },
-        })),
-      ),
-      ...summary.partsPracticeAttempts.map((attempt) => ({
-        id: attempt.id,
-        action: 'parts_practice_attempt',
-        detail: `${attempt.score}/${attempt.total}`,
-        createdAt: attempt.attemptedAt,
-        user: { email: user?.email, fullName: user?.fullName },
-      })),
-    ],
-  }
-}
-
-function getSavedUser() {
+  let data = null
   try {
-    const saved = localStorage.getItem('gearview_user')
-    return saved ? JSON.parse(saved) : null
+    data = await response.json()
   } catch {
-    return null
+    // Non-JSON response body; fall through to the status check.
   }
+
+  if (!response.ok) {
+    throw new Error(data?.error || `Request failed (${response.status})`)
+  }
+
+  return data
 }
 
-function publicUser(user) {
-  const safeUser = { ...user }
-  delete safeUser.password
-  return safeUser
-}
-
-export function setAuthToken() {
-  // Frontend-only prototype: no backend token is required.
-}
+// --- Auth ---
 
 export async function loginUser(credentials) {
-  const user = demoUsers.find(
-    (item) => item.email.toLowerCase() === credentials.email.toLowerCase() && item.password === credentials.password,
-  )
-
-  if (!user) {
-    throw new Error('Invalid demo account credentials')
-  }
-
-  return {
-    token: `local-demo-token-${user.id}`,
-    user: publicUser(user),
-  }
+  return request('/auth/login', { method: 'POST', body: credentials })
 }
 
 export async function getCurrentUser() {
-  const user = getSavedUser()
-
-  if (!user) {
-    throw new Error('No local demo session found')
-  }
-
-  return user
+  return request('/auth/me')
 }
 
+// --- Content ---
+
 export async function getEquipment() {
-  return clone(getLocalContent().equipment)
+  return request('/content/equipment')
 }
 
 export async function getTrainingModules() {
-  return clone(getLocalContent().modules)
+  return request('/content/modules')
 }
 
 export async function getParts() {
-  return clone(getLocalContent().parts)
+  return request('/content/parts')
 }
 
 export async function getPartDetails() {
-  return clone(getLocalContent().partDetails)
+  return request('/content/part-details')
 }
 
 export async function getChecklist(moduleSlug) {
-  const content = getLocalContent()
-  const module = content.modules.find((item) => item.slug === moduleSlug)
-
-  return content.checklists
-    .filter((item) => item.moduleId === module?.id)
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((item) => item.text)
+  return request(`/content/checklists/${encodeURIComponent(moduleSlug)}`)
 }
 
-export async function saveProgress() {
-  return { saved: true, localOnly: true }
-}
+// --- Progress (per signed-in user) ---
 
 export async function getProgress() {
-  return getContentWithProgress().progress
+  return request('/progress')
 }
 
+export async function saveProgress(progress) {
+  return request('/progress', { method: 'PUT', body: progress })
+}
+
+// --- Admin ---
+
 export async function adminListContent() {
-  return clone(getContentWithProgress())
+  return request('/admin/content')
 }
 
 export async function adminUpdatePart(partId, payload) {
-  const content = getLocalContent()
-  const part = {
-    ...content.parts.find((item) => item.id === partId),
-    ...payload,
-  }
-  const next = saveLocalContent({
-    parts: content.parts.map((item) => (item.id === partId ? part : item)),
-  })
-
-  return { part: clone(next.parts.find((item) => item.id === partId)) }
+  return request(`/admin/parts/${encodeURIComponent(partId)}`, { method: 'PATCH', body: payload })
 }
 
 export async function adminCreatePart(payload) {
-  const content = getLocalContent()
-  const part = {
-    id: payload.id || payload.label.toLowerCase().replaceAll(' ', '-'),
-    label: payload.label,
-    category: payload.category || 'General',
-    position: payload.position || [0, 0, 0],
-    functionText: payload.functionText || '',
-    inspectionReminder: payload.inspectionReminder || '',
-    safetyNote: payload.safetyNote || '',
-    relatedModule: payload.relatedModule || '',
-    checklist: payload.checklist || [],
-  }
-  saveLocalContent({ parts: [...content.parts, part] })
-
-  return { part: clone(part) }
-}
-
-export async function adminUpdatePartDetail(detailId, payload) {
-  const content = getLocalContent()
-  const detail = {
-    ...content.partDetails[detailId],
-    ...payload,
-    id: detailId,
-  }
-  const next = saveLocalContent({
-    partDetails: { ...content.partDetails, [detailId]: detail },
-  })
-
-  return { detail: clone(next.partDetails[detailId]) }
+  return request('/admin/parts', { method: 'POST', body: payload })
 }
 
 export async function adminDeletePart(partId) {
-  const content = getLocalContent()
-  saveLocalContent({ parts: content.parts.filter((part) => part.id !== partId) })
-  return { deleted: true }
+  return request(`/admin/parts/${encodeURIComponent(partId)}`, { method: 'DELETE' })
+}
+
+export async function adminUpdatePartDetail(detailId, payload) {
+  return request(`/admin/part-details/${encodeURIComponent(detailId)}`, { method: 'PATCH', body: payload })
 }
 
 export async function adminUpdateModule(moduleId, payload) {
-  const content = getLocalContent()
-  const module = {
-    ...content.modules.find((item) => item.id === moduleId),
-    ...payload,
-  }
-  const next = saveLocalContent({
-    modules: content.modules.map((item) => (item.id === moduleId ? module : item)),
-  })
-
-  return { module: clone(next.modules.find((item) => item.id === moduleId)) }
+  return request(`/admin/modules/${encodeURIComponent(moduleId)}`, { method: 'PATCH', body: payload })
 }
 
 export async function adminDeleteModule(moduleId) {
-  const content = getLocalContent()
-  saveLocalContent({
-    modules: content.modules.filter((module) => module.id !== moduleId),
-    checklists: content.checklists.filter((item) => item.moduleId !== moduleId),
-    quizQuestions: content.quizQuestions.filter((question) => question.moduleId !== moduleId),
-  })
-  return { deleted: true }
+  return request(`/admin/modules/${encodeURIComponent(moduleId)}`, { method: 'DELETE' })
 }
 
 export async function adminUpdateChecklistItem(itemId, payload) {
-  const content = getLocalContent()
-  const item = {
-    ...content.checklists.find((entry) => entry.id === itemId),
-    ...payload,
-  }
-  const next = saveLocalContent({
-    checklists: content.checklists.map((entry) => (entry.id === itemId ? item : entry)),
-  })
-
-  return { item: clone(next.checklists.find((entry) => entry.id === itemId)) }
+  return request(`/admin/checklist-items/${encodeURIComponent(itemId)}`, { method: 'PATCH', body: payload })
 }
 
 export async function adminDeleteChecklistItem(itemId) {
-  const content = getLocalContent()
-  saveLocalContent({ checklists: content.checklists.filter((item) => item.id !== itemId) })
-  return { deleted: true }
+  return request(`/admin/checklist-items/${encodeURIComponent(itemId)}`, { method: 'DELETE' })
 }
 
 export async function adminUpdateQuizQuestion(questionId, payload) {
-  const content = getLocalContent()
-  const question = {
-    ...content.quizQuestions.find((entry) => entry.id === questionId),
-    ...payload,
-    options: payload.options.map((text, index) => ({
-      id: `${questionId}-option-${index + 1}`,
-      text,
-      sortOrder: index + 1,
-    })),
-  }
-  const next = saveLocalContent({
-    quizQuestions: content.quizQuestions.map((entry) => (entry.id === questionId ? question : entry)),
-  })
-
-  return { question: clone(next.quizQuestions.find((entry) => entry.id === questionId)) }
+  return request(`/admin/quiz-questions/${encodeURIComponent(questionId)}`, { method: 'PATCH', body: payload })
 }
 
 export async function adminDeleteQuizQuestion(questionId) {
-  const content = getLocalContent()
-  saveLocalContent({ quizQuestions: content.quizQuestions.filter((question) => question.id !== questionId) })
-  return { deleted: true }
+  return request(`/admin/quiz-questions/${encodeURIComponent(questionId)}`, { method: 'DELETE' })
 }
