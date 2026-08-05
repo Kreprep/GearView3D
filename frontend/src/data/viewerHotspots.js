@@ -300,11 +300,32 @@ export const engineOnDeviceEffects = {
     mode: 'blink',
     radius: 0.045,
   },
+  // Operational controls play a 3D model animation (see ForkliftModel in
+  // InteractiveForkliftViewer) instead of a lamp. `animation` names the demo;
+  // `duration` must cover the animation envelope before the effect clears.
+  'steering-response': {
+    duration: 3000,
+    animation: 'steer',
+  },
+  brakes: {
+    duration: 3400,
+    animation: 'brake',
+  },
+  'lift-tilt-functions': {
+    duration: 4600,
+    animation: 'lift-tilt',
+  },
+  'forward-reverse-travel': {
+    duration: 3600,
+    animation: 'travel',
+  },
 }
 
 /** Resolves an effect's lamp positions from its hotspot. */
 export function resolveEffectLamps(effect, hotspot) {
   if (effect?.lamps?.length) return effect.lamps
+  // Animation-driven effects move the model itself - no lamp overlay.
+  if (effect?.animation) return []
   if (!hotspot?.position) return []
 
   const [x, y, z] = hotspot.position

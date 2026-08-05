@@ -81,28 +81,34 @@ function defaultContent() {
   }
 }
 
-// Part details are merged per entry (seed defaults + saved admin overrides), so
-// newly seeded parts still show up after an admin has edited other entries.
-function mergePartDetails(defaults, saved) {
-  const merged = { ...defaults }
-  for (const [id, detail] of Object.entries(saved || {})) {
-    merged[id] = { ...merged[id], ...detail, id }
-  }
-  return merged
-}
-
 function getLocalContent() {
   const fallback = defaultContent()
+  function mergeMissingRecords(savedArr, fallbackArr, keyFn) {
+    const saved = Array.isArray(savedArr) ? savedArr : []
+    const map = new Map(saved.map((item) => [keyFn(item), item]))
+    for (const item of fallbackArr || []) {
+      const key = keyFn(item)
+      if (!map.has(key)) map.set(key, item)
+    }
+    return Array.from(map.values())
+  }
 
   try {
     const saved = localStorage.getItem(CONTENT_STORAGE_KEY)
-    const savedContent = saved ? JSON.parse(saved) : {}
-    return {
+    const parsed = saved ? JSON.parse(saved) : {}
+
+    const merged = {
       ...fallback,
-      ...savedContent,
-      partDetails: mergePartDetails(fallback.partDetails, savedContent.partDetails),
+      ...parsed,
       localOnly: true,
     }
+
+    merged.modules = mergeMissingRecords(parsed.modules, fallback.modules, (item) => item.slug)
+    merged.checklists = mergeMissingRecords(parsed.checklists, fallback.checklists, (item) => item.id)
+    merged.quizQuestions = mergeMissingRecords(parsed.quizQuestions, fallback.quizQuestions, (item) => item.id)
+    merged.partDetails = { ...(fallback.partDetails || {}), ...(parsed.partDetails || {}) }
+
+    return merged
   } catch {
     return fallback
   }
