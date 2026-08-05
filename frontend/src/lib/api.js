@@ -1,4 +1,5 @@
 import {
+  buildDefaultPartDetails,
   forkliftEquipment,
   moduleChecklists,
   moduleQuizQuestions,
@@ -71,6 +72,7 @@ function defaultContent() {
     equipment: [forkliftEquipment],
     modules: trainingModules,
     parts: partsHotspots,
+    partDetails: buildDefaultPartDetails(),
     checklists: checklistRecords(),
     quizQuestions: quizRecords(),
     users: demoUsers.map(publicUser),
@@ -79,14 +81,26 @@ function defaultContent() {
   }
 }
 
+// Part details are merged per entry (seed defaults + saved admin overrides), so
+// newly seeded parts still show up after an admin has edited other entries.
+function mergePartDetails(defaults, saved) {
+  const merged = { ...defaults }
+  for (const [id, detail] of Object.entries(saved || {})) {
+    merged[id] = { ...merged[id], ...detail, id }
+  }
+  return merged
+}
+
 function getLocalContent() {
   const fallback = defaultContent()
 
   try {
     const saved = localStorage.getItem(CONTENT_STORAGE_KEY)
+    const savedContent = saved ? JSON.parse(saved) : {}
     return {
       ...fallback,
-      ...(saved ? JSON.parse(saved) : {}),
+      ...savedContent,
+      partDetails: mergePartDetails(fallback.partDetails, savedContent.partDetails),
       localOnly: true,
     }
   } catch {
@@ -199,6 +213,10 @@ export async function getParts() {
   return clone(getLocalContent().parts)
 }
 
+export async function getPartDetails() {
+  return clone(getLocalContent().partDetails)
+}
+
 export async function getChecklist(moduleSlug) {
   const content = getLocalContent()
   const module = content.modules.find((item) => item.slug === moduleSlug)
@@ -250,6 +268,20 @@ export async function adminCreatePart(payload) {
   saveLocalContent({ parts: [...content.parts, part] })
 
   return { part: clone(part) }
+}
+
+export async function adminUpdatePartDetail(detailId, payload) {
+  const content = getLocalContent()
+  const detail = {
+    ...content.partDetails[detailId],
+    ...payload,
+    id: detailId,
+  }
+  const next = saveLocalContent({
+    partDetails: { ...content.partDetails, [detailId]: detail },
+  })
+
+  return { detail: clone(next.partDetails[detailId]) }
 }
 
 export async function adminDeletePart(partId) {
