@@ -1,4 +1,5 @@
 import {
+  buildDefaultPartDetails,
   forkliftEquipment,
   moduleChecklists,
   moduleQuizQuestions,
@@ -71,6 +72,7 @@ function defaultContent() {
     equipment: [forkliftEquipment],
     modules: trainingModules,
     parts: partsHotspots,
+    partDetails: buildDefaultPartDetails(),
     checklists: checklistRecords(),
     quizQuestions: quizRecords(),
     users: demoUsers.map(publicUser),
@@ -79,29 +81,33 @@ function defaultContent() {
   }
 }
 
-// Records added to the defaults after a browser has already saved a content
-// store would otherwise disappear (the saved array replaces the default one),
-// so append any default record whose key is missing from the saved list.
-function mergeMissingRecords(savedRecords, defaultRecords, keyOf) {
-  if (!Array.isArray(savedRecords)) return defaultRecords
-  const savedKeys = new Set(savedRecords.map(keyOf))
-  return [...savedRecords, ...defaultRecords.filter((record) => !savedKeys.has(keyOf(record)))]
-}
-
 function getLocalContent() {
   const fallback = defaultContent()
+  function mergeMissingRecords(savedArr, fallbackArr, keyFn) {
+    const saved = Array.isArray(savedArr) ? savedArr : []
+    const map = new Map(saved.map((item) => [keyFn(item), item]))
+    for (const item of fallbackArr || []) {
+      const key = keyFn(item)
+      if (!map.has(key)) map.set(key, item)
+    }
+    return Array.from(map.values())
+  }
 
   try {
     const saved = localStorage.getItem(CONTENT_STORAGE_KEY)
     const parsed = saved ? JSON.parse(saved) : {}
+
     const merged = {
       ...fallback,
       ...parsed,
       localOnly: true,
     }
+
     merged.modules = mergeMissingRecords(parsed.modules, fallback.modules, (item) => item.slug)
     merged.checklists = mergeMissingRecords(parsed.checklists, fallback.checklists, (item) => item.id)
     merged.quizQuestions = mergeMissingRecords(parsed.quizQuestions, fallback.quizQuestions, (item) => item.id)
+    merged.partDetails = { ...(fallback.partDetails || {}), ...(parsed.partDetails || {}) }
+
     return merged
   } catch {
     return fallback
@@ -213,6 +219,10 @@ export async function getParts() {
   return clone(getLocalContent().parts)
 }
 
+export async function getPartDetails() {
+  return clone(getLocalContent().partDetails)
+}
+
 export async function getChecklist(moduleSlug) {
   const content = getLocalContent()
   const module = content.modules.find((item) => item.slug === moduleSlug)
@@ -264,6 +274,20 @@ export async function adminCreatePart(payload) {
   saveLocalContent({ parts: [...content.parts, part] })
 
   return { part: clone(part) }
+}
+
+export async function adminUpdatePartDetail(detailId, payload) {
+  const content = getLocalContent()
+  const detail = {
+    ...content.partDetails[detailId],
+    ...payload,
+    id: detailId,
+  }
+  const next = saveLocalContent({
+    partDetails: { ...content.partDetails, [detailId]: detail },
+  })
+
+  return { detail: clone(next.partDetails[detailId]) }
 }
 
 export async function adminDeletePart(partId) {
