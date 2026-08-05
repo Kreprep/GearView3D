@@ -16,35 +16,11 @@ import {
 } from '@react-three/drei'
 import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { motion } from 'framer-motion'
-import {
-  BadgeInfo,
-  BookOpen,
-  Eye,
-  Maximize,
-  RotateCcw,
-  ShieldCheck,
-  Wrench,
-} from 'lucide-react'
+import { BadgeInfo, Eye, Maximize, RotateCcw, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import PartDetailCard from './components/PartDetailCard'
 import { partsHotspots } from './lib/trainingData'
 
 const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
-
-const iconMap = {
-  forks: Wrench,
-  mast: ShieldCheck,
-  'lift-chain': ShieldCheck,
-  carriage: Wrench,
-  'operator-area': BookOpen,
-  'overhead-guard': ShieldCheck,
-  counterweight: BadgeInfo,
-  tires: Wrench,
-  'capacity-plate': BadgeInfo,
-  'warning-devices': ShieldCheck,
-}
 
 class ViewportErrorBoundary extends React.Component {
   constructor(props) {
@@ -287,39 +263,24 @@ function LoadingPanel() {
   )
 }
 
+/**
+ * Bare 3D scene - toolbar, canvas and hotspot markers only. Selection is
+ * controlled by the parent (mirrors InteractiveForkliftViewer's contract)
+ * so it can sit inside ModuleSimulationShell's scene slot, which supplies
+ * the surrounding chrome (objectives/steps/current-task overlays).
+ */
 export default function ForkliftViewport({
   modelUrl = DEFAULT_MODEL_URL,
   hotspots = partsHotspots,
-  partDetails = {},
-  selectedPartId,
-  onPartSelect,
-  onPartViewed,
-  viewedPartIds,
+  selectedHotspotId,
+  onHotspotSelect,
+  onResetView,
 }) {
   const containerRef = useRef(null)
-  const [selectedHotspotId, setSelectedHotspotId] = useState(hotspots[0]?.id)
   const [overlaysEnabled, setOverlaysEnabled] = useState(true)
   const [wireframe, setWireframe] = useState(false)
   const [resetToken, setResetToken] = useState(0)
   const [modelReady, setModelReady] = useState(false)
-  const effectiveSelectedHotspotId = selectedPartId || selectedHotspotId
-  const selectedHotspot = useMemo(
-    () => hotspots.find((item) => item.id === effectiveSelectedHotspotId) || hotspots[0],
-    [hotspots, effectiveSelectedHotspotId],
-  )
-  const selectedDetail = selectedHotspot ? partDetails[selectedHotspot.id] : null
-  const progress = useMemo(() => {
-    if (!hotspots.length) return 0
-    const viewedIds = new Set(viewedPartIds || [])
-    if (selectedHotspot?.id) viewedIds.add(selectedHotspot.id)
-    return Math.round((viewedIds.size / hotspots.length) * 100)
-  }, [hotspots, selectedHotspot, viewedPartIds])
-
-  useEffect(() => {
-    if (selectedHotspot?.id) {
-      onPartViewed?.(selectedHotspot.id)
-    }
-  }, [onPartViewed, selectedHotspot?.id])
 
   useEffect(() => {
     let active = true
@@ -346,10 +307,9 @@ export default function ForkliftViewport({
     await containerRef.current.requestFullscreen?.()
   }
 
-  const handleSelectHotspot = (hotspot) => {
-    setSelectedHotspotId(hotspot.id)
-    onPartSelect?.(hotspot.id)
-    onPartViewed?.(hotspot.id)
+  const resetView = () => {
+    setResetToken((value) => value + 1)
+    onResetView?.()
   }
 
   const Scene = modelReady ? (
@@ -357,8 +317,8 @@ export default function ForkliftViewport({
       modelUrl={modelUrl}
       hotspots={hotspots}
       overlaysEnabled={overlaysEnabled}
-      selectedId={selectedHotspot?.id}
-      onSelectHotspot={handleSelectHotspot}
+      selectedId={selectedHotspotId}
+      onSelectHotspot={onHotspotSelect}
       resetToken={resetToken}
       wireframe={wireframe}
     />
@@ -366,109 +326,34 @@ export default function ForkliftViewport({
     <FallbackForkliftScene />
   )
 
-  const SelectedIcon = selectedHotspot ? iconMap[selectedHotspot.id] || BadgeInfo : BadgeInfo
-
   return (
-    <section className="w-full rounded-[1.25rem] bg-slate-950 p-3 text-slate-100 shadow-2xl">
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div ref={containerRef} className="relative min-h-[min(86vh,960px)] overflow-hidden rounded-[1rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
-          <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setResetToken((value) => value + 1)}>
-              <RotateCcw className="h-4 w-4" /> Reset view
-            </Button>
-            <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setOverlaysEnabled((value) => !value)}>
-              <Eye className="h-4 w-4" /> {overlaysEnabled ? 'Hide' : 'Show'} hotspots
-            </Button>
-            <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setWireframe((value) => !value)}>
-              <Wrench className="h-4 w-4" /> {wireframe ? 'Solid' : 'Wireframe'}
-            </Button>
-            <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={enterFullscreen}>
-              <Maximize className="h-4 w-4" /> Fullscreen
-            </Button>
-          </div>
-
-          <div className="absolute bottom-4 left-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs text-slate-200 shadow-xl backdrop-blur">
-            Drag to rotate - Scroll to zoom - Right-drag to pan
-          </div>
-
-          <ViewportErrorBoundary>
-            <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
-              <Suspense fallback={<LoadingPanel />}>{Scene}</Suspense>
-            </Canvas>
-          </ViewportErrorBoundary>
-          <Loader />
-        </div>
-
-        <aside className="grid content-start gap-3">
-          <Card className="rounded-[1rem] border-white/10 bg-white text-slate-950 shadow-xl">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
-                <span>Walkthrough position</span>
-                <span>{progress}%</span>
-              </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-                <motion.div
-                  className="h-full rounded-full bg-cyan-600"
-                  initial={false}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ type: 'spring', stiffness: 120, damping: 18 }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[1rem] border-white/10 bg-white text-slate-950 shadow-xl">
-            <CardContent className="p-5">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700">
-                  <SelectedIcon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Selected part</p>
-                  <h2 className="text-lg font-semibold">{selectedHotspot?.label}</h2>
-                </div>
-              </div>
-
-              <PartDetailCard
-                subtitle={selectedDetail?.subtitle || selectedHotspot?.category}
-                image={selectedDetail?.image}
-                description={selectedDetail?.description || selectedHotspot?.functionText}
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[1rem] border-white/10 bg-white text-slate-950 shadow-xl">
-            <CardContent className="p-4">
-              <div className="grid gap-2">
-                {hotspots.map((hotspot) => {
-                  const Icon = iconMap[hotspot.id] || BadgeInfo
-                  const active = hotspot.id === selectedHotspot?.id
-
-                  return (
-                    <button
-                      key={hotspot.id}
-                      type="button"
-                      onClick={() => handleSelectHotspot(hotspot)}
-                      className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${
-                        active ? 'border-cyan-500 bg-cyan-50 text-cyan-950' : 'border-slate-200 bg-white hover:border-cyan-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span>
-                        <span className="block text-sm font-semibold">{hotspot.label}</span>
-                        <span className="block text-xs text-slate-500">Tap marker or list item to review</span>
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
+    <div ref={containerRef} className="relative h-full w-full overflow-hidden rounded-[1rem] bg-gradient-to-br from-slate-900 via-slate-950 to-black">
+      <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={resetView}>
+          <RotateCcw className="h-4 w-4" /> Reset view
+        </Button>
+        <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setOverlaysEnabled((value) => !value)}>
+          <Eye className="h-4 w-4" /> {overlaysEnabled ? 'Hide' : 'Show'} hotspots
+        </Button>
+        <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={() => setWireframe((value) => !value)}>
+          <Wrench className="h-4 w-4" /> {wireframe ? 'Solid' : 'Wireframe'}
+        </Button>
+        <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={enterFullscreen}>
+          <Maximize className="h-4 w-4" /> Fullscreen
+        </Button>
       </div>
-    </section>
+
+      <div className="absolute bottom-4 left-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs text-slate-200 shadow-xl backdrop-blur">
+        Drag to rotate - Scroll to zoom - Right-drag to pan
+      </div>
+
+      <ViewportErrorBoundary>
+        <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
+          <Suspense fallback={<LoadingPanel />}>{Scene}</Suspense>
+        </Canvas>
+      </ViewportErrorBoundary>
+      <Loader />
+    </div>
   )
 }
 

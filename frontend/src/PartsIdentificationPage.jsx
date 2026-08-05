@@ -1,32 +1,62 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import ForkliftViewport from './gear_view_3_d_forklift_viewport'
-import PageLayout from './components/PageLayout'
-import ProgressSummary from './components/ProgressSummary'
+import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
 import { getPartDetails, getParts } from './lib/api'
 import { partCategories, partsHotspots, partsPracticeQuestions } from './lib/trainingData'
 import './PartsIdentificationPage.css'
 
-function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigate }) {
+const partsModule = {
+  fullTitle: 'Parts Identification',
+  title: 'Parts Identification',
+  learningObjectives: [
+    'Explore major forklift parts using the 3D model and the category list.',
+    'View every part at least once to track exploration progress.',
+    'Answer the practice questions to check part recognition.',
+  ],
+}
+
+const steps = [
+  {
+    id: 'explore',
+    title: 'Explore by Category',
+    instructions: 'Select a part from the categorized list or tap a marker on the model. Viewed parts are saved automatically.',
+    hint: 'Not sure where to start? Try tapping a marker directly on the 3D model, or pick a part from a category below.',
+  },
+  {
+    id: 'practice',
+    title: 'Practice Questions',
+    instructions: 'Answer each question to check part recognition. Results are saved to learner progress.',
+    hint: 'Revisit any part you are unsure about in the Explore step before answering.',
+  },
+]
+
+function buildDetail(hotspot, partDetails) {
+  if (!hotspot) return null
+  const detail = partDetails[hotspot.id] || {}
+  return {
+    title: detail.title || hotspot.label,
+    subtitle: detail.subtitle || hotspot.category,
+    image: detail.image,
+    description: detail.description || hotspot.functionText,
+  }
+}
+
+function PartsIdentificationPage({ moduleName, onBack }) {
   const [hotspots, setHotspots] = useState(partsHotspots)
   const [partDetails, setPartDetails] = useState({})
-  const [selectedPartId, setSelectedPartId] = useState(partsHotspots[0]?.id)
+  const [selectedPartId, setSelectedPartId] = useState(null)
+  const [selectedDetail, setSelectedDetail] = useState(null)
+  const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [practiceAnswers, setPracticeAnswers] = useState({})
   const [practiceSubmitted, setPracticeSubmitted] = useState(false)
-  const [expandedSections, setExpandedSections] = useState({ explore: false, practice: true })
   const { progress, summary, viewPart, savePartsPracticeAttempt } = useProgress()
-
-  const toggleSection = (section) => {
-    setExpandedSections((sections) => ({ ...sections, [section]: !sections[section] }))
-  }
 
   useEffect(() => {
     getParts().then((items) => {
       if (items.length > 0) {
         setHotspots(items)
-        setSelectedPartId(items[0].id)
       }
     })
     getPartDetails().then(setPartDetails)
@@ -34,19 +64,21 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
 
   const latestPractice = progress.parts.practiceAttempts[0]
   const viewedIds = new Set(summary.viewedParts)
-  const viewedPercentage = partsHotspots.length ? Math.round((summary.viewedParts.length / partsHotspots.length) * 100) : 0
-  const practicePercentage = latestPractice ? latestPractice.percentage : 0
-  const partsProgressBreakdown = [
-    { label: 'Parts viewed', rawValue: viewedPercentage, share: viewedPercentage / 2, color: '#0891b2' },
-    { label: 'Practice score', rawValue: practicePercentage, share: practicePercentage / 2, color: '#f59e0b' },
-  ]
   const practiceScore = partsPracticeQuestions.reduce((score, question) => {
     return score + (practiceAnswers[question.id] === question.answer ? 1 : 0)
   }, 0)
 
-  const selectPart = (partId) => {
-    setSelectedPartId(partId)
-    viewPart(partId)
+  const selectPart = (hotspot) => {
+    setSelectedPartId(hotspot.id)
+    setSelectedDetail(buildDetail(hotspot, partDetails))
+    viewPart(hotspot.id)
+  }
+
+  const clearSelectedDetail = () => setSelectedDetail(null)
+
+  const goToStep = (index) => {
+    setCurrentStepIndex(Math.min(Math.max(index, 0), steps.length - 1))
+    setSelectedDetail(null)
   }
 
   const submitPractice = () => {
@@ -59,168 +91,136 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
     setPracticeSubmitted(false)
   }
 
+  const completeModule = () => {
+    if (!practiceSubmitted) return
+    onBack?.()
+  }
+
+  const renderScene = () => (
+    <div className="parts-scene-wrap">
+      <ForkliftViewport
+        hotspots={hotspots}
+        selectedHotspotId={selectedPartId}
+        onHotspotSelect={selectPart}
+        onResetView={() => setSelectedPartId(null)}
+      />
+    </div>
+  )
+
+  const renderExploreTask = () => (
+    <div className="parts-task-stack">
+      <ScopeNotice />
+      <div className="category-grid">
+        {partCategories.map((category) => (
+          <div key={category} className="category-group">
+            <h4>{category}</h4>
+            {hotspots
+              .filter((part) => part.category === category)
+              .map((part) => (
+                <button
+                  key={part.id}
+                  type="button"
+                  className={selectedPartId === part.id ? 'part-list-button active' : 'part-list-button'}
+                  onClick={() => selectPart(part)}
+                >
+                  <span>{part.label}</span>
+                  <small>{viewedIds.has(part.id) ? 'Viewed' : 'Not viewed'}</small>
+                </button>
+              ))}
+          </div>
+        ))}
+      </div>
+      <p className="task-note">{summary.viewedParts.length} of {hotspots.length} parts viewed.</p>
+    </div>
+  )
+
+  const renderPracticeTask = () => (
+    <div className="parts-task-stack">
+      <p className="task-note">
+        Latest practice: {latestPractice ? `${latestPractice.score}/${latestPractice.total} (${latestPractice.percentage}%)` : 'No attempt yet'}
+      </p>
+      <div className="practice-list">
+        {partsPracticeQuestions.map((question) => {
+          const selected = practiceAnswers[question.id]
+          const isCorrect = selected === question.answer
+
+          return (
+            <fieldset key={question.id} className="practice-question">
+              <legend>{question.prompt}</legend>
+              <div className="practice-options">
+                {question.options.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={selected === option ? 'answer-option selected' : 'answer-option'}
+                    onClick={() => !practiceSubmitted && setPracticeAnswers((answers) => ({ ...answers, [question.id]: option }))}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+              {practiceSubmitted && (
+                <p className={isCorrect ? 'feedback correct' : 'feedback incorrect'}>
+                  {isCorrect ? 'Correct.' : `Incorrect. Correct answer: ${question.answer}.`}
+                </p>
+              )}
+            </fieldset>
+          )
+        })}
+      </div>
+
+      <div className="step-actions">
+        <button
+          type="button"
+          className="primary-action"
+          onClick={submitPractice}
+          disabled={Object.keys(practiceAnswers).length < partsPracticeQuestions.length || practiceSubmitted}
+        >
+          Submit Practice
+        </button>
+        <button type="button" onClick={retryPractice}>
+          Retry
+        </button>
+      </div>
+      {practiceSubmitted && <p className="task-note">Score: {practiceScore}/{partsPracticeQuestions.length}. Click Complete Module to finish.</p>}
+    </div>
+  )
+
+  const renderTask = ({ currentStep }) => {
+    if (currentStep.id === 'practice') return renderPracticeTask()
+    return renderExploreTask()
+  }
+
   return (
-    <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate} wide>
-      <div className="page-back-row">
+    <div className="module-page-container parts-identification-page">
+      <header className="module-page-header">
         <button className="back-button" onClick={onBack}>
           Back to Modules
         </button>
-        <h1 className="page-heading">{moduleName} - Parts Identification</h1>
-      </div>
-
-      <ScopeNotice />
-      <div className="parts-intro">
-        <h2>Parts Identification Module</h2>
-        <p>
-          Learn major forklift parts through free exploration and short practice questions. This module supports
-          familiarization only and does not replace supervised hands-on training.
-        </p>
-      </div>
-
-      <div className="parts-progress-row">
-        <div className="parts-progress-card-wrap">
-          <ProgressSummary
-            title="Parts Identification Progress"
-            value={summary.parts}
-            breakdown={partsProgressBreakdown}
-            compact
-          />
+        <div className="module-title-section">
+          <h1>{partsModule.fullTitle}</h1>
+          <h2>{moduleName} Familiarization</h2>
         </div>
-        <div className="lesson-card">
-          <h3>Viewed Parts</h3>
-          <p>{summary.viewedParts.length} of {partsHotspots.length} parts viewed.</p>
-          <p className="muted-line">
-            Latest practice: {latestPractice ? `${latestPractice.score}/${latestPractice.total} (${latestPractice.percentage}%)` : 'No attempt yet'}
-          </p>
-        </div>
-      </div>
+      </header>
 
-      <section className="parts-learning-layout">
-        <div className="lesson-card mode-panel accordion-card">
-          <button
-            type="button"
-            className="accordion-header"
-            onClick={() => toggleSection('explore')}
-            aria-expanded={expandedSections.explore}
-          >
-            <div>
-              <h3>Explore by Category</h3>
-              <p>Select a part from the categorized list or from the 3D markers. Viewed parts are saved automatically.</p>
-            </div>
-            <ChevronDown size={18} className={expandedSections.explore ? 'accordion-chevron open' : 'accordion-chevron'} />
-          </button>
-
-          {expandedSections.explore && (
-            <div className="accordion-body">
-              <div className="category-grid">
-                {partCategories.map((category) => (
-                  <div key={category} className="category-group">
-                    <h4>{category}</h4>
-                    {hotspots
-                      .filter((part) => part.category === category)
-                      .map((part) => (
-                        <button
-                          key={part.id}
-                          type="button"
-                          className={selectedPartId === part.id ? 'part-list-button active' : 'part-list-button'}
-                          onClick={() => selectPart(part.id)}
-                        >
-                          <span>{part.label}</span>
-                          <small>{viewedIds.has(part.id) ? 'Viewed' : 'Not viewed'}</small>
-                        </button>
-                      ))}
-                  </div>
-                ))}
-              </div>
-              <p className="todo-note">TODO: Add mesh highlighting after model part names are verified against the GLB hierarchy.</p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="viewport-panel">
-        {hotspots.length > 0 && (
-          <ForkliftViewport
-            hotspots={hotspots}
-            partDetails={partDetails}
-            selectedPartId={selectedPartId}
-            onPartSelect={selectPart}
-            onPartViewed={viewPart}
-            viewedPartIds={summary.viewedParts}
-          />
-        )}
-      </section>
-
-      <section className="parts-learning-layout">
-        <div className="lesson-card mode-panel accordion-card">
-          <button
-            type="button"
-            className="accordion-header"
-            onClick={() => toggleSection('practice')}
-            aria-expanded={expandedSections.practice}
-          >
-            <div>
-              <h3>Practice Questions</h3>
-              <p>Answer each question to check part recognition. Results are saved to learner progress.</p>
-            </div>
-            <div className="accordion-header-right">
-              {practiceSubmitted && (
-                <strong className="score-pill">{practiceScore}/{partsPracticeQuestions.length}</strong>
-              )}
-              <ChevronDown size={18} className={expandedSections.practice ? 'accordion-chevron open' : 'accordion-chevron'} />
-            </div>
-          </button>
-
-          {expandedSections.practice && (
-            <div className="accordion-body">
-              <div className="practice-list">
-                {partsPracticeQuestions.map((question) => {
-                  const selected = practiceAnswers[question.id]
-                  const isCorrect = selected === question.answer
-
-                  return (
-                    <fieldset key={question.id} className="practice-question">
-                      <legend>{question.prompt}</legend>
-                      <div className="practice-options">
-                        {question.options.map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            className={selected === option ? 'answer-option selected' : 'answer-option'}
-                            onClick={() => !practiceSubmitted && setPracticeAnswers((answers) => ({ ...answers, [question.id]: option }))}
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                      {practiceSubmitted && (
-                        <p className={isCorrect ? 'feedback correct' : 'feedback incorrect'}>
-                          {isCorrect ? 'Correct.' : `Incorrect. Correct answer: ${question.answer}.`}
-                        </p>
-                      )}
-                    </fieldset>
-                  )
-                })}
-              </div>
-
-              <div className="step-actions">
-                <button
-                  type="button"
-                  className="primary-action"
-                  onClick={submitPractice}
-                  disabled={Object.keys(practiceAnswers).length < partsPracticeQuestions.length || practiceSubmitted}
-                >
-                  Submit Practice
-                </button>
-                <button type="button" onClick={retryPractice}>
-                  Retry
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-    </PageLayout>
+      <main className="module-content wide-simulation-content">
+        <ModuleSimulationShell
+          module={partsModule}
+          steps={steps}
+          currentStepIndex={currentStepIndex}
+          objectives={partsModule.learningObjectives}
+          progress={summary.parts}
+          canProceed
+          onBackStep={() => goToStep(currentStepIndex - 1)}
+          onNextStep={() => goToStep(currentStepIndex + 1)}
+          onComplete={completeModule}
+          renderScene={renderScene}
+          renderTask={renderTask}
+          selectedDetail={selectedDetail}
+          onClearDetail={clearSelectedDetail}
+        />
+      </main>
+    </div>
   )
 }
 
