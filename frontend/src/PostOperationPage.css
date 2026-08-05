@@ -1,1 +1,202 @@
 @import "./WalkAroundCheckPage.css";
+
+.post-op-briefing {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 22px 24px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+}
+
+.post-op-briefing h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #7dd3fc;
+}
+
+.post-op-briefing ul {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.post-op-briefing li,
+.post-op-briefing p {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.post-op-briefing p {
+  margin: 0;
+  color: #cbd5f5;
+}
+
+.shutdown-activity {
+  width: min(640px, 100%);
+  margin: 0 auto;
+}
+
+.shutdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.shutdown-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  text-align: left;
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  color: #e2e8f0;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+
+.shutdown-card:hover:not(:disabled) {
+  border-color: rgba(56, 189, 248, 0.8);
+  transform: translateY(-1px);
+}
+
+.shutdown-card.picked {
+  cursor: default;
+  background: rgba(20, 83, 45, 0.5);
+  border-color: rgba(34, 197, 94, 0.7);
+}
+
+.shutdown-card.wrong {
+  border-color: rgba(239, 68, 68, 0.9);
+  background: rgba(127, 29, 29, 0.45);
+  animation: shutdown-shake 0.3s ease;
+}
+
+@keyframes shutdown-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.shutdown-order-chip {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 13px;
+  color: #0f172a;
+  background: #94a3b8;
+}
+
+.shutdown-card.picked .shutdown-order-chip {
+  background: #4ade80;
+}
+
+.shutdown-card-text {
+  display: grid;
+  gap: 4px;
+}
+
+.shutdown-card-text strong {
+  font-size: 13px;
+}
+
+.shutdown-card-text small {
+  font-size: 11.5px;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.reporting-activity {
+  width: min(640px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+}
+
+.reporting-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  color: #e2e8f0;
+}
+
+.reporting-card.correct {
+  border-color: rgba(34, 197, 94, 0.7);
+}
+
+.reporting-card.wrong {
+  border-color: rgba(239, 68, 68, 0.75);
+}
+
+.reporting-text {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.reporting-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.reporting-button {
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-weight: 800;
+  font-size: 12.5px;
+  cursor: pointer;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(30, 41, 59, 0.9);
+  color: #e2e8f0;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.reporting-button:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.reporting-button.report:hover:not(:disabled) {
+  border-color: rgba(251, 146, 60, 0.85);
+}
+
+.reporting-button.ok:hover:not(:disabled) {
+  border-color: rgba(56, 189, 248, 0.85);
+}
+
+.reporting-button.chosen {
+  border-color: rgba(34, 197, 94, 0.8);
+  background: rgba(20, 83, 45, 0.6);
+}
+
+.reporting-card.wrong .reporting-button.chosen {
+  border-color: rgba(239, 68, 68, 0.85);
+  background: rgba(127, 29, 29, 0.5);
+}
+
+.reporting-feedback {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.reporting-feedback.correct {
+  color: #86efac;
+}
+
+.reporting-feedback.wrong {
+  color: #fca5a5;
+}

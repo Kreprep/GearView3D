@@ -85,11 +85,52 @@ export const moduleScenarioSteps = {
       hint: 'Take the turns slowly - smooth control matters more than speed.',
     },
     {
+      id: 'pallet-pickup',
+      title: 'Pallet Pickup & Placement',
+      objective: 'Pick up a pallet with the forks and place it in the marked drop zone.',
+      instructions:
+        'Drive up to the pallet with the forks lowered (F), slide them under the load, raise with R to lift, carry the pallet to the drop zone, lower with F, then reverse away to release it.',
+      hint: 'Approach the pallet slowly and squarely - the forks only engage when they are low and centered under the load.',
+    },
+    {
       id: 'summary',
       title: 'Completion Summary',
       objective: 'Review completed driving control tasks.',
-      instructions: 'Confirm engine start, acceleration, braking, turning, and the combined driving course are complete.',
+      instructions: 'Confirm engine start, acceleration, braking, turning, the driving course, and the pallet pickup task are complete.',
       hint: 'Completion means you can identify and use the basic forklift operating controls in this simplified simulation.',
+    },
+  ],
+  'pallet-testing': [
+    {
+      id: 'briefing',
+      title: 'Scenario Briefing',
+      objective: 'Understand rated capacity, load stability, and the fail conditions in this assessment.',
+      instructions:
+        'Review why overloading tips a forklift forward, why cones must never be struck, and why sudden braking throws the load off the forks. Any of these fails the attempt.',
+      hint: 'The counterweight only balances loads up to the rated capacity shown in the HUD.',
+    },
+    {
+      id: 'precision-carry',
+      title: 'Precision Carry',
+      objective: 'Carry a pallet through a cone-lined lane and deliver it without a single fail condition.',
+      instructions:
+        'Pick up the pallet, carry it down the cone corridor to the drop zone, lower it with F, and reverse away. Hitting a cone or braking hard while carrying fails the attempt - use Reset Attempt and try again.',
+      hint: 'Ease off W early and let the forklift coast instead of slamming S at speed.',
+    },
+    {
+      id: 'load-limits',
+      title: 'Load Limits',
+      objective: 'Judge which pallet is within the rated capacity and deliver it safely.',
+      instructions:
+        'Three pallets are labeled with their weight. The forklift capacity is shown in the HUD. Lift a pallet within capacity and deliver it to the drop zone. Lifting the overweight pallet will tip the forklift and fail the attempt.',
+      hint: 'Read the weight labels before driving in - the heaviest pallet exceeds the rated capacity.',
+    },
+    {
+      id: 'summary',
+      title: 'Completion Summary',
+      objective: 'Review the assessment results.',
+      instructions: 'Confirm the precision carry and load limit exercises are complete.',
+      hint: 'Completion means you can plan a safe carry and refuse an overweight load.',
     },
   ],
   'post-operation': [
@@ -101,25 +142,35 @@ export const moduleScenarioSteps = {
       hint: 'A parked forklift can still create hazards if not secured.',
     },
     {
+      id: 'secure-parking',
+      title: 'Secure Parking',
+      objective: 'Park the forklift inside the painted bay without striking a cone.',
+      instructions:
+        'Drive the cone-lined route to the painted parking bay, straighten up between the lines, stop completely, lower the forks with F, then switch the engine off with E. Hitting a cone fails the attempt.',
+      hint: 'The status badge at the top tells you which parking requirement is still missing.',
+    },
+    {
       id: 'shutdown-sequence',
       title: 'Shutdown Sequence',
       objective: 'Place post-operation steps in a safe order.',
-      instructions: 'Select actions in order: park level, lower forks, neutral controls, brake, power off, report concerns.',
+      instructions:
+        'Select the six shutdown actions in the correct order: park level, lower forks, neutral controls, parking brake, power off, then report concerns. Wrong picks are counted.',
       hint: 'Lowering forks and securing movement controls are essential before leaving equipment.',
     },
     {
       id: 'reporting',
       title: 'Unsafe Condition Reporting',
       objective: 'Decide what needs to be reported after operation.',
-      instructions: 'Review prompts and identify visible damage or unsafe conditions.',
+      instructions:
+        'For each end-of-shift condition, choose Report or No Action. Correct every card to complete the step.',
       hint: 'Maintenance is outside this prototype; learners should report concerns to qualified personnel.',
     },
     {
       id: 'summary',
       title: 'Completion Summary',
-      objective: 'Review shutdown completion and reporting decisions.',
-      instructions: 'Confirm post-operation activities and checkpoint questions are complete.',
-      hint: 'Completion means the learner can describe a safe shutdown sequence.',
+      objective: 'Review parking, shutdown, and reporting results.',
+      instructions: 'Confirm the secure parking drive, shutdown ordering, and reporting decisions are complete.',
+      hint: 'Completion means the learner can park, secure, and hand over a forklift safely.',
     },
   ],
 }
