@@ -10,6 +10,7 @@ import {
   walkAroundViewerHotspots,
 } from './data/viewerHotspots'
 import { playDeviceSound, stopDeviceSound } from './lib/deviceAudio'
+import { getPartDetails } from './lib/api'
 import { routes } from './lib/router'
 import {
   defectRecognitionScenarios,
@@ -91,6 +92,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [defectScenarioIndex, setDefectScenarioIndex] = useState(0)
   const [selectedDetail, setSelectedDetail] = useState(null)
+  const [partDetails, setPartDetails] = useState({})
   const [focusedHotspotId, setFocusedHotspotId] = useState(null)
   const [activeDeviceEffect, setActiveDeviceEffect] = useState(null)
   const deviceEffectTimer = useRef(null)
@@ -121,6 +123,22 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     stopDeviceSound()
   }, [])
 
+  // Admin-editable part details (markdown description + reference image) from
+  // the local content store; scenario data below stays as the fallback.
+  useEffect(() => {
+    getPartDetails().then(setPartDetails)
+  }, [])
+
+  const buildDetail = (id, fallback) => {
+    const detail = partDetails[id] || {}
+    return {
+      title: detail.title || fallback.title,
+      subtitle: detail.subtitle || fallback.subtitle,
+      image: detail.image || fallback.image,
+      description: detail.description || fallback.description,
+    }
+  }
+
 
   const saveSimulation = (partial) => {
     const next = calculateSimulationState({ ...simulation, ...partial })
@@ -150,10 +168,12 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     const justCompleted = engineOffChecks.length === engineOffInspectionChecks.length && !simulation.engineStarted
     setFocusedHotspotId(justCompleted ? 'ignition' : check.id)
     setSelectedDetail({
-      title: check.label,
-      subtitle: check.targetArea,
-      description: check.found,
-      image: check.image,
+      ...buildDetail(check.id, {
+        title: check.label,
+        subtitle: check.targetArea,
+        description: check.found,
+        image: check.image,
+      }),
       status: check.feedback,
       statusType: check.status === 'safe' ? 'correct' : 'warning',
     })
@@ -166,9 +186,11 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     setFocusedHotspotId('ignition')
     triggerDeviceEffect('ignition')
     setSelectedDetail({
-      title: 'Ignition Switch',
-      subtitle: 'Engine start',
-      description: 'Key turned. The starter cranks and the engine settles to idle.',
+      ...buildDetail('ignition', {
+        title: 'Ignition Switch',
+        subtitle: 'Engine start',
+        description: 'Key turned. The starter cranks and the engine settles to idle.',
+      }),
       status: 'Engine started. Continue with the engine-on checks.',
       statusType: 'correct',
     })
@@ -204,10 +226,12 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
 
     setFocusedHotspotId(hotspot.id)
     setSelectedDetail({
-      title: hotspot.label,
-      subtitle: hotspot.category,
-      description: hotspot.inspect,
-      image: hotspot.image,
+      ...buildDetail(hotspot.id, {
+        title: hotspot.label,
+        subtitle: hotspot.category,
+        description: hotspot.inspect,
+        image: hotspot.image,
+      }),
       status: hotspot.feedback,
       statusType: hotspot.result === 'unsafe' ? 'warning' : 'correct',
     })
@@ -236,10 +260,12 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
     setFocusedHotspotId(item.id)
     triggerDeviceEffect(item.id)
     setSelectedDetail({
-      title: hotspot?.label || item.label,
-      subtitle: hotspot?.category || 'Engine-on check',
-      description: hotspot?.inspect,
-      image: hotspot?.image,
+      ...buildDetail(item.id, {
+        title: hotspot?.label || item.label,
+        subtitle: hotspot?.category || 'Engine-on check',
+        description: hotspot?.inspect,
+        image: hotspot?.image,
+      }),
       status: item.feedback,
       statusType: 'correct',
     })

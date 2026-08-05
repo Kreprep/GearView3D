@@ -151,6 +151,13 @@
   gap: 10px;
 }
 
+.admin-panel-note {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .admin-part-button {
   border: 1px solid #cbd5e1;
   border-radius: 10px;

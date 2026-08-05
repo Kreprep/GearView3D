@@ -5,12 +5,13 @@ import PageLayout from './components/PageLayout'
 import ProgressSummary from './components/ProgressSummary'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
-import { getParts } from './lib/api'
+import { getPartDetails, getParts } from './lib/api'
 import { partCategories, partsHotspots, partsPracticeQuestions } from './lib/trainingData'
 import './PartsIdentificationPage.css'
 
 function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigate }) {
   const [hotspots, setHotspots] = useState(partsHotspots)
+  const [partDetails, setPartDetails] = useState({})
   const [selectedPartId, setSelectedPartId] = useState(partsHotspots[0]?.id)
   const [practiceAnswers, setPracticeAnswers] = useState({})
   const [practiceSubmitted, setPracticeSubmitted] = useState(false)
@@ -28,6 +29,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
         setSelectedPartId(items[0].id)
       }
     })
+    getPartDetails().then(setPartDetails)
   }, [])
 
   const latestPractice = progress.parts.practiceAttempts[0]
@@ -140,6 +142,7 @@ function PartsIdentificationPage({ moduleName, user, onLogout, onBack, onNavigat
         {hotspots.length > 0 && (
           <ForkliftViewport
             hotspots={hotspots}
+            partDetails={partDetails}
             selectedPartId={selectedPartId}
             onPartSelect={selectPart}
             onPartViewed={viewPart}

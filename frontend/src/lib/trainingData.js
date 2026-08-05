@@ -19,3 +19,4 @@ export {
   walkAroundDefects,
 } from '../data/inspectionScenarios'
 export { moduleScenarioSteps } from '../data/moduleScenarios'
+export { buildDefaultPartDetails } from '../data/partDetails'
