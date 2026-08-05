@@ -3,7 +3,7 @@ import { moduleChecklists, partsHotspots } from './trainingData'
 const STORAGE_KEY = 'gearview_progress_v1'
 const CHANGE_EVENT = 'gearview-progress-change'
 
-const equipmentModuleSlugs = ['walk-around-check', 'load-handling', 'post-operation']
+const equipmentModuleSlugs = ['walk-around-check', 'load-handling', 'post-operation', 'pallet-testing']
 const partsModuleSlug = 'parts-identification'
 
 function emptyProgress() {
