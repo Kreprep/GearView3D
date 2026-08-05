@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TRAINEE
+}
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  passwordHash String
+  fullName     String
+  role         Role              @default(TRAINEE)
+  progress     ProgressSnapshot?
+  createdAt    DateTime          @default(now())
+}
+
+model Equipment {
+  id          String @id
+  title       String
+  description String @default("")
+  modelUrl    String @default("")
+  sortOrder   Int    @default(0)
+}
+
+model Module {
+  id             Int             @id
+  slug           String          @unique
+  title          String
+  subtitle       String          @default("")
+  description    String          @default("")
+  sortOrder      Int             @default(0)
+  checklistItems ChecklistItem[]
+  quizQuestions  QuizQuestion[]
+}
+
+// 3D hotspot + instructional text for a forklift part. `position` is the
+// [x, y, z] marker position in the viewer; `checklist` is an array of strings.
+model Part {
+  id                 String @id
+  label              String
+  category           String @default("General")
+  position           Json
+  functionText       String @default("")
+  inspectionReminder String @default("")
+  safetyNote         String @default("")
+  relatedModule      String @default("")
+  checklist          Json
+  sortOrder          Int    @default(0)
+}
+
+// Detail card shown when a part/hotspot is clicked. `description` is markdown.
+// Ids overlap Part ids but also include walk-around-only hotspots
+// (hydraulic-hoses, ignition, horn, ...), so this is intentionally not a
+// relation to Part.
+model PartDetail {
+  id          String @id
+  title       String
+  subtitle    String @default("")
+  image       String @default("")
+  description String @default("")
+}
+
+model ChecklistItem {
+  id        String @id
+  module    Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId  Int
+  text      String
+  sortOrder Int    @default(0)
+}
+
+// `options` is an array of { id, text, sortOrder } matching the frontend shape.
+model QuizQuestion {
+  id        String @id
+  module    Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId  Int
+  prompt    String
+  answer    String
+  options   Json
+  sortOrder Int    @default(0)
+}
+
+// One progress document per user, same JSON shape the frontend keeps in
+// localStorage (checklists / parts / quizzes / simulations). Stored as a
+// snapshot instead of normalized tables so the training flow can evolve
+// without schema migrations.
+model ProgressSnapshot {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  data      Json
+  updatedAt DateTime @updatedAt
+}
