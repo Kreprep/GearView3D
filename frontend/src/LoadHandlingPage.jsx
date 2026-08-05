@@ -20,6 +20,7 @@ const completionFieldByStep = {
   'accelerate-brake': 'brakeComplete',
   'turning-practice': 'turningComplete',
   'driving-course': 'drivingCourseComplete',
+  'pallet-pickup': 'palletComplete',
 }
 
 function calculateSimulationState(nextState) {
@@ -29,6 +30,7 @@ function calculateSimulationState(nextState) {
     nextState.brakeComplete,
     nextState.turningComplete,
     nextState.drivingCourseComplete,
+    nextState.palletComplete,
   ]
   const percentage = Math.round((flags.filter(Boolean).length / flags.length) * 100)
   const complete = percentage === 100
@@ -76,6 +78,7 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
     brakeComplete: savedSimulation.brakeComplete || false,
     turningComplete: savedSimulation.turningComplete || false,
     drivingCourseComplete: savedSimulation.drivingCourseComplete || false,
+    palletComplete: savedSimulation.palletComplete || false,
     percentage: savedSimulation.percentage || 0,
     complete: savedSimulation.complete || false,
   })
@@ -111,6 +114,18 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
       return
     }
 
+    if (event.type === 'pallet-lifted' || event.type === 'pallet-dropped') {
+      return
+    }
+
+    if (event.type === 'pallet-delivered') {
+      const completionField = completionFieldByStep[currentStep.id]
+      if (completionField) {
+        saveSimulation({ [completionField]: true })
+      }
+      return
+    }
+
     if (event.type === 'course-complete') {
       const completionField = completionFieldByStep[currentStep.id]
       if (completionField) {
@@ -133,6 +148,7 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
     if (stepId === 'accelerate-brake') return simulation.brakeComplete
     if (stepId === 'turning-practice') return simulation.turningComplete
     if (stepId === 'driving-course') return simulation.drivingCourseComplete
+    if (stepId === 'pallet-pickup') return simulation.palletComplete
     return true
   }
 
@@ -200,6 +216,18 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
       )
     }
 
+    if (currentStep.id === 'pallet-pickup') {
+      return (
+        <div className="load-task-stack">
+          <p className={done ? 'completion-ready' : 'task-note'}>
+            {done
+              ? 'Step complete. Use Next to continue.'
+              : 'Slide the lowered forks under the pallet, raise it with R, carry it to the drop zone, then lower with F and reverse away.'}
+          </p>
+        </div>
+      )
+    }
+
     return (
       <div className="load-task-stack">
         <p className={done ? 'completion-ready' : 'task-note'}>
@@ -221,6 +249,7 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
         <div><span>Brake</span><strong>{simulation.brakeComplete ? 'Complete' : 'Open'}</strong></div>
         <div><span>Turning</span><strong>{simulation.turningComplete ? 'Complete' : 'Open'}</strong></div>
         <div><span>Driving Course</span><strong>{simulation.drivingCourseComplete ? 'Complete' : 'Open'}</strong></div>
+        <div><span>Pallet Handling</span><strong>{simulation.palletComplete ? 'Complete' : 'Open'}</strong></div>
       </div>
       <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
         {simulation.complete

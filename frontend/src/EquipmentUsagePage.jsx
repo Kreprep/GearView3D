@@ -10,6 +10,7 @@ const moduleRoutes = {
   1: routes.walkAround,
   2: routes.loadHandling,
   3: routes.postOperation,
+  4: routes.palletTesting,
 }
 
 function EquipmentUsagePage({ moduleName, user, onLogout, onBack, onNavigate }) {

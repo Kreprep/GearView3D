@@ -19,3 +19,8 @@ export {
   walkAroundDefects,
 } from '../data/inspectionScenarios'
 export { moduleScenarioSteps } from '../data/moduleScenarios'
+export {
+  postOperationReportPrompts,
+  shutdownDisplayOrder,
+  shutdownSequenceActions,
+} from '../data/postOperationScenarios'

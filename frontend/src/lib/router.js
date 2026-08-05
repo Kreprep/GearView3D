@@ -6,6 +6,7 @@ export const routes = {
   walkAround: '/training/forklift/equipment/walk-around',
   loadHandling: '/training/forklift/equipment/load-handling',
   postOperation: '/training/forklift/equipment/post-operation',
+  palletTesting: '/training/forklift/equipment/pallet-testing',
   parts: '/training/forklift/parts',
   assessment: '/training/forklift/assessment',
   admin: '/admin',

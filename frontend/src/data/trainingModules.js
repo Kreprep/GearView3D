@@ -157,26 +157,28 @@ export const equipmentUsageModules = [
     fullTitle: 'Post-Operation and Secure Parking',
     subtitle: 'Secure Parking',
     description:
-      'Follow safe parking and shutdown steps after operation, including level parking, fork lowering, neutral controls, brake engagement, and reporting.',
+      'Park the forklift inside a painted bay on a cone-lined route, then secure it: fork lowering, neutral controls, brake engagement, power off, and reporting. Hitting a cone fails the parking attempt.',
     syllabusLocation: 'Section 2',
     unitCode: 'CON833309',
     unitTitle: 'Perform pre- and post-operation procedures for lifting equipment',
     element: 'Post-operation procedure and equipment securing',
     pageReferences: 'pp. 38, 41-42',
     learningObjectives: [
+      'Park inside painted bay lines without striking cones or markers.',
       'Sequence safe parking and shutdown actions.',
       'Identify why forks, controls, and parking brake must be secured.',
       'Recognize when unsafe conditions should be reported after operation.',
     ],
     lessonContent: [
       'Post-operation discipline prevents parked forklifts from becoming hazards.',
+      'A proficient park means the truck sits straight inside the painted lines, stopped, with forks lowered and the engine off - cones along the route mark limits that must not be touched.',
       'Forks should be lowered, controls set to neutral, and the parking brake engaged before leaving the equipment.',
       'Any unsafe condition or visible damage should be reported for qualified follow-up.',
     ],
     interactiveActivities: [
+      'Cone-lined secure parking drive with painted bay lines',
       'Shutdown sequence ordering',
-      'Secure parking checklist',
-      'Unsafe condition reporting prompt',
+      'Unsafe condition reporting decisions',
     ],
     checkpointQuestions: [
       {
@@ -207,15 +209,82 @@ export const equipmentUsageModules = [
       'Report unsafe conditions or visible damage.',
     ],
     completionRequirements: [
-      'Complete the secure parking checklist.',
+      'Park inside the painted bay without hitting a cone, forks down, engine off.',
       'Complete the shutdown ordering activity.',
-      'Pass the checkpoint questions.',
+      'Answer every reporting decision correctly.',
     ],
     progressKeys: {
       checklist: 'post-operation',
+      parking: 'postOperation.parking',
       shutdownSequence: 'postOperation.shutdownSequence',
       reporting: 'postOperation.reporting',
       completion: 'postOperation.complete',
+    },
+  },
+  {
+    id: 4,
+    slug: 'pallet-testing',
+    title: 'Pallet Handling Assessment',
+    fullTitle: 'Pallet Handling Assessment (Load Safety)',
+    subtitle: 'Load Safety',
+    description:
+      'Apply load-handling judgment under fail conditions: respect rated capacity, avoid traffic cones, and brake smoothly so the load stays on the forks. Overloading, collisions, and sudden stops fail the attempt.',
+    syllabusLocation: 'Section 2',
+    unitCode: '505833315',
+    unitTitle: 'Perform productive operation for forklift',
+    element: 'Element 4: Perform load handling operation',
+    pageReferences: 'pp. 55, 57-58',
+    learningObjectives: [
+      'Compare load weight against rated capacity before lifting.',
+      'Recognize that overloading tips the forklift forward.',
+      'Keep a safe path and avoid striking obstacles while carrying a load.',
+      'Brake gradually so the load does not slide off the forks.',
+    ],
+    lessonContent: [
+      'A forklift stays upright because the counterweight balances the load - lifting more than the rated capacity shifts the combined center of gravity past the front axle and tips the truck forward.',
+      'Traffic cones mark pedestrian lanes and hazards. Striking one in this assessment fails the attempt, the same way it would fail a practical evaluation.',
+      'Sudden braking throws the load forward off the forks. Slow down early and brake gently while carrying.',
+    ],
+    interactiveActivities: [
+      'Cone-lined precision carry with live fail conditions',
+      'Load limit judgment: choose a pallet within rated capacity',
+    ],
+    checkpointQuestions: [
+      {
+        id: 'pallet-overload',
+        prompt: 'What happens when a forklift lifts more than its rated capacity?',
+        options: ['It can tip forward', 'It drives faster', 'Nothing changes', 'The horn sounds'],
+        answer: 'It can tip forward',
+      },
+      {
+        id: 'pallet-braking',
+        prompt: 'How should you brake while carrying a load?',
+        options: ['Gradually and early', 'As hard as possible', 'Only in reverse', 'Never brake'],
+        answer: 'Gradually and early',
+      },
+      {
+        id: 'pallet-cones',
+        prompt: 'What do traffic cones mark in a work area?',
+        options: ['Hazards and travel limits', 'Parking rewards', 'Fuel stations', 'Speed boosts'],
+        answer: 'Hazards and travel limits',
+      },
+    ],
+    checklist: [
+      'Check the load weight against the rated capacity before lifting.',
+      'Refuse to lift a load that exceeds the rated capacity.',
+      'Keep the travel path clear of cones and obstacles.',
+      'Brake gradually while carrying a load.',
+      'Deliver the load to the marked drop zone and reverse away.',
+    ],
+    completionRequirements: [
+      'Complete the precision carry course without hitting a cone or dropping the load.',
+      'Deliver a pallet within rated capacity in the load limit exercise.',
+    ],
+    progressKeys: {
+      checklist: 'pallet-testing',
+      precisionCarry: 'palletTesting.precisionCarry',
+      loadLimits: 'palletTesting.loadLimits',
+      completion: 'palletTesting.complete',
     },
   },
 ]
