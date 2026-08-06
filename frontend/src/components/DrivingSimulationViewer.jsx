@@ -1,9 +1,9 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Grid, Html, useGLTF } from '@react-three/drei'
+import { Grid, Html, OrbitControls, useGLTF } from '@react-three/drei'
 import { DoubleSide, Quaternion, Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { RotateCcw } from 'lucide-react'
+import { Compass, RotateCcw } from 'lucide-react'
 import { buildForkliftRig, REAR_WHEEL_KEYS } from '../lib/forkliftRig'
 import './DrivingSimulationViewer.css'
 
@@ -449,6 +449,7 @@ function DrivingScene({
   onFail,
   parked,
   onParkingUpdate,
+  freeCam,
 }) {
   const { scene } = useGLTF(modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
@@ -829,12 +830,14 @@ function DrivingScene({
       }
     }
 
-    backRef.current.set(-forwardX, 0, -forwardZ)
-    desiredCamRef.current.copy(posRef.current).addScaledVector(backRef.current, 2.6)
-    desiredCamRef.current.y += 1.5
-    camera.position.lerp(desiredCamRef.current, 1 - Math.pow(0.0001, dt))
-    lookTargetRef.current.set(posRef.current.x, posRef.current.y + 0.55, posRef.current.z)
-    camera.lookAt(lookTargetRef.current)
+    if (!freeCam) {
+      backRef.current.set(-forwardX, 0, -forwardZ)
+      desiredCamRef.current.copy(posRef.current).addScaledVector(backRef.current, 2.6)
+      desiredCamRef.current.y += 1.5
+      camera.position.lerp(desiredCamRef.current, 1 - Math.pow(0.0001, dt))
+      lookTargetRef.current.set(posRef.current.x, posRef.current.y + 0.55, posRef.current.z)
+      camera.lookAt(lookTargetRef.current)
+    }
 
     hudAccumRef.current += dt
     if (hudAccumRef.current >= 0.12) {
@@ -918,11 +921,14 @@ function DrivingScene({
           </group>
         </group>
       </group>
+
+      {freeCam && <OrbitControls makeDefault enableDamping dampingFactor={0.15} minDistance={0.5} maxDistance={80} />}
     </>
   )
 }
 
-function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, className }) {
+function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, className, isAdmin }) {
+  const [freeCam, setFreeCam] = useState(false)
   const start = course.start || { position: [0, 0, 0], heading: 0 }
   const forkliftGroupRef = useRef(null)
   const posRef = useRef(new Vector3(start.position[0], start.position[1] ?? 0, start.position[2]))
@@ -1038,6 +1044,7 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
                 setTimeout(() => onEventRef.current?.({ type: 'parking-complete' }), 0)
               }
             }}
+            freeCam={freeCam}
           />
         </Suspense>
       </Canvas>
@@ -1058,6 +1065,15 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
         <button type="button" className="driving-reset-button" onClick={onRequestReset}>
           <RotateCcw size={14} /> Reset Attempt
         </button>
+        {isAdmin && (
+          <button
+            type="button"
+            className={`driving-reset-button ${freeCam ? 'is-active' : ''}`}
+            onClick={() => setFreeCam((value) => !value)}
+          >
+            <Compass size={14} /> Free Cam {freeCam ? 'On' : 'Off'}
+          </button>
+        )}
         <div className="driving-keys">
           {KEY_LEGEND.map(({ key, caption }) => (
             <div key={key} className="driving-key-wrap">
@@ -1076,7 +1092,7 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
   )
 }
 
-export default function DrivingSimulationViewer({ modelUrl = DEFAULT_MODEL_URL, course, onEvent, className = '' }) {
+export default function DrivingSimulationViewer({ modelUrl = DEFAULT_MODEL_URL, course, onEvent, className = '', isAdmin = false }) {
   const [resetSeed, setResetSeed] = useState(0)
 
   return (
@@ -1087,6 +1103,7 @@ export default function DrivingSimulationViewer({ modelUrl = DEFAULT_MODEL_URL, 
       onEvent={onEvent}
       onRequestReset={() => setResetSeed((value) => value + 1)}
       className={className}
+      isAdmin={isAdmin}
     />
   )
 }

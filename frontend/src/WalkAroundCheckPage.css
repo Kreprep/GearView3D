@@ -12,15 +12,14 @@
   gap: 18px;
   padding: 16px 32px;
   border-bottom: 1px solid #dbe3ef;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(14px);
+  background: #ffffff;
 }
 
 .module-title-section h1 {
   margin: 0;
   color: #0f172a;
   font-size: 24px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .module-title-section h2 {
@@ -67,9 +66,8 @@
 .operation-step,
 .critical-reminder {
   border: 1px solid #dbe3ef;
-  border-radius: 18px;
+  border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
   padding: 20px;
 }
 
@@ -88,7 +86,7 @@
 .critical-reminder h3 {
   color: #0f172a;
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .syllabus-info {
@@ -119,7 +117,7 @@
   margin-bottom: 12px;
   color: #0891b2;
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -144,7 +142,7 @@
 .step-details h5 {
   color: #0f172a;
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspection-area ul,
@@ -172,7 +170,7 @@
   border-radius: 999px;
   background: #0f172a;
   color: #ffffff;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .guided-checklist {
@@ -196,7 +194,7 @@
 }
 
 .walkaround-scene-wrap > section {
-  border-radius: 18px;
+  border-radius: 12px;
 }
 
 .oil-leak-overlay {
@@ -207,8 +205,7 @@
   width: 180px;
   height: 72px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(10, 10, 10, 0.78), rgba(40, 40, 40, 0.34) 58%, transparent 70%);
-  box-shadow: 0 0 28px rgba(0, 0, 0, 0.34);
+  background: rgba(10, 10, 10, 0.6);
   pointer-events: none;
   transform: rotate(-8deg);
 }
@@ -228,9 +225,8 @@
   background: #dc2626;
   color: #ffffff;
   font-size: 34px;
-  font-weight: 950;
+  font-weight: 700;
   pointer-events: none;
-  box-shadow: 0 16px 36px rgba(220, 38, 38, 0.38);
 }
 
 .defect-label {
@@ -241,7 +237,7 @@
   border-radius: 999px;
   color: #ffffff;
   font-size: 13px;
-  font-weight: 950;
+  font-weight: 700;
   padding: 10px 14px;
   pointer-events: none;
 }
@@ -277,7 +273,7 @@
   color: #0f172a;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 950;
+  font-weight: 700;
   padding: 9px 11px;
 }
 
@@ -354,7 +350,7 @@
 
 .start-engine-button strong {
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .start-engine-button small {
@@ -372,7 +368,7 @@
   margin: 4px 0 -4px;
   color: #0f172a;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -388,7 +384,7 @@
   color: #0f172a;
   cursor: pointer;
   font-size: 12.5px;
-  font-weight: 850;
+  font-weight: 700;
   padding: 9px 10px;
   text-align: left;
 }
@@ -400,7 +396,7 @@
 
 .inspection-card span {
   font-size: 13px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .inspection-card small {
@@ -457,7 +453,7 @@
   color: #0f172a;
   cursor: pointer;
   font-size: 11px;
-  font-weight: 950;
+  font-weight: 700;
   padding: 6px 10px;
   text-align: center;
 }
@@ -472,7 +468,7 @@
   grid-column: 1 / -1;
   margin: 0;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .gauge-verdict.correct {
@@ -492,7 +488,7 @@
   margin: 0;
   color: #cbd5e1;
   font-size: 11.5px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .gauge-dial {
@@ -590,20 +586,20 @@
 .summary-grid span {
   color: #64748b;
   font-size: 11.5px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .summary-grid strong {
   color: #0f172a;
   font-size: 18px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .completion-ready,
 .completion-warning {
   border-radius: 12px;
   font-size: 12.5px;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.5;
   padding: 10px 12px;
 }

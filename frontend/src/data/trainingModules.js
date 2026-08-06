@@ -3,6 +3,7 @@ export const forkliftEquipment = {
   title: 'Forklift',
   description: 'Learn safe forklift familiarization through guided lessons and a labeled 3D model.',
   modelUrl: '/models/Forklift_SEPERATED.glb',
+  imageUrl: '/images/forklift-card.png',
 }
 
 export const equipmentUsageModules = [
@@ -12,6 +13,7 @@ export const equipmentUsageModules = [
     title: 'Walk-Around Check',
     fullTitle: 'Walk-Around Check (Visual Inspection)',
     subtitle: 'Visual Inspection',
+    imageUrl: '/images/modules/walk-around-check.png',
     description:
       'Inspect a Class V (LPG) forklift before use: forks, mast, chains, hydraulic hoses, tires, counterweight, LPG tank/battery, seat belt, overhead guard, and ground leaks, then confirm dashboard indicators, steering, brakes, lift/tilt, travel, and warning devices.',
     syllabusLocation: 'Section 2',
@@ -81,6 +83,7 @@ export const equipmentUsageModules = [
     title: 'Load Handling and Operational Controls',
     fullTitle: 'Load Handling and Operational Controls',
     subtitle: 'Operational Controls',
+    imageUrl: '/images/modules/load-handling.png',
     description:
       'Practice basic forklift operational controls in a simplified guided drive: engine start-up, acceleration, braking, and steering, without real vehicle physics or collision.',
     syllabusLocation: 'Section 2',
@@ -156,6 +159,7 @@ export const equipmentUsageModules = [
     title: 'Post-Operation and Secure Parking',
     fullTitle: 'Post-Operation and Secure Parking',
     subtitle: 'Secure Parking',
+    imageUrl: '/images/modules/post-operation.png',
     description:
       'Park the forklift inside a painted bay on a cone-lined route, then secure it: fork lowering, neutral controls, brake engagement, power off, and reporting. Hitting a cone fails the parking attempt.',
     syllabusLocation: 'Section 2',
@@ -227,6 +231,7 @@ export const equipmentUsageModules = [
     title: 'Pallet Handling Assessment',
     fullTitle: 'Pallet Handling Assessment (Load Safety)',
     subtitle: 'Load Safety',
+    imageUrl: '/images/modules/pallet-testing.png',
     description:
       'Apply load-handling judgment under fail conditions: respect rated capacity, avoid traffic cones, and brake smoothly so the load stays on the forks. Overloading, collisions, and sudden stops fail the attempt.',
     syllabusLocation: 'Section 2',
@@ -295,6 +300,7 @@ export const trainingModules = equipmentUsageModules.map((module) => ({
   title: module.title,
   subtitle: module.subtitle,
   description: module.description,
+  imageUrl: module.imageUrl,
 }))
 
 export const moduleChecklists = equipmentUsageModules.reduce((checklists, module) => {

@@ -51,12 +51,18 @@ function ModuleSimulationShell({
 
         <aside className="simulation-overlay simulation-overlay-left">
           <section className="simulation-panel">
-            <p className="simulation-panel-label">Objectives</p>
+            <div className="simulation-panel-header">
+              <p className="simulation-panel-label">Objectives</p>
+              <button className="simulation-hint-button" onClick={() => setShowHint((value) => !value)}>
+                {showHint ? 'Hide Hint' : 'Show Hint'}
+              </button>
+            </div>
             <ul className="simulation-objectives">
               {objectives.map((objective) => (
                 <li key={objective}>{objective}</li>
               ))}
             </ul>
+            {showHint && <p className="simulation-hint-text">{currentStep?.hint || 'No hint is available for this step.'}</p>}
           </section>
 
           <section className="simulation-panel">
@@ -76,14 +82,6 @@ function ModuleSimulationShell({
               ))}
             </ol>
           </section>
-
-          <section className="simulation-panel">
-            <p className="simulation-panel-label">Hint</p>
-            <button className="simulation-hint-button" onClick={() => setShowHint((value) => !value)}>
-              {showHint ? 'Hide Hint' : 'Show Hint'}
-            </button>
-            {showHint && <p className="simulation-hint-text">{currentStep?.hint || 'No hint is available for this step.'}</p>}
-          </section>
         </aside>
 
         <aside className="simulation-overlay simulation-overlay-right">
@@ -92,9 +90,6 @@ function ModuleSimulationShell({
               <>
                 <div className="hotspot-detail-header">
                   <p className="simulation-panel-label">Part Details</p>
-                  <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
-                    Back to Task
-                  </button>
                 </div>
                 <PartDetailCard
                   title={selectedDetail.title}
@@ -104,6 +99,9 @@ function ModuleSimulationShell({
                   status={selectedDetail.status}
                   statusType={selectedDetail.statusType}
                 />
+                <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
+                    Back to Task
+                </button>
               </>
             ) : (
               <>

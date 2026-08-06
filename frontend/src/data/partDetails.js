@@ -1,6 +1,8 @@
-import { partsHotspots } from './partsData'
-import { engineOffInspectionChecks } from './inspectionScenarios'
-import { walkAroundViewerHotspots } from './viewerHotspots'
+// Imports keep explicit .js extensions so this file also loads in plain Node
+// (the backend seed script imports it directly).
+import { partsHotspots } from './partsData.js'
+import { engineOffInspectionChecks } from './inspectionScenarios.js'
+import { walkAroundViewerHotspots } from './viewerHotspots.js'
 
 // Unified "Part Details" content shown when a part/hotspot is clicked, in both
 // Parts Identification and the walk-around style modules. Each entry:

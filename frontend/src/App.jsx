@@ -12,6 +12,7 @@ import AssessmentPage from './AssessmentPage'
 import AdminDashboard from './AdminDashboard'
 import NotFoundPage from './NotFoundPage'
 import { getCurrentUser, loginUser, setAuthToken } from './lib/api'
+import { hydrateProgressFromServer, resetStoredProgress } from './lib/progressService'
 import { goTo, normalizePath, routes } from './lib/router'
 import './App.css'
 
@@ -40,6 +41,7 @@ function App() {
       .then((currentUser) => {
         setUser(currentUser)
         localStorage.setItem('gearview_user', JSON.stringify(currentUser))
+        hydrateProgressFromServer().catch(() => {})
       })
       .catch(() => {
         localStorage.removeItem('gearview_token')
@@ -72,6 +74,7 @@ function App() {
     setAuthToken(auth.token)
     setUser(auth.user)
     setIsLoggedIn(true)
+    hydrateProgressFromServer().catch(() => {})
     navigate(routes.catalog, { replace: true })
   }
 
@@ -79,6 +82,7 @@ function App() {
     localStorage.removeItem('gearview_token')
     localStorage.removeItem('gearview_user')
     setAuthToken(null)
+    resetStoredProgress()
     setIsLoggedIn(false)
     setUser(null)
     navigate(routes.login, { replace: true })
@@ -119,19 +123,19 @@ function App() {
   }
 
   if (path === routes.walkAround) {
-    return <WalkAroundCheckPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+    return <WalkAroundCheckPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.loadHandling) {
-    return <LoadHandlingPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+    return <LoadHandlingPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.postOperation) {
-    return <PostOperationPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+    return <PostOperationPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.palletTesting) {
-    return <PalletTestingPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+    return <PalletTestingPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.parts) {

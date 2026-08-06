@@ -11,7 +11,7 @@
   --accent-strong: #0284a8;
   --accent-soft: #e6faff;
   --warning: #f6c343;
-  --shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+  --shadow: none;
 
   --sans: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
   --heading: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
