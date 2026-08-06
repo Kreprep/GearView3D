@@ -57,9 +57,8 @@ function EquipmentUsagePage({ moduleName, user, onLogout, onBack, onNavigate }) 
                 backgroundImage: `linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78)), url('${module.imageUrl}')`,
               } : undefined}
             >
-              <span className="placeholder-text">{module.subtitle}</span>
+              <span className="placeholder-text">{module.title}</span>
             </div>
-            <h3>{module.title}</h3>
             <h4>{module.subtitle}</h4>
             <p>{module.description}</p>
             <div className="module-progress-inline">
