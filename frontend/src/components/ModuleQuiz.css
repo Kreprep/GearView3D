@@ -1,9 +1,8 @@
 .module-quiz {
   margin-top: 22px;
   border: 1px solid #dbe3ef;
-  border-radius: 18px;
+  border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
   padding: 20px;
 }
 

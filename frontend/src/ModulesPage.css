@@ -15,10 +15,10 @@
 .catalog-state {
   grid-column: 1 / -1;
   border: 1px dashed var(--border);
-  border-radius: 20px;
+  border-radius: 12px;
   background: var(--panel);
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 700;
   padding: 26px;
   text-align: center;
 }
@@ -33,16 +33,14 @@
 .module-card {
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 12px;
   background: var(--panel);
   cursor: pointer;
-  box-shadow: var(--shadow);
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  transition: border-color 160ms ease;
 }
 
 .module-card:hover {
-  box-shadow: 0 22px 46px rgba(15, 23, 42, 0.14);
-  transform: translateY(-2px);
+  border-color: var(--accent-strong);
 }
 
 .module-card-disabled {
@@ -51,15 +49,12 @@
 }
 
 .module-card-disabled:hover {
-  box-shadow: var(--shadow);
-  transform: none;
+  border-color: var(--border);
 }
 
 .catalog-module-image {
   height: 300px;
-  background:
-    linear-gradient(120deg, rgba(15, 23, 42, 0.97), rgba(8, 47, 73, 0.92)),
-    radial-gradient(circle at 82% 15%, rgba(103, 232, 249, 0.28), transparent 45%);
+  background: #0f172a;
 }
 
 .catalog-module-image-forklift {
@@ -72,8 +67,7 @@
 }
 
 .module-image-placeholder {
-  background:
-    linear-gradient(120deg, rgba(71, 85, 105, 0.5), rgba(15, 23, 42, 0.65));
+  background: #334155;
 }
 
 .catalog-card-body {
@@ -84,7 +78,7 @@
   margin: 0;
   color: var(--text-h);
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -102,19 +96,17 @@
   margin-top: 16px;
   padding: 12px 18px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #0f172a;
   color: #ffffff;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 800;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  font-weight: 700;
+  transition: background 160ms ease;
 }
 
 .catalog-start-button:hover {
   background: var(--accent-strong);
-  box-shadow: 0 12px 26px rgba(8, 145, 178, 0.28);
-  transform: translateY(-1px);
 }
 
 .catalog-coming-soon-badge {
@@ -123,11 +115,11 @@
   gap: 6px;
   margin-top: 16px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--bg);
   color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   padding: 8px 12px;
 }
