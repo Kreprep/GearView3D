@@ -44,7 +44,7 @@ function ModulesPage({ user, onLogout, onNavigate }) {
                 }
               }}
             >
-              <div className="catalog-module-image" />
+              <div className="catalog-module-image catalog-module-image-forklift" />
               <div className="catalog-card-body">
                 <h2>{module.title}</h2>
                 <p>{module.description}</p>
