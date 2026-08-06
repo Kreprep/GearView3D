@@ -13,9 +13,8 @@
   min-height: 0;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  background: linear-gradient(135deg, #0f172a, #020617);
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+  border-radius: 12px;
+  background: #0f172a;
 }
 
 /* Without this the canvas's intrinsic size stops the layout shrinking. */
@@ -40,43 +39,19 @@
   align-items: center;
   gap: 7px;
   border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  border-radius: 8px;
+  background: #ffffff;
   color: #0f172a;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 600;
   padding: 9px 12px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
 }
 
-.viewer-scenario-badge {
-  position: absolute;
-  right: 16px;
-  top: 16px;
-  z-index: 12;
-  display: grid;
-  gap: 2px;
-  min-width: 160px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.82);
+.interactive-viewer-toolbar button.is-active {
+  background: #0891b2;
+  border-color: #22d3ee;
   color: #ffffff;
-  padding: 12px 14px;
-  backdrop-filter: blur(12px);
-}
-
-.viewer-scenario-badge span {
-  color: #67e8f9;
-  font-size: 11px;
-  font-weight: 950;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.viewer-scenario-badge strong {
-  font-size: 14px;
-  font-weight: 950;
 }
 
 .interactive-viewer-help {
@@ -85,13 +60,12 @@
   left: 16px;
   z-index: 12;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.78);
+  border-radius: 10px;
+  background: #0f172a;
   color: #e2e8f0;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 10px 12px;
-  backdrop-filter: blur(12px);
 }
 
 .hotspot-marker-wrap {
@@ -140,7 +114,7 @@
   margin-bottom: 8px;
   transform: translateX(-50%);
   border-radius: 6px;
-  background: rgba(15, 23, 42, 0.9);
+  background: #0f172a;
   color: #ffffff;
   font-size: 12px;
   font-weight: 700;
@@ -148,7 +122,6 @@
   padding: 4px 8px;
   opacity: 0;
   pointer-events: none;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
   transition: opacity 200ms ease;
 }
 
@@ -175,26 +148,24 @@
 }
 
 .viewer-warning-label {
-  border-radius: 999px;
+  border-radius: 6px;
   background: #111827;
   color: #fee2e2;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   padding: 8px 12px;
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
 }
 
 .viewer-tire-warning {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border-radius: 999px;
+  border-radius: 6px;
   background: #dc2626;
   color: #ffffff;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   padding: 8px 11px;
-  box-shadow: 0 16px 34px rgba(220, 38, 38, 0.36);
 }
 
 .viewer-tire-warning strong {
@@ -214,8 +185,8 @@
   gap: 10px;
   width: 220px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.92);
+  border-radius: 10px;
+  background: #0f172a;
   color: #ffffff;
   padding: 16px;
   text-align: center;
@@ -233,7 +204,7 @@
 .interactive-loading-panel p {
   margin: 0;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .interactive-viewer-error {
@@ -269,15 +240,9 @@
   }
 
   .interactive-viewer-toolbar,
-  .viewer-scenario-badge,
   .interactive-viewer-help {
     left: 12px;
     right: 12px;
-  }
-
-  .viewer-scenario-badge {
-    top: auto;
-    bottom: 58px;
   }
 
   .interactive-viewer-help {

@@ -65,7 +65,8 @@ function ControlsDiagram() {
   )
 }
 
-function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
+function LoadHandlingPage({ moduleName, user, onBack, onNavigate }) {
+  const isAdmin = user?.role === 'ADMIN'
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
   const steps = moduleScenarioSteps[moduleSlug]
   const { progress, updateSimulation } = useProgress()
@@ -162,7 +163,7 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
     if (course) {
       return (
         <div className="load-scene-wrap">
-          <DrivingSimulationViewer course={course} onEvent={handleDrivingEvent(currentStep)} />
+          <DrivingSimulationViewer course={course} onEvent={handleDrivingEvent(currentStep)} isAdmin={isAdmin} />
         </div>
       )
     }
@@ -176,6 +177,7 @@ function LoadHandlingPage({ moduleName, onBack, onNavigate }) {
           hotspots={loadHandlingViewerHotspots}
           modelUrl={forkliftEquipment.modelUrl}
           onHotspotSelect={handleViewerHotspot}
+          isAdmin={isAdmin}
         />
       </div>
     )

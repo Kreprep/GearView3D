@@ -11,4 +11,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    // The backend (backend/, default port 4000) serves the API; the frontend
+    // only ever calls /api/* so no CORS or base-URL config is needed in dev.
+    proxy: {
+      '/api': 'http://localhost:4000',
+    },
+  },
 })

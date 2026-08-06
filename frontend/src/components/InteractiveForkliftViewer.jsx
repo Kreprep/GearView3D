@@ -16,7 +16,7 @@ import {
 } from '@react-three/drei'
 import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { BadgeInfo, Eye, Maximize, RotateCcw } from 'lucide-react'
+import { BadgeInfo, Compass, Eye, Maximize, RotateCcw } from 'lucide-react'
 import { buildForkliftRig, REAR_WHEEL_KEYS } from '../lib/forkliftRig'
 import './InteractiveForkliftViewer.css'
 
@@ -123,9 +123,15 @@ function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
   const desiredTarget = useRef(new Vector3())
   const framesRemaining = useRef(0)
   const activeId = useRef(null)
+  // Camera pose captured right before the first hotspot in a focus chain, so
+  // clearing the selection can fly back to it instead of freezing in place.
+  const preFocusCamPos = useRef(new Vector3())
+  const preFocusTarget = useRef(new Vector3())
+  const hasPreFocus = useRef(false)
 
   React.useEffect(() => {
     activeId.current = null
+    hasPreFocus.current = false
   }, [resetToken])
 
   useFrame(() => {
@@ -134,12 +140,23 @@ function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
     // Clearing the selection must reset this, otherwise re-picking the same
     // hotspot later is treated as "already focused" and the camera won't move.
     if (!targetId) {
+      if (activeId.current && hasPreFocus.current && controls) {
+        desiredTarget.current.copy(preFocusTarget.current)
+        desiredCamPos.current.copy(preFocusCamPos.current)
+        framesRemaining.current = 40
+        hasPreFocus.current = false
+      }
       activeId.current = null
     }
 
     if (controls && targetId && targetId !== activeId.current) {
       const object = hotspotRefs.current.get(targetId)
       if (object) {
+        if (!hasPreFocus.current) {
+          preFocusCamPos.current.copy(camera.position)
+          preFocusTarget.current.copy(controls.target)
+          hasPreFocus.current = true
+        }
         activeId.current = targetId
         object.getWorldPosition(desiredTarget.current)
         const direction = camera.position.clone().sub(controls.target).normalize()
@@ -391,27 +408,6 @@ function MarkerOverlay({ id, position, label, feedback, onScenarioAction }) {
   )
 }
 
-function ScenarioBadge({ mode, scenario }) {
-  const label = {
-    'good-forklift': 'Good forklift',
-    'oil-leak': 'Oil leak defect',
-    'flat-tire': 'Flat or worn tire',
-    'mast-crack': 'Mast crack defect',
-    'loose-bolt': 'Loose bolt defect',
-    'engine-off': 'Engine-off inspection',
-    'engine-on': 'Engine-on checks',
-    stability: 'Stability demo',
-    parking: 'Parking verification',
-  }[scenario] || scenario
-
-  return (
-    <div className="viewer-scenario-badge">
-      <span>{mode}</span>
-      <strong>{label}</strong>
-    </div>
-  )
-}
-
 function InteractiveScene({
   modelUrl,
   scenario,
@@ -422,6 +418,7 @@ function InteractiveScene({
   showHotspots,
   cameraPreset,
   deviceEffect,
+  freeCam,
   onHotspotSelect,
   onScenarioAction,
 }) {
@@ -474,9 +471,9 @@ function InteractiveScene({
         makeDefault
         enableDamping
         dampingFactor={0.18}
-        minDistance={cameraPreset.minDistance}
-        maxDistance={cameraPreset.maxDistance}
-        maxPolarAngle={cameraPreset.maxPolarAngle}
+        minDistance={freeCam ? 0.05 : cameraPreset.minDistance}
+        maxDistance={freeCam ? 50 : cameraPreset.maxDistance}
+        maxPolarAngle={freeCam ? Math.PI : cameraPreset.maxPolarAngle}
       />
       <GizmoHelper alignment="bottom-right" margin={[84, 84]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
@@ -544,7 +541,6 @@ function filterHotspots(hotspots, activeHotspots) {
 }
 
 export default function InteractiveForkliftViewer({
-  mode = 'inspection',
   scenario = 'good-forklift',
   activeHotspots,
   hotspots: configuredHotspots = [],
@@ -557,10 +553,12 @@ export default function InteractiveForkliftViewer({
   deviceEffect,
   modelUrl = DEFAULT_MODEL_URL,
   className = '',
+  isAdmin = false,
 }) {
   const containerRef = useRef(null)
   const [resetToken, setResetToken] = useState(0)
   const [showHotspots, setShowHotspots] = useState(true)
+  const [freeCam, setFreeCam] = useState(false)
   const [internalHotspotId, setInternalHotspotId] = useState(null)
   // Memoized so ViewReset's effect doesn't re-run (and re-snap the camera) on
   // every render.
@@ -609,9 +607,16 @@ export default function InteractiveForkliftViewer({
           <button type="button" onClick={enterFullscreen}>
             <Maximize size={16} /> Fullscreen
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              className={freeCam ? 'is-active' : ''}
+              onClick={() => setFreeCam((value) => !value)}
+            >
+              <Compass size={16} /> Free Cam {freeCam ? 'On' : 'Off'}
+            </button>
+          )}
         </div>
-
-        <ScenarioBadge mode={mode} scenario={scenario} />
 
         <InteractiveViewerErrorBoundary>
           <Canvas shadows dpr={[1, 1.35]} camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}>
@@ -626,6 +631,7 @@ export default function InteractiveForkliftViewer({
                 showHotspots={showHotspots}
                 cameraPreset={cameraPreset}
                 deviceEffect={deviceEffect}
+                freeCam={freeCam}
                 onHotspotSelect={handleHotspotSelect}
                 onScenarioAction={onScenarioAction}
               />

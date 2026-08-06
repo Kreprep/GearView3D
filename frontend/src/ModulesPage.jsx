@@ -44,9 +44,17 @@ function ModulesPage({ user, onLogout, onNavigate }) {
                 }
               }}
             >
-              <div className="catalog-module-image" />
+              <div
+                className="catalog-module-image catalog-module-image-forklift"
+                style={module.imageUrl ? {
+                  backgroundImage: `linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78)), url('${module.imageUrl}')`,
+                } : undefined}
+              />
               <div className="catalog-card-body">
-                <h2>{module.title}</h2>
+                <div className="catalog-card-heading">
+                  <h2>{module.title}</h2>
+                  <span className="status-pill status-pill-available">Available</span>
+                </div>
                 <p>{module.description}</p>
                 <button
                   className="catalog-start-button"
@@ -64,11 +72,13 @@ function ModulesPage({ user, onLogout, onNavigate }) {
             <article key={equipment.id} className="module-card module-card-disabled">
               <div className="catalog-module-image module-image-placeholder" />
               <div className="catalog-card-body">
-                <h2>{equipment.title}</h2>
+                <div className="catalog-card-heading">
+                  <h2>{equipment.title}</h2>
+                  <span className="status-pill status-pill-soon">
+                    <Clock size={11} /> Coming Soon
+                  </span>
+                </div>
                 <p>{equipment.description}</p>
-                <span className="catalog-coming-soon-badge">
-                  <Clock size={12} /> Coming Soon
-                </span>
               </div>
             </article>
           ))}

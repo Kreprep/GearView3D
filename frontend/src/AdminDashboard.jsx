@@ -6,6 +6,7 @@ import {
   adminDeleteQuizQuestion,
   adminListContent,
   adminUpdateChecklistItem,
+  adminUpdateEquipment,
   adminUpdateModule,
   adminUpdatePart,
   adminUpdatePartDetail,
@@ -51,6 +52,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [selectedPart, setSelectedPart] = useState(null)
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [editingModule, setEditingModule] = useState(null)
+  const [editingEquipment, setEditingEquipment] = useState(null)
   const [editingChecklist, setEditingChecklist] = useState(null)
   const [editingQuiz, setEditingQuiz] = useState(null)
   const [saveMessage, setSaveMessage] = useState('')
@@ -75,6 +77,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         localOnly: true,
         ...data,
       })
+      setEditingEquipment((current) => current || data.equipment?.[0] || null)
     })
   }, [])
 
@@ -133,6 +136,17 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     setContent((current) => ({ ...current, parts: current.parts.filter((part) => part.id !== partId) }))
     setSelectedPart(null)
     setSelectedDetail(null)
+  }
+
+  const handleSaveEquipment = async () => {
+    if (!editingEquipment) return
+    const result = await adminUpdateEquipment(editingEquipment.id, editingEquipment)
+    setContent((current) => ({
+      ...current,
+      equipment: current.equipment.map((item) => (item.id === editingEquipment.id ? result.equipment : item)),
+    }))
+    setEditingEquipment(result.equipment)
+    refreshMessage('Equipment card changes saved.')
   }
 
   const handleSaveModule = async () => {
@@ -244,6 +258,18 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
 
       {activePath === routes.adminModules && (
         <main className="admin-grid">
+          <section className="admin-panel admin-editor">
+            <h2>Equipment Card</h2>
+            <p className="admin-panel-note">Controls the catalog card on the home screen (image, title, description).</p>
+            {editingEquipment ? (
+              <>
+                <label>Title<input value={editingEquipment.title} onChange={(event) => setEditingEquipment({ ...editingEquipment, title: event.target.value })} /></label>
+                <label>Description<textarea value={editingEquipment.description} onChange={(event) => setEditingEquipment({ ...editingEquipment, description: event.target.value })} /></label>
+                <label>Image URL<input value={editingEquipment.imageUrl || ''} onChange={(event) => setEditingEquipment({ ...editingEquipment, imageUrl: event.target.value })} /></label>
+                <button className="admin-save" onClick={handleSaveEquipment}>Save equipment card</button>
+              </>
+            ) : <p>No equipment card available.</p>}
+          </section>
           <section className="admin-panel">
             <h2>Training Modules</h2>
             {content.modules.map((module) => (
@@ -264,6 +290,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 <label>Title<input value={editingModule.title} onChange={(event) => setEditingModule({ ...editingModule, title: event.target.value })} /></label>
                 <label>Subtitle<input value={editingModule.subtitle} onChange={(event) => setEditingModule({ ...editingModule, subtitle: event.target.value })} /></label>
                 <label>Description<textarea value={editingModule.description} onChange={(event) => setEditingModule({ ...editingModule, description: event.target.value })} /></label>
+                <label>Image URL<input value={editingModule.imageUrl || ''} onChange={(event) => setEditingModule({ ...editingModule, imageUrl: event.target.value })} /></label>
                 <button className="admin-save" onClick={handleSaveModule}>Save module</button>
               </>
             ) : <p>Select a module to edit.</p>}

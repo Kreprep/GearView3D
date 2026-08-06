@@ -1,7 +1,44 @@
 import { moduleChecklists, partsHotspots } from './trainingData'
+import { getProgress as fetchServerProgress, saveProgress as pushServerProgress } from './api'
 
 const STORAGE_KEY = 'gearview_progress_v1'
 const CHANGE_EVENT = 'gearview-progress-change'
+const SERVER_PUSH_DELAY_MS = 800
+
+// localStorage stays the synchronous source the UI reads from; the server copy
+// (per signed-in user) is hydrated on login and pushed on every change,
+// debounced so rapid simulation updates collapse into one request.
+let serverPushTimer = null
+
+function cancelServerPush() {
+  clearTimeout(serverPushTimer)
+  serverPushTimer = null
+}
+
+function scheduleServerPush(progress) {
+  cancelServerPush()
+  serverPushTimer = setTimeout(() => {
+    serverPushTimer = null
+    pushServerProgress(progress).catch(() => {
+      // Offline or logged out; local copy is still saved.
+    })
+  }, SERVER_PUSH_DELAY_MS)
+}
+
+// Called after login/session restore: replaces the local copy with the
+// signed-in user's server copy (if any) so progress follows the account,
+// not the browser.
+export async function hydrateProgressFromServer() {
+  const serverProgress = await fetchServerProgress()
+  cancelServerPush()
+
+  if (serverProgress) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeProgress(serverProgress)))
+  } else {
+    localStorage.removeItem(STORAGE_KEY)
+  }
+  notify()
+}
 
 const equipmentModuleSlugs = ['walk-around-check', 'load-handling', 'post-operation', 'pallet-testing']
 const partsModuleSlug = 'parts-identification'
@@ -45,6 +82,7 @@ function persist(progress) {
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   notify()
+  scheduleServerPush(next)
   return next
 }
 
@@ -67,7 +105,10 @@ export function subscribeToProgress(listener) {
   }
 }
 
+// Clears only the local copy (used on logout); the server copy is untouched
+// and comes back on the next login via hydrateProgressFromServer().
 export function resetStoredProgress() {
+  cancelServerPush()
   localStorage.removeItem(STORAGE_KEY)
   notify()
 }
