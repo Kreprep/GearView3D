@@ -238,7 +238,10 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
     })
   }
 
-  const clearSelectedDetail = () => setSelectedDetail(null)
+  const clearSelectedDetail = () => {
+    setSelectedDetail(null)
+    setFocusedHotspotId(null)
+  }
 
   const triggerDeviceEffect = (deviceId) => {
     const effect = engineOnDeviceEffects[deviceId]

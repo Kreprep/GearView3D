@@ -92,9 +92,6 @@ function ModuleSimulationShell({
               <>
                 <div className="hotspot-detail-header">
                   <p className="simulation-panel-label">Part Details</p>
-                  <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
-                    Back to Task
-                  </button>
                 </div>
                 <PartDetailCard
                   title={selectedDetail.title}
@@ -104,6 +101,9 @@ function ModuleSimulationShell({
                   status={selectedDetail.status}
                   statusType={selectedDetail.statusType}
                 />
+                <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
+                    Back to Task
+                </button>
               </>
             ) : (
               <>
