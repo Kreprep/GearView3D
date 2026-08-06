@@ -43,7 +43,8 @@ function buildDetail(hotspot, partDetails) {
   }
 }
 
-function PartsIdentificationPage({ moduleName, onBack }) {
+function PartsIdentificationPage({ moduleName, user, onBack }) {
+  const isAdmin = user?.role === 'ADMIN'
   const [hotspots, setHotspots] = useState(partsHotspots)
   const [partDetails, setPartDetails] = useState({})
   const [selectedPartId, setSelectedPartId] = useState(null)
@@ -103,6 +104,7 @@ function PartsIdentificationPage({ moduleName, onBack }) {
         selectedHotspotId={selectedPartId}
         onHotspotSelect={selectPart}
         onResetView={() => setSelectedPartId(null)}
+        isAdmin={isAdmin}
       />
     </div>
   )

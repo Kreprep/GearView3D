@@ -80,6 +80,11 @@
   cursor: pointer;
 }
 
+.driving-reset-button.is-active {
+  background: #0891b2;
+  border-color: #22d3ee;
+}
+
 .driving-keys {
   display: flex;
   flex-wrap: wrap;

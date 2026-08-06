@@ -50,7 +50,8 @@ function AssessmentBriefing() {
   )
 }
 
-function PalletTestingPage({ moduleName, onBack, onNavigate }) {
+function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
+  const isAdmin = user?.role === 'ADMIN'
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
   const steps = moduleScenarioSteps[moduleSlug]
   const { progress, updateSimulation } = useProgress()
@@ -114,7 +115,7 @@ function PalletTestingPage({ moduleName, onBack, onNavigate }) {
     if (course) {
       return (
         <div className="load-scene-wrap">
-          <DrivingSimulationViewer course={course} onEvent={handleDrivingEvent(currentStep)} />
+          <DrivingSimulationViewer course={course} onEvent={handleDrivingEvent(currentStep)} isAdmin={isAdmin} />
         </div>
       )
     }

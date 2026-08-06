@@ -1,4 +1,4 @@
-import React, { Suspense, useMemo } from 'react'
+import React, { Suspense, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import {
   ContactShadows,
@@ -10,7 +10,7 @@ import {
   useGLTF,
 } from '@react-three/drei'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { BadgeInfo } from 'lucide-react'
+import { BadgeInfo, Compass } from 'lucide-react'
 
 const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
 
@@ -59,7 +59,7 @@ function LoadingOverlay() {
   )
 }
 
-function ModelScene({ modelUrl }) {
+function ModelScene({ modelUrl, freeCam }) {
   return (
     <>
       <PerspectiveCamera makeDefault position={[1.25, 0.85, 1.55]} fov={42} />
@@ -97,8 +97,9 @@ function ModelScene({ modelUrl }) {
         makeDefault
         enableDamping
         dampingFactor={0.08}
-        minDistance={0.55}
-        maxDistance={4}
+        minDistance={freeCam ? 0.05 : 0.55}
+        maxDistance={freeCam ? 50 : 4}
+        maxPolarAngle={freeCam ? Math.PI : undefined}
       />
     </>
   )
@@ -108,7 +109,10 @@ export default function Model3DViewer({
   modelUrl = DEFAULT_MODEL_URL,
   height = '300px',
   className = '',
+  isAdmin = false,
 }) {
+  const [freeCam, setFreeCam] = useState(false)
+
   return (
     <div
       className={`relative overflow-hidden rounded-xl border border-slate-300 bg-slate-100 ${className}`}
@@ -117,11 +121,22 @@ export default function Model3DViewer({
       <ViewportErrorBoundary>
         <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
           <Suspense fallback={<LoadingOverlay />}>
-            <ModelScene modelUrl={modelUrl} />
+            <ModelScene modelUrl={modelUrl} freeCam={freeCam} />
           </Suspense>
         </Canvas>
       </ViewportErrorBoundary>
       <Loader />
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={() => setFreeCam((value) => !value)}
+          className={`absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium shadow-sm backdrop-blur ${
+            freeCam ? 'border-cyan-400 bg-cyan-500/90 text-white' : 'border-slate-300 bg-white/80 text-slate-600'
+          }`}
+        >
+          <Compass size={14} /> Free Cam {freeCam ? 'On' : 'Off'}
+        </button>
+      )}
       <div className="absolute bottom-2 left-2 z-10 rounded-lg border border-slate-300 bg-white/80 px-2 py-1 text-xs text-slate-600 shadow-sm backdrop-blur">
         Drag to rotate - Scroll to zoom
       </div>
