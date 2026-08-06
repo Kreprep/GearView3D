@@ -123,19 +123,19 @@ function App() {
   }
 
   if (path === routes.walkAround) {
-    return <WalkAroundCheckPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+    return <WalkAroundCheckPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.loadHandling) {
-    return <LoadHandlingPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+    return <LoadHandlingPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.postOperation) {
-    return <PostOperationPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+    return <PostOperationPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.palletTesting) {
-    return <PalletTestingPage moduleName="Forklift" onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
+    return <PalletTestingPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
   }
 
   if (path === routes.parts) {

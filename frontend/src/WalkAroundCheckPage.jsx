@@ -84,7 +84,8 @@ function calculateSimulationState(nextState) {
   }
 }
 
-function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
+function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
+  const isAdmin = user?.role === 'ADMIN'
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
   const steps = moduleScenarioSteps[moduleSlug]
   const { progress, updateSimulation } = useProgress()
@@ -357,6 +358,7 @@ function WalkAroundCheckPage({ moduleName, onBack, onNavigate }) {
           onHotspotSelect={handleViewerHotspot}
           onResetView={() => setFocusedHotspotId(null)}
           selectedHotspotId={focusedHotspotId}
+          isAdmin={isAdmin}
           deviceEffect={activeDeviceEffect}
         />
       </div>

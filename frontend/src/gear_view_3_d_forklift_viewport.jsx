@@ -16,7 +16,7 @@ import {
 } from '@react-three/drei'
 import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { BadgeInfo, Eye, Maximize, RotateCcw, Wrench } from 'lucide-react'
+import { BadgeInfo, Compass, Eye, Maximize, RotateCcw, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { partsHotspots } from './lib/trainingData'
 
@@ -157,7 +157,7 @@ function HotspotPin({ hotspot, selected, onSelect, hotspotRefs }) {
   )
 }
 
-function FallbackForkliftScene() {
+function FallbackForkliftScene({ freeCam }) {
   return (
     <>
       <PerspectiveCamera makeDefault position={[1.3, 1.1, 1.8]} fov={42} />
@@ -188,7 +188,14 @@ function FallbackForkliftScene() {
       </group>
       <Grid infiniteGrid cellSize={0.12} sectionSize={0.6} fadeDistance={6} fadeStrength={1.4} position={[0, -0.02, 0]} />
       <ContactShadows position={[0, -0.02, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.18} minDistance={0.75} maxDistance={4.2} maxPolarAngle={Math.PI / 2} />
+      <OrbitControls
+        makeDefault
+        enableDamping
+        dampingFactor={0.18}
+        minDistance={freeCam ? 0.05 : 0.75}
+        maxDistance={freeCam ? 50 : 4.2}
+        maxPolarAngle={freeCam ? Math.PI : Math.PI / 2}
+      />
     </>
   )
 }
@@ -201,6 +208,7 @@ function ForkliftScene({
   onSelectHotspot,
   resetToken,
   wireframe,
+  freeCam,
 }) {
   const hotspotRefs = useRef(new Map())
   const controlsRef = useRef(null)
@@ -243,7 +251,15 @@ function ForkliftScene({
         position={[0, -0.01, 0]}
       />
       <ContactShadows position={[0, -0.012, 0]} opacity={0.45} scale={4} blur={2.5} far={2.4} />
-      <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.18} minDistance={0.55} maxDistance={4} maxPolarAngle={Math.PI / 2} />
+      <OrbitControls
+        ref={controlsRef}
+        makeDefault
+        enableDamping
+        dampingFactor={0.18}
+        minDistance={freeCam ? 0.05 : 0.55}
+        maxDistance={freeCam ? 50 : 4}
+        maxPolarAngle={freeCam ? Math.PI : Math.PI / 2}
+      />
       <GizmoHelper alignment="bottom-right" margin={[88, 88]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
       </GizmoHelper>
@@ -275,12 +291,14 @@ export default function ForkliftViewport({
   selectedHotspotId,
   onHotspotSelect,
   onResetView,
+  isAdmin = false,
 }) {
   const containerRef = useRef(null)
   const [overlaysEnabled, setOverlaysEnabled] = useState(true)
   const [wireframe, setWireframe] = useState(false)
   const [resetToken, setResetToken] = useState(0)
   const [modelReady, setModelReady] = useState(false)
+  const [freeCam, setFreeCam] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -321,9 +339,10 @@ export default function ForkliftViewport({
       onSelectHotspot={onHotspotSelect}
       resetToken={resetToken}
       wireframe={wireframe}
+      freeCam={freeCam}
     />
   ) : (
-    <FallbackForkliftScene />
+    <FallbackForkliftScene freeCam={freeCam} />
   )
 
   return (
@@ -341,6 +360,16 @@ export default function ForkliftViewport({
         <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={enterFullscreen}>
           <Maximize className="h-4 w-4" /> Fullscreen
         </Button>
+        {isAdmin && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className={`gap-2 rounded-full ${freeCam ? 'bg-cyan-500 text-white hover:bg-cyan-600' : 'bg-white/90'}`}
+            onClick={() => setFreeCam((value) => !value)}
+          >
+            <Compass className="h-4 w-4" /> Free Cam {freeCam ? 'On' : 'Off'}
+          </Button>
+        )}
       </div>
 
       <div className="absolute bottom-4 left-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs text-slate-200 shadow-xl backdrop-blur">

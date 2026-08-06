@@ -16,7 +16,7 @@ import {
 } from '@react-three/drei'
 import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { BadgeInfo, Eye, Maximize, RotateCcw } from 'lucide-react'
+import { BadgeInfo, Compass, Eye, Maximize, RotateCcw } from 'lucide-react'
 import { buildForkliftRig, REAR_WHEEL_KEYS } from '../lib/forkliftRig'
 import './InteractiveForkliftViewer.css'
 
@@ -422,6 +422,7 @@ function InteractiveScene({
   showHotspots,
   cameraPreset,
   deviceEffect,
+  freeCam,
   onHotspotSelect,
   onScenarioAction,
 }) {
@@ -474,9 +475,9 @@ function InteractiveScene({
         makeDefault
         enableDamping
         dampingFactor={0.18}
-        minDistance={cameraPreset.minDistance}
-        maxDistance={cameraPreset.maxDistance}
-        maxPolarAngle={cameraPreset.maxPolarAngle}
+        minDistance={freeCam ? 0.05 : cameraPreset.minDistance}
+        maxDistance={freeCam ? 50 : cameraPreset.maxDistance}
+        maxPolarAngle={freeCam ? Math.PI : cameraPreset.maxPolarAngle}
       />
       <GizmoHelper alignment="bottom-right" margin={[84, 84]}>
         <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="#f8fafc" />
@@ -557,10 +558,12 @@ export default function InteractiveForkliftViewer({
   deviceEffect,
   modelUrl = DEFAULT_MODEL_URL,
   className = '',
+  isAdmin = false,
 }) {
   const containerRef = useRef(null)
   const [resetToken, setResetToken] = useState(0)
   const [showHotspots, setShowHotspots] = useState(true)
+  const [freeCam, setFreeCam] = useState(false)
   const [internalHotspotId, setInternalHotspotId] = useState(null)
   // Memoized so ViewReset's effect doesn't re-run (and re-snap the camera) on
   // every render.
@@ -609,6 +612,15 @@ export default function InteractiveForkliftViewer({
           <button type="button" onClick={enterFullscreen}>
             <Maximize size={16} /> Fullscreen
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              className={freeCam ? 'is-active' : ''}
+              onClick={() => setFreeCam((value) => !value)}
+            >
+              <Compass size={16} /> Free Cam {freeCam ? 'On' : 'Off'}
+            </button>
+          )}
         </div>
 
         <ScenarioBadge mode={mode} scenario={scenario} />
@@ -626,6 +638,7 @@ export default function InteractiveForkliftViewer({
                 showHotspots={showHotspots}
                 cameraPreset={cameraPreset}
                 deviceEffect={deviceEffect}
+                freeCam={freeCam}
                 onHotspotSelect={handleHotspotSelect}
                 onScenarioAction={onScenarioAction}
               />

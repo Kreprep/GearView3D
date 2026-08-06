@@ -98,7 +98,8 @@ function ReportingActivity({ prompts, answers, completed, onAnswer }) {
   )
 }
 
-function PostOperationPage({ moduleName, onBack, onNavigate }) {
+function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
+  const isAdmin = user?.role === 'ADMIN'
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
   const steps = moduleScenarioSteps[moduleSlug]
   const { progress, updateSimulation } = useProgress()
@@ -189,7 +190,7 @@ function PostOperationPage({ moduleName, onBack, onNavigate }) {
     if (currentStep.id === 'secure-parking') {
       return (
         <div className="load-scene-wrap">
-          <DrivingSimulationViewer course={drivingCourses['secure-parking']} onEvent={handleDrivingEvent(currentStep)} />
+          <DrivingSimulationViewer course={drivingCourses['secure-parking']} onEvent={handleDrivingEvent(currentStep)} isAdmin={isAdmin} />
         </div>
       )
     }

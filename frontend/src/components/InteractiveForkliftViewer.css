@@ -50,6 +50,12 @@
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
 }
 
+.interactive-viewer-toolbar button.is-active {
+  background: #0891b2;
+  border-color: #22d3ee;
+  color: #ffffff;
+}
+
 .viewer-scenario-badge {
   position: absolute;
   right: 16px;
