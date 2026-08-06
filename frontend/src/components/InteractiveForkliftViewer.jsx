@@ -123,9 +123,15 @@ function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
   const desiredTarget = useRef(new Vector3())
   const framesRemaining = useRef(0)
   const activeId = useRef(null)
+  // Camera pose captured right before the first hotspot in a focus chain, so
+  // clearing the selection can fly back to it instead of freezing in place.
+  const preFocusCamPos = useRef(new Vector3())
+  const preFocusTarget = useRef(new Vector3())
+  const hasPreFocus = useRef(false)
 
   React.useEffect(() => {
     activeId.current = null
+    hasPreFocus.current = false
   }, [resetToken])
 
   useFrame(() => {
@@ -134,12 +140,23 @@ function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
     // Clearing the selection must reset this, otherwise re-picking the same
     // hotspot later is treated as "already focused" and the camera won't move.
     if (!targetId) {
+      if (activeId.current && hasPreFocus.current && controls) {
+        desiredTarget.current.copy(preFocusTarget.current)
+        desiredCamPos.current.copy(preFocusCamPos.current)
+        framesRemaining.current = 40
+        hasPreFocus.current = false
+      }
       activeId.current = null
     }
 
     if (controls && targetId && targetId !== activeId.current) {
       const object = hotspotRefs.current.get(targetId)
       if (object) {
+        if (!hasPreFocus.current) {
+          preFocusCamPos.current.copy(camera.position)
+          preFocusTarget.current.copy(controls.target)
+          hasPreFocus.current = true
+        }
         activeId.current = targetId
         object.getWorldPosition(desiredTarget.current)
         const direction = camera.position.clone().sub(controls.target).normalize()

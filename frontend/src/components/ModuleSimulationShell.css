@@ -347,14 +347,24 @@
 }
 
 .hotspot-detail-back {
-  border: 1px solid #cbd5e1;
+  width: 100%;
+  margin-top: 14px;
+  border: 1px solid #06b6d4;
   border-radius: 999px;
-  background: #ffffff;
-  color: #0f172a;
+  background: #0891b2;
+  color: #ffffff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 900;
-  padding: 6px 12px;
+  padding: 14px 20px;
+  box-shadow: 0 10px 24px rgba(8, 145, 178, 0.35);
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.hotspot-detail-back:hover {
+  background: #0e7490;
+  box-shadow: 0 14px 30px rgba(8, 145, 178, 0.45);
+  transform: translateY(-1px);
 }
 
 .simulation-navigation {
