@@ -129,19 +129,20 @@
   overscroll-behavior: contain;
 }
 
-/* Top offset clears the viewer's own toolbar / scenario badge row. */
 .simulation-overlay-left,
 .simulation-overlay-right {
-  top: 64px;
   bottom: 12px;
 }
 
+/* Top offset clears the viewer's own toolbar row. */
 .simulation-overlay-left {
+  top: 64px;
   left: 12px;
   width: min(250px, 23%);
 }
 
 .simulation-overlay-right {
+  top: 16px;
   right: 12px;
   width: min(330px, 29%);
 }
@@ -336,7 +337,7 @@
 }
 
 .current-task-panel {
-  min-height: 220px;
+  min-height: 280px;
 }
 
 .hotspot-detail-header {

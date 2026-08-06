@@ -408,27 +408,6 @@ function MarkerOverlay({ id, position, label, feedback, onScenarioAction }) {
   )
 }
 
-function ScenarioBadge({ mode, scenario }) {
-  const label = {
-    'good-forklift': 'Good forklift',
-    'oil-leak': 'Oil leak defect',
-    'flat-tire': 'Flat or worn tire',
-    'mast-crack': 'Mast crack defect',
-    'loose-bolt': 'Loose bolt defect',
-    'engine-off': 'Engine-off inspection',
-    'engine-on': 'Engine-on checks',
-    stability: 'Stability demo',
-    parking: 'Parking verification',
-  }[scenario] || scenario
-
-  return (
-    <div className="viewer-scenario-badge">
-      <span>{mode}</span>
-      <strong>{label}</strong>
-    </div>
-  )
-}
-
 function InteractiveScene({
   modelUrl,
   scenario,
@@ -562,7 +541,6 @@ function filterHotspots(hotspots, activeHotspots) {
 }
 
 export default function InteractiveForkliftViewer({
-  mode = 'inspection',
   scenario = 'good-forklift',
   activeHotspots,
   hotspots: configuredHotspots = [],
@@ -639,8 +617,6 @@ export default function InteractiveForkliftViewer({
             </button>
           )}
         </div>
-
-        <ScenarioBadge mode={mode} scenario={scenario} />
 
         <InteractiveViewerErrorBoundary>
           <Canvas shadows dpr={[1, 1.35]} camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}>
