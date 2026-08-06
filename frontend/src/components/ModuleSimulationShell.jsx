@@ -51,12 +51,18 @@ function ModuleSimulationShell({
 
         <aside className="simulation-overlay simulation-overlay-left">
           <section className="simulation-panel">
-            <p className="simulation-panel-label">Objectives</p>
+            <div className="simulation-panel-header">
+              <p className="simulation-panel-label">Objectives</p>
+              <button className="simulation-hint-button" onClick={() => setShowHint((value) => !value)}>
+                {showHint ? 'Hide Hint' : 'Show Hint'}
+              </button>
+            </div>
             <ul className="simulation-objectives">
               {objectives.map((objective) => (
                 <li key={objective}>{objective}</li>
               ))}
             </ul>
+            {showHint && <p className="simulation-hint-text">{currentStep?.hint || 'No hint is available for this step.'}</p>}
           </section>
 
           <section className="simulation-panel">
@@ -75,14 +81,6 @@ function ModuleSimulationShell({
                 </li>
               ))}
             </ol>
-          </section>
-
-          <section className="simulation-panel">
-            <p className="simulation-panel-label">Hint</p>
-            <button className="simulation-hint-button" onClick={() => setShowHint((value) => !value)}>
-              {showHint ? 'Hide Hint' : 'Show Hint'}
-            </button>
-            {showHint && <p className="simulation-hint-text">{currentStep?.hint || 'No hint is available for this step.'}</p>}
           </section>
         </aside>
 

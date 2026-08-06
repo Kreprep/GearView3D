@@ -26,6 +26,7 @@ function calculateSimulationState(nextState) {
 
 function AssessmentBriefing() {
   return (
+    <div className="pallet-briefing-wrap">
     <div className="pallet-briefing">
       <h3>Fail Conditions</h3>
       <ul>
@@ -46,6 +47,7 @@ function AssessmentBriefing() {
         Rated capacity in this assessment: <strong>1,000 kg</strong>. After a fail, use <strong>Reset Attempt</strong>
         {' '}and try again - failed attempts are counted but never block completion.
       </p>
+    </div>
     </div>
   )
 }

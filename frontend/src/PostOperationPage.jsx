@@ -220,18 +220,20 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
     }
 
     return (
-      <div className="post-op-briefing">
-        <h3>Secure Parking Discipline</h3>
-        <ul>
-          <li>Park inside the painted bay, clear of traffic lanes and cones.</li>
-          <li>Lower the forks flat, set controls to neutral, and engage the parking brake.</li>
-          <li>Switch off the equipment and report anything unsafe found during the shift.</li>
-        </ul>
-        <p>
-          The next step is a driving exercise: the parking is only accepted when the forklift is inside the lines,
-          straight, stopped, forks lowered, and the engine is off. Cones along the route are live - hitting one fails
-          the attempt.
-        </p>
+      <div className="post-op-briefing-wrap">
+        <div className="post-op-briefing">
+          <h3>Secure Parking Discipline</h3>
+          <ul>
+            <li>Park inside the painted bay, clear of traffic lanes and cones.</li>
+            <li>Lower the forks flat, set controls to neutral, and engage the parking brake.</li>
+            <li>Switch off the equipment and report anything unsafe found during the shift.</li>
+          </ul>
+          <p>
+            The next step is a driving exercise: the parking is only accepted when the forklift is inside the lines,
+            straight, stopped, forks lowered, and the engine is off. Cones along the route are live - hitting one fails
+            the attempt.
+          </p>
+        </div>
       </div>
     )
   }
