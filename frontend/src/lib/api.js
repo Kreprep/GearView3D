@@ -112,6 +112,10 @@ export async function adminUpdatePartDetail(detailId, payload) {
   return request(`/admin/part-details/${encodeURIComponent(detailId)}`, { method: 'PATCH', body: payload })
 }
 
+export async function adminUpdateEquipment(equipmentId, payload) {
+  return request(`/admin/equipment/${encodeURIComponent(equipmentId)}`, { method: 'PATCH', body: payload })
+}
+
 export async function adminUpdateModule(moduleId, payload) {
   return request(`/admin/modules/${encodeURIComponent(moduleId)}`, { method: 'PATCH', body: payload })
 }
