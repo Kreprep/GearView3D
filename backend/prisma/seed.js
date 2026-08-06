@@ -54,6 +54,7 @@ async function seedEquipment() {
       title: forkliftEquipment.title,
       description: forkliftEquipment.description,
       modelUrl: forkliftEquipment.modelUrl,
+      imageUrl: forkliftEquipment.imageUrl || '',
       sortOrder: 1,
     },
   })
@@ -70,6 +71,7 @@ async function seedModules() {
         title: module.title,
         subtitle: module.subtitle || '',
         description: module.description || '',
+        imageUrl: module.imageUrl || '',
         sortOrder: index + 1,
       },
     })

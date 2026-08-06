@@ -27,6 +27,7 @@ model Equipment {
   title       String
   description String @default("")
   modelUrl    String @default("")
+  imageUrl    String @default("")
   sortOrder   Int    @default(0)
 }
 
@@ -36,6 +37,7 @@ model Module {
   title          String
   subtitle       String          @default("")
   description    String          @default("")
+  imageUrl       String          @default("")
   sortOrder      Int             @default(0)
   checklistItems ChecklistItem[]
   quizQuestions  QuizQuestion[]

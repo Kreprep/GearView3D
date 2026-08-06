@@ -53,9 +53,9 @@ function EquipmentUsagePage({ moduleName, user, onLogout, onBack, onNavigate }) 
           >
             <div
               className="module-image-placeholder"
-              style={{
-                backgroundImage: `linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78)), url('/images/modules/${module.slug}.png')`,
-              }}
+              style={module.imageUrl ? {
+                backgroundImage: `linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78)), url('${module.imageUrl}')`,
+              } : undefined}
             >
               <span className="placeholder-text">{module.subtitle}</span>
             </div>

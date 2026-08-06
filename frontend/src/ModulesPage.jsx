@@ -44,7 +44,12 @@ function ModulesPage({ user, onLogout, onNavigate }) {
                 }
               }}
             >
-              <div className="catalog-module-image catalog-module-image-forklift" />
+              <div
+                className="catalog-module-image catalog-module-image-forklift"
+                style={module.imageUrl ? {
+                  backgroundImage: `linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78)), url('${module.imageUrl}')`,
+                } : undefined}
+              />
               <div className="catalog-card-body">
                 <h2>{module.title}</h2>
                 <p>{module.description}</p>

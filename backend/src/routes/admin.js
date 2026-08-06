@@ -21,7 +21,8 @@ function pick(source, keys) {
 
 const partFields = ['label', 'category', 'position', 'functionText', 'inspectionReminder', 'safetyNote', 'relatedModule', 'checklist', 'sortOrder']
 const partDetailFields = ['title', 'subtitle', 'image', 'description']
-const moduleFields = ['title', 'subtitle', 'description', 'sortOrder']
+const moduleFields = ['title', 'subtitle', 'description', 'imageUrl', 'sortOrder']
+const equipmentFields = ['title', 'description', 'modelUrl', 'imageUrl', 'sortOrder']
 const checklistFields = ['text', 'sortOrder']
 
 function quizOptions(questionId, options = []) {
@@ -109,6 +110,14 @@ router.patch('/part-details/:id', async (req, res) => {
     create: { id: req.params.id, title: data.title || req.params.id, ...data },
   })
   res.json({ detail })
+})
+
+router.patch('/equipment/:id', async (req, res) => {
+  const equipment = await prisma.equipment.update({
+    where: { id: req.params.id },
+    data: pick(req.body, equipmentFields),
+  })
+  res.json({ equipment })
 })
 
 router.patch('/modules/:id', async (req, res) => {
