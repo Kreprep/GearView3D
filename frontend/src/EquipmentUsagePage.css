@@ -6,7 +6,7 @@
 
 .modules-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 20px;
 }
 
@@ -39,12 +39,12 @@
 
 .module-image-placeholder {
   display: flex;
-  min-height: 190px;
+  min-height: 260px;
   align-items: center;
   justify-content: center;
-  background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(8, 145, 178, 0.64)),
-    repeating-linear-gradient(45deg, rgba(255,255,255,0.06), rgba(255,255,255,0.06) 1px, transparent 1px, transparent 14px);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .placeholder-text {

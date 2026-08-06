@@ -26,7 +26,7 @@
 .modules-grid {
   display: grid;
   align-items: start;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 20px;
 }
 
@@ -56,10 +56,19 @@
 }
 
 .catalog-module-image {
-  height: 220px;
+  height: 300px;
   background:
     linear-gradient(120deg, rgba(15, 23, 42, 0.97), rgba(8, 47, 73, 0.92)),
     radial-gradient(circle at 82% 15%, rgba(103, 232, 249, 0.28), transparent 45%);
+}
+
+.catalog-module-image-forklift {
+  background-image:
+    linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78)),
+    url('/images/forklift-card.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .module-image-placeholder {
