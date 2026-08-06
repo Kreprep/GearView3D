@@ -13,10 +13,10 @@
 .catalog-state {
   grid-column: 1 / -1;
   border: 1px dashed #cbd5e1;
-  border-radius: 16px;
+  border-radius: 10px;
   background: #ffffff;
   color: #64748b;
-  font-weight: 800;
+  font-weight: 700;
   padding: 26px;
   text-align: center;
 }
@@ -25,16 +25,14 @@
   display: grid;
   overflow: hidden;
   border: 1px solid #dbe3ef;
-  border-radius: 18px;
+  border-radius: 10px;
   background: #ffffff;
   cursor: pointer;
-  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.09);
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  transition: border-color 160ms ease;
 }
 
 .module-card:hover {
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.14);
-  transform: translateY(-2px);
+  border-color: #0891b2;
 }
 
 .module-image-placeholder {
@@ -42,8 +40,7 @@
   min-height: 260px;
   align-items: center;
   justify-content: center;
-  background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(8, 145, 178, 0.64));
+  background: #0f172a;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -52,7 +49,7 @@
 .placeholder-text {
   color: #ffffff;
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .module-card h3,
@@ -68,14 +65,14 @@
   margin-bottom: 2px;
   color: #0f172a;
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .module-card h4 {
   margin-bottom: 10px;
   color: #0891b2;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -95,7 +92,7 @@
 .module-progress-inline span {
   color: #0f172a;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .module-progress-inline div {
@@ -117,10 +114,10 @@
   margin-top: 18px;
   margin-bottom: 18px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #0f172a;
   color: #ffffff;
-  font-weight: 800;
+  font-weight: 700;
   padding: 10px 16px;
 }
 
