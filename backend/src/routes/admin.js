@@ -2,6 +2,16 @@ import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
 import { publicUser, requireAdmin, requireAuth } from '../lib/auth.js'
 import { buildAdminProgressReport } from '../lib/progressSummary.js'
+import {
+  adminCourse,
+  bespokeStepIds,
+  courseDraftFields,
+  defaultCourseFor,
+  editableCourse,
+  emptyCourseGeometry,
+  validateCoursePayload,
+} from '../lib/courses.js'
+import { courseModuleSlugs } from '../../../frontend/src/data/courseDefaults.js'
 
 const router = Router()
 
@@ -160,6 +170,156 @@ router.patch('/quiz-questions/:id', async (req, res) => {
 
 router.delete('/quiz-questions/:id', async (req, res) => {
   await prisma.quizQuestion.delete({ where: { id: req.params.id } })
+  res.json({ deleted: true })
+})
+
+// --- Driving course editor -------------------------------------------------
+// Courses are kept out of GET /content on purpose: the geometry blobs are large
+// and only the Courses tab needs them.
+
+router.get('/courses', async (req, res) => {
+  const rows = await prisma.course.findMany({ orderBy: [{ moduleSlug: 'asc' }, { sortOrder: 'asc' }] })
+  res.json({
+    courses: rows.map(adminCourse),
+    // So the dashboard can show where admin-created steps will slot in, and
+    // refuse ids that would shadow a hardcoded step.
+    bespokeSteps: Object.fromEntries(
+      courseModuleSlugs.map((moduleSlug) => [moduleSlug, bespokeStepIds(moduleSlug)]),
+    ),
+  })
+})
+
+router.post('/courses', async (req, res) => {
+  const payload = req.body || {}
+  const moduleSlug = payload.moduleSlug
+
+  if (!courseModuleSlugs.includes(moduleSlug)) {
+    return res.status(400).json({ error: 'Unknown module' })
+  }
+  if (!payload.title?.trim()) {
+    return res.status(400).json({ error: 'Course title is required' })
+  }
+
+  const id = (payload.id || payload.title).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  if (!id) {
+    return res.status(400).json({ error: 'Course id could not be derived from the title' })
+  }
+  if (bespokeStepIds(moduleSlug).includes(id)) {
+    return res.status(409).json({ error: `"${id}" is a built-in step of this module` })
+  }
+  if (await prisma.course.findUnique({ where: { id } })) {
+    return res.status(409).json({ error: `A course with id "${id}" already exists` })
+  }
+
+  const last = await prisma.course.findFirst({ where: { moduleSlug }, orderBy: { sortOrder: 'desc' } })
+
+  // Created unpublished: the geometry is empty until the admin places markers,
+  // so it must not reach learners before the first publish.
+  const course = await prisma.course.create({
+    data: {
+      id,
+      moduleSlug,
+      sortOrder: (last?.sortOrder || 0) + 1,
+      title: payload.title.trim(),
+      objective: payload.objective || '',
+      instructions: payload.instructions || '',
+      hint: payload.hint || '',
+      goalType: payload.goalType || 'checkpoints',
+      data: payload.data || emptyCourseGeometry(),
+      published: false,
+      builtIn: false,
+    },
+  })
+  res.json({ course: adminCourse(course) })
+})
+
+// Saves an edit as a draft. Invalid drafts are allowed - work in progress is
+// only blocked at publish time.
+router.put('/courses/:id', async (req, res) => {
+  const row = await prisma.course.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Course not found' })
+
+  const draft = { ...editableCourse(row), ...pick(req.body, courseDraftFields) }
+  const course = await prisma.course.update({
+    where: { id: row.id },
+    data: {
+      draft,
+      ...(typeof req.body?.sortOrder === 'number' ? { sortOrder: req.body.sortOrder } : {}),
+    },
+  })
+  res.json({ course: adminCourse(course), problems: validateCoursePayload(draft) })
+})
+
+router.post('/courses/:id/publish', async (req, res) => {
+  const row = await prisma.course.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Course not found' })
+
+  const payload = editableCourse(row)
+  const problems = validateCoursePayload(payload)
+  if (problems.length) {
+    return res.status(400).json({ error: 'Course cannot be published', problems })
+  }
+
+  const course = await prisma.course.update({
+    where: { id: row.id },
+    data: { ...payload, draft: null, published: true },
+  })
+  res.json({ course: adminCourse(course) })
+})
+
+// Throws the pending draft away, leaving the published version in place.
+router.post('/courses/:id/revert', async (req, res) => {
+  const course = await prisma.course.update({ where: { id: req.params.id }, data: { draft: null } })
+  res.json({ course: adminCourse(course) })
+})
+
+// Built-in courses only: restores the seeded baseline and clears any draft.
+router.post('/courses/:id/reset', async (req, res) => {
+  const row = await prisma.course.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Course not found' })
+
+  const defaults = defaultCourseFor(row.id)
+  if (!row.builtIn || !defaults) {
+    return res.status(400).json({ error: 'This course has no built-in default to reset to' })
+  }
+
+  const course = await prisma.course.update({
+    where: { id: row.id },
+    data: {
+      title: defaults.title,
+      objective: defaults.objective,
+      instructions: defaults.instructions,
+      hint: defaults.hint,
+      goalType: defaults.goalType,
+      data: defaults.data,
+      draft: null,
+      published: true,
+    },
+  })
+  res.json({ course: adminCourse(course) })
+})
+
+// Whole-list reorder for one module; ids not in the list are left alone.
+router.post('/courses/reorder', async (req, res) => {
+  const { moduleSlug, ids } = req.body || {}
+  if (!courseModuleSlugs.includes(moduleSlug) || !Array.isArray(ids)) {
+    return res.status(400).json({ error: 'moduleSlug and ids are required' })
+  }
+
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.course.update({ where: { id }, data: { sortOrder: index + 1 } }),
+    ),
+  )
+
+  const rows = await prisma.course.findMany({ where: { moduleSlug }, orderBy: { sortOrder: 'asc' } })
+  res.json({ courses: rows.map(adminCourse) })
+})
+
+// Learner progress entries for a deleted step are left in place, not pruned, so
+// re-adding the course restores completion (see lib/simulationProgress.js).
+router.delete('/courses/:id', async (req, res) => {
+  await prisma.course.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })
 

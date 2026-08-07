@@ -1,0 +1,87 @@
+.course-canvas-scroll {
+  overflow: auto;
+  width: fit-content;
+  max-width: 100%;
+  max-height: 70vh;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #0f172a;
+}
+
+.course-canvas {
+  display: block;
+  touch-action: none;
+}
+
+.course-canvas.is-placing {
+  cursor: crosshair;
+}
+
+.course-grid .grid-minor {
+  stroke: #1e293b;
+  stroke-width: 1;
+}
+
+.course-grid .grid-major {
+  stroke: #334155;
+  stroke-width: 1;
+}
+
+.course-item {
+  cursor: grab;
+  vector-effect: non-scaling-stroke;
+}
+
+.course-item-cone {
+  fill: #fb923c;
+  stroke: #7c2d12;
+}
+
+.course-item-wall {
+  fill: #94a3b8;
+  stroke: #475569;
+}
+
+.course-item-forklift {
+  fill: #facc15;
+  stroke: #a16207;
+}
+
+.course-item-pallet {
+  fill: #a16207;
+  stroke: #fde68a;
+}
+
+.course-item-checkpoint {
+  fill: rgba(56, 189, 248, 0.22);
+  stroke: #38bdf8;
+  stroke-width: 2;
+}
+
+.course-item-dropZone {
+  fill: rgba(34, 197, 94, 0.2);
+  stroke: #22c55e;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.course-item-parkingBay {
+  fill: rgba(59, 130, 246, 0.22);
+  stroke: #f8fafc;
+  stroke-width: 2;
+}
+
+.course-item-start,
+.course-item-start circle,
+.course-item-start path {
+  fill: #22d3ee;
+  stroke: #0e7490;
+}
+
+.course-item.is-selected,
+.course-item.is-selected circle,
+.course-item.is-selected path,
+.course-item.is-selected rect {
+  stroke: #f472b6;
+  stroke-width: 3;
+}

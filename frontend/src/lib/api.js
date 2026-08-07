@@ -80,6 +80,13 @@ export async function getChecklist(moduleSlug) {
   return request(`/content/checklists/${encodeURIComponent(moduleSlug)}`)
 }
 
+// Published driving-simulation steps for one module, in step order. Each entry
+// is { id, title, objective, instructions, hint, goalType, course } where
+// `course` is what DrivingSimulationViewer consumes.
+export async function getModuleCourses(moduleSlug) {
+  return request(`/content/courses/${encodeURIComponent(moduleSlug)}`)
+}
+
 // --- Progress (per signed-in user) ---
 
 export async function getProgress() {
@@ -138,4 +145,42 @@ export async function adminUpdateQuizQuestion(questionId, payload) {
 
 export async function adminDeleteQuizQuestion(questionId) {
   return request(`/admin/quiz-questions/${encodeURIComponent(questionId)}`, { method: 'DELETE' })
+}
+
+// --- Admin: driving course editor ---
+// Courses carry large geometry blobs, so they are fetched separately from
+// adminListContent() rather than bundled into it.
+
+export async function adminListCourses() {
+  return request('/admin/courses')
+}
+
+export async function adminCreateCourse(payload) {
+  return request('/admin/courses', { method: 'POST', body: payload })
+}
+
+// Saves an edit as an unpublished draft; learners keep seeing the published
+// version until adminPublishCourse().
+export async function adminSaveCourseDraft(courseId, payload) {
+  return request(`/admin/courses/${encodeURIComponent(courseId)}`, { method: 'PUT', body: payload })
+}
+
+export async function adminPublishCourse(courseId) {
+  return request(`/admin/courses/${encodeURIComponent(courseId)}/publish`, { method: 'POST' })
+}
+
+export async function adminRevertCourse(courseId) {
+  return request(`/admin/courses/${encodeURIComponent(courseId)}/revert`, { method: 'POST' })
+}
+
+export async function adminResetCourse(courseId) {
+  return request(`/admin/courses/${encodeURIComponent(courseId)}/reset`, { method: 'POST' })
+}
+
+export async function adminReorderCourses(moduleSlug, ids) {
+  return request('/admin/courses/reorder', { method: 'POST', body: { moduleSlug, ids } })
+}
+
+export async function adminDeleteCourse(courseId) {
+  return request(`/admin/courses/${encodeURIComponent(courseId)}`, { method: 'DELETE' })
 }

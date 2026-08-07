@@ -1,0 +1,23 @@
+.module-loading-state {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  align-content: center;
+  min-height: 320px;
+  padding: 32px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #475569;
+  text-align: center;
+}
+
+.module-loading-error {
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.module-loading-detail {
+  font-size: 0.9rem;
+  color: #64748b;
+}
