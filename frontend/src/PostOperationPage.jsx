@@ -18,11 +18,18 @@ import './PostOperationPage.css'
 const moduleSlug = 'post-operation'
 const NEXT_MODULE_DELAY_MS = 1400
 
+const parkingCompletionFieldByStep = {
+  'secure-parking': 'secureParkingComplete',
+  'parallel-parking': 'parallelParkingComplete',
+  'forklift-gap-parking': 'gapParkingComplete',
+}
+
 function calculateSimulationState(nextState) {
-  const flags = [nextState.parkingComplete, nextState.shutdownComplete, nextState.reportingComplete]
+  const parkingComplete = nextState.secureParkingComplete && nextState.parallelParkingComplete && nextState.gapParkingComplete
+  const flags = [parkingComplete, nextState.shutdownComplete, nextState.reportingComplete]
   const percentage = Math.round((flags.filter(Boolean).length / flags.length) * 100)
 
-  return { ...nextState, percentage, complete: percentage === 100 }
+  return { ...nextState, parkingComplete, percentage, complete: percentage === 100 }
 }
 
 function ShutdownSequenceActivity({ actions, displayOrder, pickedIds, completed, wrongPickId, onPick }) {
@@ -110,7 +117,9 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   const [wrongPickId, setWrongPickId] = useState(null)
   const [reportAnswers, setReportAnswers] = useState({})
   const simulation = calculateSimulationState({
-    parkingComplete: savedSimulation.parkingComplete || false,
+    secureParkingComplete: savedSimulation.secureParkingComplete || false,
+    parallelParkingComplete: savedSimulation.parallelParkingComplete || false,
+    gapParkingComplete: savedSimulation.gapParkingComplete || false,
     shutdownComplete: savedSimulation.shutdownComplete || false,
     reportingComplete: savedSimulation.reportingComplete || false,
     shutdownMistakes: savedSimulation.shutdownMistakes || 0,
@@ -132,9 +141,12 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
       return
     }
 
-    if (event.type === 'parking-complete' && currentStep.id === 'secure-parking') {
-      setLastFail(null)
-      saveSimulation({ parkingComplete: true })
+    if (event.type === 'parking-complete') {
+      const completionField = parkingCompletionFieldByStep[currentStep.id]
+      if (completionField) {
+        setLastFail(null)
+        saveSimulation({ [completionField]: true })
+      }
     }
   }
 
@@ -175,7 +187,8 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   }
 
   const getStepCanProceed = (stepId) => {
-    if (stepId === 'secure-parking') return simulation.parkingComplete
+    const parkingField = parkingCompletionFieldByStep[stepId]
+    if (parkingField) return simulation[parkingField]
     if (stepId === 'shutdown-sequence') return simulation.shutdownComplete
     if (stepId === 'reporting') return simulation.reportingComplete
     return true
@@ -187,10 +200,10 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   }
 
   const renderScene = ({ currentStep }) => {
-    if (currentStep.id === 'secure-parking') {
+    if (parkingCompletionFieldByStep[currentStep.id]) {
       return (
         <div className="load-scene-wrap">
-          <DrivingSimulationViewer course={drivingCourses['secure-parking']} onEvent={handleDrivingEvent(currentStep)} isAdmin={isAdmin} />
+          <DrivingSimulationViewer course={drivingCourses[currentStep.id]} onEvent={handleDrivingEvent(currentStep)} isAdmin={isAdmin} />
         </div>
       )
     }
@@ -253,8 +266,18 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
     </div>
   )
 
+  const parkingTaskCopy = {
+    'secure-parking':
+      'Follow the breadcrumbs to the painted bay. Park between the lines, straighten up, stop, lower the forks with F, then switch off with E. The badge at the top shows the next requirement.',
+    'parallel-parking':
+      'Pull alongside the gap, steer into the pocket in the left boundary line, and straighten up flush with the bay before stopping, lowering the forks with F, and switching off with E.',
+    'forklift-gap-parking':
+      'Line up centered on the gap early and creep in - the parked forklifts on both sides are live obstacles. Stop inside the lines, lower the forks with F, then switch off with E.',
+  }
+
   const renderParkingTask = (currentStep) => {
-    const done = simulation.parkingComplete
+    const completionField = parkingCompletionFieldByStep[currentStep.id]
+    const done = simulation[completionField]
     const failVisible = lastFail && lastFail.stepId === currentStep.id && !done
 
     return (
@@ -265,9 +288,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
           </p>
         )}
         <p className={done ? 'completion-ready' : 'task-note'}>
-          {done
-            ? 'Step complete. Use Next to continue.'
-            : 'Follow the breadcrumbs to the painted bay. Park between the lines, straighten up, stop, lower the forks with F, then switch off with E. The badge at the top shows the next requirement.'}
+          {done ? 'Step complete. Use Next to continue.' : parkingTaskCopy[currentStep.id]}
         </p>
       </div>
     )
@@ -303,7 +324,9 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   const renderSummary = () => (
     <div className="load-task-stack">
       <div className="summary-grid">
-        <div><span>Secure Parking</span><strong>{simulation.parkingComplete ? 'Complete' : 'Open'}</strong></div>
+        <div><span>Secure Parking</span><strong>{simulation.secureParkingComplete ? 'Complete' : 'Open'}</strong></div>
+        <div><span>Parallel Parking</span><strong>{simulation.parallelParkingComplete ? 'Complete' : 'Open'}</strong></div>
+        <div><span>Parking Between Forklifts</span><strong>{simulation.gapParkingComplete ? 'Complete' : 'Open'}</strong></div>
         <div><span>Shutdown Sequence</span><strong>{simulation.shutdownComplete ? 'Complete' : 'Open'}</strong></div>
         <div><span>Reporting</span><strong>{simulation.reportingComplete ? 'Complete' : 'Open'}</strong></div>
         <div><span>Failed Attempts</span><strong>{simulation.failedAttempts}</strong></div>
@@ -312,14 +335,14 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
       <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
         {simulation.complete
           ? 'All requirements are complete. Submit the module to record completion feedback.'
-          : 'Complete the parking drive, shutdown ordering, and reporting decisions to finish this module.'}
+          : 'Complete all three parking drives, shutdown ordering, and reporting decisions to finish this module.'}
       </p>
     </div>
   )
 
   const renderTask = ({ currentStep }) => {
     if (currentStep.id === 'briefing') return renderBriefing()
-    if (currentStep.id === 'secure-parking') return renderParkingTask(currentStep)
+    if (parkingCompletionFieldByStep[currentStep.id]) return renderParkingTask(currentStep)
     if (currentStep.id === 'shutdown-sequence') return renderShutdownTask()
     if (currentStep.id === 'reporting') return renderReportingTask()
     return null

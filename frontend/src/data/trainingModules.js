@@ -2,7 +2,7 @@ export const forkliftEquipment = {
   id: 'forklift',
   title: 'Forklift',
   description: 'Learn safe forklift familiarization through guided lessons and a labeled 3D model.',
-  modelUrl: '/models/Forklift_SEPERATED.glb',
+  modelUrl: '/models/forklift.glb',
   imageUrl: '/images/forklift-card.png',
 }
 

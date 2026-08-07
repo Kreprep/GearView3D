@@ -1,6 +1,6 @@
 import { Box3, Group, Matrix4, Mesh, Vector3 } from 'three'
 
-// Shared rig builder for Forklift_SEPERATED.glb, used by the driving simulation
+// Shared rig builder for forklift.glb, used by the driving simulation
 // and the interactive walk-around viewer.
 
 export const WHEEL_NODE_NAMES = { FL: 'Wheel_FL', FR: 'Wheel_FR', RL: 'Wheel_RL', RR: 'Wheel_RR' }
