@@ -35,3 +35,6 @@ Thumbs.db
 *.seed
 *.pid.lock
 .cache/
+
+# Playwright MCP output
+.playwright-mcp/
