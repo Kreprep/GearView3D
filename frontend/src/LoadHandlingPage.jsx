@@ -1,21 +1,19 @@
 import { useMemo, useState } from 'react'
 import DrivingSimulationViewer from './components/DrivingSimulationViewer'
-import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
-import ScopeNotice from './components/ScopeNotice'
+import ModuleSummary from './components/ModuleSummary'
+import { BriefingScene, BriefingTask } from './components/ModuleBriefing'
 import { useModuleCourses } from './hooks/useModuleCourses'
 import { useProgress } from './hooks/useProgress'
-import { loadHandlingViewerHotspots } from './data/viewerHotspots'
 import { courseTaskCopy } from './lib/courseGoals'
-import { routes } from './lib/router'
+import { moduleObjectives, nextModuleRoute } from './lib/moduleContent'
 import { buildSimulationState, isStepComplete, withStepComplete } from './lib/simulationProgress'
-import { equipmentUsageModules, forkliftEquipment } from './lib/trainingData'
+import { equipmentUsageModules } from './lib/trainingData'
 import './LoadHandlingPage.css'
 
 const moduleSlug = 'load-handling'
 const NEXT_MODULE_DELAY_MS = 1400
-const loadViewerActiveHotspots = ['forks', 'carriage', 'mast-assembly', 'tire-condition', 'operator-area']
 const REQUIRED_CONTROL_KEYS = ['w', 'a', 's', 'd']
 
 // Reads snapshots written before completion moved to a step-id map.
@@ -33,33 +31,10 @@ function unique(items) {
   return [...new Set(items)]
 }
 
-function ControlsDiagram() {
-  return (
-    <div className="controls-diagram">
-      <div className="controls-diagram-pad">
-        <span className="controls-diagram-key key-w">W</span>
-        <span className="controls-diagram-key key-a">A</span>
-        <span className="controls-diagram-key key-s">S</span>
-        <span className="controls-diagram-key key-d">D</span>
-      </div>
-      <ul className="controls-diagram-legend">
-        <li><strong>W</strong> Accelerate forward</li>
-        <li><strong>A</strong> Steer left</li>
-        <li><strong>S</strong> Brake / reverse</li>
-        <li><strong>D</strong> Steer right</li>
-      </ul>
-      <div className="controls-diagram-engine">
-        <span className="controls-diagram-key key-e">E</span>
-        <p>Start or stop the engine</p>
-      </div>
-    </div>
-  )
-}
-
 function LoadHandlingPage({ moduleName, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
-  const { steps, courseById, loading, error } = useModuleCourses(moduleSlug)
+  const { steps, stepById, courseById, loading, error } = useModuleCourses(moduleSlug)
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -72,7 +47,7 @@ function LoadHandlingPage({ moduleName, user, onBack, onNavigate }) {
     {
       ...savedSimulation,
       engineStarted: savedSimulation.engineStarted || false,
-      keysUsed: savedSimulation.keysUsed || [],
+      keysUsedByStep: savedSimulation.keysUsedByStep || {},
     },
     gradedStepIds,
     legacyStepFields,
@@ -87,36 +62,40 @@ function LoadHandlingPage({ moduleName, user, onBack, onNavigate }) {
   const markStepComplete = (stepId, partial = {}) =>
     saveSimulation({ ...partial, ...withStepComplete(simulation, stepId) })
 
-  // Controls intro has no checkpoints - it completes once the engine is running
-  // and every control key has been pressed at least once.
-  const saveControlsIntro = (partial) => {
+  const keysUsedFor = (stepId) => simulation.keysUsedByStep?.[stepId] || []
+
+  // A `free` course has no checkpoints, pallet or bay to complete against, so
+  // it grades the only thing it can: the engine running and every control key
+  // tried at least once. Tracked per step id, so more than one free-practice
+  // step can exist in a module.
+  const saveFreePractice = (stepId, partial) => {
     const merged = { ...simulation, ...partial }
-    const done = merged.engineStarted && REQUIRED_CONTROL_KEYS.every((key) => merged.keysUsed.includes(key))
-    saveSimulation(done ? { ...partial, ...withStepComplete(simulation, 'controls-intro') } : partial)
+    const keysUsed = merged.keysUsedByStep?.[stepId] || []
+    const done = merged.engineStarted && REQUIRED_CONTROL_KEYS.every((key) => keysUsed.includes(key))
+    saveSimulation(done ? { ...partial, ...withStepComplete(simulation, stepId) } : partial)
   }
 
-  const handleViewerHotspot = () => {}
-
   const handleDrivingEvent = (currentStep) => (event) => {
+    const isFreePractice = courseById[currentStep.id]?.goalType === 'free'
+
     if (event.type === 'key-active') {
-      if (currentStep.id === 'controls-intro' && !simulation.keysUsed.includes(event.key)) {
-        saveControlsIntro({ keysUsed: unique([...simulation.keysUsed, event.key]) })
+      if (isFreePractice && !keysUsedFor(currentStep.id).includes(event.key)) {
+        saveFreePractice(currentStep.id, {
+          keysUsedByStep: {
+            ...simulation.keysUsedByStep,
+            [currentStep.id]: unique([...keysUsedFor(currentStep.id), event.key]),
+          },
+        })
       }
       return
     }
 
     if (event.type === 'engine-on') {
-      if (currentStep.id === 'controls-intro') {
-        saveControlsIntro({ engineStarted: true })
-      }
+      if (isFreePractice) saveFreePractice(currentStep.id, { engineStarted: true })
       return
     }
 
-    if (event.type === 'engine-off') {
-      return
-    }
-
-    if (event.type === 'checkpoint') {
+    if (event.type === 'engine-off' || event.type === 'checkpoint') {
       return
     }
 
@@ -135,15 +114,17 @@ function LoadHandlingPage({ moduleName, user, onBack, onNavigate }) {
   const completeModule = () => {
     if (!simulation.complete) return
 
-    setTimeout(() => onNavigate?.(routes.postOperation), NEXT_MODULE_DELAY_MS)
+    setTimeout(() => onNavigate?.(nextModuleRoute(steps, 'postOperation')), NEXT_MODULE_DELAY_MS)
   }
 
   const getStepCanProceed = (stepId) =>
     gradedStepIds.includes(stepId) ? isStepComplete(simulation, stepId) : true
 
   const renderScene = ({ currentStep }) => {
-    if (currentStep.id === 'briefing') {
-      return <ControlsDiagram />
+    const step = stepById[currentStep.id]
+
+    if (step?.kind === 'briefing') {
+      return <BriefingScene content={step.content} />
     }
 
     const course = courseById[currentStep.id]
@@ -156,42 +137,15 @@ function LoadHandlingPage({ moduleName, user, onBack, onNavigate }) {
       )
     }
 
-    return (
-      <div className="load-scene-wrap">
-        <InteractiveForkliftViewer
-          mode="load-handling"
-          scenario="good-forklift"
-          activeHotspots={loadViewerActiveHotspots}
-          hotspots={loadHandlingViewerHotspots}
-          modelUrl={forkliftEquipment.modelUrl}
-          onHotspotSelect={handleViewerHotspot}
-          isAdmin={isAdmin}
-        />
-      </div>
-    )
+    return null
   }
-
-  const renderBriefing = () => (
-    <div className="load-task-stack">
-      <ScopeNotice />
-      <div className="reference-card">
-        <p><strong>Syllabus Location:</strong> {module.syllabusLocation}</p>
-        <p><strong>Unit Code:</strong> {module.unitCode}</p>
-        <p><strong>Element:</strong> {module.element}</p>
-        <p><strong>Page References:</strong> {module.pageReferences}</p>
-      </div>
-      {module.lessonContent.map((content) => (
-        <p key={content} className="lesson-bubble">{content}</p>
-      ))}
-    </div>
-  )
 
   const renderDrivingTask = (currentStep) => {
     const course = courseById[currentStep.id]
     const done = getStepCanProceed(currentStep.id)
 
-    if (currentStep.id === 'controls-intro') {
-      const remainingKeys = REQUIRED_CONTROL_KEYS.filter((key) => !simulation.keysUsed.includes(key))
+    if (course.goalType === 'free') {
+      const remainingKeys = REQUIRED_CONTROL_KEYS.filter((key) => !keysUsedFor(currentStep.id).includes(key))
       return (
         <div className="load-task-stack">
           <p className={done ? 'completion-ready' : 'task-note'}>
@@ -214,26 +168,11 @@ function LoadHandlingPage({ moduleName, user, onBack, onNavigate }) {
     )
   }
 
-  const renderSummary = () => (
-    <div className="load-task-stack">
-      <div className="summary-grid">
-        {gradedStepIds.map((stepId) => (
-          <div key={stepId}>
-            <span>{steps.find((step) => step.id === stepId)?.title || stepId}</span>
-            <strong>{isStepComplete(simulation, stepId) ? 'Complete' : 'Open'}</strong>
-          </div>
-        ))}
-      </div>
-      <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
-        {simulation.complete
-          ? 'All requirements are complete. Submit the module to record completion feedback.'
-          : 'Complete all guided driving tasks to finish this module.'}
-      </p>
-    </div>
-  )
+  const summaryStep = steps.find((step) => step.kind === 'summary')
 
   const renderTask = ({ currentStep }) => {
-    if (currentStep.id === 'briefing') return renderBriefing()
+    const step = stepById[currentStep.id]
+    if (step?.kind === 'briefing') return <BriefingTask content={step.content} module={module} />
     if (courseById[currentStep.id]) return renderDrivingTask(currentStep)
     return null
   }
@@ -258,7 +197,7 @@ function LoadHandlingPage({ moduleName, user, onBack, onNavigate }) {
             module={module}
             steps={steps}
             currentStepIndex={currentStepIndex}
-            objectives={module.learningObjectives}
+            objectives={moduleObjectives(steps, module)}
             progress={simulation.percentage}
             score={simulation.percentage}
             canProceed={getStepCanProceed(steps[currentStepIndex].id)}
@@ -267,7 +206,14 @@ function LoadHandlingPage({ moduleName, user, onBack, onNavigate }) {
             onComplete={completeModule}
             renderScene={renderScene}
             renderTask={renderTask}
-            completionSummary={renderSummary()}
+            completionSummary={
+              <ModuleSummary
+                content={summaryStep?.content}
+                steps={steps}
+                gradedStepIds={gradedStepIds}
+                simulation={simulation}
+              />
+            }
           />
         )}
       </main>

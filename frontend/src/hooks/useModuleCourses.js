@@ -1,27 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getModuleCourses } from '../lib/api'
-import { mergeModuleSteps } from '../lib/moduleSteps'
 
-const NO_COURSES = []
+const NO_STEPS = []
 
-// Loads a module's published driving courses and merges them with the module's
-// hardcoded bespoke steps. Pages should hold off rendering the simulation shell
-// until `loading` is false: completion percentage is computed against the graded
-// step list, so grading a partial list would persist a wrong percentage.
+// Loads every published step of a module, in order. Modules 2-4 have no
+// hardcoded step list left: each row's `kind` tells the page how to render it
+// (briefing / driving / activity / summary) and `content` carries the payload.
+//
+// Pages must hold off rendering the simulation shell until `loading` is false:
+// completion percentage is computed against the graded step list, so grading a
+// partial list would persist a wrong percentage.
 export function useModuleCourses(moduleSlug) {
   // One state object tagged with the slug it belongs to, so a slug change reads
   // as loading without a synchronous setState in the effect body.
-  const [loaded, setLoaded] = useState({ slug: null, courses: NO_COURSES, error: null })
+  const [loaded, setLoaded] = useState({ slug: null, steps: NO_STEPS, error: null })
 
   useEffect(() => {
     let cancelled = false
 
     getModuleCourses(moduleSlug)
       .then((rows) => {
-        if (!cancelled) setLoaded({ slug: moduleSlug, courses: rows, error: null })
+        if (!cancelled) setLoaded({ slug: moduleSlug, steps: rows, error: null })
       })
       .catch((err) => {
-        if (!cancelled) setLoaded({ slug: moduleSlug, courses: NO_COURSES, error: err.message })
+        if (!cancelled) setLoaded({ slug: moduleSlug, steps: NO_STEPS, error: err.message })
       })
 
     return () => {
@@ -30,13 +32,13 @@ export function useModuleCourses(moduleSlug) {
   }, [moduleSlug])
 
   const fresh = loaded.slug === moduleSlug
-  const courses = fresh ? loaded.courses : NO_COURSES
+  const steps = fresh ? loaded.steps : NO_STEPS
 
-  const steps = useMemo(() => mergeModuleSteps(moduleSlug, courses), [moduleSlug, courses])
   const courseById = useMemo(
-    () => Object.fromEntries(courses.map((entry) => [entry.id, entry.course])),
-    [courses],
+    () => Object.fromEntries(steps.filter((step) => step.course).map((step) => [step.id, step.course])),
+    [steps],
   )
+  const stepById = useMemo(() => Object.fromEntries(steps.map((step) => [step.id, step])), [steps])
 
-  return { steps, courseById, loading: !fresh, error: fresh ? loaded.error : null }
+  return { steps, stepById, courseById, loading: !fresh, error: fresh ? loaded.error : null }
 }

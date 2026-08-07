@@ -164,10 +164,26 @@ async function seedQuizQuestions() {
 
 async function seedCourses() {
   for (const course of buildDefaultCourses()) {
-    await prisma.course.upsert({
+    const existing = await prisma.course.findUnique({ where: { id: course.id } })
+
+    if (!existing) {
+      await prisma.course.create({ data: { ...course, builtIn: true, published: true } })
+      continue
+    }
+
+    // Still create-if-missing for everything the admin can edit, with one
+    // exception: a content key added to the defaults *after* a row was seeded
+    // is backfilled, because the row has no value for it at all. Keys the row
+    // already has - including ones an admin deliberately blanked - always win.
+    if (!existing.builtIn || !course.content) continue
+
+    const current = existing.content || {}
+    const missing = Object.keys(course.content).filter((key) => !(key in current))
+    if (!missing.length) continue
+
+    await prisma.course.update({
       where: { id: course.id },
-      update: {},
-      create: { ...course, builtIn: true, published: true },
+      data: { content: { ...course.content, ...current } },
     })
   }
 }

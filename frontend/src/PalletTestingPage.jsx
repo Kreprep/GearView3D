@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import DrivingSimulationViewer from './components/DrivingSimulationViewer'
 import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
-import ScopeNotice from './components/ScopeNotice'
+import ModuleSummary from './components/ModuleSummary'
+import { BriefingScene, BriefingTask } from './components/ModuleBriefing'
 import { useModuleCourses } from './hooks/useModuleCourses'
 import { useProgress } from './hooks/useProgress'
 import { courseTaskCopy } from './lib/courseGoals'
-import { routes } from './lib/router'
+import { moduleObjectives, nextModuleRoute } from './lib/moduleContent'
 import { buildSimulationState, isStepComplete, withStepComplete } from './lib/simulationProgress'
 import { equipmentUsageModules } from './lib/trainingData'
 import './LoadHandlingPage.css'
@@ -21,45 +22,10 @@ const legacyStepFields = {
   'load-limits': 'limitsComplete',
 }
 
-const stepTaskCopy = {
-  'precision-carry':
-    'Pick up the pallet, keep it clear of every cone in the lane, and set it down in the drop zone. Brake gently - a hard stop throws the load.',
-  'load-limits':
-    'Check each weight label against the 1,000 kg capacity, lift a safe pallet, and deliver it to the drop zone.',
-}
-
-function AssessmentBriefing() {
-  return (
-    <div className="pallet-briefing-wrap">
-    <div className="pallet-briefing">
-      <h3>Fail Conditions</h3>
-      <ul>
-        <li>
-          <strong>Overload tip-over</strong> - lifting a pallet heavier than the rated capacity shifts the center of
-          gravity past the front axle and pitches the forklift forward.
-        </li>
-        <li>
-          <strong>Cone strike</strong> - touching any traffic cone ends the attempt, the same as striking a pedestrian
-          lane marker in a practical evaluation.
-        </li>
-        <li>
-          <strong>Load thrown off</strong> - braking hard above walking speed throws the pallet off the forks. Slow
-          down early and brake gently while carrying.
-        </li>
-      </ul>
-      <p>
-        Rated capacity in this assessment: <strong>1,000 kg</strong>. After a fail, use <strong>Reset Attempt</strong>
-        {' '}and try again - failed attempts are counted but never block completion.
-      </p>
-    </div>
-    </div>
-  )
-}
-
 function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
-  const { steps, courseById, loading, error } = useModuleCourses(moduleSlug)
+  const { steps, stepById, courseById, loading, error } = useModuleCourses(moduleSlug)
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -100,7 +66,7 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
   const completeModule = () => {
     if (!simulation.complete) return
 
-    setTimeout(() => onNavigate?.(routes.equipment), NEXT_MODULE_DELAY_MS)
+    setTimeout(() => onNavigate?.(nextModuleRoute(steps, 'equipment')), NEXT_MODULE_DELAY_MS)
   }
 
   const getStepCanProceed = (stepId) =>
@@ -112,8 +78,10 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
   }
 
   const renderScene = ({ currentStep }) => {
-    if (currentStep.id === 'briefing') {
-      return <AssessmentBriefing />
+    const step = stepById[currentStep.id]
+
+    if (step?.kind === 'briefing') {
+      return <BriefingScene content={step.content} />
     }
 
     const course = courseById[currentStep.id]
@@ -126,23 +94,8 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
       )
     }
 
-    return <AssessmentBriefing />
+    return null
   }
-
-  const renderBriefing = () => (
-    <div className="load-task-stack">
-      <ScopeNotice />
-      <div className="reference-card">
-        <p><strong>Syllabus Location:</strong> {module.syllabusLocation}</p>
-        <p><strong>Unit Code:</strong> {module.unitCode}</p>
-        <p><strong>Element:</strong> {module.element}</p>
-        <p><strong>Page References:</strong> {module.pageReferences}</p>
-      </div>
-      {module.lessonContent.map((content) => (
-        <p key={content} className="lesson-bubble">{content}</p>
-      ))}
-    </div>
-  )
 
   const renderCourseTask = (currentStep) => {
     const done = getStepCanProceed(currentStep.id)
@@ -156,35 +109,17 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
           </p>
         )}
         <p className={done ? 'completion-ready' : 'task-note'}>
-          {done
-            ? 'Step complete. Use Next to continue.'
-            : stepTaskCopy[currentStep.id] || courseTaskCopy(courseById[currentStep.id])}
+          {done ? 'Step complete. Use Next to continue.' : courseTaskCopy(courseById[currentStep.id])}
         </p>
       </div>
     )
   }
 
-  const renderSummary = () => (
-    <div className="load-task-stack">
-      <div className="summary-grid">
-        {gradedStepIds.map((stepId) => (
-          <div key={stepId}>
-            <span>{steps.find((step) => step.id === stepId)?.title || stepId}</span>
-            <strong>{isStepComplete(simulation, stepId) ? 'Complete' : 'Open'}</strong>
-          </div>
-        ))}
-        <div><span>Failed Attempts</span><strong>{simulation.failedAttempts}</strong></div>
-      </div>
-      <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
-        {simulation.complete
-          ? 'All requirements are complete. Submit the module to record completion feedback.'
-          : 'Complete the precision carry and load limit exercises to finish this module.'}
-      </p>
-    </div>
-  )
+  const summaryStep = steps.find((step) => step.kind === 'summary')
 
   const renderTask = ({ currentStep }) => {
-    if (currentStep.id === 'briefing') return renderBriefing()
+    const step = stepById[currentStep.id]
+    if (step?.kind === 'briefing') return <BriefingTask content={step.content} module={module} />
     if (courseById[currentStep.id]) return renderCourseTask(currentStep)
     return null
   }
@@ -209,7 +144,7 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
             module={module}
             steps={steps}
             currentStepIndex={currentStepIndex}
-            objectives={module.learningObjectives}
+            objectives={moduleObjectives(steps, module)}
             progress={simulation.percentage}
             score={simulation.percentage}
             canProceed={getStepCanProceed(steps[currentStepIndex].id)}
@@ -218,7 +153,14 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
             onComplete={completeModule}
             renderScene={renderScene}
             renderTask={renderTask}
-            completionSummary={renderSummary()}
+            completionSummary={
+              <ModuleSummary
+                content={summaryStep?.content}
+                steps={steps}
+                gradedStepIds={gradedStepIds}
+                simulation={simulation}
+              />
+            }
           />
         )}
       </main>
