@@ -12,7 +12,7 @@ import {
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { BadgeInfo, Compass } from 'lucide-react'
 
-const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
+const DEFAULT_MODEL_URL = '/models/forklift.glb'
 
 class ViewportErrorBoundary extends React.Component {
   constructor(props) {

@@ -20,7 +20,7 @@ import { BadgeInfo, Compass, Eye, Maximize, RotateCcw } from 'lucide-react'
 import { buildForkliftRig, REAR_WHEEL_KEYS } from '../lib/forkliftRig'
 import './InteractiveForkliftViewer.css'
 
-const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
+const DEFAULT_MODEL_URL = '/models/forklift.glb'
 
 // ---------------------------------------------------------------------------
 // Floor tuning - safe to edit by hand.

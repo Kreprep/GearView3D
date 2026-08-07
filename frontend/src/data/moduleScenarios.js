@@ -80,9 +80,10 @@ export const moduleScenarioSteps = {
     {
       id: 'driving-course',
       title: 'Driving Course',
-      objective: 'Combine starting, accelerating, braking, and steering in one guided course.',
-      instructions: 'Start the engine, then drive through each checkpoint in order and stop in the final parking bay.',
-      hint: 'Take the turns slowly - smooth control matters more than speed.',
+      objective: 'Combine starting, accelerating, braking, and steering through a full course with turns, cone lanes, and a mid-course stop.',
+      instructions:
+        'Start the engine, then drive through each checkpoint in order - weaving through the cone lanes, stopping fully at the yield point, and clearing the boundary walls - before parking in the final bay.',
+      hint: 'Hitting a cone or wall fails the attempt just like in Turning Practice - take the turns slowly and keep clear of the lane markers.',
     },
     {
       id: 'pallet-pickup',
@@ -150,6 +151,22 @@ export const moduleScenarioSteps = {
       hint: 'The status badge at the top tells you which parking requirement is still missing.',
     },
     {
+      id: 'parallel-parking',
+      title: 'Parallel Parking',
+      objective: 'Ease sideways into a narrow parallel bay between the boundary cones.',
+      instructions:
+        'Steer into the gap in the left-hand cone line, straighten up so the forklift sits flush with the bay, then stop, lower the forks with F, and switch off with E.',
+      hint: 'The bay is only slightly wider than the forklift - small steering corrections beat big ones.',
+    },
+    {
+      id: 'forklift-gap-parking',
+      title: 'Parking Between Forklifts',
+      objective: 'Park in a tight gap between two parked forklifts without clipping either one.',
+      instructions:
+        'Approach slowly and centered - the parked forklifts on both sides are live obstacles, so drifting toward either one ends the attempt just like hitting a wall.',
+      hint: 'Center up early. There is very little room to correct once you are between the two forklifts.',
+    },
+    {
       id: 'shutdown-sequence',
       title: 'Shutdown Sequence',
       objective: 'Place post-operation steps in a safe order.',
@@ -169,8 +186,8 @@ export const moduleScenarioSteps = {
       id: 'summary',
       title: 'Completion Summary',
       objective: 'Review parking, shutdown, and reporting results.',
-      instructions: 'Confirm the secure parking drive, shutdown ordering, and reporting decisions are complete.',
-      hint: 'Completion means the learner can park, secure, and hand over a forklift safely.',
+      instructions: 'Confirm all three parking drives, shutdown ordering, and reporting decisions are complete.',
+      hint: 'Completion means the learner can park precisely in tight spaces, then secure and hand over a forklift safely.',
     },
   ],
 }

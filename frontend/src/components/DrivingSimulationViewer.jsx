@@ -7,10 +7,45 @@ import { Compass, RotateCcw } from 'lucide-react'
 import { buildForkliftRig, REAR_WHEEL_KEYS } from '../lib/forkliftRig'
 import './DrivingSimulationViewer.css'
 
-const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
+const DEFAULT_MODEL_URL = '/models/forklift.glb'
+
+const CONE_MODEL_URL = '/models/traffic-cone.glb'
+const PALLET_MODEL_LIGHT_URL = '/models/wooden-pallet.glb'
+const PALLET_MODEL_MEDIUM_URL = '/models/plastic-pallet.glb'
+const PALLET_MODEL_HEAVY_URL = '/models/cement-bag-pallet.glb'
+const CARGO_BOX_MODEL_URL = '/models/cardboard-box.glb'
+
+// Weight bands that pick which pallet prop renders for a course pallet.
+const PALLET_LIGHT_MAX_KG = 500
+const PALLET_HEAVY_MIN_KG = 1000
+
+// Source assets come from mismatched free-asset scales/origins - each entry
+// normalizes one to real-world size at this scene's world-units-are-metres/4
+// convention (see forkliftRig.js) and re-centers it over its own group origin
+// (measured via a throwaway inspect-glb.mjs bounding-box script).
+const MODEL_TRANSFORM = {
+  [CONE_MODEL_URL]: { scale: 0.00594, position: [0, 0, 0] }, // 0.7m cone
+  [PALLET_MODEL_LIGHT_URL]: { scale: 0.15, position: [0.225, 0, 0] }, // 1.2m pallet
+  [PALLET_MODEL_MEDIUM_URL]: { scale: 0.00245, position: [0, 0, 0] },
+  [PALLET_MODEL_HEAVY_URL]: { scale: 0.25, position: [0, 0, 0] },
+  [CARGO_BOX_MODEL_URL]: { scale: 0.25, position: [0, 0.0486, 0] },
+}
+
+// Deck height (world units) each pallet model's cargo box rests on top of.
+const PALLET_DECK_Y = {
+  [PALLET_MODEL_LIGHT_URL]: 0.0364,
+  [PALLET_MODEL_MEDIUM_URL]: 0.0343,
+}
+
+function palletModelForWeight(weightKg) {
+  if (typeof weightKg !== 'number') return PALLET_MODEL_LIGHT_URL
+  if (weightKg >= PALLET_HEAVY_MIN_KG) return PALLET_MODEL_HEAVY_URL
+  if (weightKg > PALLET_LIGHT_MAX_KG) return PALLET_MODEL_MEDIUM_URL
+  return PALLET_MODEL_LIGHT_URL
+}
 
 const GROUND_HALF_WIDTH = 6
-const COURSE_MAX_Z = 36
+const COURSE_MAX_Z = 44
 const COURSE_MIN_Z = -3
 
 const MAX_SPEED = 1.5
@@ -22,7 +57,7 @@ const DRAG = 0.7
 const TURN_RATE = 0.85
 const STOP_SPEED_EPSILON = 0.04
 
-// Model-derived rig tuning (Forklift_SEPERATED.glb, world units ~= metres/4).
+// Model-derived rig tuning (forklift.glb, world units ~= metres/4).
 const MAX_STEER_ANGLE = 0.45
 const STEER_SIGN = -1 // rear-steer vehicle: rear wheels point away from the turn
 const STEER_DAMP = 8
@@ -53,6 +88,14 @@ const CONE_HIT_RADIUS = 0.3
 const CONE_MIN_HIT_SPEED = 0.05
 const CONE_FALL_SPEED = 6
 const CONE_FALL_ANGLE = 1.45
+const WALL_THICKNESS = 0.05 // matches CourseDecorations' wall boxGeometry
+const WALL_HALF_THICKNESS = WALL_THICKNESS / 2
+const WALL_HIT_MARGIN = 0.12
+// Parked-forklift footprint (half-extents), from forklift.glb's measured body
+// bounding box - width along local X, length along local Z, same convention
+// as the wall rectangle check.
+const FORKLIFT_HALF_WIDTH = 0.15
+const FORKLIFT_HALF_LENGTH = 0.45
 const BODY_SAMPLE_OFFSETS = [0.38, 0, -0.32]
 const SUDDEN_STOP_DECEL = 1.6
 const SUDDEN_STOP_MIN_SPEED = 0.85
@@ -62,8 +105,8 @@ const LOAD_REST_TILT = 0.16
 
 // Secure-parking proficiency (Module 3): the bay completes when the truck is
 // inside the painted lines, aligned with them, stopped, forks down, engine off.
-const PARKING_MARGIN_X = 0.15
-const PARKING_MARGIN_Z = 0.2
+const PARKING_MARGIN_X = 0.052
+const PARKING_MARGIN_Z = 0.105
 const PARKING_ALIGN_TOLERANCE = 0.26
 const PARKING_SPEED_EPSILON = 0.03
 const PARKING_FORK_MAX = 0.02
@@ -72,6 +115,14 @@ const FAIL_MESSAGES = {
   cone: {
     title: 'Cone Struck',
     message: 'You hit a traffic cone. Treat cones as people or racking - reset the attempt and keep the lane clear.',
+  },
+  wall: {
+    title: 'Wall Struck',
+    message: 'You hit a wall or racking upright. Keep clear of structures while driving - reset the attempt and watch your clearance.',
+  },
+  forklift: {
+    title: 'Forklift Struck',
+    message: 'You clipped a parked forklift. Ease in slowly and keep clearance on both sides - reset the attempt and try again.',
   },
   overload: {
     title: 'Tip-Over: Overloaded',
@@ -268,6 +319,40 @@ function FinishLineMarker({ checkpoint, status }) {
   )
 }
 
+function ModelProp({ url }) {
+  const { scene } = useGLTF(url)
+  const cloned = useMemo(() => {
+    const next = cloneSkeleton(scene)
+    next.traverse((object) => {
+      if (!object.isMesh) return
+      object.castShadow = true
+      object.receiveShadow = true
+    })
+    return next
+  }, [scene])
+  const { scale, position } = MODEL_TRANSFORM[url]
+  return <primitive object={cloned} scale={scale} position={position} />
+}
+
+// Static parked forklift used as a parking obstacle (park-between-forklifts
+// scenario) - same model as the drivable one, just not wired to the rig/keys.
+function ParkedForklift({ position, rotation }) {
+  const { scene } = useGLTF(DEFAULT_MODEL_URL)
+  const cloned = useMemo(() => {
+    const next = cloneSkeleton(scene)
+    next.traverse((object) => {
+      if (!object.isMesh) return
+      object.castShadow = true
+      object.receiveShadow = true
+    })
+    return next
+  }, [scene])
+  return <primitive object={cloned} position={position} rotation={[0, rotation || 0, 0]} />
+}
+
+// Renders decorative course furniture. Cones are not handled here - they're
+// unified with course.obstacles into `liveCones` so every rendered cone is a
+// live collider (see DrivingScene), rendered once via <ObstacleCones>.
 function CourseDecorations({ decorations }) {
   return (
     <group>
@@ -276,29 +361,20 @@ function CourseDecorations({ decorations }) {
           return (
             <mesh
               key={index}
-              position={[item.position[0], 0.75, item.position[2]]}
+              position={[item.position[0], 0.3125, item.position[2]]}
               rotation={[0, item.rotation || 0, 0]}
               castShadow
               receiveShadow
             >
-              <boxGeometry args={[0.3, 1.5, item.length || 3]} />
+              <boxGeometry args={[0.05, 0.625, item.length || 3]} />
               <meshStandardMaterial color="#94a3b8" roughness={0.9} />
             </mesh>
           )
         }
 
-        if (item.type === 'cone') {
+        if (item.type === 'forklift') {
           return (
-            <group key={index} position={[item.position[0], 0, item.position[2]]}>
-              <mesh position={[0, 0.05, 0]}>
-                <cylinderGeometry args={[0.19, 0.19, 0.06, 12]} />
-                <meshStandardMaterial color="#7c2d12" />
-              </mesh>
-              <mesh position={[0, 0.29, 0]} castShadow>
-                <coneGeometry args={[0.16, 0.48, 12]} />
-                <meshStandardMaterial color="#f97316" />
-              </mesh>
-            </group>
+            <ParkedForklift key={index} position={[item.position[0], item.position[1] ?? 0, item.position[2]]} rotation={item.rotation} />
           )
         }
 
@@ -309,22 +385,17 @@ function CourseDecorations({ decorations }) {
 }
 
 function Pallet({ pallet, palletRef, overweight = false }) {
+  const modelUrl = palletModelForWeight(pallet.weightKg)
+  const cargoDeckY = PALLET_DECK_Y[modelUrl]
+
   return (
     <group ref={palletRef} position={[pallet.position[0], 0, pallet.position[2]]} rotation={[0, pallet.rotation || 0, 0]}>
-      {[-0.12, 0, 0.12].map((x) => (
-        <mesh key={x} position={[x, 0.03, 0]} castShadow>
-          <boxGeometry args={[0.05, 0.06, 0.34]} />
-          <meshStandardMaterial color="#8a6d1a" roughness={0.9} />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.07, 0]} castShadow>
-        <boxGeometry args={[0.32, 0.02, 0.34]} />
-        <meshStandardMaterial color="#b8860b" roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 0.18, 0]} castShadow>
-        <boxGeometry args={[0.2, 0.2, 0.2]} />
-        <meshStandardMaterial color={overweight ? '#7f1d1d' : '#b45309'} roughness={0.8} />
-      </mesh>
+      <ModelProp url={modelUrl} />
+      {cargoDeckY != null && (
+        <group position={[0, cargoDeckY, 0]}>
+          <ModelProp url={CARGO_BOX_MODEL_URL} />
+        </group>
+      )}
       {typeof pallet.weightKg === 'number' && (
         <Html center position={[0, 0.55, 0]} distanceFactor={8}>
           <div className={`pallet-weight-label ${overweight ? 'overweight' : ''}`}>{pallet.weightKg} kg</div>
@@ -345,14 +416,7 @@ function ObstacleCones({ obstacles, coneRefs }) {
           }}
           position={[item.position[0], 0, item.position[2]]}
         >
-          <mesh position={[0, 0.05, 0]}>
-            <cylinderGeometry args={[0.19, 0.19, 0.06, 12]} />
-            <meshStandardMaterial color="#7c2d12" />
-          </mesh>
-          <mesh position={[0, 0.29, 0]} castShadow>
-            <coneGeometry args={[0.16, 0.48, 12]} />
-            <meshStandardMaterial color="#f97316" />
-          </mesh>
+          <ModelProp url={CONE_MODEL_URL} />
         </group>
       ))}
     </group>
@@ -457,6 +521,17 @@ function DrivingScene({
   const { camera } = useThree()
   const checkpoints = course.checkpoints || []
   const pallets = useMemo(() => course.pallets || (course.pallet ? [course.pallet] : []), [course])
+  // Every rendered cone is a live collider, whether authored under
+  // `obstacles` or as a `decorations` lane/gate marker - a cone is a hazard
+  // regardless of which list placed it.
+  const liveCones = useMemo(
+    () => [...(course.obstacles || []), ...(course.decorations || []).filter((item) => item.type === 'cone')],
+    [course],
+  )
+  const liveWalls = useMemo(
+    () => (course.decorations || []).filter((item) => item.type === 'wall' || item.type === 'forklift'),
+    [course],
+  )
 
   useEffect(() => {
     rigRef.current = buildForkliftRig(forklift)
@@ -512,6 +587,24 @@ function DrivingScene({
   useEffect(() => {
     onParkingUpdateRef.current = onParkingUpdate
   }, [onParkingUpdate])
+
+  // Dev-only test hook: warp truck/fork state directly instead of faking held
+  // keys, so browser-automation checks can reach a course's pallets/cones
+  // without fighting acceleration/drag timing. Mirrors window.__drivingDebug.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    window.__drivingDebugSet = (patch = {}) => {
+      if (typeof patch.x === 'number') posRef.current.x = patch.x
+      if (typeof patch.z === 'number') posRef.current.z = patch.z
+      if (typeof patch.heading === 'number') headingRef.current = patch.heading
+      if (typeof patch.speed === 'number') speedRef.current = patch.speed
+      if (typeof patch.forkHeight === 'number') forkHeightRef.current = clamp(patch.forkHeight, 0, FORK_MAX_HEIGHT)
+      if (typeof patch.engineOn === 'boolean') engineOnRef.current = patch.engineOn
+    }
+    return () => {
+      delete window.__drivingDebugSet
+    }
+  }, [posRef, headingRef, speedRef, engineOnRef])
 
   useFrame((_, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05)
@@ -599,17 +692,14 @@ function DrivingScene({
     }
 
     // Cone collision: sample three points along the truck body against every
-    // live cone; a hit knocks the cone over and fails the attempt.
-    if (
-      course.failConditions?.coneCollision &&
-      course.obstacles?.length &&
-      !failedRef.current &&
-      Math.abs(speedRef.current) > CONE_MIN_HIT_SPEED
-    ) {
-      if (!coneSimRef.current) coneSimRef.current = course.obstacles.map(() => ({ hit: false, angle: 0, dirX: 0, dirZ: 1 }))
+    // live cone (obstacles + decoration lane/gate markers); a hit knocks the
+    // cone over and fails the attempt. Always on - a cone is a hazard however
+    // the course authored it.
+    if (liveCones.length && !failedRef.current && Math.abs(speedRef.current) > CONE_MIN_HIT_SPEED) {
+      if (!coneSimRef.current) coneSimRef.current = liveCones.map(() => ({ hit: false, angle: 0, dirX: 0, dirZ: 1 }))
       const coneSims = coneSimRef.current
-      for (let i = 0; i < course.obstacles.length && !failedRef.current; i += 1) {
-        const cone = course.obstacles[i]
+      for (let i = 0; i < liveCones.length && !failedRef.current; i += 1) {
+        const cone = liveCones[i]
         if (coneSims[i].hit) continue
         for (const offset of BODY_SAMPLE_OFFSETS) {
           const px = posRef.current.x + forwardX * offset
@@ -627,7 +717,7 @@ function DrivingScene({
     }
 
     // Animate knocked-over cones (keeps running after the fail freeze).
-    if (coneSimRef.current && course.obstacles) {
+    if (coneSimRef.current && liveCones.length) {
       coneSimRef.current.forEach((sim, i) => {
         if (!sim.hit || sim.angle >= CONE_FALL_ANGLE) return
         sim.angle = Math.min(sim.angle + CONE_FALL_SPEED * dt * Math.max(0.15, 1 - sim.angle / CONE_FALL_ANGLE), CONE_FALL_ANGLE)
@@ -636,9 +726,33 @@ function DrivingScene({
         coneAxisRef.current.set(sim.dirZ, 0, -sim.dirX)
         coneQuatRef.current.setFromAxisAngle(coneAxisRef.current, sim.angle)
         group.quaternion.copy(coneQuatRef.current)
-        group.position.x = course.obstacles[i].position[0] + sim.dirX * sim.angle * 0.12
-        group.position.z = course.obstacles[i].position[2] + sim.dirZ * sim.angle * 0.12
+        group.position.x = liveCones[i].position[0] + sim.dirX * sim.angle * 0.12
+        group.position.z = liveCones[i].position[2] + sim.dirZ * sim.angle * 0.12
       })
+    }
+
+    // Wall/forklift collision: sample the same body points against every
+    // decoration's oriented rectangle (thickness x length, or a parked
+    // forklift's footprint). Immovable, so a hit just fails the attempt.
+    if (liveWalls.length && !failedRef.current && Math.abs(speedRef.current) > CONE_MIN_HIT_SPEED) {
+      wallLoop: for (const wall of liveWalls) {
+        const isForklift = wall.type === 'forklift'
+        const rot = wall.rotation || 0
+        const cosRot = Math.cos(rot)
+        const sinRot = Math.sin(rot)
+        const halfThickness = isForklift ? FORKLIFT_HALF_WIDTH : WALL_HALF_THICKNESS
+        const halfLen = isForklift ? FORKLIFT_HALF_LENGTH : (wall.length || 3) / 2
+        for (const offset of BODY_SAMPLE_OFFSETS) {
+          const dx = posRef.current.x + forwardX * offset - wall.position[0]
+          const dz = posRef.current.z + forwardZ * offset - wall.position[2]
+          const localX = dx * cosRot - dz * sinRot
+          const localZ = dx * sinRot + dz * cosRot
+          if (Math.abs(localX) <= halfThickness + WALL_HIT_MARGIN && Math.abs(localZ) <= halfLen + WALL_HIT_MARGIN) {
+            triggerFail(isForklift ? 'forklift' : 'wall')
+            break wallLoop
+          }
+        }
+      }
     }
 
     const idx = checkpointIndexRef.current
@@ -899,7 +1013,7 @@ function DrivingScene({
       ))}
 
       {course.decorations && <CourseDecorations decorations={course.decorations} />}
-      {course.obstacles && <ObstacleCones obstacles={course.obstacles} coneRefs={coneRefs} />}
+      {liveCones.length > 0 && <ObstacleCones obstacles={liveCones} coneRefs={coneRefs} />}
 
       {pallets.map((palletDef, index) => (
         <Pallet
@@ -1109,3 +1223,8 @@ export default function DrivingSimulationViewer({ modelUrl = DEFAULT_MODEL_URL, 
 }
 
 useGLTF.preload(DEFAULT_MODEL_URL)
+useGLTF.preload(CONE_MODEL_URL)
+useGLTF.preload(PALLET_MODEL_LIGHT_URL)
+useGLTF.preload(PALLET_MODEL_MEDIUM_URL)
+useGLTF.preload(PALLET_MODEL_HEAVY_URL)
+useGLTF.preload(CARGO_BOX_MODEL_URL)

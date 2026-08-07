@@ -20,7 +20,7 @@ import { BadgeInfo, Compass, Eye, Maximize, RotateCcw, Wrench } from 'lucide-rea
 import { Button } from '@/components/ui/button'
 import { partsHotspots } from './lib/trainingData'
 
-const DEFAULT_MODEL_URL = '/models/Forklift_SEPERATED.glb'
+const DEFAULT_MODEL_URL = '/models/forklift.glb'
 
 class ViewportErrorBoundary extends React.Component {
   constructor(props) {
@@ -41,7 +41,7 @@ class ViewportErrorBoundary extends React.Component {
             <h3 className="text-xl font-semibold">Forklift model could not be loaded</h3>
             <p className="text-sm text-slate-300">
               Confirm the GLB is available at{' '}
-              <code className="rounded bg-white/10 px-1.5 py-0.5">/models/Forklift_SEPERATED.glb</code>.
+              <code className="rounded bg-white/10 px-1.5 py-0.5">/models/forklift.glb</code>.
             </p>
           </div>
         </div>
