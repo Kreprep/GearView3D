@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import DrivingSimulationViewer from './components/DrivingSimulationViewer'
 import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
-import ScopeNotice from './components/ScopeNotice'
+import ModuleSummary from './components/ModuleSummary'
+import { BriefingScene, BriefingTask } from './components/ModuleBriefing'
 import { useModuleCourses } from './hooks/useModuleCourses'
 import { useProgress } from './hooks/useProgress'
 import { courseTaskCopy } from './lib/courseGoals'
-import { routes } from './lib/router'
+import { moduleObjectives, nextModuleRoute } from './lib/moduleContent'
 import { buildSimulationState, isStepComplete, withStepComplete } from './lib/simulationProgress'
 import {
   equipmentUsageModules,
@@ -20,9 +21,10 @@ import './PostOperationPage.css'
 const moduleSlug = 'post-operation'
 const NEXT_MODULE_DELAY_MS = 1400
 
-// Graded steps that are not driving courses - these stay code-owned because
-// their activities are hardcoded React, not editable course geometry.
-const bespokeGradedStepIds = ['shutdown-sequence', 'reporting']
+// `activity` steps are rows like any other - an admin can reorder or remove
+// them - but their UI is hardcoded React keyed by `content.activityId`, so
+// these are the only two ids that render anything.
+const ACTIVITY_IDS = ['shutdown-sequence', 'reporting']
 
 // Reads snapshots written before completion moved to a step-id map.
 const legacyStepFields = {
@@ -109,7 +111,7 @@ function ReportingActivity({ prompts, answers, completed, onAnswer }) {
 function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
-  const { steps, courseById, loading, error } = useModuleCourses(moduleSlug)
+  const { steps, stepById, courseById, loading, error } = useModuleCourses(moduleSlug)
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -117,14 +119,14 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   const [shutdownPicked, setShutdownPicked] = useState([])
   const [wrongPickId, setWrongPickId] = useState(null)
   const [reportAnswers, setReportAnswers] = useState({})
-  // Driving-course steps plus the two hardcoded activities; briefing and
-  // summary are not graded.
+  // Driving steps plus the two hardcoded activities; briefing and summary are
+  // not graded.
   const gradedStepIds = useMemo(
     () =>
       steps
-        .filter((step) => courseById[step.id] || bespokeGradedStepIds.includes(step.id))
+        .filter((step) => step.kind === 'driving' || (step.kind === 'activity' && ACTIVITY_IDS.includes(step.content?.activityId)))
         .map((step) => step.id),
-    [steps, courseById],
+    [steps],
   )
   const simulation = buildSimulationState(
     {
@@ -193,7 +195,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   const completeModule = () => {
     if (!simulation.complete) return
 
-    setTimeout(() => onNavigate?.(routes.palletTesting), NEXT_MODULE_DELAY_MS)
+    setTimeout(() => onNavigate?.(nextModuleRoute(steps, 'palletTesting')), NEXT_MODULE_DELAY_MS)
   }
 
   const getStepCanProceed = (stepId) =>
@@ -205,6 +207,12 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   }
 
   const renderScene = ({ currentStep }) => {
+    const step = stepById[currentStep.id]
+
+    if (step?.kind === 'briefing') {
+      return <BriefingScene content={step.content} />
+    }
+
     if (courseById[currentStep.id]) {
       return (
         <div className="load-scene-wrap">
@@ -213,7 +221,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
       )
     }
 
-    if (currentStep.id === 'shutdown-sequence') {
+    if (step?.content?.activityId === 'shutdown-sequence') {
       return (
         <ShutdownSequenceActivity
           actions={shutdownSequenceActions}
@@ -226,7 +234,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
       )
     }
 
-    if (currentStep.id === 'reporting') {
+    if (step?.content?.activityId === 'reporting') {
       return (
         <ReportingActivity
           prompts={postOperationReportPrompts}
@@ -237,47 +245,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
       )
     }
 
-    return (
-      <div className="post-op-briefing-wrap">
-        <div className="post-op-briefing">
-          <h3>Secure Parking Discipline</h3>
-          <ul>
-            <li>Park inside the painted bay, clear of traffic lanes and cones.</li>
-            <li>Lower the forks flat, set controls to neutral, and engage the parking brake.</li>
-            <li>Switch off the equipment and report anything unsafe found during the shift.</li>
-          </ul>
-          <p>
-            The next step is a driving exercise: the parking is only accepted when the forklift is inside the lines,
-            straight, stopped, forks lowered, and the engine is off. Cones along the route are live - hitting one fails
-            the attempt.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  const renderBriefing = () => (
-    <div className="load-task-stack">
-      <ScopeNotice />
-      <div className="reference-card">
-        <p><strong>Syllabus Location:</strong> {module.syllabusLocation}</p>
-        <p><strong>Unit Code:</strong> {module.unitCode}</p>
-        <p><strong>Element:</strong> {module.element}</p>
-        <p><strong>Page References:</strong> {module.pageReferences}</p>
-      </div>
-      {module.lessonContent.map((content) => (
-        <p key={content} className="lesson-bubble">{content}</p>
-      ))}
-    </div>
-  )
-
-  const stepTaskCopy = {
-    'secure-parking':
-      'Follow the breadcrumbs to the painted bay. Park between the lines, straighten up, stop, lower the forks with F, then switch off with E. The badge at the top shows the next requirement.',
-    'parallel-parking':
-      'Pull alongside the gap, steer into the pocket in the left boundary line, and straighten up flush with the bay before stopping, lowering the forks with F, and switching off with E.',
-    'forklift-gap-parking':
-      'Line up centered on the gap early and creep in - the parked forklifts on both sides are live obstacles. Stop inside the lines, lower the forks with F, then switch off with E.',
+    return null
   }
 
   const renderDrivingTask = (currentStep) => {
@@ -292,9 +260,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
           </p>
         )}
         <p className={done ? 'completion-ready' : 'task-note'}>
-          {done
-            ? 'Step complete. Use Next to continue.'
-            : stepTaskCopy[currentStep.id] || courseTaskCopy(courseById[currentStep.id])}
+          {done ? 'Step complete. Use Next to continue.' : courseTaskCopy(courseById[currentStep.id])}
         </p>
       </div>
     )
@@ -327,31 +293,14 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
     )
   }
 
-  const renderSummary = () => (
-    <div className="load-task-stack">
-      <div className="summary-grid">
-        {gradedStepIds.map((stepId) => (
-          <div key={stepId}>
-            <span>{steps.find((step) => step.id === stepId)?.title || stepId}</span>
-            <strong>{isStepComplete(simulation, stepId) ? 'Complete' : 'Open'}</strong>
-          </div>
-        ))}
-        <div><span>Failed Attempts</span><strong>{simulation.failedAttempts}</strong></div>
-        <div><span>Ordering Mistakes</span><strong>{simulation.shutdownMistakes}</strong></div>
-      </div>
-      <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
-        {simulation.complete
-          ? 'All requirements are complete. Submit the module to record completion feedback.'
-          : 'Complete all three parking drives, shutdown ordering, and reporting decisions to finish this module.'}
-      </p>
-    </div>
-  )
+  const summaryStep = steps.find((step) => step.kind === 'summary')
 
   const renderTask = ({ currentStep }) => {
-    if (currentStep.id === 'briefing') return renderBriefing()
+    const step = stepById[currentStep.id]
+    if (step?.kind === 'briefing') return <BriefingTask content={step.content} module={module} />
     if (courseById[currentStep.id]) return renderDrivingTask(currentStep)
-    if (currentStep.id === 'shutdown-sequence') return renderShutdownTask()
-    if (currentStep.id === 'reporting') return renderReportingTask()
+    if (step?.content?.activityId === 'shutdown-sequence') return renderShutdownTask()
+    if (step?.content?.activityId === 'reporting') return renderReportingTask()
     return null
   }
 
@@ -375,7 +324,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
             module={module}
             steps={steps}
             currentStepIndex={currentStepIndex}
-            objectives={module.learningObjectives}
+            objectives={moduleObjectives(steps, module)}
             progress={simulation.percentage}
             score={simulation.percentage}
             canProceed={getStepCanProceed(steps[currentStepIndex].id)}
@@ -384,7 +333,14 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
             onComplete={completeModule}
             renderScene={renderScene}
             renderTask={renderTask}
-            completionSummary={renderSummary()}
+            completionSummary={
+              <ModuleSummary
+                content={summaryStep?.content}
+                steps={steps}
+                gradedStepIds={gradedStepIds}
+                simulation={simulation}
+              />
+            }
           />
         )}
       </main>

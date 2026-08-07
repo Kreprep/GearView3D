@@ -4,10 +4,11 @@ import { publicUser, requireAdmin, requireAuth } from '../lib/auth.js'
 import { buildAdminProgressReport } from '../lib/progressSummary.js'
 import {
   adminCourse,
-  bespokeStepIds,
   courseDraftFields,
+  CREATABLE_KINDS,
   defaultCourseFor,
   editableCourse,
+  emptyCourseContent,
   emptyCourseGeometry,
   validateCoursePayload,
 } from '../lib/courses.js'
@@ -179,53 +180,52 @@ router.delete('/quiz-questions/:id', async (req, res) => {
 
 router.get('/courses', async (req, res) => {
   const rows = await prisma.course.findMany({ orderBy: [{ moduleSlug: 'asc' }, { sortOrder: 'asc' }] })
-  res.json({
-    courses: rows.map(adminCourse),
-    // So the dashboard can show where admin-created steps will slot in, and
-    // refuse ids that would shadow a hardcoded step.
-    bespokeSteps: Object.fromEntries(
-      courseModuleSlugs.map((moduleSlug) => [moduleSlug, bespokeStepIds(moduleSlug)]),
-    ),
-  })
+  res.json({ courses: rows.map(adminCourse), creatableKinds: CREATABLE_KINDS })
 })
 
 router.post('/courses', async (req, res) => {
   const payload = req.body || {}
   const moduleSlug = payload.moduleSlug
+  const kind = payload.kind || 'driving'
 
   if (!courseModuleSlugs.includes(moduleSlug)) {
     return res.status(400).json({ error: 'Unknown module' })
   }
+  if (!CREATABLE_KINDS.includes(kind)) {
+    return res.status(400).json({ error: `Steps of kind "${kind}" cannot be created here` })
+  }
   if (!payload.title?.trim()) {
-    return res.status(400).json({ error: 'Course title is required' })
+    return res.status(400).json({ error: 'Step title is required' })
   }
 
-  const id = (payload.id || payload.title).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  if (!id) {
-    return res.status(400).json({ error: 'Course id could not be derived from the title' })
-  }
-  if (bespokeStepIds(moduleSlug).includes(id)) {
-    return res.status(409).json({ error: `"${id}" is a built-in step of this module` })
+  // Briefing and summary ids are namespaced by module because every module has
+  // one; driving ids stay bare because learner progress is keyed on them.
+  const slug = (payload.id || payload.title).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const id = kind === 'driving' ? slug : `${moduleSlug}-${slug}`
+  if (!slug) {
+    return res.status(400).json({ error: 'Step id could not be derived from the title' })
   }
   if (await prisma.course.findUnique({ where: { id } })) {
-    return res.status(409).json({ error: `A course with id "${id}" already exists` })
+    return res.status(409).json({ error: `A step with id "${id}" already exists` })
   }
 
   const last = await prisma.course.findFirst({ where: { moduleSlug }, orderBy: { sortOrder: 'desc' } })
 
-  // Created unpublished: the geometry is empty until the admin places markers,
-  // so it must not reach learners before the first publish.
+  // Created unpublished: a new step is empty until the admin fills it in, so it
+  // must not reach learners before the first publish.
   const course = await prisma.course.create({
     data: {
       id,
       moduleSlug,
       sortOrder: (last?.sortOrder || 0) + 1,
+      kind,
       title: payload.title.trim(),
       objective: payload.objective || '',
       instructions: payload.instructions || '',
       hint: payload.hint || '',
-      goalType: payload.goalType || 'checkpoints',
-      data: payload.data || emptyCourseGeometry(),
+      goalType: kind === 'driving' ? payload.goalType || 'checkpoints' : 'free',
+      data: kind === 'driving' ? payload.data || emptyCourseGeometry() : null,
+      content: payload.content || emptyCourseContent(kind),
       published: false,
       builtIn: false,
     },
@@ -247,7 +247,7 @@ router.put('/courses/:id', async (req, res) => {
       ...(typeof req.body?.sortOrder === 'number' ? { sortOrder: req.body.sortOrder } : {}),
     },
   })
-  res.json({ course: adminCourse(course), problems: validateCoursePayload(draft) })
+  res.json({ course: adminCourse(course), problems: validateCoursePayload(row.kind, draft) })
 })
 
 router.post('/courses/:id/publish', async (req, res) => {
@@ -255,7 +255,7 @@ router.post('/courses/:id/publish', async (req, res) => {
   if (!row) return res.status(404).json({ error: 'Course not found' })
 
   const payload = editableCourse(row)
-  const problems = validateCoursePayload(payload)
+  const problems = validateCoursePayload(row.kind, payload)
   if (problems.length) {
     return res.status(400).json({ error: 'Course cannot be published', problems })
   }
@@ -286,12 +286,14 @@ router.post('/courses/:id/reset', async (req, res) => {
   const course = await prisma.course.update({
     where: { id: row.id },
     data: {
+      kind: defaults.kind,
       title: defaults.title,
       objective: defaults.objective,
       instructions: defaults.instructions,
       hint: defaults.hint,
       goalType: defaults.goalType,
       data: defaults.data,
+      content: defaults.content,
       draft: null,
       published: true,
     },

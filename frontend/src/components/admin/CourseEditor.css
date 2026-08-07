@@ -281,3 +281,37 @@
   display: grid;
   gap: 8px;
 }
+
+.course-editor-body.is-narrow {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+}
+
+.course-editor-content {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.course-image-preview {
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #0f172a;
+}
+
+.course-badge.kind {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.course-admin select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 7px 9px;
+}

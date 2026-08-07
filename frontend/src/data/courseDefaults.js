@@ -1,17 +1,48 @@
-// Default rows for the `Course` table, composed from the two files that used
-// to own driving-course content: `moduleScenarios.js` (step title/objective/
-// instructions/hint) and `drivingCourse.js` (geometry). Those files stay the
-// single source of defaults - the backend seeds from here, and the admin
-// dashboard's "Reset to default" reads the same builder.
+// Default rows for the `Course` table - every step of Modules 2-4, not just the
+// driving ones. Composed from the two files that used to own module content:
+// `moduleScenarios.js` (step order + title/objective/instructions/hint) and
+// `drivingCourse.js` (geometry), plus the lesson text in `trainingModules.js`.
+// Those files stay the single source of defaults: the backend seeds from here,
+// and the dashboard's "Reset to default" reads the same builder.
 //
-// Only steps that have a driving course become rows. Bespoke steps (briefing,
-// defect-recognition, shutdown-sequence, reporting, summary) stay code-owned.
+// A step's `kind` picks how the module page renders it - see the Course model
+// in backend/prisma/schema.prisma.
 import { courseGoalType } from '../lib/courseGoals.js'
 import { drivingCourses } from './drivingCourse.js'
 import { moduleScenarioSteps } from './moduleScenarios.js'
+import { equipmentUsageModules } from './trainingModules.js'
 
-// Walk-around-check is deliberately absent: it has no driving courses.
+// Walk-around-check is deliberately absent: it is still a fully hardcoded page.
 export const courseModuleSlugs = ['load-handling', 'post-operation', 'pallet-testing']
+
+export const COURSE_KINDS = ['briefing', 'driving', 'activity', 'summary']
+
+// Extra stat rows a summary step can show under its per-step grid. The keys are
+// read straight off the stored simulation state, so only counters the module
+// pages actually record are offered.
+export const SUMMARY_COUNTER_LABELS = {
+  failedAttempts: 'Failed Attempts',
+  shutdownMistakes: 'Ordering Mistakes',
+}
+
+// Where Submit sends the learner once a module is complete, stored on the
+// summary step as a key of `routes` (lib/router.js) rather than a path, so a
+// route that moves does not strand saved content. Kept as plain strings here
+// because this file is imported by the backend seed, which has no router.
+export const NEXT_ROUTE_OPTIONS = [
+  ['equipment', 'Equipment Usage overview'],
+  ['walkAround', 'Module 1 - Walk-Around Check'],
+  ['loadHandling', 'Module 2 - Load Handling'],
+  ['postOperation', 'Module 3 - Post-Operation'],
+  ['palletTesting', 'Module 4 - Pallet Assessment'],
+  ['parts', 'Parts Identification'],
+  ['assessment', 'Final Assessment'],
+  ['forklift', 'Forklift training hub'],
+]
+
+// Steps whose UI is hardcoded React keyed by id. Admins can reorder or delete
+// these rows but cannot create new ones - there is no code behind a new id.
+const ACTIVITY_STEP_IDS = ['shutdown-sequence', 'reporting']
 
 // The stored geometry shape is flatter than the hand-written one:
 //   - `obstacles` folds into `decorations` (the viewer already treats cones in
@@ -45,6 +76,166 @@ export function normalizeCourseGeometry(course = {}) {
   }
 }
 
+export function emptyCourseGeometry() {
+  return {
+    start: { position: [0, 0, 0], heading: 0 },
+    checkpoints: [],
+    decorations: [],
+    pallets: [],
+    dropZone: null,
+    parkingBay: null,
+    capacityKg: null,
+    failConditions: null,
+  }
+}
+
+export function emptyCourseContent(kind) {
+  switch (kind) {
+    case 'briefing':
+      return {
+        image: '',
+        sceneBody: '',
+        body: '',
+        showSyllabus: true,
+        objectives: [],
+        syllabus: emptySyllabus(),
+      }
+    case 'summary':
+      return {
+        body: '',
+        completeMessage: 'All requirements are complete. Submit the module to record completion feedback.',
+        incompleteMessage: 'Complete every graded step to finish this module.',
+        counters: [],
+        nextRoute: 'equipment',
+      }
+    case 'activity':
+      return { activityId: '' }
+    default:
+      return null
+  }
+}
+
+// The centre-panel content of each module's briefing. Module 2 shows the
+// controls reference image; the other two showed a hardcoded text panel, kept
+// here verbatim as markdown so nothing is lost when it becomes editable.
+const BRIEFING_SCENE = {
+  'load-handling': {
+    image: '/images/controls-wasd.png',
+    sceneBody: '',
+  },
+  'post-operation': {
+    image: '',
+    sceneBody: [
+      '### Secure Parking Discipline',
+      '',
+      '- Park inside the painted bay, clear of traffic lanes and cones.',
+      '- Lower the forks flat, set controls to neutral, and engage the parking brake.',
+      '- Switch off the equipment and report anything unsafe found during the shift.',
+      '',
+      'The next step is a driving exercise: the parking is only accepted when the forklift is inside the lines, straight, stopped, forks lowered, and the engine is off. Cones along the route are live - hitting one fails the attempt.',
+    ].join('\n'),
+  },
+  'pallet-testing': {
+    image: '',
+    sceneBody: [
+      '### Fail Conditions',
+      '',
+      '- **Overload tip-over** - lifting a pallet heavier than the rated capacity shifts the center of gravity past the front axle and pitches the forklift forward.',
+      '- **Cone strike** - touching any traffic cone ends the attempt, the same as striking a pedestrian lane marker in a practical evaluation.',
+      '- **Load thrown off** - braking hard above walking speed throws the pallet off the forks. Slow down early and brake gently while carrying.',
+      '',
+      'Rated capacity in this assessment: **1,000 kg**. After a fail, use **Reset Attempt** and try again - failed attempts are counted but never block completion.',
+    ].join('\n'),
+  },
+}
+
+// Extra stat rows the summary shows under the per-step grid. The keys are read
+// straight off the stored simulation state.
+const SUMMARY_COUNTERS = {
+  'load-handling': [],
+  'post-operation': ['failedAttempts', 'shutdownMistakes'],
+  'pallet-testing': ['failedAttempts'],
+}
+
+// The module page navigates here after Submit. `pallet-testing` is the last
+// module, so it returns to the Equipment Usage overview.
+const SUMMARY_NEXT_ROUTE = {
+  'load-handling': 'postOperation',
+  'post-operation': 'palletTesting',
+  'pallet-testing': 'equipment',
+}
+
+export function emptySyllabus() {
+  return { location: '', unitCode: '', element: '', pageReferences: '' }
+}
+
+const SUMMARY_INCOMPLETE = {
+  'load-handling': 'Complete all guided driving tasks to finish this module.',
+  'post-operation': 'Complete every parking drive, the shutdown ordering, and the reporting decisions to finish this module.',
+  'pallet-testing': 'Complete every assessment exercise to finish this module.',
+}
+
+function lessonModule(moduleSlug) {
+  return equipmentUsageModules.find((entry) => entry.slug === moduleSlug)
+}
+
+function lessonMarkdown(moduleSlug) {
+  return (lessonModule(moduleSlug)?.lessonContent || []).join('\n\n')
+}
+
+function stepKind(stepId) {
+  if (drivingCourses[stepId]) return 'driving'
+  if (stepId === 'briefing') return 'briefing'
+  if (stepId === 'summary') return 'summary'
+  return 'activity'
+}
+
+// Briefing and summary ids are namespaced by module because every module has
+// one and `id` is the primary key. Driving and activity ids are already unique
+// and stay as-is, since learner progress is keyed on them.
+function stepRowId(moduleSlug, stepId, kind) {
+  return kind === 'briefing' || kind === 'summary' ? `${moduleSlug}-${stepId}` : stepId
+}
+
+function stepContent(moduleSlug, stepId, kind) {
+  if (kind === 'briefing') {
+    const module = lessonModule(moduleSlug)
+
+    // `objectives` and `syllabus` describe the whole module, not this one step,
+    // but they live on the briefing row because every module has exactly one
+    // briefing and it is the step that shows them. The pages read them off the
+    // module's briefing whichever step the learner is on.
+    return {
+      ...BRIEFING_SCENE[moduleSlug],
+      body: lessonMarkdown(moduleSlug),
+      showSyllabus: true,
+      objectives: module?.learningObjectives || [],
+      syllabus: {
+        location: module?.syllabusLocation || '',
+        unitCode: module?.unitCode || '',
+        element: module?.element || '',
+        pageReferences: module?.pageReferences || '',
+      },
+    }
+  }
+
+  if (kind === 'summary') {
+    return {
+      body: '',
+      completeMessage: 'All requirements are complete. Submit the module to record completion feedback.',
+      incompleteMessage: SUMMARY_INCOMPLETE[moduleSlug] || 'Complete every graded step to finish this module.',
+      counters: SUMMARY_COUNTERS[moduleSlug] || [],
+      nextRoute: SUMMARY_NEXT_ROUTE[moduleSlug] || 'equipment',
+    }
+  }
+
+  if (kind === 'activity') {
+    return { activityId: stepId }
+  }
+
+  return null
+}
+
 export function buildDefaultCourses() {
   const rows = []
 
@@ -52,20 +243,25 @@ export function buildDefaultCourses() {
     let sortOrder = 0
 
     for (const step of moduleScenarioSteps[moduleSlug] || []) {
-      const course = drivingCourses[step.id]
-      if (!course) continue
+      const kind = stepKind(step.id)
+
+      // An activity id with no hardcoded component behind it would render as a
+      // blank step, so skip anything unexpected rather than seeding it.
+      if (kind === 'activity' && !ACTIVITY_STEP_IDS.includes(step.id)) continue
 
       sortOrder += 1
       rows.push({
-        id: step.id,
+        id: stepRowId(moduleSlug, step.id, kind),
         moduleSlug,
         sortOrder,
+        kind,
         title: step.title,
         objective: step.objective || '',
         instructions: step.instructions || '',
         hint: step.hint || '',
-        goalType: courseGoalType(course),
-        data: normalizeCourseGeometry(course),
+        goalType: kind === 'driving' ? courseGoalType(drivingCourses[step.id]) : 'free',
+        data: kind === 'driving' ? normalizeCourseGeometry(drivingCourses[step.id]) : null,
+        content: stepContent(moduleSlug, step.id, kind),
       })
     }
   }

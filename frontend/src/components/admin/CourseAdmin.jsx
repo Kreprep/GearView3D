@@ -11,12 +11,20 @@ const MODULE_LABELS = {
 
 const MODULE_ORDER = ['load-handling', 'post-operation', 'pallet-testing']
 
+const KIND_LABELS = {
+  briefing: 'Briefing',
+  driving: 'Driving course',
+  activity: 'Built-in activity',
+  summary: 'Completion summary',
+}
+
 function CourseAdmin({ onMessage }) {
   const [courses, setCourses] = useState([])
-  const [bespokeSteps, setBespokeSteps] = useState({})
+  const [creatableKinds, setCreatableKinds] = useState(['driving'])
   const [moduleSlug, setModuleSlug] = useState(MODULE_ORDER[0])
   const [selectedId, setSelectedId] = useState(null)
   const [newTitle, setNewTitle] = useState('')
+  const [newKind, setNewKind] = useState('driving')
   const [loadState, setLoadState] = useState({ loading: true, error: null })
 
   useEffect(() => {
@@ -26,7 +34,7 @@ function CourseAdmin({ onMessage }) {
       .then((data) => {
         if (cancelled) return
         setCourses(data.courses)
-        setBespokeSteps(data.bespokeSteps)
+        setCreatableKinds(data.creatableKinds || ['driving'])
         setLoadState({ loading: false, error: null })
       })
       .catch((err) => {
@@ -57,11 +65,11 @@ function CourseAdmin({ onMessage }) {
   const createCourse = async () => {
     if (!newTitle.trim()) return
     try {
-      const result = await adminCreateCourse({ moduleSlug, title: newTitle.trim() })
+      const result = await adminCreateCourse({ moduleSlug, title: newTitle.trim(), kind: newKind })
       setCourses((current) => [...current, result.course])
       setSelectedId(result.course.id)
       setNewTitle('')
-      onMessage('Step created. Place its objects, then Publish to show it to learners.')
+      onMessage('Step created. Fill it in, then Publish to show it to learners.')
     } catch (err) {
       onMessage(err.message)
     }
@@ -109,10 +117,10 @@ function CourseAdmin({ onMessage }) {
 
       <div className="course-admin-body">
         <section className="admin-panel course-list-panel">
-          <h2>Driving steps</h2>
+          <h2>Steps</h2>
           <p className="admin-panel-note">
-            These are the simulation steps of {MODULE_LABELS[moduleSlug]}. They run between the module's built-in
-            steps ({(bespokeSteps[moduleSlug] || []).join(', ')}), which are hardcoded and cannot be edited here.
+            Every step of {MODULE_LABELS[moduleSlug]}, in the order learners see it. Built-in activities keep their
+            hardcoded screens but can still be reordered or removed.
           </p>
 
           <ol className="course-list">
@@ -121,7 +129,7 @@ function CourseAdmin({ onMessage }) {
                 <button type="button" className="course-list-name" onClick={() => setSelectedId(course.id)}>
                   <strong>{course.title}</strong>
                   <small>
-                    {course.id}
+                    {KIND_LABELS[course.kind] || course.kind}
                     {course.draft && ' - draft'}
                     {!course.published && ' - unpublished'}
                     {!course.builtIn && ' - custom'}
@@ -135,7 +143,7 @@ function CourseAdmin({ onMessage }) {
             ))}
           </ol>
 
-          {moduleCourses.length === 0 && <p>No driving steps in this module yet.</p>}
+          {moduleCourses.length === 0 && <p>No steps in this module yet.</p>}
 
           <div className="course-create">
             <label>
@@ -145,6 +153,14 @@ function CourseAdmin({ onMessage }) {
                 placeholder="Narrow Aisle Turn"
                 onChange={(event) => setNewTitle(event.target.value)}
               />
+            </label>
+            <label>
+              Step type
+              <select value={newKind} onChange={(event) => setNewKind(event.target.value)}>
+                {creatableKinds.map((value) => (
+                  <option key={value} value={value}>{KIND_LABELS[value] || value}</option>
+                ))}
+              </select>
             </label>
             <button type="button" className="admin-save" onClick={createCourse} disabled={!newTitle.trim()}>
               Add step

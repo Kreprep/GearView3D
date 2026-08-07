@@ -19,11 +19,19 @@ import {
   removeItems,
   updateItem,
 } from '../../lib/courseEdit'
+import { emptySyllabus, NEXT_ROUTE_OPTIONS, SUMMARY_COUNTER_LABELS } from '../../data/courseDefaults'
 import { COURSE_GOAL_TYPES, validateCourse } from '../../lib/courseGoals'
 import CourseCanvas from './CourseCanvas'
 import CourseGeneratorTools from './CourseGeneratorTools'
 import CourseInspector from './CourseInspector'
 import './CourseEditor.css'
+
+const KIND_LABELS = {
+  briefing: 'Briefing',
+  driving: 'Driving course',
+  activity: 'Built-in activity',
+  summary: 'Completion summary',
+}
 
 const GOAL_LABELS = {
   checkpoints: 'Checkpoint run',
@@ -53,7 +61,8 @@ function draftOf(course) {
     instructions: source.instructions || '',
     hint: source.hint || '',
     goalType: source.goalType || 'checkpoints',
-    data: source.data || source.course,
+    data: source.data || null,
+    content: source.content || null,
   }
 }
 
@@ -63,7 +72,7 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
   const [tool, setTool] = useState(null)
   const [snap, setSnap] = useState(0.1)
   const [pxPerUnit, setPxPerUnit] = useState(24)
-  const [bounds, setBounds] = useState(() => courseBounds(draftOf(course).data))
+  const [bounds, setBounds] = useState(() => courseBounds(draftOf(course).data || {}))
   const [dirty, setDirty] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [previewSeed, setPreviewSeed] = useState(0)
@@ -77,17 +86,20 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
   const resyncFrom = (nextCourse) => {
     const next = draftOf(nextCourse)
     setDraft(next)
-    setBounds(courseBounds(next.data))
+    setBounds(courseBounds(next.data || {}))
     setSelectedKeys([])
     setTool(null)
     setDirty(false)
     setUndoStack([])
   }
 
+  const stepKind = course.kind || 'driving'
+  const isDriving = stepKind === 'driving'
   const data = draft.data
+  const content = draft.content || {}
   const problems = useMemo(
-    () => validateCourse({ ...data, goalType: draft.goalType }),
-    [data, draft.goalType],
+    () => (isDriving ? validateCourse({ ...data, goalType: draft.goalType }) : []),
+    [isDriving, data, draft.goalType],
   )
 
   // A drag pushes one undo entry at the start, not one per pointer move.
@@ -164,8 +176,10 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
     setTool(null)
   }
 
-  const selectedItem = selectedKeys.length === 1 ? getItem(data, selectedKeys[0]) : null
-  const checkpoints = data.checkpoints || []
+  // Non-driving steps have no geometry, so the map helpers below must stay
+  // safe against a null `data`.
+  const selectedItem = isDriving && selectedKeys.length === 1 ? getItem(data, selectedKeys[0]) : null
+  const checkpoints = data?.checkpoints || []
 
   const moveCheckpoint = (index, delta) => {
     const target = index + delta
@@ -183,6 +197,21 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
   }
 
   const setCourseValue = (patch) => commitData({ ...data, ...patch })
+
+  const setContent = (patch) => {
+    setDraft((current) => ({ ...current, content: { ...current.content, ...patch } }))
+    setDirty(true)
+  }
+
+  const setSyllabus = (patch) =>
+    setContent({ syllabus: { ...emptySyllabus(), ...content.syllabus, ...patch } })
+
+  const toggleCounter = (key, on) => {
+    const counters = new Set(content.counters || [])
+    if (on) counters.add(key)
+    else counters.delete(key)
+    setContent({ counters: [...counters] })
+  }
 
   const run = async (action, successMessage, { resync = false } = {}) => {
     setBusy(true)
@@ -242,7 +271,7 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
 
   const itemCounts = useMemo(() => {
     const counts = {}
-    for (const item of listCourseItems(data)) {
+    for (const item of listCourseItems(data || {})) {
       counts[item.kind] = (counts[item.kind] || 0) + 1
     }
     return counts
@@ -255,6 +284,7 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
           <h2>{draft.title}</h2>
           <p className="course-editor-id">
             {course.id} - {course.moduleSlug}
+            <span className="course-badge kind">{KIND_LABELS[stepKind] || stepKind}</span>
             {course.draft && <span className="course-badge draft">Unpublished draft</span>}
             {!course.published && <span className="course-badge unpublished">Not visible to learners</span>}
             {dirty && <span className="course-badge dirty">Unsaved changes</span>}
@@ -278,7 +308,162 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
         </div>
       )}
 
-      <div className="course-editor-body">
+      <div className={`course-editor-body ${isDriving ? '' : 'is-narrow'}`}>
+        {stepKind === 'briefing' && (
+          <section className="admin-panel course-editor-content">
+            <h3>Briefing content</h3>
+            <p className="admin-panel-note">
+              The centre panel shows the reference image and panel text; the task panel on the right of the learner's
+              screen shows the syllabus card and the lesson text. The scope notice is always shown and is not editable.
+            </p>
+
+            <label>
+              Reference image URL
+              <input
+                value={content.image || ''}
+                placeholder="/images/controls-wasd.png"
+                onChange={(event) => setContent({ image: event.target.value })}
+              />
+            </label>
+            {content.image && <img className="course-image-preview" src={content.image} alt="" />}
+
+            <label>
+              Panel text, centre (Markdown)
+              <textarea rows={8} value={content.sceneBody || ''} onChange={(event) => setContent({ sceneBody: event.target.value })} />
+            </label>
+
+            <label>
+              Lesson text, task panel (Markdown)
+              <textarea rows={8} value={content.body || ''} onChange={(event) => setContent({ body: event.target.value })} />
+            </label>
+
+            <label>
+              Learning objectives, one per line
+              <textarea
+                rows={5}
+                value={(content.objectives || []).join('\n')}
+                onChange={(event) => setContent({ objectives: event.target.value.split('\n') })}
+              />
+            </label>
+            <p className="admin-panel-note">
+              These fill the Objectives sidebar on every step of the module, not only this one. Leave empty to use the
+              module's built-in list.
+            </p>
+
+            <label className="course-checkbox">
+              <input
+                type="checkbox"
+                checked={content.showSyllabus !== false}
+                onChange={(event) => setContent({ showSyllabus: event.target.checked })}
+              />
+              Show the syllabus reference card
+            </label>
+
+            {content.showSyllabus !== false && (
+              <>
+                <label>
+                  Syllabus location
+                  <input
+                    value={content.syllabus?.location || ''}
+                    placeholder="Section 2"
+                    onChange={(event) => setSyllabus({ location: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Unit code
+                  <input
+                    value={content.syllabus?.unitCode || ''}
+                    placeholder="505833315"
+                    onChange={(event) => setSyllabus({ unitCode: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Element
+                  <input
+                    value={content.syllabus?.element || ''}
+                    placeholder="Element 4: Perform load handling operation"
+                    onChange={(event) => setSyllabus({ element: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Page references
+                  <input
+                    value={content.syllabus?.pageReferences || ''}
+                    placeholder="pp. 55, 57-58"
+                    onChange={(event) => setSyllabus({ pageReferences: event.target.value })}
+                  />
+                </label>
+                <p className="admin-panel-note">
+                  A blank field falls back to the module's built-in reference, and a row is hidden only when both are
+                  empty.
+                </p>
+              </>
+            )}
+          </section>
+        )}
+
+        {stepKind === 'summary' && (
+          <section className="admin-panel course-editor-content">
+            <h3>Summary content</h3>
+            <p className="admin-panel-note">
+              The per-step Complete / Open grid is built automatically from this module's graded steps, so a step you
+              add or remove appears here without any edit.
+            </p>
+
+            <label>
+              Intro text (Markdown, optional)
+              <textarea rows={4} value={content.body || ''} onChange={(event) => setContent({ body: event.target.value })} />
+            </label>
+
+            <label>
+              Message when the module is complete
+              <textarea rows={2} value={content.completeMessage || ''} onChange={(event) => setContent({ completeMessage: event.target.value })} />
+            </label>
+
+            <label>
+              Message while steps are outstanding
+              <textarea rows={2} value={content.incompleteMessage || ''} onChange={(event) => setContent({ incompleteMessage: event.target.value })} />
+            </label>
+
+            <label>
+              Where Submit sends the learner
+              <select
+                value={content.nextRoute || ''}
+                onChange={(event) => setContent({ nextRoute: event.target.value })}
+              >
+                <option value="">Module default</option>
+                {NEXT_ROUTE_OPTIONS.map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </label>
+
+            <p className="admin-panel-note">Extra counters to show under the grid:</p>
+            {Object.entries(SUMMARY_COUNTER_LABELS).map(([key, label]) => (
+              <label key={key} className="course-checkbox">
+                <input
+                  type="checkbox"
+                  checked={(content.counters || []).includes(key)}
+                  onChange={(event) => toggleCounter(key, event.target.checked)}
+                />
+                {label}
+              </label>
+            ))}
+          </section>
+        )}
+
+        {stepKind === 'activity' && (
+          <section className="admin-panel course-editor-content">
+            <h3>Built-in activity</h3>
+            <p className="admin-panel-note">
+              This step runs the hardcoded <strong>{content.activityId || 'unknown'}</strong> activity. Its cards,
+              answers and feedback live in the code, so only the step's title and text can be edited here. You can
+              still reorder or delete the step.
+            </p>
+          </section>
+        )}
+
+        {isDriving && (
         <section className="course-editor-map">
           <div className="course-toolbar">
             <span className="course-toolbar-label">Place</span>
@@ -348,6 +533,7 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
             )}
           </div>
         </section>
+        )}
 
         <aside className="course-editor-side">
           <section className="admin-panel">
@@ -358,6 +544,7 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
             <label>Hint<textarea rows={2} value={draft.hint} onChange={(event) => setField({ hint: event.target.value })} /></label>
           </section>
 
+          {isDriving && (
           <section className="admin-panel">
             <h3>Goal</h3>
             <label>
@@ -395,7 +582,9 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
             </label>
             <p className="admin-panel-note">Cones, walls and parked forklifts are always live colliders - striking one always fails the attempt.</p>
           </section>
+          )}
 
+          {isDriving && (
           <section className="admin-panel">
             <h3>Selected object</h3>
             <CourseInspector
@@ -408,8 +597,9 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
               <p className="admin-panel-note">{selectedKeys.length} objects selected. Delete removes all of them.</p>
             )}
           </section>
+          )}
 
-          {checkpoints.length > 0 && (
+          {isDriving && checkpoints.length > 0 && (
             <section className="admin-panel">
               <h3>Checkpoint order</h3>
               <ol className="course-checkpoint-list">
@@ -428,10 +618,12 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
             </section>
           )}
 
-          <section className="admin-panel">
-            <h3>Cone layouts</h3>
-            <CourseGeneratorTools onInsert={(cones) => mutate((current) => appendDecorations(current, cones))} />
-          </section>
+          {isDriving && (
+            <section className="admin-panel">
+              <h3>Cone layouts</h3>
+              <CourseGeneratorTools onInsert={(cones) => mutate((current) => appendDecorations(current, cones))} />
+            </section>
+          )}
         </aside>
       </div>
     </div>

@@ -70,20 +70,29 @@ model PartDetail {
   description String @default("")
 }
 
-// One driving-simulation step of an equipment module: the step's instructional
-// text plus the course geometry DrivingSimulationViewer consumes.
+// One step of an equipment module (Modules 2-4), in `sortOrder`. Every step is
+// a row - there is no hardcoded step list left for these modules - and `kind`
+// picks how the page renders it:
+//
+//   briefing - reference image + markdown, no simulation
+//   driving  - the WASD course DrivingSimulationViewer runs (uses `data`)
+//   activity - a hardcoded React activity keyed by `content.activityId`
+//              (shutdown-sequence, reporting); admins can reorder or remove
+//              these but cannot author new ones, since the UI is code
+//   summary  - the auto-built completion grid plus editable copy
 //
 // The columns hold the *published* version that learners see. `draft` holds the
 // admin's unpublished edit as a whole payload
-// ({ title, objective, instructions, hint, goalType, data }) and is null when
-// there is nothing pending, so a half-placed course never reaches a learner.
-// `sortOrder` is not drafted - reordering the step list applies immediately.
+// ({ title, objective, instructions, hint, goalType, data, content }) and is
+// null when there is nothing pending, so a half-placed course never reaches a
+// learner. `sortOrder` is not drafted - reordering applies immediately.
 //
-// `data` geometry is { start, checkpoints, decorations, pallets, dropZone,
-// parkingBay, capacityKg, failConditions }. `builtIn` rows have a baseline in
-// frontend/src/data/courseDefaults.js and can be reset to it; admin-created
-// rows cannot. New rows start unpublished and appear to learners on first
-// publish.
+// `data` is driving geometry ({ start, checkpoints, decorations, pallets,
+// dropZone, parkingBay, capacityKg, failConditions }) and is null for other
+// kinds. `content` is the kind-specific payload for briefing/activity/summary.
+// `builtIn` rows have a baseline in frontend/src/data/courseDefaults.js and can
+// be reset to it; admin-created rows cannot. New rows start unpublished and
+// appear to learners on first publish.
 //
 // `id` doubles as the step id the module pages key progress on, so renaming a
 // course id would orphan learner progress for that step - the dashboard does
@@ -92,12 +101,14 @@ model Course {
   id           String   @id
   moduleSlug   String
   sortOrder    Int      @default(0)
+  kind         String   @default("driving")
   title        String
   objective    String   @default("")
   instructions String   @default("")
   hint         String   @default("")
   goalType     String   @default("checkpoints")
-  data         Json
+  data         Json?
+  content      Json?
   draft        Json?
   published    Boolean  @default(false)
   builtIn      Boolean  @default(false)
