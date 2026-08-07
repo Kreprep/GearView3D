@@ -1,0 +1,283 @@
+.course-editor {
+  display: grid;
+  gap: 16px;
+}
+
+/* AdminDashboard.css only styles form controls inside .admin-editor, and the
+   course panels need selects and checkboxes it does not cover. */
+.course-editor label,
+.course-admin label {
+  display: grid;
+  gap: 5px;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.course-editor input,
+.course-editor select,
+.course-editor textarea,
+.course-admin input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 7px 9px;
+}
+
+.course-editor textarea {
+  resize: vertical;
+}
+
+.course-editor-actions button,
+.course-toolbar button,
+.course-preview button,
+.course-inspector button,
+.course-generators button,
+.course-checkpoint-list button,
+.course-list-actions button,
+.course-create button,
+.course-module-tabs button {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 11px;
+}
+
+.course-editor-actions button:disabled,
+.course-toolbar button:disabled,
+.course-checkpoint-list button:disabled,
+.course-list-actions button:disabled,
+.course-create button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.course-editor-actions .admin-save,
+.course-generators .admin-save,
+.course-create .admin-save {
+  background: #0891b2;
+  border-color: #0891b2;
+  color: #ffffff;
+}
+
+.course-editor-side h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.course-editor-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.course-editor-bar h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.course-editor-id {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.course-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.course-badge.draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.course-badge.unpublished {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.course-badge.dirty {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.course-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.course-danger {
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.course-problems {
+  padding: 12px 16px;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.course-problems ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.course-editor-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .course-editor-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.course-editor-map {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.course-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.course-toolbar-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.course-toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.course-toolbar button.is-active {
+  background: #1d4ed8;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.course-editor label.course-toolbar-field {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.course-editor label.course-toolbar-field select {
+  width: auto;
+}
+
+.course-counts {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.course-preview {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.course-preview-stage {
+  width: 100%;
+  min-height: 420px;
+}
+
+.course-editor-side {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.course-inspector {
+  display: grid;
+  gap: 8px;
+}
+
+.course-inspector-kind {
+  margin: 0;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.course-inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.course-editor label.course-checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.course-editor label.course-checkbox input {
+  width: auto;
+}
+
+.course-checkpoint-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+
+.course-checkpoint-list li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.course-checkpoint-list li.is-selected {
+  font-weight: 600;
+}
+
+.course-checkpoint-list span {
+  display: flex;
+  gap: 4px;
+}
+
+.course-generators {
+  display: grid;
+  gap: 8px;
+}

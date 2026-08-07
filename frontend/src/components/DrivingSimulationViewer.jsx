@@ -1089,6 +1089,9 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
   const { keysRef, pressed } = useDrivingInput(toggleEngine, handleKeyActive)
 
   const checkpoints = course.checkpoints || []
+  // Stored courses always use `pallets`; the singular `pallet` is the older
+  // hand-written shape kept working here.
+  const hasPallet = Boolean(course.pallets?.length || course.pallet)
 
   return (
     <section className={`driving-simulation ${className}`}>
@@ -1102,7 +1105,7 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
               : `Checkpoint ${checkpointIndex + 1} / ${checkpoints.length}`}
           </span>
         )}
-        {course.pallet && (
+        {hasPallet && (
           <span className="driving-checkpoint-badge">{PALLET_STATE_LABELS[palletState]}</span>
         )}
         {course.parkingBay && parkingStatus && (

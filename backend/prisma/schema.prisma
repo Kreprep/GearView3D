@@ -70,6 +70,42 @@ model PartDetail {
   description String @default("")
 }
 
+// One driving-simulation step of an equipment module: the step's instructional
+// text plus the course geometry DrivingSimulationViewer consumes.
+//
+// The columns hold the *published* version that learners see. `draft` holds the
+// admin's unpublished edit as a whole payload
+// ({ title, objective, instructions, hint, goalType, data }) and is null when
+// there is nothing pending, so a half-placed course never reaches a learner.
+// `sortOrder` is not drafted - reordering the step list applies immediately.
+//
+// `data` geometry is { start, checkpoints, decorations, pallets, dropZone,
+// parkingBay, capacityKg, failConditions }. `builtIn` rows have a baseline in
+// frontend/src/data/courseDefaults.js and can be reset to it; admin-created
+// rows cannot. New rows start unpublished and appear to learners on first
+// publish.
+//
+// `id` doubles as the step id the module pages key progress on, so renaming a
+// course id would orphan learner progress for that step - the dashboard does
+// not offer it.
+model Course {
+  id           String   @id
+  moduleSlug   String
+  sortOrder    Int      @default(0)
+  title        String
+  objective    String   @default("")
+  instructions String   @default("")
+  hint         String   @default("")
+  goalType     String   @default("checkpoints")
+  data         Json
+  draft        Json?
+  published    Boolean  @default(false)
+  builtIn      Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+
+  @@index([moduleSlug, sortOrder])
+}
+
 model ChecklistItem {
   id        String @id
   module    Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)

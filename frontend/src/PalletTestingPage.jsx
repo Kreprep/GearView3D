@@ -1,27 +1,31 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import DrivingSimulationViewer from './components/DrivingSimulationViewer'
+import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
+import { useModuleCourses } from './hooks/useModuleCourses'
 import { useProgress } from './hooks/useProgress'
-import { drivingCourses } from './data/drivingCourse'
+import { courseTaskCopy } from './lib/courseGoals'
 import { routes } from './lib/router'
-import { equipmentUsageModules, moduleScenarioSteps } from './lib/trainingData'
+import { buildSimulationState, isStepComplete, withStepComplete } from './lib/simulationProgress'
+import { equipmentUsageModules } from './lib/trainingData'
 import './LoadHandlingPage.css'
 import './PalletTestingPage.css'
 
 const moduleSlug = 'pallet-testing'
 const NEXT_MODULE_DELAY_MS = 1400
 
-const completionFieldByStep = {
+// Reads snapshots written before completion moved to a step-id map.
+const legacyStepFields = {
   'precision-carry': 'carryComplete',
   'load-limits': 'limitsComplete',
 }
 
-function calculateSimulationState(nextState) {
-  const flags = [nextState.carryComplete, nextState.limitsComplete]
-  const percentage = Math.round((flags.filter(Boolean).length / flags.length) * 100)
-
-  return { ...nextState, percentage, complete: percentage === 100 }
+const stepTaskCopy = {
+  'precision-carry':
+    'Pick up the pallet, keep it clear of every cone in the lane, and set it down in the drop zone. Brake gently - a hard stop throws the load.',
+  'load-limits':
+    'Check each weight label against the 1,000 kg capacity, lift a safe pallet, and deliver it to the drop zone.',
 }
 
 function AssessmentBriefing() {
@@ -55,21 +59,24 @@ function AssessmentBriefing() {
 function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
-  const steps = moduleScenarioSteps[moduleSlug]
+  const { steps, courseById, loading, error } = useModuleCourses(moduleSlug)
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [lastFail, setLastFail] = useState(null)
-  const simulation = calculateSimulationState({
-    carryComplete: savedSimulation.carryComplete || false,
-    limitsComplete: savedSimulation.limitsComplete || false,
-    failedAttempts: savedSimulation.failedAttempts || 0,
-    percentage: savedSimulation.percentage || 0,
-    complete: savedSimulation.complete || false,
-  })
+  // Every step backed by a driving course is graded; briefing and summary are not.
+  const gradedStepIds = useMemo(
+    () => steps.filter((step) => courseById[step.id]).map((step) => step.id),
+    [steps, courseById],
+  )
+  const simulation = buildSimulationState(
+    { ...savedSimulation, failedAttempts: savedSimulation.failedAttempts || 0 },
+    gradedStepIds,
+    legacyStepFields,
+  )
 
   const saveSimulation = (partial) => {
-    const next = calculateSimulationState({ ...simulation, ...partial })
+    const next = buildSimulationState({ ...simulation, ...partial }, gradedStepIds, legacyStepFields)
     updateSimulation(moduleSlug, next)
     return next
   }
@@ -81,11 +88,11 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
       return
     }
 
-    if (event.type === 'pallet-delivered') {
-      const completionField = completionFieldByStep[currentStep.id]
-      if (completionField) {
+    // Whichever goal the course defines, reaching it completes that step.
+    if (event.type === 'pallet-delivered' || event.type === 'course-complete' || event.type === 'parking-complete') {
+      if (gradedStepIds.includes(currentStep.id)) {
         setLastFail(null)
-        saveSimulation({ [completionField]: true })
+        saveSimulation(withStepComplete(simulation, currentStep.id))
       }
     }
   }
@@ -96,11 +103,8 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
     setTimeout(() => onNavigate?.(routes.equipment), NEXT_MODULE_DELAY_MS)
   }
 
-  const getStepCanProceed = (stepId) => {
-    if (stepId === 'precision-carry') return simulation.carryComplete
-    if (stepId === 'load-limits') return simulation.limitsComplete
-    return true
-  }
+  const getStepCanProceed = (stepId) =>
+    gradedStepIds.includes(stepId) ? isStepComplete(simulation, stepId) : true
 
   const changeStep = (nextIndex) => {
     setLastFail(null)
@@ -112,7 +116,7 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
       return <AssessmentBriefing />
     }
 
-    const course = drivingCourses[currentStep.id]
+    const course = courseById[currentStep.id]
 
     if (course) {
       return (
@@ -154,9 +158,7 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
         <p className={done ? 'completion-ready' : 'task-note'}>
           {done
             ? 'Step complete. Use Next to continue.'
-            : currentStep.id === 'precision-carry'
-              ? 'Pick up the pallet, keep it clear of every cone in the lane, and set it down in the drop zone. Brake gently - a hard stop throws the load.'
-              : 'Check each weight label against the 1,000 kg capacity, lift a safe pallet, and deliver it to the drop zone.'}
+            : stepTaskCopy[currentStep.id] || courseTaskCopy(courseById[currentStep.id])}
         </p>
       </div>
     )
@@ -165,8 +167,12 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
   const renderSummary = () => (
     <div className="load-task-stack">
       <div className="summary-grid">
-        <div><span>Precision Carry</span><strong>{simulation.carryComplete ? 'Complete' : 'Open'}</strong></div>
-        <div><span>Load Limits</span><strong>{simulation.limitsComplete ? 'Complete' : 'Open'}</strong></div>
+        {gradedStepIds.map((stepId) => (
+          <div key={stepId}>
+            <span>{steps.find((step) => step.id === stepId)?.title || stepId}</span>
+            <strong>{isStepComplete(simulation, stepId) ? 'Complete' : 'Open'}</strong>
+          </div>
+        ))}
         <div><span>Failed Attempts</span><strong>{simulation.failedAttempts}</strong></div>
       </div>
       <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
@@ -179,7 +185,7 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
 
   const renderTask = ({ currentStep }) => {
     if (currentStep.id === 'briefing') return renderBriefing()
-    if (drivingCourses[currentStep.id]) return renderCourseTask(currentStep)
+    if (courseById[currentStep.id]) return renderCourseTask(currentStep)
     return null
   }
 
@@ -196,21 +202,25 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
       </header>
 
       <main className="module-content wide-simulation-content">
-        <ModuleSimulationShell
-          module={module}
-          steps={steps}
-          currentStepIndex={currentStepIndex}
-          objectives={module.learningObjectives}
-          progress={simulation.percentage}
-          score={simulation.percentage}
-          canProceed={getStepCanProceed(steps[currentStepIndex].id)}
-          onBackStep={() => changeStep(Math.max(currentStepIndex - 1, 0))}
-          onNextStep={() => changeStep(Math.min(currentStepIndex + 1, steps.length - 1))}
-          onComplete={completeModule}
-          renderScene={renderScene}
-          renderTask={renderTask}
-          completionSummary={renderSummary()}
-        />
+        {loading || error ? (
+          <ModuleLoadingState loading={loading} error={error} />
+        ) : (
+          <ModuleSimulationShell
+            module={module}
+            steps={steps}
+            currentStepIndex={currentStepIndex}
+            objectives={module.learningObjectives}
+            progress={simulation.percentage}
+            score={simulation.percentage}
+            canProceed={getStepCanProceed(steps[currentStepIndex].id)}
+            onBackStep={() => changeStep(Math.max(currentStepIndex - 1, 0))}
+            onNextStep={() => changeStep(Math.min(currentStepIndex + 1, steps.length - 1))}
+            onComplete={completeModule}
+            renderScene={renderScene}
+            renderTask={renderTask}
+            completionSummary={renderSummary()}
+          />
+        )}
       </main>
     </div>
   )

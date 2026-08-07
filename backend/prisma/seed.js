@@ -12,6 +12,7 @@ import {
 } from '../../frontend/src/data/trainingModules.js'
 import { partsHotspots } from '../../frontend/src/data/partsData.js'
 import { buildDefaultPartDetails } from '../../frontend/src/data/partDetails.js'
+import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
 
 const prisma = new PrismaClient()
 
@@ -161,6 +162,16 @@ async function seedQuizQuestions() {
   }
 }
 
+async function seedCourses() {
+  for (const course of buildDefaultCourses()) {
+    await prisma.course.upsert({
+      where: { id: course.id },
+      update: {},
+      create: { ...course, builtIn: true, published: true },
+    })
+  }
+}
+
 async function main() {
   await seedUsers()
   await seedEquipment()
@@ -169,6 +180,7 @@ async function main() {
   await seedPartDetails()
   await seedChecklists()
   await seedQuizQuestions()
+  await seedCourses()
 
   const counts = {
     users: await prisma.user.count(),
@@ -178,6 +190,7 @@ async function main() {
     partDetails: await prisma.partDetail.count(),
     checklistItems: await prisma.checklistItem.count(),
     quizQuestions: await prisma.quizQuestion.count(),
+    courses: await prisma.course.count(),
   }
   console.log('Seed complete:', counts)
 }

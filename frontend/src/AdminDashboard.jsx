@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import CourseAdmin from './components/admin/CourseAdmin'
 import {
   adminDeleteChecklistItem,
   adminDeleteModule,
@@ -19,6 +20,7 @@ const adminTabs = [
   [routes.admin, 'Overview'],
   [routes.adminModules, 'Modules'],
   [routes.adminParts, 'Parts'],
+  [routes.adminCourses, 'Courses'],
   [routes.adminChecklists, 'Checklists'],
   [routes.adminQuizzes, 'Quizzes'],
   [routes.adminUsers, 'Users'],
@@ -354,6 +356,19 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 </div>
               </>
             ) : <p>Select a forklift part or inspection hotspot to edit its detail card.</p>}
+          </section>
+        </main>
+      )}
+
+      {activePath === routes.adminCourses && (
+        <main className="admin-grid">
+          <section className="admin-panel wide-panel">
+            <h2>Driving Course Editor</h2>
+            <p className="admin-panel-note">
+              Place cones, walls, pallets, checkpoints and parking bays on a top-down map of each simulation step.
+              Edits are saved as a draft; learners keep the published version until you press Publish.
+            </p>
+            <CourseAdmin onMessage={refreshMessage} />
           </section>
         </main>
       )}

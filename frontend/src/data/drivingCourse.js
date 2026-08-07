@@ -6,101 +6,16 @@
 // -X and pressing A (steer left) turns it toward +X - so "right gate" style
 // checkpoints sit on the -X side of the course and "left gate" ones on +X.
 
-// Medium-density boundary cone line bounding one edge of a drivable corridor
-// (the autocross-style layout requested for Modules 2-4). `spacing` of
-// ~2-2.5 world units (8-10m) reads as "medium" - tight enough to read as a
-// wall of cones, loose enough not to be a solid line.
-function coneLine(x, zStart, zEnd, spacing = 2.4) {
-  const cones = []
-  for (let z = zStart; z <= zEnd + 1e-6; z += spacing) {
-    cones.push({ type: 'cone', position: [x, 0, Math.round(z * 100) / 100] })
-  }
-  return cones
-}
-
-// Classic single-file slalom: individual cones alternating left/right, like a
-// real autocross layout. A point cone can't physically block a straight
-// line, so `slalomCheckpoints` below pairs each one with a small sequential
-// checkpoint offset toward it - the forklift must actually swing over to
-// clear each checkpoint in order, which is what forces the weave.
-function slalomCones(amplitude, zStart, spacing, count) {
-  return Array.from({ length: count }, (_, i) => ({
-    type: 'cone',
-    position: [i % 2 === 0 ? amplitude : -amplitude, 0, Math.round((zStart + i * spacing) * 100) / 100],
-  }))
-}
-
-function slalomCheckpoints(amplitude, zStart, spacing, count, { radius = 0.6, idPrefix = 'slalom', labelPrefix = 'Slalom Gate' } = {}) {
-  return Array.from({ length: count }, (_, i) => {
-    const x = (i % 2 === 0 ? amplitude : -amplitude) * 0.6
-    const z = Math.round((zStart + i * spacing) * 100) / 100
-    return {
-      id: `${idPrefix}-${i + 1}`,
-      type: 'pass',
-      position: [x, 0, z],
-      radius,
-      label: `${labelPrefix} ${i + 1}`,
-      completeMessage: `${labelPrefix} ${i + 1} clear - keep weaving through the cones.`,
-    }
-  })
-}
-
-// Dense cone corridor that follows a polyline path (waypoints as [x, z] world
-// coordinates, in the order the course is driven), placing cones halfWidth
-// to each side at ~spacing intervals along every leg - a narrow, winding
-// "chute" that hugs the actual driving line instead of a fixed straight lane.
-function corridorCones(waypoints, halfWidth, spacing) {
-  const cones = []
-  for (let seg = 0; seg < waypoints.length - 1; seg += 1) {
-    const [x1, z1] = waypoints[seg]
-    const [x2, z2] = waypoints[seg + 1]
-    const dx = x2 - x1
-    const dz = z2 - z1
-    const len = Math.hypot(dx, dz) || 1
-    const steps = Math.max(Math.round(len / spacing), 1)
-    const nx = -dz / len
-    const nz = dx / len
-    for (let i = seg === 0 ? 0 : 1; i <= steps; i += 1) {
-      const t = i / steps
-      const x = x1 + dx * t
-      const z = z1 + dz * t
-      cones.push({ type: 'cone', position: [Math.round((x + nx * halfWidth) * 100) / 100, 0, Math.round((z + nz * halfWidth) * 100) / 100] })
-      cones.push({ type: 'cone', position: [Math.round((x - nx * halfWidth) * 100) / 100, 0, Math.round((z - nz * halfWidth) * 100) / 100] })
-    }
-  }
-  return cones
-}
-
-// Cone-marked rectangular pocket (corners + a couple of lane-entry markers) -
-// the standard driving-test parallel-parking box layout.
-function coneBox({ x, z, width, depth }, margin = 0.15) {
-  const halfW = width / 2 + margin
-  const halfD = depth / 2 + margin
-  return [
-    { type: 'cone', position: [x - halfW, 0, z - halfD] },
-    { type: 'cone', position: [x + halfW, 0, z - halfD] },
-    { type: 'cone', position: [x - halfW, 0, z + halfD] },
-    { type: 'cone', position: [x + halfW, 0, z + halfD] },
-  ]
-}
-
-// Cone-marked bay open on one side (the entry) - three walls of cones like a
-// driving-test reverse-parking box: `openSide` is the local +Z/-Z/+X/-X edge
-// left clear for entry (heading 0 courses enter from -Z, so 'front' = -Z).
-function coneBay({ x, z, width, depth }, margin = 0.15, openSide = 'front') {
-  const halfW = width / 2 + margin
-  const halfD = depth / 2 + margin
-  const left = x - halfW
-  const right = x + halfW
-  const front = z - halfD
-  const back = z + halfD
-  const mid = (front + back) / 2
-  const cones = []
-  if (openSide !== 'left') cones.push({ type: 'cone', position: [left, 0, front] }, { type: 'cone', position: [left, 0, mid] })
-  if (openSide !== 'right') cones.push({ type: 'cone', position: [right, 0, front] }, { type: 'cone', position: [right, 0, mid] })
-  if (openSide !== 'back') cones.push({ type: 'cone', position: [left, 0, back] }, { type: 'cone', position: [(left + right) / 2, 0, back] }, { type: 'cone', position: [right, 0, back] })
-  return cones
-}
+// The cone-layout helpers live in lib/courseGenerators.js so the admin course
+// editor's insert tools produce identical layouts.
+import {
+  coneBay,
+  coneBox,
+  coneLine,
+  corridorCones,
+  slalomCheckpoints,
+  slalomCones,
+} from '../lib/courseGenerators.js'
 
 export const drivingCourses = {
   'controls-intro': {

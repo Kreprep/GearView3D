@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import DrivingSimulationViewer from './components/DrivingSimulationViewer'
+import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
+import { useModuleCourses } from './hooks/useModuleCourses'
 import { useProgress } from './hooks/useProgress'
-import { drivingCourses } from './data/drivingCourse'
+import { courseTaskCopy } from './lib/courseGoals'
 import { routes } from './lib/router'
+import { buildSimulationState, isStepComplete, withStepComplete } from './lib/simulationProgress'
 import {
   equipmentUsageModules,
-  moduleScenarioSteps,
   postOperationReportPrompts,
   shutdownDisplayOrder,
   shutdownSequenceActions,
@@ -18,18 +20,17 @@ import './PostOperationPage.css'
 const moduleSlug = 'post-operation'
 const NEXT_MODULE_DELAY_MS = 1400
 
-const parkingCompletionFieldByStep = {
+// Graded steps that are not driving courses - these stay code-owned because
+// their activities are hardcoded React, not editable course geometry.
+const bespokeGradedStepIds = ['shutdown-sequence', 'reporting']
+
+// Reads snapshots written before completion moved to a step-id map.
+const legacyStepFields = {
   'secure-parking': 'secureParkingComplete',
   'parallel-parking': 'parallelParkingComplete',
   'forklift-gap-parking': 'gapParkingComplete',
-}
-
-function calculateSimulationState(nextState) {
-  const parkingComplete = nextState.secureParkingComplete && nextState.parallelParkingComplete && nextState.gapParkingComplete
-  const flags = [parkingComplete, nextState.shutdownComplete, nextState.reportingComplete]
-  const percentage = Math.round((flags.filter(Boolean).length / flags.length) * 100)
-
-  return { ...nextState, parkingComplete, percentage, complete: percentage === 100 }
+  'shutdown-sequence': 'shutdownComplete',
+  reporting: 'reportingComplete',
 }
 
 function ShutdownSequenceActivity({ actions, displayOrder, pickedIds, completed, wrongPickId, onPick }) {
@@ -108,7 +109,7 @@ function ReportingActivity({ prompts, answers, completed, onAnswer }) {
 function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
   const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
-  const steps = moduleScenarioSteps[moduleSlug]
+  const { steps, courseById, loading, error } = useModuleCourses(moduleSlug)
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -116,20 +117,29 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   const [shutdownPicked, setShutdownPicked] = useState([])
   const [wrongPickId, setWrongPickId] = useState(null)
   const [reportAnswers, setReportAnswers] = useState({})
-  const simulation = calculateSimulationState({
-    secureParkingComplete: savedSimulation.secureParkingComplete || false,
-    parallelParkingComplete: savedSimulation.parallelParkingComplete || false,
-    gapParkingComplete: savedSimulation.gapParkingComplete || false,
-    shutdownComplete: savedSimulation.shutdownComplete || false,
-    reportingComplete: savedSimulation.reportingComplete || false,
-    shutdownMistakes: savedSimulation.shutdownMistakes || 0,
-    failedAttempts: savedSimulation.failedAttempts || 0,
-    percentage: savedSimulation.percentage || 0,
-    complete: savedSimulation.complete || false,
-  })
+  // Driving-course steps plus the two hardcoded activities; briefing and
+  // summary are not graded.
+  const gradedStepIds = useMemo(
+    () =>
+      steps
+        .filter((step) => courseById[step.id] || bespokeGradedStepIds.includes(step.id))
+        .map((step) => step.id),
+    [steps, courseById],
+  )
+  const simulation = buildSimulationState(
+    {
+      ...savedSimulation,
+      shutdownMistakes: savedSimulation.shutdownMistakes || 0,
+      failedAttempts: savedSimulation.failedAttempts || 0,
+    },
+    gradedStepIds,
+    legacyStepFields,
+  )
+  const shutdownComplete = isStepComplete(simulation, 'shutdown-sequence')
+  const reportingComplete = isStepComplete(simulation, 'reporting')
 
   const saveSimulation = (partial) => {
-    const next = calculateSimulationState({ ...simulation, ...partial })
+    const next = buildSimulationState({ ...simulation, ...partial }, gradedStepIds, legacyStepFields)
     updateSimulation(moduleSlug, next)
     return next
   }
@@ -141,17 +151,17 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
       return
     }
 
-    if (event.type === 'parking-complete') {
-      const completionField = parkingCompletionFieldByStep[currentStep.id]
-      if (completionField) {
+    // Whichever goal the course defines, reaching it completes that step.
+    if (event.type === 'parking-complete' || event.type === 'course-complete' || event.type === 'pallet-delivered') {
+      if (gradedStepIds.includes(currentStep.id)) {
         setLastFail(null)
-        saveSimulation({ [completionField]: true })
+        saveSimulation(withStepComplete(simulation, currentStep.id))
       }
     }
   }
 
   const handleShutdownPick = (action) => {
-    if (simulation.shutdownComplete) return
+    if (shutdownComplete) return
     const expectedOrder = shutdownPicked.length + 1
 
     if (action.order === expectedOrder) {
@@ -159,7 +169,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
       setShutdownPicked(nextPicked)
       setWrongPickId(null)
       if (nextPicked.length === shutdownSequenceActions.length) {
-        saveSimulation({ shutdownComplete: true })
+        saveSimulation(withStepComplete(simulation, 'shutdown-sequence'))
       }
     } else {
       setWrongPickId(action.id)
@@ -169,14 +179,14 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   }
 
   const handleReportAnswer = (prompt, choice) => {
-    if (simulation.reportingComplete) return
+    if (reportingComplete) return
     const correct = choice === prompt.shouldReport
     const nextAnswers = { ...reportAnswers, [prompt.id]: { choice, correct } }
     setReportAnswers(nextAnswers)
 
     const allCorrect = postOperationReportPrompts.every((item) => nextAnswers[item.id]?.correct)
     if (allCorrect) {
-      saveSimulation({ reportingComplete: true })
+      saveSimulation(withStepComplete(simulation, 'reporting'))
     }
   }
 
@@ -186,13 +196,8 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
     setTimeout(() => onNavigate?.(routes.palletTesting), NEXT_MODULE_DELAY_MS)
   }
 
-  const getStepCanProceed = (stepId) => {
-    const parkingField = parkingCompletionFieldByStep[stepId]
-    if (parkingField) return simulation[parkingField]
-    if (stepId === 'shutdown-sequence') return simulation.shutdownComplete
-    if (stepId === 'reporting') return simulation.reportingComplete
-    return true
-  }
+  const getStepCanProceed = (stepId) =>
+    gradedStepIds.includes(stepId) ? isStepComplete(simulation, stepId) : true
 
   const changeStep = (nextIndex) => {
     setLastFail(null)
@@ -200,10 +205,10 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   }
 
   const renderScene = ({ currentStep }) => {
-    if (parkingCompletionFieldByStep[currentStep.id]) {
+    if (courseById[currentStep.id]) {
       return (
         <div className="load-scene-wrap">
-          <DrivingSimulationViewer course={drivingCourses[currentStep.id]} onEvent={handleDrivingEvent(currentStep)} isAdmin={isAdmin} />
+          <DrivingSimulationViewer course={courseById[currentStep.id]} onEvent={handleDrivingEvent(currentStep)} isAdmin={isAdmin} />
         </div>
       )
     }
@@ -214,7 +219,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
           actions={shutdownSequenceActions}
           displayOrder={shutdownDisplayOrder}
           pickedIds={shutdownPicked}
-          completed={simulation.shutdownComplete}
+          completed={shutdownComplete}
           wrongPickId={wrongPickId}
           onPick={handleShutdownPick}
         />
@@ -226,7 +231,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
         <ReportingActivity
           prompts={postOperationReportPrompts}
           answers={reportAnswers}
-          completed={simulation.reportingComplete}
+          completed={reportingComplete}
           onAnswer={handleReportAnswer}
         />
       )
@@ -266,7 +271,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
     </div>
   )
 
-  const parkingTaskCopy = {
+  const stepTaskCopy = {
     'secure-parking':
       'Follow the breadcrumbs to the painted bay. Park between the lines, straighten up, stop, lower the forks with F, then switch off with E. The badge at the top shows the next requirement.',
     'parallel-parking':
@@ -275,9 +280,8 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
       'Line up centered on the gap early and creep in - the parked forklifts on both sides are live obstacles. Stop inside the lines, lower the forks with F, then switch off with E.',
   }
 
-  const renderParkingTask = (currentStep) => {
-    const completionField = parkingCompletionFieldByStep[currentStep.id]
-    const done = simulation[completionField]
+  const renderDrivingTask = (currentStep) => {
+    const done = isStepComplete(simulation, currentStep.id)
     const failVisible = lastFail && lastFail.stepId === currentStep.id && !done
 
     return (
@@ -288,14 +292,16 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
           </p>
         )}
         <p className={done ? 'completion-ready' : 'task-note'}>
-          {done ? 'Step complete. Use Next to continue.' : parkingTaskCopy[currentStep.id]}
+          {done
+            ? 'Step complete. Use Next to continue.'
+            : stepTaskCopy[currentStep.id] || courseTaskCopy(courseById[currentStep.id])}
         </p>
       </div>
     )
   }
 
   const renderShutdownTask = () => {
-    const done = simulation.shutdownComplete
+    const done = shutdownComplete
     return (
       <div className="load-task-stack">
         <p className={done ? 'completion-ready' : 'task-note'}>
@@ -308,7 +314,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   }
 
   const renderReportingTask = () => {
-    const done = simulation.reportingComplete
+    const done = reportingComplete
     const correctCount = postOperationReportPrompts.filter((item) => reportAnswers[item.id]?.correct).length
     return (
       <div className="load-task-stack">
@@ -324,11 +330,12 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
   const renderSummary = () => (
     <div className="load-task-stack">
       <div className="summary-grid">
-        <div><span>Secure Parking</span><strong>{simulation.secureParkingComplete ? 'Complete' : 'Open'}</strong></div>
-        <div><span>Parallel Parking</span><strong>{simulation.parallelParkingComplete ? 'Complete' : 'Open'}</strong></div>
-        <div><span>Parking Between Forklifts</span><strong>{simulation.gapParkingComplete ? 'Complete' : 'Open'}</strong></div>
-        <div><span>Shutdown Sequence</span><strong>{simulation.shutdownComplete ? 'Complete' : 'Open'}</strong></div>
-        <div><span>Reporting</span><strong>{simulation.reportingComplete ? 'Complete' : 'Open'}</strong></div>
+        {gradedStepIds.map((stepId) => (
+          <div key={stepId}>
+            <span>{steps.find((step) => step.id === stepId)?.title || stepId}</span>
+            <strong>{isStepComplete(simulation, stepId) ? 'Complete' : 'Open'}</strong>
+          </div>
+        ))}
         <div><span>Failed Attempts</span><strong>{simulation.failedAttempts}</strong></div>
         <div><span>Ordering Mistakes</span><strong>{simulation.shutdownMistakes}</strong></div>
       </div>
@@ -342,7 +349,7 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
 
   const renderTask = ({ currentStep }) => {
     if (currentStep.id === 'briefing') return renderBriefing()
-    if (parkingCompletionFieldByStep[currentStep.id]) return renderParkingTask(currentStep)
+    if (courseById[currentStep.id]) return renderDrivingTask(currentStep)
     if (currentStep.id === 'shutdown-sequence') return renderShutdownTask()
     if (currentStep.id === 'reporting') return renderReportingTask()
     return null
@@ -361,21 +368,25 @@ function PostOperationPage({ moduleName, user, onBack, onNavigate }) {
       </header>
 
       <main className="module-content wide-simulation-content">
-        <ModuleSimulationShell
-          module={module}
-          steps={steps}
-          currentStepIndex={currentStepIndex}
-          objectives={module.learningObjectives}
-          progress={simulation.percentage}
-          score={simulation.percentage}
-          canProceed={getStepCanProceed(steps[currentStepIndex].id)}
-          onBackStep={() => changeStep(Math.max(currentStepIndex - 1, 0))}
-          onNextStep={() => changeStep(Math.min(currentStepIndex + 1, steps.length - 1))}
-          onComplete={completeModule}
-          renderScene={renderScene}
-          renderTask={renderTask}
-          completionSummary={renderSummary()}
-        />
+        {loading || error ? (
+          <ModuleLoadingState loading={loading} error={error} />
+        ) : (
+          <ModuleSimulationShell
+            module={module}
+            steps={steps}
+            currentStepIndex={currentStepIndex}
+            objectives={module.learningObjectives}
+            progress={simulation.percentage}
+            score={simulation.percentage}
+            canProceed={getStepCanProceed(steps[currentStepIndex].id)}
+            onBackStep={() => changeStep(Math.max(currentStepIndex - 1, 0))}
+            onNextStep={() => changeStep(Math.min(currentStepIndex + 1, steps.length - 1))}
+            onComplete={completeModule}
+            renderScene={renderScene}
+            renderTask={renderTask}
+            completionSummary={renderSummary()}
+          />
+        )}
       </main>
     </div>
   )

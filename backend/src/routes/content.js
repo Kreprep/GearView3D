@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
+import { publishedCourse } from '../lib/courses.js'
 
 const router = Router()
 
@@ -36,6 +37,17 @@ router.get('/checklists/:moduleSlug', async (req, res) => {
     orderBy: { sortOrder: 'asc' },
   })
   res.json(items.map((item) => item.text))
+})
+
+// Published driving-simulation steps for one module, in step order. Unpublished
+// courses are withheld so a course being built in the dashboard never appears
+// mid-edit in a learner's module.
+router.get('/courses/:moduleSlug', async (req, res) => {
+  const rows = await prisma.course.findMany({
+    where: { moduleSlug: req.params.moduleSlug, published: true },
+    orderBy: { sortOrder: 'asc' },
+  })
+  res.json(rows.map(publishedCourse))
 })
 
 export default router
