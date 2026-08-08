@@ -118,6 +118,11 @@ export async function getModuleCourses(moduleSlug) {
   return request(`/content/courses/${encodeURIComponent(moduleSlug)}`)
 }
 
+// Module 1's published 3D inspection hotspots, in sortOrder.
+export async function getWalkAroundHotspots() {
+  return request('/content/walkaround-hotspots')
+}
+
 // --- Progress (per signed-in user) ---
 
 export async function getProgress() {
@@ -264,4 +269,40 @@ export async function adminReorderCourses(moduleSlug, ids) {
 
 export async function adminDeleteCourse(courseId) {
   return request(`/admin/courses/${encodeURIComponent(courseId)}`, { method: 'DELETE' })
+}
+
+// --- Admin: walk-around hotspot editor ---
+
+export async function adminListWalkAroundHotspots() {
+  return request('/admin/walkaround-hotspots')
+}
+
+export async function adminCreateWalkAroundHotspot(payload) {
+  return request('/admin/walkaround-hotspots', { method: 'POST', body: payload })
+}
+
+// Saves an edit as an unpublished draft; learners keep seeing the published
+// version until adminPublishWalkAroundHotspot().
+export async function adminSaveWalkAroundHotspotDraft(hotspotId, payload) {
+  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}`, { method: 'PUT', body: payload })
+}
+
+export async function adminPublishWalkAroundHotspot(hotspotId) {
+  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}/publish`, { method: 'POST' })
+}
+
+export async function adminRevertWalkAroundHotspot(hotspotId) {
+  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}/revert`, { method: 'POST' })
+}
+
+export async function adminResetWalkAroundHotspot(hotspotId) {
+  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}/reset`, { method: 'POST' })
+}
+
+export async function adminReorderWalkAroundHotspots(ids) {
+  return request('/admin/walkaround-hotspots/reorder', { method: 'POST', body: { ids } })
+}
+
+export async function adminDeleteWalkAroundHotspot(hotspotId) {
+  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}`, { method: 'DELETE' })
 }

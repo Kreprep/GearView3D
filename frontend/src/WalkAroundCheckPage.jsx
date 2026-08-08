@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
+import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useModuleRecord } from './hooks/useModuleRecord'
 import { useProgress } from './hooks/useProgress'
+import { useWalkAroundHotspots } from './hooks/useWalkAroundHotspots'
 import {
   engineOnDeviceEffects,
   resolveEffectLamps,
   walkAroundDefectOverlays,
-  walkAroundViewerHotspots,
 } from './data/viewerHotspots'
 import { playDeviceSound, stopDeviceSound } from './lib/deviceAudio'
 import { getPartDetails } from './lib/api'
@@ -30,12 +31,7 @@ const MODULE_EXIT_DELAY_MS = 1400
 const moduleSlug = 'walk-around-check'
 const noViewerHotspots = []
 const ENGINE_START_DELAY_MS = 1500
-const engineOffViewerHotspots = engineOffInspectionChecks.map((check) => check.id)
-// Kept as a stable module-level array so the viewer's hotspot memo isn't
-// invalidated on every render.
-const engineOffViewerHotspotsWithIgnition = [...engineOffViewerHotspots, 'ignition']
 const engineOnDeviceChecks = [...safetyDeviceTests, ...engineOnControlChecks]
-const engineOnViewerHotspots = ['dashboard', ...engineOnDeviceChecks.map((item) => item.id)]
 const engineOnTotalChecks = engineOnGaugeChecks.length + engineOnDeviceChecks.length
 // Pulled in close to the operator station so the cockpit hotspots are readable.
 const ENGINE_ON_CAMERA = { position: [1.05, 0.82, 0.95], fov: 46, minDistance: 0.4, maxDistance: 2.8 }
@@ -89,6 +85,7 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
   const module = useModuleRecord(moduleSlug, equipmentUsageModules.find((item) => item.slug === moduleSlug))
   const steps = moduleScenarioSteps[moduleSlug]
+  const { hotspots: liveHotspots, loading: hotspotsLoading, error: hotspotsError } = useWalkAroundHotspots()
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -117,6 +114,23 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
 
   const completedEngineOnSet = useMemo(() => new Set(simulation.engineOnChecks), [simulation.engineOnChecks])
   const completedEngineOffSet = useMemo(() => new Set(simulation.engineOffChecks), [simulation.engineOffChecks])
+
+  // Which 3D markers show during each step is driven by the live hotspot's own
+  // `state` field, so a hotspot an admin adds or repositions appears without a
+  // code change. The ignition hotspot only joins the engine-off scene once the
+  // walk-around is done, same as before.
+  const engineOffViewerHotspots = useMemo(
+    () => liveHotspots.filter((hotspot) => hotspot.state === 'engine-off').map((hotspot) => hotspot.id),
+    [liveHotspots],
+  )
+  const ignitionViewerHotspots = useMemo(
+    () => liveHotspots.filter((hotspot) => hotspot.state === 'ignition').map((hotspot) => hotspot.id),
+    [liveHotspots],
+  )
+  const engineOnViewerHotspots = useMemo(
+    () => liveHotspots.filter((hotspot) => hotspot.state === 'engine-on').map((hotspot) => hotspot.id),
+    [liveHotspots],
+  )
 
   useEffect(() => () => {
     clearTimeout(deviceEffectTimer.current)
@@ -249,7 +263,7 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
     if (!effect) return
 
     // Lamps follow the hotspot, so repositioning a hotspot keeps the effect aligned.
-    const hotspot = walkAroundViewerHotspots.find((entry) => entry.id === deviceId)
+    const hotspot = liveHotspots.find((entry) => entry.id === deviceId)
     clearTimeout(deviceEffectTimer.current)
     setActiveDeviceEffect({ ...effect, lamps: resolveEffectLamps(effect, hotspot) })
 
@@ -343,7 +357,7 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
     if (isEngineOffStep) {
       // The ignition only appears once the walk-around inspection is done.
       activeHotspots = simulation.engineOffComplete && !simulation.engineStarted
-        ? engineOffViewerHotspotsWithIgnition
+        ? [...engineOffViewerHotspots, ...ignitionViewerHotspots]
         : engineOffViewerHotspots
     } else if (isEngineOnStep) {
       activeHotspots = engineOnViewerHotspots
@@ -355,7 +369,7 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
           mode={isDefectStep ? 'defect-test' : 'inspection'}
           scenario={scenario}
           activeHotspots={activeHotspots}
-          hotspots={walkAroundViewerHotspots}
+          hotspots={liveHotspots}
           defectOverlays={walkAroundDefectOverlays}
           modelUrl={forkliftEquipment.modelUrl}
           cameraPreset={isEngineOnStep ? ENGINE_ON_CAMERA : undefined}
@@ -437,7 +451,7 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
   const renderDeviceGroup = (items) => (
     <div className="device-test-grid">
       {items.map((item) => {
-        const hotspot = walkAroundViewerHotspots.find((entry) => entry.id === item.id)
+        const hotspot = liveHotspots.find((entry) => entry.id === item.id)
         return (
           <button
             key={item.id}
@@ -583,24 +597,28 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
       </header>
 
       <main className="module-content wide-simulation-content">
-        <ModuleSimulationShell
-          module={module}
-          steps={steps}
-          currentStepIndex={currentStepIndex}
-          objectives={module.learningObjectives}
-          progress={simulation.percentage}
-          score={simulation.defectScenarioScore}
-          canProceed={getStepCanProceed(steps[currentStepIndex].id)}
-          requiredNote={getStepRequiredNote(steps[currentStepIndex].id)}
-          onBackStep={() => goToStep(currentStepIndex - 1)}
-          onNextStep={() => goToStep(currentStepIndex + 1)}
-          onComplete={completeModule}
-          renderScene={renderScene}
-          renderTask={renderTask}
-          completionSummary={renderSummary()}
-          selectedDetail={selectedDetail}
-          onClearDetail={clearSelectedDetail}
-        />
+        {hotspotsLoading || hotspotsError ? (
+          <ModuleLoadingState loading={hotspotsLoading} error={hotspotsError} />
+        ) : (
+          <ModuleSimulationShell
+            module={module}
+            steps={steps}
+            currentStepIndex={currentStepIndex}
+            objectives={module.learningObjectives}
+            progress={simulation.percentage}
+            score={simulation.defectScenarioScore}
+            canProceed={getStepCanProceed(steps[currentStepIndex].id)}
+            requiredNote={getStepRequiredNote(steps[currentStepIndex].id)}
+            onBackStep={() => goToStep(currentStepIndex - 1)}
+            onNextStep={() => goToStep(currentStepIndex + 1)}
+            onComplete={completeModule}
+            renderScene={renderScene}
+            renderTask={renderTask}
+            completionSummary={renderSummary()}
+            selectedDetail={selectedDetail}
+            onClearDetail={clearSelectedDetail}
+          />
+        )}
       </main>
     </div>
   )

@@ -14,6 +14,7 @@ export const routes = {
   adminParts: '/admin/parts',
   adminPractice: '/admin/practice',
   adminCourses: '/admin/courses',
+  adminHotspots: '/admin/hotspots',
   adminChecklists: '/admin/checklists',
   adminQuizzes: '/admin/quizzes',
   adminUsers: '/admin/users',

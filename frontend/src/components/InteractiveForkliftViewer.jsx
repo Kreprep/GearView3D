@@ -1,4 +1,4 @@
-import React, { Suspense, useMemo, useRef, useState } from 'react'
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   Bounds,
@@ -192,7 +192,7 @@ function smoothstep(x) {
   return clamped * clamped * (3 - 2 * clamped)
 }
 
-function ForkliftModel({ modelUrl, deviceEffect }) {
+function ForkliftModel({ modelUrl, deviceEffect, adminEditMode, onSurfaceDown, onSurfaceMove, onSurfaceUp }) {
   const { scene } = useGLTF(modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const rigRef = useRef(null)
@@ -295,12 +295,17 @@ function ForkliftModel({ modelUrl, deviceEffect }) {
 
   return (
     <group ref={moveGroupRef}>
-      <primitive object={forklift} />
+      <primitive
+        object={forklift}
+        onPointerDown={adminEditMode ? onSurfaceDown : undefined}
+        onPointerMove={adminEditMode ? onSurfaceMove : undefined}
+        onPointerUp={adminEditMode ? onSurfaceUp : undefined}
+      />
     </group>
   )
 }
 
-function TrainingHotspot({ hotspot, selected, scenario, onSelect, hotspotRefs }) {
+function TrainingHotspot({ hotspot, selected, scenario, onSelect, hotspotRefs, adminEditMode, onMarkerPointerDown }) {
   const result = getScenarioResult(hotspot, scenario)
 
   return (
@@ -319,7 +324,8 @@ function TrainingHotspot({ hotspot, selected, scenario, onSelect, hotspotRefs })
               event.stopPropagation()
               onSelect(result)
             }}
-            className={`hotspot-marker ${result.result === 'unsafe' ? 'unsafe' : ''} ${selected ? 'selected' : ''}`}
+            onPointerDown={adminEditMode ? (event) => onMarkerPointerDown?.(hotspot.id, event) : undefined}
+            className={`hotspot-marker ${result.result === 'unsafe' ? 'unsafe' : ''} ${selected ? 'selected' : ''} ${adminEditMode ? 'admin-editable' : ''}`}
             aria-label={hotspot.label}
           />
           <span className="hotspot-marker-tooltip">{hotspot.label}</span>
@@ -421,9 +427,51 @@ function InteractiveScene({
   freeCam,
   onHotspotSelect,
   onScenarioAction,
+  adminEditMode,
+  placingActive,
+  onPlaceHotspot,
+  onDragHotspot,
 }) {
   const hotspotRefs = useRef(new Map())
   const controlsRef = useRef(null)
+  const rigGroupRef = useRef(null)
+  const draggingIdRef = useRef(null)
+
+  const localPointFromEvent = (event) => {
+    const point = rigGroupRef.current.worldToLocal(event.point.clone())
+    return [point.x, point.y, point.z]
+  }
+
+  const stopDragging = () => {
+    draggingIdRef.current = null
+    if (controlsRef.current) controlsRef.current.enabled = true
+  }
+
+  const handleSurfacePointerDown = (event) => {
+    if (!placingActive) return
+    event.stopPropagation()
+    onPlaceHotspot?.(localPointFromEvent(event))
+  }
+
+  const handleSurfacePointerMove = (event) => {
+    if (!draggingIdRef.current) return
+    event.stopPropagation()
+    onDragHotspot?.(draggingIdRef.current, localPointFromEvent(event))
+  }
+
+  const handleMarkerPointerDown = (hotspotId, event) => {
+    event.stopPropagation()
+    draggingIdRef.current = hotspotId
+    if (controlsRef.current) controlsRef.current.enabled = false
+  }
+
+  // A drag can end with the pointer off the model (or off the canvas
+  // entirely), so releasing must not depend on a pointerup over the mesh.
+  useEffect(() => {
+    if (!adminEditMode) return undefined
+    window.addEventListener('pointerup', stopDragging)
+    return () => window.removeEventListener('pointerup', stopDragging)
+  }, [adminEditMode])
 
   return (
     <>
@@ -436,8 +484,15 @@ function InteractiveScene({
       <Bounds fit clip margin={1.25}>
         <ViewReset cameraPreset={cameraPreset} controlsRef={controlsRef} resetToken={resetToken} />
         <Center top>
-          <group rotation={[0, -0.18, 0]}>
-            <ForkliftModel modelUrl={modelUrl} deviceEffect={deviceEffect} />
+          <group ref={rigGroupRef} rotation={[0, -0.18, 0]}>
+            <ForkliftModel
+              modelUrl={modelUrl}
+              deviceEffect={deviceEffect}
+              adminEditMode={adminEditMode}
+              onSurfaceDown={handleSurfacePointerDown}
+              onSurfaceMove={handleSurfacePointerMove}
+              onSurfaceUp={stopDragging}
+            />
             <DeviceEffect effect={deviceEffect} />
             {defectOverlays
               .filter((overlay) => overlay.scenario === scenario)
@@ -457,6 +512,8 @@ function InteractiveScene({
                   selected={selectedHotspotId === hotspot.id}
                   onSelect={onHotspotSelect}
                   hotspotRefs={hotspotRefs}
+                  adminEditMode={adminEditMode}
+                  onMarkerPointerDown={handleMarkerPointerDown}
                 />
               ))}
           </group>
@@ -554,6 +611,10 @@ export default function InteractiveForkliftViewer({
   modelUrl = DEFAULT_MODEL_URL,
   className = '',
   isAdmin = false,
+  adminEditMode = false,
+  placingActive = false,
+  onPlaceHotspot,
+  onDragHotspot,
 }) {
   const containerRef = useRef(null)
   const [resetToken, setResetToken] = useState(0)
@@ -596,7 +657,7 @@ export default function InteractiveForkliftViewer({
 
   return (
     <section className={`interactive-forklift-viewer ${className}`}>
-      <div ref={containerRef} className="interactive-viewer-canvas-shell">
+      <div ref={containerRef} className={`interactive-viewer-canvas-shell ${placingActive ? 'placing-active' : ''}`}>
         <div className="interactive-viewer-toolbar">
           <button type="button" onClick={resetView}>
             <RotateCcw size={16} /> Reset
@@ -634,6 +695,10 @@ export default function InteractiveForkliftViewer({
                 freeCam={freeCam}
                 onHotspotSelect={handleHotspotSelect}
                 onScenarioAction={onScenarioAction}
+                adminEditMode={adminEditMode}
+                placingActive={placingActive}
+                onPlaceHotspot={onPlaceHotspot}
+                onDragHotspot={onDragHotspot}
               />
             </Suspense>
           </Canvas>
@@ -641,7 +706,11 @@ export default function InteractiveForkliftViewer({
         <Loader />
 
         <div className="interactive-viewer-help">
-          Drag to rotate - Scroll to zoom - Right-drag to pan
+          {placingActive
+            ? 'Click a point on the model to place the hotspot there'
+            : adminEditMode
+              ? 'Drag a marker to reposition it - Drag to rotate - Scroll to zoom'
+              : 'Drag to rotate - Scroll to zoom - Right-drag to pan'}
         </div>
       </div>
     </section>
