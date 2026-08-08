@@ -61,26 +61,6 @@ export const equipmentUsageModules = [
       'Engine-on gauge and safety device testing',
       'Defect recognition scenarios',
     ],
-    checkpointQuestions: [
-      {
-        id: 'walk-fluid-leaks',
-        prompt: 'What should be checked during a walk-around inspection?',
-        options: ['Fluid leaks', 'Lunch schedule', 'Paint color', 'Radio volume'],
-        answer: 'Fluid leaks',
-      },
-      {
-        id: 'walk-warning-devices',
-        prompt: 'Which devices should be tested before operation?',
-        options: ['Horn and lights', 'Cup holder', 'Seat fabric', 'Dashboard color'],
-        answer: 'Horn and lights',
-      },
-      {
-        id: 'walk-tires',
-        prompt: 'Why inspect tires before operation?',
-        options: ['They affect stability and steering', 'They change the training score', 'They control the horn', 'They identify the operator'],
-        answer: 'They affect stability and steering',
-      },
-    ],
     checklist: [
       'Check for engine oil, hydraulic oil, coolant, and battery leaks.',
       'Inspect tires for damage, wear, or unsafe condition.',
@@ -133,26 +113,6 @@ export const equipmentUsageModules = [
       'Guided acceleration and braking course',
       'Steering left/right practice course',
       'Combined guided driving course',
-    ],
-    checkpointQuestions: [
-      {
-        id: 'engine-start-key',
-        prompt: 'Which key starts the engine in this simulation?',
-        options: ['E', 'W', 'S', 'A'],
-        answer: 'E',
-      },
-      {
-        id: 'accelerate-key',
-        prompt: 'Which key accelerates the forklift forward?',
-        options: ['W', 'S', 'A', 'D'],
-        answer: 'W',
-      },
-      {
-        id: 'brake-key',
-        prompt: 'Which key slows down or stops the forklift?',
-        options: ['S', 'W', 'A', 'D'],
-        answer: 'S',
-      },
     ],
     checklist: [
       'Start the engine before attempting to move.',
@@ -209,26 +169,6 @@ export const equipmentUsageModules = [
       'Shutdown sequence ordering',
       'Unsafe condition reporting decisions',
     ],
-    checkpointQuestions: [
-      {
-        id: 'post-forks',
-        prompt: 'What should be done to the forks after operation?',
-        options: ['Lower them completely', 'Leave them raised', 'Remove them', 'Paint them'],
-        answer: 'Lower them completely',
-      },
-      {
-        id: 'post-controls',
-        prompt: 'Where should controls be placed during shutdown?',
-        options: ['Neutral', 'Reverse', 'Lift position', 'Tilt position'],
-        answer: 'Neutral',
-      },
-      {
-        id: 'post-report',
-        prompt: 'What should be reported after operation?',
-        options: ['Unsafe conditions or visible damage', 'Only the weather', 'Only the operator name', 'Nothing ever'],
-        answer: 'Unsafe conditions or visible damage',
-      },
-    ],
     checklist: [
       'Park on a level surface.',
       'Lower forks completely.',
@@ -279,26 +219,6 @@ export const equipmentUsageModules = [
       'Cone-lined precision carry with live fail conditions',
       'Load limit judgment: choose a pallet within rated capacity',
     ],
-    checkpointQuestions: [
-      {
-        id: 'pallet-overload',
-        prompt: 'What happens when a forklift lifts more than its rated capacity?',
-        options: ['It can tip forward', 'It drives faster', 'Nothing changes', 'The horn sounds'],
-        answer: 'It can tip forward',
-      },
-      {
-        id: 'pallet-braking',
-        prompt: 'How should you brake while carrying a load?',
-        options: ['Gradually and early', 'As hard as possible', 'Only in reverse', 'Never brake'],
-        answer: 'Gradually and early',
-      },
-      {
-        id: 'pallet-cones',
-        prompt: 'What do traffic cones mark in a work area?',
-        options: ['Hazards and travel limits', 'Parking rewards', 'Fuel stations', 'Speed boosts'],
-        answer: 'Hazards and travel limits',
-      },
-    ],
     checklist: [
       'Check the load weight against the rated capacity before lifting.',
       'Refuse to lift a load that exceeds the rated capacity.',
@@ -334,7 +254,3 @@ export const moduleChecklists = equipmentUsageModules.reduce((checklists, module
   return checklists
 }, {})
 
-export const moduleQuizQuestions = equipmentUsageModules.reduce((questions, module) => {
-  questions[module.slug] = module.checkpointQuestions
-  return questions
-}, {})

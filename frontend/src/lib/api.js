@@ -84,6 +84,21 @@ export async function getPracticeQuestions() {
   return request('/content/practice-questions')
 }
 
+// Quizzes are scored on the server: these send the chosen options and get back
+// the score, the per-question results and the attempt the server recorded. The
+// correct answers are not in the GET payloads, so the client cannot mark its
+// own work.
+export async function submitPracticeQuiz(answers) {
+  return request('/content/practice-questions/submit', { method: 'POST', body: { answers } })
+}
+
+export async function submitModuleQuiz(moduleSlug, answers) {
+  return request(`/content/quizzes/${encodeURIComponent(moduleSlug)}/submit`, {
+    method: 'POST',
+    body: { answers },
+  })
+}
+
 export async function getChecklistCounts() {
   return request('/content/checklist-counts')
 }

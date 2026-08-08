@@ -4,8 +4,9 @@ import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
 import { getPartDetails, getParts } from './lib/api'
-import { partCategories, partsHotspots, partsPracticeQuestions } from './lib/trainingData'
-import { getPartCategories, getPracticeQuestions } from './lib/api'
+import { partCategories, partsHotspots } from './lib/trainingData'
+import { getPartCategories, getPracticeQuestions, submitPracticeQuiz } from './lib/api'
+import { hydrateProgressFromServer } from './lib/progressService'
 import './PartsIdentificationPage.css'
 
 const partsModule = {
@@ -50,14 +51,20 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
   // Categories and practice questions are DB rows the Parts tab edits; the
   // static lists are only the pre-fetch fallback.
   const [categories, setCategories] = useState(partCategories)
-  const [practiceQuestions, setPracticeQuestions] = useState(partsPracticeQuestions)
+  // No static fallback: the questions carry their answers in data/, and
+  // importing them here would ship the answer key in the bundle.
+  const [practiceQuestions, setPracticeQuestions] = useState([])
   const [partDetails, setPartDetails] = useState({})
   const [selectedPartId, setSelectedPartId] = useState(null)
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [practiceAnswers, setPracticeAnswers] = useState({})
-  const [practiceSubmitted, setPracticeSubmitted] = useState(false)
-  const { progress, summary, viewPart, savePartsPracticeAttempt } = useProgress()
+  // The server's verdict: score plus, per question, whether the choice was
+  // right and what the right answer was. Questions arrive without answers, so
+  // there is nothing to score locally.
+  const [practiceResult, setPracticeResult] = useState(null)
+  const [practiceBusy, setPracticeBusy] = useState(false)
+  const { progress, summary, viewPart } = useProgress()
 
   useEffect(() => {
     getParts().then((items) => {
@@ -76,9 +83,7 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
 
   const latestPractice = progress.parts.practiceAttempts[0]
   const viewedIds = new Set(summary.viewedParts)
-  const practiceScore = practiceQuestions.reduce((score, question) => {
-    return score + (practiceAnswers[question.id] === question.answer ? 1 : 0)
-  }, 0)
+  const practiceSubmitted = practiceResult !== null
 
   const selectPart = (hotspot) => {
     setSelectedPartId(hotspot.id)
@@ -93,14 +98,24 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
     setSelectedDetail(null)
   }
 
-  const submitPractice = () => {
-    setPracticeSubmitted(true)
-    savePartsPracticeAttempt({ score: practiceScore, total: practiceQuestions.length })
+  const submitPractice = async () => {
+    setPracticeBusy(true)
+    try {
+      const scored = await submitPracticeQuiz(practiceAnswers)
+      setPracticeResult(scored)
+      // The server recorded the attempt, so the local progress copy is
+      // refreshed before its next debounced push overwrites it.
+      await hydrateProgressFromServer().catch(() => {})
+    } catch {
+      setPracticeResult(null)
+    } finally {
+      setPracticeBusy(false)
+    }
   }
 
   const retryPractice = () => {
     setPracticeAnswers({})
-    setPracticeSubmitted(false)
+    setPracticeResult(null)
   }
 
   const completeModule = () => {
@@ -155,7 +170,7 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
       <div className="practice-list">
         {practiceQuestions.map((question) => {
           const selected = practiceAnswers[question.id]
-          const isCorrect = selected === question.answer
+          const verdict = practiceResult?.results?.[question.id]
 
           return (
             <fieldset key={question.id} className="practice-question">
@@ -172,9 +187,9 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
                   </button>
                 ))}
               </div>
-              {practiceSubmitted && (
-                <p className={isCorrect ? 'feedback correct' : 'feedback incorrect'}>
-                  {isCorrect ? 'Correct.' : `Incorrect. Correct answer: ${question.answer}.`}
+              {verdict && (
+                <p className={verdict.correct ? 'feedback correct' : 'feedback incorrect'}>
+                  {verdict.correct ? 'Correct.' : `Incorrect. Correct answer: ${verdict.correctAnswer}.`}
                 </p>
               )}
             </fieldset>
@@ -187,15 +202,19 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
           type="button"
           className="primary-action"
           onClick={submitPractice}
-          disabled={Object.keys(practiceAnswers).length < practiceQuestions.length || practiceSubmitted}
+          disabled={practiceBusy || practiceSubmitted || Object.keys(practiceAnswers).length < practiceQuestions.length}
         >
-          Submit Practice
+          {practiceBusy ? 'Submitting...' : 'Submit Practice'}
         </button>
         <button type="button" onClick={retryPractice}>
           Retry
         </button>
       </div>
-      {practiceSubmitted && <p className="task-note">Score: {practiceScore}/{practiceQuestions.length}. Click Complete Module to finish.</p>}
+      {practiceResult && (
+        <p className="task-note">
+          Score: {practiceResult.score}/{practiceResult.total}. Click Complete Module to finish.
+        </p>
+      )}
     </div>
   )
 
