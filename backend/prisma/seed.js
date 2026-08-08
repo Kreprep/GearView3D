@@ -16,6 +16,7 @@ import { buildDefaultPracticeQuestions } from '../../frontend/src/data/practiceQ
 import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
 import { buildDefaultPartDetails } from '../../frontend/src/data/partDetails.js'
 import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
+import { walkAroundViewerHotspots } from '../../frontend/src/data/viewerHotspots.js'
 
 const prisma = new PrismaClient()
 
@@ -228,6 +229,29 @@ async function seedCourses() {
   }
 }
 
+async function seedWalkAroundHotspots() {
+  for (const [index, hotspot] of walkAroundViewerHotspots.entries()) {
+    await prisma.walkAroundHotspot.upsert({
+      where: { id: hotspot.id },
+      update: {},
+      create: {
+        id: hotspot.id,
+        label: hotspot.label,
+        position: hotspot.position,
+        state: hotspot.state || 'engine-off',
+        category: hotspot.category || '',
+        inspect: hotspot.inspect || '',
+        safeFeedback: hotspot.safeFeedback || '',
+        unsafeFeedback: hotspot.unsafeFeedback || '',
+        unsafeScenarios: hotspot.unsafeScenarios || [],
+        sortOrder: index + 1,
+        published: true,
+        builtIn: true,
+      },
+    })
+  }
+}
+
 async function main() {
   await seedUsers()
   await seedEquipment()
@@ -239,6 +263,7 @@ async function main() {
   await seedChecklists()
   await seedQuizQuestions()
   await seedCourses()
+  await seedWalkAroundHotspots()
 
   const counts = {
     users: await prisma.user.count(),
@@ -251,6 +276,7 @@ async function main() {
     checklistItems: await prisma.checklistItem.count(),
     quizQuestions: await prisma.quizQuestion.count(),
     courses: await prisma.course.count(),
+    walkAroundHotspots: await prisma.walkAroundHotspot.count(),
   }
   console.log('Seed complete:', counts)
 }

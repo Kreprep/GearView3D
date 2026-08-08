@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../lib/auth.js'
 import { publishedCourse } from '../lib/courses.js'
+import { publishedHotspot } from '../lib/walkAroundHotspots.js'
 import {
   appendAttempt,
   buildAttempt,
@@ -163,6 +164,16 @@ router.get('/courses/:moduleSlug', async (req, res) => {
     orderBy: { sortOrder: 'asc' },
   })
   res.json(rows.map(publishedCourse))
+})
+
+// Module 1's 3D inspection hotspots. Unpublished ones (still being placed in
+// the admin editor) are withheld the same way unpublished courses are.
+router.get('/walkaround-hotspots', async (req, res) => {
+  const rows = await prisma.walkAroundHotspot.findMany({
+    where: { published: true },
+    orderBy: { sortOrder: 'asc' },
+  })
+  res.json(rows.map(publishedHotspot))
 })
 
 export default router

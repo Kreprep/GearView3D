@@ -151,6 +151,30 @@ model Course {
   @@index([moduleSlug, sortOrder])
 }
 
+// One of Module 1's 3D inspection hotspots, placed/dragged directly on the
+// forklift model by an admin. `position` is [x, y, z] in the same local frame
+// as the model's group in InteractiveForkliftViewer.jsx. `unsafeScenarios` is
+// an array of scenario ids matching `walkAroundDefectOverlays[].scenario` in
+// frontend/src/data/viewerHotspots.js. Follows the same published-columns +
+// `draft` pattern as Course; `builtIn` rows have a baseline there and can be
+// reset to it.
+model WalkAroundHotspot {
+  id              String   @id
+  label           String
+  position        Json
+  state           String   @default("engine-off")
+  category        String   @default("")
+  inspect         String   @default("")
+  safeFeedback    String   @default("")
+  unsafeFeedback  String   @default("")
+  unsafeScenarios Json     @default("[]")
+  sortOrder       Int      @default(0)
+  draft           Json?
+  published       Boolean  @default(false)
+  builtIn         Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}
+
 model ChecklistItem {
   id        String @id
   module    Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
