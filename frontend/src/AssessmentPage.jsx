@@ -1,17 +1,41 @@
+import { useEffect, useMemo, useState } from 'react'
 import { routes } from './lib/router'
 import { useProgress } from './hooks/useProgress'
 import PageLayout from './components/PageLayout'
 import ScopeNotice from './components/ScopeNotice'
-import { partsHotspots, trainingModules } from './lib/trainingData'
+import { getParts, getTrainingModules } from './lib/api'
 import './AssessmentPage.css'
 
-const moduleLabels = trainingModules.reduce((labels, module) => {
-  labels[module.slug] = module.title
-  return labels
-}, {})
-
+// Modules and parts are read from the API rather than data/, so an admin
+// renaming a part or editing a module title is reflected here too.
 function AssessmentPage({ moduleName, user, onLogout, onBack, onNavigate }) {
   const { summary } = useProgress()
+  const [modules, setModules] = useState([])
+  const [parts, setParts] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    Promise.all([getTrainingModules(), getParts()])
+      .then(([moduleRows, partRows]) => {
+        if (cancelled) return
+        setModules(moduleRows)
+        setParts(partRows)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const moduleLabels = useMemo(
+    () => Object.fromEntries(modules.map((module) => [module.slug, module.title])),
+    [modules],
+  )
   const latestAttempts = Object.entries(summary.quizAttempts).flatMap(([moduleSlug, attempts]) =>
     attempts.map((attempt) => ({ ...attempt, moduleSlug })),
   )
@@ -60,28 +84,40 @@ function AssessmentPage({ moduleName, user, onLogout, onBack, onNavigate }) {
         <div className="assessment-review-grid">
           <article>
             <h3>Equipment Usage Review</h3>
-            <ul>
-              {trainingModules.map((module) => {
-                const checklist = summary.checklist[module.slug]
-                const latestQuiz = summary.quizAttempts[module.slug]?.[0]
-                return (
-                  <li key={module.slug}>
-                    {module.title}: {checklist.completedCount}/{checklist.totalCount} checklist items,
-                    {' '}quiz {latestQuiz ? `${latestQuiz.score}/${latestQuiz.total}` : 'not attempted'}
-                  </li>
-                )
-              })}
-            </ul>
+            {loading ? (
+              <p>Loading modules...</p>
+            ) : (
+              <ul>
+                {modules.map((module) => {
+                  // Progress is tracked for a fixed set of module slugs, so a
+                  // module row with an unrecognised slug has no checklist.
+                  const checklist = summary.checklist[module.slug]
+                  const latestQuiz = summary.quizAttempts[module.slug]?.[0]
+                  return (
+                    <li key={module.slug}>
+                      {module.title}: {checklist ? `${checklist.completedCount}/${checklist.totalCount}` : 'no'} checklist items,
+                      {' '}quiz {latestQuiz ? `${latestQuiz.score}/${latestQuiz.total}` : 'not attempted'}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </article>
 
           <article>
             <h3>Parts Review</h3>
-            <p>{summary.viewedParts.length} of {partsHotspots.length} parts viewed.</p>
-            <ul>
-              {partsHotspots.map((part) => (
-                <li key={part.id}>{part.label}: {viewedPartSet.has(part.id) ? 'viewed' : 'not viewed'}</li>
-              ))}
-            </ul>
+            {loading ? (
+              <p>Loading parts...</p>
+            ) : (
+              <>
+                <p>{summary.viewedParts.length} of {parts.length} parts viewed.</p>
+                <ul>
+                  {parts.map((part) => (
+                    <li key={part.id}>{part.label}: {viewedPartSet.has(part.id) ? 'viewed' : 'not viewed'}</li>
+                  ))}
+                </ul>
+              </>
+            )}
           </article>
 
           <article>
