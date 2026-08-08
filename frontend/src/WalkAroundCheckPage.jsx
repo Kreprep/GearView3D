@@ -176,12 +176,17 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
   }
 
   const completeEngineOffCheck = (check) => {
+    const alreadyChecked = simulation.engineOffChecks.includes(check.id)
     const engineOffChecks = unique([...simulation.engineOffChecks, check.id])
     saveSimulation({ engineOffChecks })
 
     // The final check hands the learner over to the ignition, so point the camera
-    // there instead of leaving the next required action hidden.
-    const justCompleted = engineOffChecks.length === engineOffInspectionChecks.length && !simulation.engineStarted
+    // there instead of leaving the next required action hidden. Must only fire on
+    // the click that actually completes the list - otherwise re-clicking any
+    // already-checked card after completion keeps re-focusing the ignition marker
+    // instead of the part that was clicked.
+    const justCompleted =
+      !alreadyChecked && engineOffChecks.length === engineOffInspectionChecks.length && !simulation.engineStarted
     setFocusedHotspotId(justCompleted ? 'ignition' : check.id)
     setSelectedDetail({
       ...buildDetail(check.id, {

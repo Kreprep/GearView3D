@@ -84,7 +84,10 @@ const TIP_PIVOT_Z = 0.25
 const TIP_GRAVITY_ACCEL = 2.4
 const TIP_MAX_ANGLE = 1.15
 const OVERLOAD_TIP_HEIGHT = 0.08
-const CONE_HIT_RADIUS = 0.3
+// The 0.7m cone's real base radius, at this scene's metres/4 convention.
+// Combined with the truck's own footprint (FORKLIFT_HALF_WIDTH/LENGTH below)
+// in the exact rectangle-vs-point cone check.
+const CONE_RADIUS = 0.0375
 const CONE_MIN_HIT_SPEED = 0.05
 const CONE_FALL_SPEED = 6
 const CONE_FALL_ANGLE = 1.45
@@ -691,27 +694,31 @@ function DrivingScene({
       if (tipPivotRef.current) tipPivotRef.current.rotation.x = tip.angle
     }
 
-    // Cone collision: sample three points along the truck body against every
-    // live cone (obstacles + decoration lane/gate markers); a hit knocks the
-    // cone over and fails the attempt. Always on - a cone is a hazard however
-    // the course authored it.
+    // Cone collision: exact point-vs-oriented-rectangle test (cone position
+    // against the truck's own footprint), the same technique the wall check
+    // below uses. The old approach approximated the rectangular body as three
+    // fixed-radius circles along the centerline (BODY_SAMPLE_OFFSETS) - that
+    // overshot the body right at each sample point but left gaps directly
+    // between them, so a hit felt too generous or too strict depending on
+    // exactly where along the body the cone lined up. A hit knocks the cone
+    // over and fails the attempt. Always on - a cone is a hazard however the
+    // course authored it.
     if (liveCones.length && !failedRef.current && Math.abs(speedRef.current) > CONE_MIN_HIT_SPEED) {
       if (!coneSimRef.current) coneSimRef.current = liveCones.map(() => ({ hit: false, angle: 0, dirX: 0, dirZ: 1 }))
       const coneSims = coneSimRef.current
       for (let i = 0; i < liveCones.length && !failedRef.current; i += 1) {
         const cone = liveCones[i]
         if (coneSims[i].hit) continue
-        for (const offset of BODY_SAMPLE_OFFSETS) {
-          const px = posRef.current.x + forwardX * offset
-          const pz = posRef.current.z + forwardZ * offset
-          if (Math.hypot(cone.position[0] - px, cone.position[2] - pz) <= CONE_HIT_RADIUS) {
-            const dirX = cone.position[0] - posRef.current.x
-            const dirZ = cone.position[2] - posRef.current.z
-            const len = Math.hypot(dirX, dirZ) || 1
-            coneSims[i] = { hit: true, angle: 0, dirX: dirX / len, dirZ: dirZ / len }
-            triggerFail('cone')
-            break
-          }
+        const dx = cone.position[0] - posRef.current.x
+        const dz = cone.position[2] - posRef.current.z
+        const localRight = dx * forwardZ - dz * forwardX
+        const localForward = dx * forwardX + dz * forwardZ
+        const edgeRight = localRight - clamp(localRight, -FORKLIFT_HALF_WIDTH, FORKLIFT_HALF_WIDTH)
+        const edgeForward = localForward - clamp(localForward, -FORKLIFT_HALF_LENGTH, FORKLIFT_HALF_LENGTH)
+        if (Math.hypot(edgeRight, edgeForward) <= CONE_RADIUS) {
+          const len = Math.hypot(dx, dz) || 1
+          coneSims[i] = { hit: true, angle: 0, dirX: dx / len, dirZ: dz / len }
+          triggerFail('cone')
         }
       }
     }
