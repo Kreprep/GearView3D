@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useProgress } from '../hooks/useProgress'
-import { getModuleQuiz } from '../lib/api'
+import { getModuleQuiz, submitModuleQuiz } from '../lib/api'
+import { hydrateProgressFromServer } from '../lib/progressService'
 import './ModuleQuiz.css'
 
 function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
   // Questions come from the QuizQuestion rows the Quizzes tab edits, not from
   // data/, so an admin's edit reaches learners without a rebuild.
   const [questions, setQuestions] = useState([])
-  const { progress, saveQuizAttempt } = useProgress()
+  const { progress } = useProgress()
 
   useEffect(() => {
     let cancelled = false
@@ -26,21 +27,32 @@ function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
   }, [moduleSlug])
 
   const [answers, setAnswers] = useState({})
-  const [submitted, setSubmitted] = useState(false)
+  // `result` is the server's verdict: it holds the score and, per question,
+  // whether the choice was right and what the right answer was. There is no
+  // local score, because the questions arrive without their answers.
+  const [result, setResult] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const submitted = result !== null
   const latestAttempt = progress.quizzes[moduleSlug]?.[0]
-  const score = useMemo(
-    () => questions.reduce((total, question) => total + (answers[question.id] === question.answer ? 1 : 0), 0),
-    [answers, questions],
-  )
 
-  const submitQuiz = () => {
-    setSubmitted(true)
-    saveQuizAttempt(moduleSlug, { score, total: questions.length })
+  const submitQuiz = async () => {
+    setBusy(true)
+    try {
+      const scored = await submitModuleQuiz(moduleSlug, answers)
+      setResult(scored)
+      // The server wrote the attempt into the stored progress document, so the
+      // local copy is refreshed before its next debounced push overwrites it.
+      await hydrateProgressFromServer().catch(() => {})
+    } catch {
+      setResult(null)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const retryQuiz = () => {
     setAnswers({})
-    setSubmitted(false)
+    setResult(null)
   }
 
   if (questions.length === 0) {
@@ -67,7 +79,7 @@ function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
       <div className="quiz-question-list">
         {questions.map((question) => {
           const selected = answers[question.id]
-          const isCorrect = selected === question.answer
+          const verdict = result?.results?.[question.id]
 
           return (
             <fieldset key={question.id} className="quiz-question">
@@ -84,9 +96,9 @@ function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
                   </button>
                 ))}
               </div>
-              {submitted && (
-                <p className={isCorrect ? 'quiz-feedback correct' : 'quiz-feedback incorrect'}>
-                  {isCorrect ? 'Correct.' : `Incorrect. Correct answer: ${question.answer}.`}
+              {verdict && (
+                <p className={verdict.correct ? 'quiz-feedback correct' : 'quiz-feedback incorrect'}>
+                  {verdict.correct ? 'Correct.' : `Incorrect. Correct answer: ${verdict.correctAnswer}.`}
                 </p>
               )}
             </fieldset>
@@ -99,18 +111,18 @@ function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
           type="button"
           className="quiz-submit"
           onClick={submitQuiz}
-          disabled={submitted || Object.keys(answers).length < questions.length}
+          disabled={busy || submitted || Object.keys(answers).length < questions.length}
         >
-          Submit Quiz
+          {busy ? 'Submitting...' : 'Submit Quiz'}
         </button>
         <button type="button" onClick={retryQuiz}>
           Retry
         </button>
       </div>
 
-      {submitted && (
+      {result && (
         <div className="quiz-result">
-          Result: {score}/{questions.length} ({Math.round((score / questions.length) * 100)}%)
+          Result: {result.score}/{result.total} ({result.percentage}%)
         </div>
       )}
     </section>

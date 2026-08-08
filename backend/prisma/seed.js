@@ -7,14 +7,13 @@ import { PrismaClient } from '@prisma/client'
 import {
   allEquipment,
   moduleChecklists,
-  moduleQuizQuestions,
   trainingModules,
 } from '../../frontend/src/data/trainingModules.js'
-import {
-  buildDefaultPartCategories,
-  buildDefaultPracticeQuestions,
-  partsHotspots,
-} from '../../frontend/src/data/partsData.js'
+import { buildDefaultPartCategories, partsHotspots } from '../../frontend/src/data/partsData.js'
+// Quiz and practice answers live in their own files so the frontend bundle
+// never imports them; the seed is the only consumer.
+import { buildDefaultPracticeQuestions } from '../../frontend/src/data/practiceQuestions.js'
+import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
 import { buildDefaultPartDetails } from '../../frontend/src/data/partDetails.js'
 import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
 

@@ -1,6 +1,14 @@
 import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
+import { requireAuth } from '../lib/auth.js'
 import { publishedCourse } from '../lib/courses.js'
+import {
+  appendAttempt,
+  buildAttempt,
+  intoModuleQuiz,
+  intoPartsPractice,
+  scoreAnswers,
+} from '../lib/grading.js'
 
 const router = Router()
 
@@ -41,12 +49,27 @@ router.get('/part-categories', async (req, res) => {
   res.json(categories)
 })
 
+// `answer` is deliberately absent: the correct choice stays on the server until
+// the learner submits, and the submit endpoint below does the scoring.
 router.get('/practice-questions', async (req, res) => {
   const questions = await prisma.practiceQuestion.findMany({
     orderBy: { sortOrder: 'asc' },
-    select: { id: true, prompt: true, options: true, answer: true, sortOrder: true },
+    select: { id: true, prompt: true, options: true, sortOrder: true },
   })
   res.json(questions)
+})
+
+router.post('/practice-questions/submit', requireAuth, async (req, res) => {
+  const questions = await prisma.practiceQuestion.findMany({
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true, answer: true },
+  })
+
+  const scored = scoreAnswers(questions, req.body?.answers)
+  const attempt = buildAttempt(scored)
+  await appendAttempt(req.user.id, attempt, intoPartsPractice)
+
+  res.json({ ...scored, attempt })
 })
 
 // Returned as an object keyed by id, matching the shape the frontend uses.
@@ -101,15 +124,34 @@ router.get('/quizzes/:moduleSlug', async (req, res) => {
     orderBy: { sortOrder: 'asc' },
   })
 
+  // As with the practice quiz, `answer` is withheld until submission.
   res.json(questions.map((question) => ({
     id: question.id,
     prompt: question.prompt,
-    answer: question.answer,
     options: (question.options || [])
       .slice()
       .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
       .map((option) => option.text),
   })))
+})
+
+router.post('/quizzes/:moduleSlug/submit', requireAuth, async (req, res) => {
+  const module = await prisma.module.findUnique({ where: { slug: req.params.moduleSlug } })
+  if (!module) {
+    return res.status(404).json({ error: 'Unknown module' })
+  }
+
+  const questions = await prisma.quizQuestion.findMany({
+    where: { moduleId: module.id },
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true, answer: true },
+  })
+
+  const scored = scoreAnswers(questions, req.body?.answers)
+  const attempt = buildAttempt(scored)
+  await appendAttempt(req.user.id, attempt, intoModuleQuiz(req.params.moduleSlug))
+
+  res.json({ ...scored, attempt })
 })
 
 // Published driving-simulation steps for one module, in step order. Unpublished

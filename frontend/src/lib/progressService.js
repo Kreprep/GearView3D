@@ -213,44 +213,6 @@ export function markPartViewed(partId) {
   })
 }
 
-export function recordPartsPracticeAttempt({ score, total }) {
-  const progress = getStoredProgress()
-  const attempt = {
-    id: crypto.randomUUID(),
-    score,
-    total,
-    percentage: total ? Math.round((score / total) * 100) : 0,
-    attemptedAt: new Date().toISOString(),
-  }
-
-  return persist({
-    ...progress,
-    parts: {
-      ...progress.parts,
-      practiceAttempts: [attempt, ...progress.parts.practiceAttempts],
-    },
-  })
-}
-
-export function recordQuizAttempt(moduleSlug, { score, total }) {
-  const progress = getStoredProgress()
-  const attempt = {
-    id: crypto.randomUUID(),
-    score,
-    total,
-    percentage: total ? Math.round((score / total) * 100) : 0,
-    attemptedAt: new Date().toISOString(),
-  }
-
-  return persist({
-    ...progress,
-    quizzes: {
-      ...progress.quizzes,
-      [moduleSlug]: [attempt, ...(progress.quizzes[moduleSlug] || [])],
-    },
-  })
-}
-
 export function setSimulationProgress(moduleSlug, simulationProgress) {
   const progress = getStoredProgress()
 

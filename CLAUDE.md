@@ -64,6 +64,10 @@ Row columns are the *published* version; `draft` holds the admin's unpublished e
 
 A row's `id` doubles as the step id learner progress is keyed on; renaming one orphans that progress, which is why the dashboard does not offer it. Briefing and summary ids are namespaced (`load-handling-briefing`) because every module has one and `id` is the primary key; driving and activity ids stay bare.
 
+**Quizzes are graded on the server.** `GET /api/content/quizzes/:slug` and `/api/content/practice-questions` deliberately omit `answer`; the client posts its choices to the matching `/submit` endpoint, `lib/grading.js` scores them, writes the attempt into the learner's `ProgressSnapshot`, and returns the score plus per-question feedback. The client then calls `hydrateProgressFromServer()` so its next debounced push carries the attempt instead of overwriting it. There is no client-side scoring left — `recordQuizAttempt` / `recordPartsPracticeAttempt` were removed rather than left unused.
+
+Because the pages import `equipmentUsageModules` and `partsHotspots`, anything nested in those files ships in the browser bundle. The answer keys therefore live in **`data/moduleQuizzes.js`** and **`data/practiceQuestions.js`**, which only `prisma/seed.js` imports. Keep it that way: re-exporting either through `lib/trainingData.js`, or adding a static fallback that imports them, puts the answers back in the bundle. `npm run build` then `grep -rl "<a known answer>" dist/assets/*.js` is the check.
+
 **Progress** is per-user in the DB (`ProgressSnapshot`, one JSON document per user, same shape as the old localStorage copy). `lib/progressService.js` still keeps localStorage (`gearview_progress_v1`) as the synchronous read source: it hydrates from `GET /api/progress` on login/session restore (`hydrateProgressFromServer()`, called in `App.jsx`), pushes debounced `PUT /api/progress` on every change, and clears only the local copy on logout. Changes dispatch a `gearview-progress-change` custom event; `hooks/useProgress.js` subscribes to keep React state in sync.
 
 ### Routing — hand-rolled, no react-router

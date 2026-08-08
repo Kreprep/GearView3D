@@ -3,8 +3,6 @@ import {
   getProgressSummary,
   getStoredProgress,
   markPartViewed,
-  recordPartsPracticeAttempt,
-  recordQuizAttempt,
   resetStoredProgress,
   setChecklistProgress,
   setSimulationProgress,
@@ -30,14 +28,6 @@ export function useProgress() {
     setProgress(markPartViewed(partId))
   }, [])
 
-  const saveQuizAttempt = useCallback((moduleSlug, attempt) => {
-    setProgress(recordQuizAttempt(moduleSlug, attempt))
-  }, [])
-
-  const savePartsPracticeAttempt = useCallback((attempt) => {
-    setProgress(recordPartsPracticeAttempt(attempt))
-  }, [])
-
   const updateSimulation = useCallback((moduleSlug, simulationProgress) => {
     setProgress(setSimulationProgress(moduleSlug, simulationProgress))
   }, [])
@@ -52,8 +42,6 @@ export function useProgress() {
     summary,
     updateChecklist,
     viewPart,
-    saveQuizAttempt,
-    savePartsPracticeAttempt,
     updateSimulation,
     resetProgress,
   }
