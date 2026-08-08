@@ -99,6 +99,39 @@
   color: #ffffff;
 }
 
+.admin-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 32px 6px 52px;
+  border-bottom: 1px solid #dbe3ef;
+  background: #ffffff;
+}
+
+.admin-subtabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.admin-subtabs button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.admin-subtabs button.active {
+  background: #ecfeff;
+  color: #0e7490;
+}
+
 .admin-alert {
   width: min(1680px, 100%);
   margin: 18px auto 0;
@@ -397,6 +430,11 @@
     padding-left: 24px;
     padding-right: 24px;
   }
+
+  .admin-subtabs {
+    padding-left: 40px;
+    padding-right: 24px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -430,6 +468,11 @@
   .admin-tabs,
   .admin-alert,
   .admin-save-message {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .admin-subtabs {
     padding-left: 18px;
     padding-right: 18px;
   }

@@ -10,6 +10,7 @@ import {
   MapPin,
   Route,
   TrendingUp,
+  Truck,
   Users as UsersIcon,
   Wrench,
 } from 'lucide-react'
@@ -39,8 +40,11 @@ import {
 import { routes } from './lib/router'
 import './AdminDashboard.css'
 
-const adminTabs = [
-  [routes.admin, 'Overview', LayoutGrid],
+// Every one of these is Forklift-only content today (the schema has no
+// per-equipment scoping yet - Backhoe/Crane are still non-clickable catalog
+// cards), but grouping them under "Forklift" now previews the structure a
+// second equipment type would need later, rather than a flat tab row.
+const forkliftContentTabs = [
   [routes.adminModules, 'Modules', Layers],
   [routes.adminParts, 'Parts', Wrench],
   [routes.adminPractice, 'Practice Quiz', HelpCircle],
@@ -48,6 +52,9 @@ const adminTabs = [
   [routes.adminHotspots, 'Walk-Around Hotspots', MapPin],
   [routes.adminChecklists, 'Checklists', ListChecks],
   [routes.adminQuizzes, 'Quizzes', FileQuestion],
+]
+
+const trailingTabs = [
   [routes.adminUsers, 'Users', UsersIcon],
   [routes.adminReports, 'Reports', BarChart3],
 ]
@@ -116,6 +123,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [loadedAt] = useState(() => Date.now())
 
   const activePath = path || routes.admin
+  const isForkliftSection = forkliftContentTabs.some(([tabPath]) => tabPath === activePath)
   const modulesById = useMemo(() => {
     return content.modules.reduce((map, module) => ({ ...map, [module.id]: module }), {})
   }, [content.modules])
@@ -397,7 +405,21 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
       </header>
 
       <nav className="admin-tabs" aria-label="Admin sections">
-        {adminTabs.map(([tabPath, label, Icon]) => (
+        <button
+          className={activePath === routes.admin ? 'active' : ''}
+          onClick={() => onNavigate(routes.admin)}
+        >
+          <LayoutGrid size={16} />
+          Overview
+        </button>
+        <button
+          className={isForkliftSection ? 'active' : ''}
+          onClick={() => onNavigate(routes.adminModules)}
+        >
+          <Truck size={16} />
+          Forklift
+        </button>
+        {trailingTabs.map(([tabPath, label, Icon]) => (
           <button
             key={tabPath}
             className={activePath === tabPath ? 'active' : ''}
@@ -408,6 +430,21 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           </button>
         ))}
       </nav>
+
+      {isForkliftSection && (
+        <nav className="admin-subtabs" aria-label="Forklift content sections">
+          {forkliftContentTabs.map(([tabPath, label, Icon]) => (
+            <button
+              key={tabPath}
+              className={activePath === tabPath ? 'active' : ''}
+              onClick={() => onNavigate(tabPath)}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {content.localOnly && (
         <div className="admin-alert">
