@@ -1,0 +1,61 @@
+# GearView3D stack: PostgreSQL + API + nginx-served frontend.
+#
+#   cp .env.example .env     # fill in POSTGRES_PASSWORD and JWT_SECRET
+#   docker compose up -d --build
+#
+# Only the web container publishes a port. Point your reverse proxy at
+# WEB_PORT on the Docker host; it forwards /api to the backend internally, so
+# there is one upstream to configure rather than two.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gearview}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-gearview3d}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-gearview} -d ${POSTGRES_DB:-gearview3d}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      # Waits for the healthcheck, not just for the container to exist, so the
+      # entrypoint's `prisma migrate deploy` never races the database.
+      postgres:
+        condition: service_healthy
+    environment:
+      # The password is percent-encoded by whoever writes .env - the same rule
+      # as backend/.env.example. Avoid @ : / ? # in it and this stays simple.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-gearview}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gearview3d}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      PORT: 4000
+      # Set true to replay prisma/content-export.json over the database on boot.
+      IMPORT_CONTENT_ON_BOOT: ${IMPORT_CONTENT_ON_BOOT:-false}
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\"http://localhost:4000/api/health\").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '${WEB_PORT:-8080}:80'
+
+volumes:
+  pgdata:

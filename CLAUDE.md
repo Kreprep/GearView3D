@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 GearView3D is a thesis prototype for browser-based forklift familiarization training. It supports learner modules, guided checklists, parts identification, progress tracking, quizzes, final assessment review, and local admin content management. It is a preparatory learning tool, not a certification simulator (no TESDA certification implied).
 
-**Full-stack:** `frontend/` (React + Vite) plus `backend/` (Express 5 + Prisma 6 + PostgreSQL, plain ESM Node, no TypeScript). Both must run for the app to work; the Vite dev server proxies `/api` to the backend (port 4000, see `vite.config.js`). Deployment is planned as Docker + reverse proxy later — not set up yet.
+**Full-stack:** `frontend/` (React + Vite) plus `backend/` (Express 5 + Prisma 6 + PostgreSQL, plain ESM Node, no TypeScript). Both must run for the app to work; the Vite dev server proxies `/api` to the backend (port 4000, see `vite.config.js`).
+
+**Deployment** is `docker-compose.yml` at the repo root — postgres + backend + an nginx container serving the built frontend. Both images build from the **repo root**, not their own folder, because `prisma/seed.js` imports `frontend/src/data/*.js` directly. In production nginx does what the Vite proxy does in development (`frontend/nginx.conf`: `/api` to the backend, everything else falling back to `index.html` for the pushState router), so a reverse proxy in front only needs one upstream. `backend/docker-entrypoint.sh` runs `prisma migrate deploy` (never `migrate dev`) then the seed on every boot.
 
 ## Commands
 
@@ -30,6 +32,8 @@ npm run studio           # Prisma Studio DB browser
 ```
 
 There is no test runner configured in either package.
+
+**Content export/import** (`backend/scripts/`, `npm run content:export` / `content:import`) moves admin-edited rows between databases as `backend/prisma/content-export.json` — the only way admin edits reach another machine, since they live in the DB and not in the repo. `contentTables.js` lists the tables and the order they import in (FK-safe); `User` and `ProgressSnapshot` are deliberately excluded, as is `Course.draft`. The import **overwrites**, which is the one place that differs from the create-if-missing seed. Adding a content table means adding it to `contentTables.js`, in dependency order.
 
 ### Demo accounts (seeded)
 - Admin: `admin@mail.com` / `admin123`

@@ -1,0 +1,19 @@
+# Both images build from the repo root, so this one file covers both.
+node_modules
+**/node_modules
+frontend/dist
+backend/dist
+
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+.claude
+.playwright-mcp
+.vscode
+.idea
+
+*.log
+npm-debug.log*
