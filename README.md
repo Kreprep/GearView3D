@@ -101,7 +101,31 @@ Admin routes (log in as the admin account):
 - `/admin/modules`, `/admin/parts`, `/admin/checklists`, `/admin/quizzes` — edit content (part detail cards support Markdown descriptions and reference images)
 - `/admin/users`, `/admin/reports` — learners, progress, CSV export
 
+- `/admin/courses` — the step and 3D map editor for Modules 2-4
+
 Admin edits are saved in PostgreSQL through the API and are visible to everyone using the same backend.
+
+### Sharing admin edits with someone else
+
+Edits live in **your database**, not in the repo, so `git push` does not carry them. To hand your content to a teammate (or to load it onto the server), export it to a file that *is* tracked:
+
+```bash
+cd backend
+npm run content:export          # writes prisma/content-export.json
+git add prisma/content-export.json && git commit -m "chore: update course content"
+```
+
+They pull, then apply it:
+
+```bash
+cd backend
+npm run content:import          # updates and creates
+npm run content:import -- --prune   # also deletes steps missing from the file
+```
+
+Unlike `npm run seed`, the import **overwrites** existing rows — that is how one person's edits reach everyone. It covers equipment, modules, parts, part details, courses, checklists and quizzes; it never touches user accounts or learner progress, and unpublished drafts stay local to whoever made them.
+
+Once everyone is pointed at one deployed backend (see below), none of this is needed — edits are shared the moment you press Publish.
 
 ## Useful Commands
 
@@ -111,6 +135,8 @@ Admin edits are saved in PostgreSQL through the API and are visible to everyone 
 | `backend/` | `npm run seed` | (re)load seed content into the database |
 | `backend/` | `npx prisma migrate dev` | apply schema changes to your database |
 | `backend/` | `npm run studio` | open Prisma Studio, a GUI to browse the database |
+| `backend/` | `npm run content:export` | write all admin-editable content to `prisma/content-export.json` |
+| `backend/` | `npm run content:import` | apply that file to this database (overwrites) |
 | `frontend/` | `npm run dev` | start the UI dev server |
 | `frontend/` | `npm run build` | production build |
 | `frontend/` | `npm run lint` | ESLint |
@@ -123,6 +149,31 @@ Admin edits are saved in PostgreSQL through the API and are visible to everyone 
 - **Login fails with correct demo credentials** → the seed hasn't run yet: `cd backend && npm run seed`.
 - **Port 4000 already in use** → change `PORT` in `backend/.env`, and update the proxy target in `frontend/vite.config.js` to match.
 
-## Deployment (planned)
+## Deployment (Docker)
 
-The app will later be packaged into Docker containers and hosted behind a reverse proxy. Not needed for local development.
+Not needed for local development — the two `npm run dev` servers above are still the way to work on the app.
+
+`docker-compose.yml` runs three containers: PostgreSQL, the API, and nginx serving the built frontend. **nginx also proxies `/api` to the API container**, taking over the job `frontend/vite.config.js` does in development, so your reverse proxy has a single upstream to point at.
+
+```bash
+cp .env.example .env      # set POSTGRES_PASSWORD and JWT_SECRET
+docker compose up -d --build
+```
+
+Then point your reverse proxy at `WEB_PORT` (default `8080`) on the Docker host. Only the web container publishes a port; Postgres and the API stay on the internal network.
+
+On every boot the API container applies pending migrations with `prisma migrate deploy` (never `migrate dev`, which is interactive) and runs the seed, which is create-if-missing and so never overwrites content edited through the dashboard.
+
+**Loading your local content onto the server**, once, after the first `up`:
+
+```bash
+docker compose exec backend npm run content:import
+```
+
+Or set `IMPORT_CONTENT_ON_BOOT=true` in `.env` to replay `prisma/content-export.json` on every restart. Leave it `false` normally — otherwise a restart silently discards edits made on the server.
+
+Notes:
+
+- **Change the demo passwords** before exposing this. `admin@mail.com` / `admin123` is fine on localhost, not behind a public proxy.
+- The database lives in the `pgdata` volume. `docker compose down` keeps it; `docker compose down -v` deletes it.
+- Both images build from the repo root, because the seed imports the frontend's data files directly.
