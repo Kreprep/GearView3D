@@ -10,9 +10,9 @@
 }
 
 .course-module-tabs button.is-active {
-  background: #1d4ed8;
+  background: #0891b2;
   color: #ffffff;
-  border-color: #1d4ed8;
+  border-color: #06b6d4;
 }
 
 .course-admin-body {
