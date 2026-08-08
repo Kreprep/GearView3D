@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ScopeNotice from './components/ScopeNotice'
+import { useModuleRecord } from './hooks/useModuleRecord'
 import { useProgress } from './hooks/useProgress'
 import {
   engineOnDeviceEffects,
@@ -86,7 +87,7 @@ function calculateSimulationState(nextState) {
 
 function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
-  const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
+  const module = useModuleRecord(moduleSlug, equipmentUsageModules.find((item) => item.slug === moduleSlug))
   const steps = moduleScenarioSteps[moduleSlug]
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}

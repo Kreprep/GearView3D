@@ -10,12 +10,22 @@
 import { courseGoalType } from '../lib/courseGoals.js'
 import { drivingCourses } from './drivingCourse.js'
 import { moduleScenarioSteps } from './moduleScenarios.js'
+import {
+  postOperationReportPrompts,
+  shutdownDisplayOrder,
+  shutdownSequenceActions,
+} from './postOperationScenarios.js'
 import { equipmentUsageModules } from './trainingModules.js'
 
 // Walk-around-check is deliberately absent: it is still a fully hardcoded page.
 export const courseModuleSlugs = ['load-handling', 'post-operation', 'pallet-testing']
 
-export const COURSE_KINDS = ['briefing', 'driving', 'activity', 'summary']
+export const COURSE_KINDS = ['briefing', 'driving', 'activity', 'checklist', 'quiz', 'summary']
+
+// `checklist` and `quiz` steps render the module's ChecklistItem / QuizQuestion
+// rows, which are edited in their own dashboard tabs rather than on the step.
+// The step only carries its intro copy.
+export const MODULE_ROW_KINDS = ['checklist', 'quiz']
 
 // Extra stat rows a summary step can show under its per-step grid. The keys are
 // read straight off the stored simulation state, so only counters the module
@@ -110,9 +120,37 @@ export function emptyCourseContent(kind) {
       }
     case 'activity':
       return { activityId: '' }
+    case 'checklist':
+      return { body: '', completeMessage: 'Checklist complete.' }
+    case 'quiz':
+      return { body: '', passMessage: 'Quiz submitted.' }
     default:
       return null
   }
+}
+
+// The cards, answers and feedback of the two built-in activities. The screens
+// stay code (an admin cannot invent a new activityId) but everything they read
+// is content, so wording and even the correct order are editable.
+function activityContent(stepId) {
+  if (stepId === 'shutdown-sequence') {
+    return {
+      activityId: stepId,
+      // `order` is the sequence the learner must pick; `displayOrder` is the
+      // fixed scrambled order the cards are shown in, so retries look the same.
+      actions: shutdownSequenceActions.map((action) => ({ ...action })),
+      displayOrder: [...shutdownDisplayOrder],
+    }
+  }
+
+  if (stepId === 'reporting') {
+    return {
+      activityId: stepId,
+      prompts: postOperationReportPrompts.map((prompt) => ({ ...prompt })),
+    }
+  }
+
+  return { activityId: stepId }
 }
 
 // The centre-panel content of each module's briefing. Module 2 shows the
@@ -230,7 +268,7 @@ function stepContent(moduleSlug, stepId, kind) {
   }
 
   if (kind === 'activity') {
-    return { activityId: stepId }
+    return activityContent(stepId)
   }
 
   return null

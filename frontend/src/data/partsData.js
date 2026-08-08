@@ -118,6 +118,24 @@ export const partCategories = [
   'Safety and Identification',
 ]
 
+// Seed rows for the PartCategory table. The id is the value stored on
+// Part.category, so it stays the category's original name even if an admin
+// later renames the label.
+export function buildDefaultPartCategories() {
+  return partCategories.map((label, index) => ({ id: label, label, sortOrder: index + 1 }))
+}
+
+// Seed rows for the PracticeQuestion table.
+export function buildDefaultPracticeQuestions() {
+  return partsPracticeQuestions.map((question, index) => ({
+    id: question.id,
+    prompt: question.prompt,
+    options: question.options,
+    answer: question.answer,
+    sortOrder: index + 1,
+  }))
+}
+
 export const partsPracticeQuestions = [
   {
     id: 'select-capacity-plate',

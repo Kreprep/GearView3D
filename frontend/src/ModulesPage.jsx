@@ -6,25 +6,26 @@ import { getEquipment } from './lib/api'
 import { routes } from './lib/router'
 import './ModulesPage.css'
 
-const comingSoonEquipment = [
-  { id: 'backhoe', title: 'Backhoe Loader', description: 'Heavy equipment training model. Coming soon.' },
-  { id: 'crane', title: 'Mobile Crane', description: 'Heavy equipment training model. Coming soon.' },
-]
-
 function ModulesPage({ user, onLogout, onNavigate }) {
-  const [modules, setModules] = useState([])
+  const [equipment, setEquipment] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getEquipment().then(setModules).finally(() => setLoading(false))
+    getEquipment().then(setEquipment).finally(() => setLoading(false))
   }, [])
+
+  // `available` decides which card a row renders as: a link into training, or
+  // a non-interactive "Coming Soon" placeholder. Both are Equipment rows now,
+  // so adding a future machine is a dashboard edit rather than a code change.
+  const modules = equipment.filter((item) => item.available !== false)
+  const comingSoonEquipment = equipment.filter((item) => item.available === false)
 
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
       <section className="module-browser">
         <ScopeNotice />
         <div className="catalog-toolbar">
-          <span>{modules.length} available model</span>
+          <span>{modules.length} available model{modules.length === 1 ? '' : 's'}</span>
         </div>
 
         <div className="modules-grid">

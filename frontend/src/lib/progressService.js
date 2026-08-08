@@ -1,5 +1,6 @@
 import { moduleChecklists, partsHotspots } from './trainingData'
 import {
+  getChecklistCounts as fetchChecklistCounts,
   getParts as fetchParts,
   getProgress as fetchServerProgress,
   saveProgress as pushServerProgress,
@@ -7,6 +8,7 @@ import {
 
 const STORAGE_KEY = 'gearview_progress_v1'
 const PARTS_COUNT_KEY = 'gearview_parts_count_v1'
+const CHECKLIST_COUNTS_KEY = 'gearview_checklist_counts_v1'
 const CHANGE_EVENT = 'gearview-progress-change'
 const SERVER_PUSH_DELAY_MS = 800
 
@@ -70,6 +72,35 @@ export async function hydratePartsCount() {
 
 export function getPartsCount() {
   return partsCount
+}
+
+// How many checklist items each module has, keyed by slug. Cached for the same
+// reason as partsCount: getChecklistCompletion is synchronous.
+let checklistCounts = readCachedChecklistCounts()
+
+function readCachedChecklistCounts() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(CHECKLIST_COUNTS_KEY))
+    return cached && typeof cached === 'object' ? cached : null
+  } catch {
+    return null
+  }
+}
+
+export async function hydrateChecklistCounts() {
+  const counts = await fetchChecklistCounts()
+  if (!counts || typeof counts !== 'object') return
+
+  checklistCounts = counts
+  localStorage.setItem(CHECKLIST_COUNTS_KEY, JSON.stringify(counts))
+  notify()
+}
+
+// Falls back to the seeded list only while nothing has been fetched yet - not
+// per slug, or a module whose items an admin deleted would keep the old total.
+function checklistTotal(moduleSlug) {
+  if (checklistCounts) return checklistCounts[moduleSlug] || 0
+  return (moduleChecklists[moduleSlug] || []).length
 }
 
 const equipmentModuleSlugs = ['walk-around-check', 'load-handling', 'post-operation', 'pallet-testing']
@@ -237,14 +268,17 @@ export function setSimulationProgress(moduleSlug, simulationProgress) {
 }
 
 export function getChecklistCompletion(progress, moduleSlug) {
-  const checklist = moduleChecklists[moduleSlug] || []
+  const totalCount = checklistTotal(moduleSlug)
   const completedItems = progress.checklists[moduleSlug]?.completedItems || []
+  // Items are stored by their text, so one an admin edited or deleted lingers
+  // in the saved list; clamped so it cannot report more than the module has.
+  const completedCount = Math.min(completedItems.length, totalCount)
 
   return {
     completedItems,
-    completedCount: completedItems.length,
-    totalCount: checklist.length,
-    percentage: checklist.length ? Math.round((completedItems.length / checklist.length) * 100) : 0,
+    completedCount,
+    totalCount,
+    percentage: totalCount ? Math.round((completedCount / totalCount) * 100) : 0,
   }
 }
 

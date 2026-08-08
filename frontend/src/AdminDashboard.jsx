@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import CourseAdmin from './components/admin/CourseAdmin'
+import PracticeQuizAdmin from './components/admin/PracticeQuizAdmin'
 import {
   adminDeleteChecklistItem,
   adminDeleteModule,
   adminDeletePart,
   adminDeleteQuizQuestion,
   adminListContent,
+  adminPublishPart,
+  adminPublishPartDetail,
+  adminRevertPart,
+  adminRevertPartDetail,
   adminUpdateChecklistItem,
   adminUpdateEquipment,
   adminUpdateModule,
@@ -20,12 +25,22 @@ const adminTabs = [
   [routes.admin, 'Overview'],
   [routes.adminModules, 'Modules'],
   [routes.adminParts, 'Parts'],
+  [routes.adminPractice, 'Practice Quiz'],
   [routes.adminCourses, 'Courses'],
   [routes.adminChecklists, 'Checklists'],
   [routes.adminQuizzes, 'Quizzes'],
   [routes.adminUsers, 'Users'],
   [routes.adminReports, 'Reports'],
 ]
+
+// Parts, part details and practice questions store the published row in their
+// columns and the admin's pending edit in `draft`. The dashboard always edits
+// the draft when there is one, so reopening a row shows the work in progress
+// rather than the older published values.
+function editableRow(row) {
+  if (!row) return row
+  return row.draft ? { ...row, ...row.draft } : row
+}
 
 function downloadCsv(filename, rows) {
   const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(',')).join('\n')
@@ -91,9 +106,9 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   // Selecting a part also loads its detail-card entry (image + markdown
   // description) so both are edited and saved together.
   const selectPartForEditing = (part) => {
-    setSelectedPart(part)
+    setSelectedPart(editableRow(part))
     setSelectedDetail(
-      content.partDetails[part.id] || {
+      editableRow(content.partDetails[part.id]) || {
         id: part.id,
         title: part.label,
         subtitle: part.category || '',
@@ -105,31 +120,78 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
 
   const selectDetailForEditing = (detail) => {
     setSelectedPart(null)
-    setSelectedDetail(detail)
+    setSelectedDetail(editableRow(detail))
+  }
+
+  // Publish and discard work off the selected ids rather than off the `draft`
+  // in state: Publish saves first, and that save has not landed in state by the
+  // time this runs. The API answers 400 when there is nothing pending, which is
+  // the expected case for whichever of the two was not edited.
+  const publishPartAndDetail = async () => {
+    let published = false
+
+    if (selectedPart) {
+      const result = await adminPublishPart(selectedPart.id).catch(() => null)
+      if (result) {
+        replacePart(result.part)
+        published = true
+      }
+    }
+    if (selectedDetail) {
+      const result = await adminPublishPartDetail(selectedDetail.id).catch(() => null)
+      if (result) {
+        replaceDetail(result.detail)
+        published = true
+      }
+    }
+
+    refreshMessage(published ? 'Published - learners see these changes now.' : 'Nothing to publish.')
+  }
+
+  const revertPartAndDetail = async () => {
+    if (!window.confirm('Discard the unpublished changes and go back to the published version?')) return
+
+    if (selectedPart) {
+      const result = await adminRevertPart(selectedPart.id).catch(() => null)
+      if (result) replacePart(result.part)
+    }
+    if (selectedDetail) {
+      const result = await adminRevertPartDetail(selectedDetail.id).catch(() => null)
+      if (result) replaceDetail(result.detail)
+    }
+    refreshMessage('Draft discarded.')
+  }
+
+  const replacePart = (part) => {
+    setContent((current) => ({
+      ...current,
+      parts: current.parts.map((entry) => (entry.id === part.id ? part : entry)),
+    }))
+    setSelectedPart(editableRow(part))
+  }
+
+  const replaceDetail = (detail) => {
+    setContent((current) => ({
+      ...current,
+      partDetails: { ...current.partDetails, [detail.id]: detail },
+    }))
+    setSelectedDetail(editableRow(detail))
   }
 
   const handleSaveDetail = async () => {
     if (!selectedDetail) return null
     const result = await adminUpdatePartDetail(selectedDetail.id, selectedDetail)
-    setContent((current) => ({
-      ...current,
-      partDetails: { ...current.partDetails, [selectedDetail.id]: result.detail },
-    }))
-    setSelectedDetail(result.detail)
+    replaceDetail(result.detail)
     return result.detail
   }
 
   const handleSavePart = async () => {
     if (selectedPart) {
       const result = await adminUpdatePart(selectedPart.id, selectedPart)
-      setContent((current) => ({
-        ...current,
-        parts: current.parts.map((part) => (part.id === selectedPart.id ? result.part : part)),
-      }))
-      setSelectedPart(result.part)
+      replacePart(result.part)
     }
     await handleSaveDetail()
-    refreshMessage('Part changes saved.')
+    refreshMessage('Draft saved. Publish to show it to learners.')
   }
 
   const handleDeletePart = async (partId) => {
@@ -262,12 +324,33 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         <main className="admin-grid">
           <section className="admin-panel admin-editor">
             <h2>Equipment Card</h2>
-            <p className="admin-panel-note">Controls the catalog card on the home screen (image, title, description).</p>
+            <p className="admin-panel-note">Controls the catalog cards on the home screen (image, title, description, availability).</p>
+            <div className="admin-row-actions">
+              {content.equipment.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={editingEquipment?.id === item.id ? 'admin-save' : ''}
+                  onClick={() => setEditingEquipment(item)}
+                >
+                  {item.title}
+                </button>
+              ))}
+            </div>
             {editingEquipment ? (
               <>
                 <label>Title<input value={editingEquipment.title} onChange={(event) => setEditingEquipment({ ...editingEquipment, title: event.target.value })} /></label>
                 <label>Description<textarea value={editingEquipment.description} onChange={(event) => setEditingEquipment({ ...editingEquipment, description: event.target.value })} /></label>
                 <label>Image URL<input value={editingEquipment.imageUrl || ''} onChange={(event) => setEditingEquipment({ ...editingEquipment, imageUrl: event.target.value })} /></label>
+                <label className="admin-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={editingEquipment.available !== false}
+                    onChange={(event) => setEditingEquipment({ ...editingEquipment, available: event.target.checked })}
+                  />
+                  Available for training
+                </label>
+                <p className="admin-panel-note">Unchecked renders the catalog card as a non-interactive &quot;Coming Soon&quot; placeholder.</p>
                 <button className="admin-save" onClick={handleSaveEquipment}>Save equipment card</button>
               </>
             ) : <p>No equipment card available.</p>}
@@ -292,6 +375,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 <label>Title<input value={editingModule.title} onChange={(event) => setEditingModule({ ...editingModule, title: event.target.value })} /></label>
                 <label>Subtitle<input value={editingModule.subtitle} onChange={(event) => setEditingModule({ ...editingModule, subtitle: event.target.value })} /></label>
                 <label>Description<textarea value={editingModule.description} onChange={(event) => setEditingModule({ ...editingModule, description: event.target.value })} /></label>
+                <label>Full title<input value={editingModule.fullTitle || ''} placeholder={editingModule.title} onChange={(event) => setEditingModule({ ...editingModule, fullTitle: event.target.value })} /></label>
+                <p className="admin-panel-note">The long heading shown on the module page itself. Blank falls back to the title above.</p>
                 <label>Image URL<input value={editingModule.imageUrl || ''} onChange={(event) => setEditingModule({ ...editingModule, imageUrl: event.target.value })} /></label>
                 <button className="admin-save" onClick={handleSaveModule}>Save module</button>
               </>
@@ -344,19 +429,44 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                   <textarea rows={10} value={selectedDetail.description || ''} onChange={(event) => setSelectedDetail({ ...selectedDetail, description: event.target.value })} />
                 </label>
                 <p className="admin-panel-note">Supports markdown: **bold**, - bullet points, 1. numbered lists, and inline images anywhere via ![alt](/images/example.png).</p>
+                {(selectedPart?.draft || selectedDetail?.draft) && (
+                  <p className="admin-panel-note admin-draft-note">
+                    Unpublished draft - learners still see the published version until you press Publish.
+                  </p>
+                )}
                 <div className="admin-row-actions">
                   {selectedPart ? (
                     <>
-                      <button className="admin-save" onClick={handleSavePart}>Save part</button>
+                      <button onClick={handleSavePart}>Save draft</button>
+                      <button className="admin-save" onClick={async () => { await handleSavePart(); await publishPartAndDetail() }}>Publish</button>
+                      {(selectedPart.draft || selectedDetail?.draft) && (
+                        <button onClick={revertPartAndDetail}>Discard draft</button>
+                      )}
                       <button onClick={() => handleDeletePart(selectedPart.id)}>Delete part</button>
                     </>
                   ) : (
-                    <button className="admin-save" onClick={async () => { await handleSaveDetail(); refreshMessage('Detail card saved.') }}>Save details</button>
+                    <>
+                      <button onClick={async () => { await handleSaveDetail(); refreshMessage('Draft saved.') }}>Save draft</button>
+                      <button className="admin-save" onClick={async () => { await handleSaveDetail(); await publishPartAndDetail() }}>Publish</button>
+                      {selectedDetail.draft && <button onClick={revertPartAndDetail}>Discard draft</button>}
+                    </>
                   )}
                 </div>
               </>
             ) : <p>Select a forklift part or inspection hotspot to edit its detail card.</p>}
           </section>
+        </main>
+      )}
+
+      {activePath === routes.adminPractice && (
+        <main className="admin-grid">
+          <PracticeQuizAdmin
+            questions={content.practiceQuestions || []}
+            categories={content.partCategories || []}
+            onQuestionsChanged={(practiceQuestions) => setContent((current) => ({ ...current, practiceQuestions }))}
+            onCategoriesChanged={(partCategories) => setContent((current) => ({ ...current, partCategories }))}
+            onMessage={refreshMessage}
+          />
         </main>
       )}
 

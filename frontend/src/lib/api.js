@@ -76,6 +76,22 @@ export async function getPartDetails() {
   return request('/content/part-details')
 }
 
+export async function getPartCategories() {
+  return request('/content/part-categories')
+}
+
+export async function getPracticeQuestions() {
+  return request('/content/practice-questions')
+}
+
+export async function getChecklistCounts() {
+  return request('/content/checklist-counts')
+}
+
+export async function getModuleQuiz(moduleSlug) {
+  return request(`/content/quizzes/${encodeURIComponent(moduleSlug)}`)
+}
+
 export async function getChecklist(moduleSlug) {
   return request(`/content/checklists/${encodeURIComponent(moduleSlug)}`)
 }
@@ -115,8 +131,58 @@ export async function adminDeletePart(partId) {
   return request(`/admin/parts/${encodeURIComponent(partId)}`, { method: 'DELETE' })
 }
 
+// Parts, part details and practice questions save a draft; the published row a
+// learner sees only changes on publish.
+export async function adminPublishPart(partId) {
+  return request(`/admin/parts/${encodeURIComponent(partId)}/publish`, { method: 'POST' })
+}
+
+export async function adminRevertPart(partId) {
+  return request(`/admin/parts/${encodeURIComponent(partId)}/revert`, { method: 'POST' })
+}
+
 export async function adminUpdatePartDetail(detailId, payload) {
   return request(`/admin/part-details/${encodeURIComponent(detailId)}`, { method: 'PATCH', body: payload })
+}
+
+export async function adminPublishPartDetail(detailId) {
+  return request(`/admin/part-details/${encodeURIComponent(detailId)}/publish`, { method: 'POST' })
+}
+
+export async function adminRevertPartDetail(detailId) {
+  return request(`/admin/part-details/${encodeURIComponent(detailId)}/revert`, { method: 'POST' })
+}
+
+export async function adminCreatePracticeQuestion(payload) {
+  return request('/admin/practice-questions', { method: 'POST', body: payload })
+}
+
+export async function adminUpdatePracticeQuestion(questionId, payload) {
+  return request(`/admin/practice-questions/${encodeURIComponent(questionId)}`, { method: 'PATCH', body: payload })
+}
+
+export async function adminPublishPracticeQuestion(questionId) {
+  return request(`/admin/practice-questions/${encodeURIComponent(questionId)}/publish`, { method: 'POST' })
+}
+
+export async function adminRevertPracticeQuestion(questionId) {
+  return request(`/admin/practice-questions/${encodeURIComponent(questionId)}/revert`, { method: 'POST' })
+}
+
+export async function adminDeletePracticeQuestion(questionId) {
+  return request(`/admin/practice-questions/${encodeURIComponent(questionId)}`, { method: 'DELETE' })
+}
+
+export async function adminCreatePartCategory(payload) {
+  return request('/admin/part-categories', { method: 'POST', body: payload })
+}
+
+export async function adminUpdatePartCategory(categoryId, payload) {
+  return request(`/admin/part-categories/${encodeURIComponent(categoryId)}`, { method: 'PATCH', body: payload })
+}
+
+export async function adminDeletePartCategory(categoryId) {
+  return request(`/admin/part-categories/${encodeURIComponent(categoryId)}`, { method: 'DELETE' })
 }
 
 export async function adminUpdateEquipment(equipmentId, payload) {

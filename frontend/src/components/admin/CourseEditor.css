@@ -304,6 +304,27 @@
   color: #075985;
 }
 
+/* One card / prompt of an activity content editor. */
+.activity-item {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.activity-item-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.course-editor h4 {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+}
+
 .course-admin select {
   width: 100%;
   box-sizing: border-box;

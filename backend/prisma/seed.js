@@ -5,12 +5,16 @@ import 'dotenv/config'
 import bcrypt from 'bcryptjs'
 import { PrismaClient } from '@prisma/client'
 import {
-  forkliftEquipment,
+  allEquipment,
   moduleChecklists,
   moduleQuizQuestions,
   trainingModules,
 } from '../../frontend/src/data/trainingModules.js'
-import { partsHotspots } from '../../frontend/src/data/partsData.js'
+import {
+  buildDefaultPartCategories,
+  buildDefaultPracticeQuestions,
+  partsHotspots,
+} from '../../frontend/src/data/partsData.js'
 import { buildDefaultPartDetails } from '../../frontend/src/data/partDetails.js'
 import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
 
@@ -47,35 +51,52 @@ async function seedUsers() {
 }
 
 async function seedEquipment() {
-  await prisma.equipment.upsert({
-    where: { id: forkliftEquipment.id },
-    update: {},
-    create: {
-      id: forkliftEquipment.id,
-      title: forkliftEquipment.title,
-      description: forkliftEquipment.description,
-      modelUrl: forkliftEquipment.modelUrl,
-      imageUrl: forkliftEquipment.imageUrl || '',
-      sortOrder: 1,
-    },
-  })
+  for (const [index, equipment] of allEquipment.entries()) {
+    await prisma.equipment.upsert({
+      where: { id: equipment.id },
+      update: {},
+      create: {
+        id: equipment.id,
+        title: equipment.title,
+        description: equipment.description,
+        modelUrl: equipment.modelUrl || '',
+        imageUrl: equipment.imageUrl || '',
+        sortOrder: index + 1,
+        available: equipment.available !== false,
+      },
+    })
+  }
 }
 
 async function seedModules() {
   for (const [index, module] of trainingModules.entries()) {
-    await prisma.module.upsert({
-      where: { id: module.id },
-      update: {},
-      create: {
-        id: module.id,
-        slug: module.slug,
-        title: module.title,
-        subtitle: module.subtitle || '',
-        description: module.description || '',
-        imageUrl: module.imageUrl || '',
-        sortOrder: index + 1,
-      },
-    })
+    const existing = await prisma.module.findUnique({ where: { id: module.id } })
+
+    if (!existing) {
+      await prisma.module.create({
+        data: {
+          id: module.id,
+          slug: module.slug,
+          title: module.title,
+          fullTitle: module.fullTitle || module.title,
+          subtitle: module.subtitle || '',
+          description: module.description || '',
+          imageUrl: module.imageUrl || '',
+          sortOrder: index + 1,
+        },
+      })
+      continue
+    }
+
+    // fullTitle is newer than the rows themselves, so a row that predates it
+    // gets the default filled in. Anything an admin has typed is left alone,
+    // because only an empty value is replaced.
+    if (!existing.fullTitle) {
+      await prisma.module.update({
+        where: { id: module.id },
+        data: { fullTitle: module.fullTitle || module.title },
+      })
+    }
   }
 }
 
@@ -112,6 +133,26 @@ async function seedPartDetails() {
         image: detail.image || '',
         description: detail.description || '',
       },
+    })
+  }
+}
+
+async function seedPartCategories() {
+  for (const category of buildDefaultPartCategories()) {
+    await prisma.partCategory.upsert({
+      where: { id: category.id },
+      update: {},
+      create: category,
+    })
+  }
+}
+
+async function seedPracticeQuestions() {
+  for (const question of buildDefaultPracticeQuestions()) {
+    await prisma.practiceQuestion.upsert({
+      where: { id: question.id },
+      update: {},
+      create: question,
     })
   }
 }
@@ -194,6 +235,8 @@ async function main() {
   await seedModules()
   await seedParts()
   await seedPartDetails()
+  await seedPartCategories()
+  await seedPracticeQuestions()
   await seedChecklists()
   await seedQuizQuestions()
   await seedCourses()
@@ -204,6 +247,8 @@ async function main() {
     modules: await prisma.module.count(),
     parts: await prisma.part.count(),
     partDetails: await prisma.partDetail.count(),
+    partCategories: await prisma.partCategory.count(),
+    practiceQuestions: await prisma.practiceQuestion.count(),
     checklistItems: await prisma.checklistItem.count(),
     quizQuestions: await prisma.quizQuestion.count(),
     courses: await prisma.course.count(),
