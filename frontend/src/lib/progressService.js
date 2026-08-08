@@ -1,7 +1,12 @@
 import { moduleChecklists, partsHotspots } from './trainingData'
-import { getProgress as fetchServerProgress, saveProgress as pushServerProgress } from './api'
+import {
+  getParts as fetchParts,
+  getProgress as fetchServerProgress,
+  saveProgress as pushServerProgress,
+} from './api'
 
 const STORAGE_KEY = 'gearview_progress_v1'
+const PARTS_COUNT_KEY = 'gearview_parts_count_v1'
 const CHANGE_EVENT = 'gearview-progress-change'
 const SERVER_PUSH_DELAY_MS = 800
 
@@ -38,6 +43,33 @@ export async function hydrateProgressFromServer() {
     localStorage.removeItem(STORAGE_KEY)
   }
   notify()
+}
+
+// How many parts "all parts viewed" means. The parts themselves live in the
+// database and an admin can add or remove them, but every progress reader here
+// is synchronous, so the count is cached the same way progress itself is:
+// localStorage is the synchronous source, refreshed from the API on login.
+// The seeded default is only the fallback before the first successful fetch.
+let partsCount = readCachedPartsCount()
+
+function readCachedPartsCount() {
+  const cached = Number(localStorage.getItem(PARTS_COUNT_KEY))
+  return Number.isInteger(cached) && cached > 0 ? cached : partsHotspots.length
+}
+
+// Called alongside hydrateProgressFromServer(). A failure leaves the previous
+// count in place rather than resetting to the seeded default.
+export async function hydratePartsCount() {
+  const parts = await fetchParts()
+  if (!Array.isArray(parts) || parts.length === 0) return
+
+  partsCount = parts.length
+  localStorage.setItem(PARTS_COUNT_KEY, String(parts.length))
+  notify()
+}
+
+export function getPartsCount() {
+  return partsCount
 }
 
 const equipmentModuleSlugs = ['walk-around-check', 'load-handling', 'post-operation', 'pallet-testing']
@@ -240,8 +272,10 @@ export function getEquipmentProgress(progress) {
 }
 
 export function getPartsProgress(progress) {
-  const viewedCount = progress.parts.viewedPartIds.length
-  const viewedPercentage = partsHotspots.length ? (viewedCount / partsHotspots.length) * 100 : 0
+  // Clamped because a part an admin deleted can still be in viewedPartIds,
+  // which would otherwise push this over 100%.
+  const viewedCount = Math.min(progress.parts.viewedPartIds.length, partsCount)
+  const viewedPercentage = partsCount ? (viewedCount / partsCount) * 100 : 0
   const latestPractice = progress.parts.practiceAttempts[0]
   const practicePercentage = latestPractice ? latestPractice.percentage : 0
 
@@ -267,6 +301,7 @@ export function getProgressSummary(progress = getStoredProgress()) {
       return summary
     }, {}),
     viewedParts: progress.parts.viewedPartIds,
+    partsCount,
     quizAttempts: progress.quizzes,
     partsPracticeAttempts: progress.parts.practiceAttempts,
     simulations: progress.simulations,

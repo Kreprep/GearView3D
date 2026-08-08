@@ -12,7 +12,7 @@ import AssessmentPage from './AssessmentPage'
 import AdminDashboard from './AdminDashboard'
 import NotFoundPage from './NotFoundPage'
 import { getCurrentUser, loginUser, setAuthToken } from './lib/api'
-import { hydrateProgressFromServer, resetStoredProgress } from './lib/progressService'
+import { hydratePartsCount, hydrateProgressFromServer, resetStoredProgress } from './lib/progressService'
 import { goTo, normalizePath, routes } from './lib/router'
 import './App.css'
 
@@ -29,6 +29,13 @@ function App() {
     const syncPath = () => setPath(normalizePath(window.location.pathname))
     window.addEventListener('popstate', syncPath)
     return () => window.removeEventListener('popstate', syncPath)
+  }, [])
+
+  // How many parts count as "all of them" is content, not user data, so it is
+  // refreshed on every load rather than only on login - the session-restore
+  // effect below is skipped whenever localStorage already holds the user.
+  useEffect(() => {
+    hydratePartsCount().catch(() => {})
   }, [])
 
   useEffect(() => {
