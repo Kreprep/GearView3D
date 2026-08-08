@@ -117,7 +117,7 @@ function ViewReset({ cameraPreset, controlsRef, resetToken }) {
   return null
 }
 
-function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
+function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken, cameraPreset }) {
   const { camera } = useThree()
   const desiredCamPos = useRef(new Vector3())
   const desiredTarget = useRef(new Vector3())
@@ -129,10 +129,15 @@ function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
   const preFocusTarget = useRef(new Vector3())
   const hasPreFocus = useRef(false)
 
+  // A camera-preset change means the step/scenario framing changed underneath
+  // us (e.g. engine-off wide view <-> engine-on cockpit view). Any pre-focus
+  // pose captured under the old preset is stale, so drop it - otherwise
+  // clearing the selection flies back to a pose from the wrong preset and the
+  // camera gets stuck fighting ViewReset's snap-to-preset.
   React.useEffect(() => {
     activeId.current = null
     hasPreFocus.current = false
-  }, [resetToken])
+  }, [resetToken, cameraPreset])
 
   useFrame(() => {
     const controls = controlsRef.current
@@ -520,7 +525,13 @@ function InteractiveScene({
         </Center>
       </Bounds>
 
-      <CameraFocus targetId={selectedHotspotId} hotspotRefs={hotspotRefs} controlsRef={controlsRef} resetToken={resetToken} />
+      <CameraFocus
+        targetId={selectedHotspotId}
+        hotspotRefs={hotspotRefs}
+        controlsRef={controlsRef}
+        resetToken={resetToken}
+        cameraPreset={cameraPreset}
+      />
       <WarehouseFloor />
       <ContactShadows position={[0, FLOOR_Y + 0.003, 0]} opacity={FLOOR_SHADOW_OPACITY} scale={3} blur={2.2} far={1.2} />
       <OrbitControls
