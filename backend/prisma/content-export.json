@@ -1,0 +1,3812 @@
+{
+  "exportedAt": "2026-08-08T04:46:54.297Z",
+  "counts": {
+    "Equipment": 1,
+    "Module": 4,
+    "Part": 10,
+    "PartDetail": 26,
+    "Course": 19,
+    "ChecklistItem": 22,
+    "QuizQuestion": 12
+  },
+  "tables": {
+    "Equipment": [
+      {
+        "id": "forklift",
+        "title": "Forklift",
+        "description": "Learn safe forklift familiarization through guided lessons and a labeled 3D model.",
+        "modelUrl": "/models/Forklift_SEPERATED.glb",
+        "imageUrl": "/images/forklift-card.png",
+        "sortOrder": 1
+      }
+    ],
+    "Module": [
+      {
+        "id": 1,
+        "slug": "walk-around-check",
+        "title": "Walk-Around Check",
+        "subtitle": "Visual Inspection",
+        "description": "Inspect a Class V (LPG) forklift before use: forks, mast, chains, hydraulic hoses, tires, counterweight, LPG tank/battery, seat belt, overhead guard, and ground leaks, then confirm dashboard indicators, steering, brakes, lift/tilt, travel, and warning devices.",
+        "imageUrl": "/images/modules/walk-around-check.png",
+        "sortOrder": 1
+      },
+      {
+        "id": 2,
+        "slug": "load-handling",
+        "title": "Load Handling and Operational Controls",
+        "subtitle": "Operational Controls",
+        "description": "Practice basic forklift operational controls in a simplified guided drive: engine start-up, acceleration, braking, and steering, without real vehicle physics or collision.",
+        "imageUrl": "/images/modules/load-handling.png",
+        "sortOrder": 2
+      },
+      {
+        "id": 3,
+        "slug": "post-operation",
+        "title": "Post-Operation and Secure Parking",
+        "subtitle": "Secure Parking",
+        "description": "Park the forklift inside a painted bay on a cone-lined route, then secure it: fork lowering, neutral controls, brake engagement, power off, and reporting. Hitting a cone fails the parking attempt.",
+        "imageUrl": "/images/modules/post-operation.png",
+        "sortOrder": 3
+      },
+      {
+        "id": 4,
+        "slug": "pallet-testing",
+        "title": "Pallet Handling Assessment",
+        "subtitle": "Load Safety",
+        "description": "Apply load-handling judgment under fail conditions: respect rated capacity, avoid traffic cones, and brake smoothly so the load stays on the forks. Overloading, collisions, and sudden stops fail the attempt.",
+        "imageUrl": "/images/modules/pallet-testing.png",
+        "sortOrder": 4
+      }
+    ],
+    "Part": [
+      {
+        "id": "forks",
+        "label": "Forks",
+        "category": "Load Handling Parts",
+        "position": [
+          0,
+          0.03,
+          0.58
+        ],
+        "functionText": "Support and lift pallets or loads when correctly inserted and spaced.",
+        "inspectionReminder": "Check fork tips, heel area, visible cracks, and locking pins before use.",
+        "safetyNote": "Never stand under raised forks, and keep the load centered before lifting.",
+        "relatedModule": "Load Handling and Operational Controls",
+        "checklist": [
+          "Check fork tips",
+          "Confirm locking pins",
+          "Keep load centered"
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "mast",
+        "label": "Mast",
+        "category": "Load Handling Parts",
+        "position": [
+          0,
+          0.44,
+          0.25
+        ],
+        "functionText": "Guides the vertical movement of the carriage and forks.",
+        "inspectionReminder": "Look for visible damage, obstruction, or unsafe movement in the lift path.",
+        "safetyNote": "Keep hands, feet, and loose clothing away from the mast and lift chain path.",
+        "relatedModule": "Walk-Around Check",
+        "checklist": [
+          "Look for visible damage",
+          "Check lift path clearance",
+          "Raise load smoothly"
+        ],
+        "sortOrder": 2
+      },
+      {
+        "id": "lift-chain",
+        "label": "Lift Chain",
+        "category": "Load Handling Parts",
+        "position": [
+          0.075,
+          0.36,
+          0.3
+        ],
+        "functionText": "Transfers lifting force through the mast assembly.",
+        "inspectionReminder": "Observe for slack, uneven movement, or visible damage before operation.",
+        "safetyNote": "Do not touch or inspect the chain while the engine is running or the forks are moving.",
+        "relatedModule": "Walk-Around Check",
+        "checklist": [
+          "Look for slack",
+          "Check for uneven movement",
+          "Keep clear while lifting"
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "carriage",
+        "label": "Carriage",
+        "category": "Load Handling Parts",
+        "position": [
+          0,
+          0.13,
+          0.34
+        ],
+        "functionText": "Holds the forks and moves along the mast during lifting and lowering.",
+        "inspectionReminder": "Check fork attachment points and confirm there is no visible damage.",
+        "safetyNote": "Confirm the carriage is stable before handling any load.",
+        "relatedModule": "Load Handling and Operational Controls",
+        "checklist": [
+          "Check fork attachment",
+          "Check visible cracks",
+          "Confirm smooth travel"
+        ],
+        "sortOrder": 4
+      },
+      {
+        "id": "operator-area",
+        "label": "Operator Area",
+        "category": "Operator and Controls",
+        "position": [
+          0,
+          0.34,
+          -0.04
+        ],
+        "functionText": "Contains the seat, steering, pedals, levers, and dashboard controls used by the operator.",
+        "inspectionReminder": "Confirm controls are understood, accessible, and checked before operation.",
+        "safetyNote": "Fasten the seat belt and confirm controls are understood before operation.",
+        "relatedModule": "Walk-Around Check",
+        "checklist": [
+          "Fasten seat belt",
+          "Check mirrors",
+          "Test horn and brakes"
+        ],
+        "sortOrder": 5
+      },
+      {
+        "id": "overhead-guard",
+        "label": "Overhead Guard",
+        "category": "Stability and Structure",
+        "position": [
+          0,
+          0.5,
+          -0.02
+        ],
+        "functionText": "Helps protect the operator from falling objects within the forklift safety limits.",
+        "inspectionReminder": "Check for visible bending, cracks, or missing sections.",
+        "safetyNote": "Do not operate if the overhead guard is visibly damaged.",
+        "relatedModule": "Walk-Around Check",
+        "checklist": [
+          "Check structural damage",
+          "Keep guard unobstructed",
+          "Never remove the guard"
+        ],
+        "sortOrder": 6
+      },
+      {
+        "id": "counterweight",
+        "label": "Counterweight",
+        "category": "Stability and Structure",
+        "position": [
+          0,
+          0.18,
+          -0.26
+        ],
+        "functionText": "Balances the forklift against the weight of the load.",
+        "inspectionReminder": "Confirm rear clearance and observe rear swing when maneuvering.",
+        "safetyNote": "Watch rear swing and never exceed the rated load capacity.",
+        "relatedModule": "Load Handling and Operational Controls",
+        "checklist": [
+          "Avoid overloading",
+          "Watch rear swing",
+          "Respect capacity plate"
+        ],
+        "sortOrder": 7
+      },
+      {
+        "id": "tires",
+        "label": "Tires",
+        "category": "Stability and Structure",
+        "position": [
+          0.12,
+          0.08,
+          0.19
+        ],
+        "functionText": "Support forklift movement and stability across the work surface.",
+        "inspectionReminder": "Check for visible wear, damage, or unsafe tire condition.",
+        "safetyNote": "Damaged or underinflated tires can affect stability and steering.",
+        "relatedModule": "Walk-Around Check",
+        "checklist": [
+          "Check visible wear",
+          "Check inflation or damage",
+          "Report unsafe tire condition"
+        ],
+        "sortOrder": 8
+      },
+      {
+        "id": "capacity-plate",
+        "label": "Capacity Plate",
+        "category": "Safety and Identification",
+        "position": [
+          0.1,
+          0.32,
+          0.03
+        ],
+        "functionText": "Shows rated load capacity and important forklift specifications.",
+        "inspectionReminder": "Read the rated capacity and load center before handling loads.",
+        "safetyNote": "Do not lift a load beyond the capacity shown on the plate.",
+        "relatedModule": "Load Handling and Operational Controls",
+        "checklist": [
+          "Read rated capacity",
+          "Confirm load center",
+          "Follow plate limits"
+        ],
+        "sortOrder": 9
+      },
+      {
+        "id": "warning-devices",
+        "label": "Warning Devices",
+        "category": "Safety and Identification",
+        "position": [
+          0,
+          0.48,
+          -0.15
+        ],
+        "functionText": "Includes lights, horn, and backup alarm used to alert nearby workers.",
+        "inspectionReminder": "Test horn, lights, beacon, and backup alarm during pre-operation checks.",
+        "safetyNote": "Do not operate if required warning devices are not working.",
+        "relatedModule": "Walk-Around Check",
+        "checklist": [
+          "Test horn",
+          "Check lights",
+          "Check backup alarm"
+        ],
+        "sortOrder": 10
+      }
+    ],
+    "PartDetail": [
+      {
+        "id": "backup-alarm",
+        "title": "Backup Alarm",
+        "subtitle": "Safety devices",
+        "image": "",
+        "description": "Select reverse and confirm the backup alarm sounds.\n\n**Why it matters**\n\nA silent backup alarm must be reported."
+      },
+      {
+        "id": "brakes",
+        "title": "Brakes",
+        "subtitle": "Operational controls",
+        "image": "",
+        "description": "Test the service brake and the parking brake for correct response.\n\n**Why it matters**\n\nA brake that does not hold must be reported immediately."
+      },
+      {
+        "id": "capacity-plate",
+        "title": "Capacity Plate",
+        "subtitle": "Safety and Identification",
+        "image": "",
+        "description": "Shows rated load capacity and important forklift specifications.\n\n**What to inspect**\n\nRead the rated capacity and load center before handling loads.\n\n**Safety**\n\nDo not lift a load beyond the capacity shown on the plate.\n\n**Quick checklist**\n\n- Read rated capacity\n- Confirm load center\n- Follow plate limits\n\n*Related training: Load Handling and Operational Controls*"
+      },
+      {
+        "id": "carriage",
+        "title": "Carriage",
+        "subtitle": "Load Handling Parts",
+        "image": "",
+        "description": "Holds the forks and moves along the mast during lifting and lowering.\n\n**What to inspect**\n\nCheck fork attachment points and confirm there is no visible damage.\n\n**Safety**\n\nConfirm the carriage is stable before handling any load.\n\n**Quick checklist**\n\n- Check fork attachment\n- Check visible cracks\n- Confirm smooth travel\n\n*Related training: Load Handling and Operational Controls*"
+      },
+      {
+        "id": "counterweight",
+        "title": "Counterweight",
+        "subtitle": "Stability and Structure",
+        "image": "",
+        "description": "Balances the forklift against the weight of the load.\n\n**What to inspect**\n\nConfirm rear clearance and observe rear swing when maneuvering.\n\n**Safety**\n\nWatch rear swing and never exceed the rated load capacity.\n\n**Quick checklist**\n\n- Avoid overloading\n- Watch rear swing\n- Respect capacity plate\n\n*Related training: Load Handling and Operational Controls*"
+      },
+      {
+        "id": "dashboard",
+        "title": "Dashboard",
+        "subtitle": "Dashboard indicators",
+        "image": "",
+        "description": "Read the dashboard gauges and decide whether each reading is normal.\n\n**Why it matters**\n\nA dashboard warning must be reported before operation."
+      },
+      {
+        "id": "forks",
+        "title": "Forks",
+        "subtitle": "Load Handling Parts",
+        "image": "",
+        "description": "Support and lift pallets or loads when correctly inserted and spaced.\n\n**What to inspect**\n\nCheck fork tips, heel area, visible cracks, and locking pins before use.\n\n**Safety**\n\nNever stand under raised forks, and keep the load centered before lifting.\n\n**Quick checklist**\n\n- Check fork tips\n- Confirm locking pins\n- Keep load centered\n\n*Related training: Load Handling and Operational Controls*"
+      },
+      {
+        "id": "forward-reverse-travel",
+        "title": "Forward/Reverse Travel",
+        "subtitle": "Operational controls",
+        "image": "",
+        "description": "Select forward and reverse and confirm the forklift responds to the accelerator.\n\n**Why it matters**\n\nA travel control that does not respond must be reported."
+      },
+      {
+        "id": "ground-leaks",
+        "title": "Ground Leaks",
+        "subtitle": "Ground beneath the forklift",
+        "image": "",
+        "description": "Check the ground beneath the forklift for oil, fuel, hydraulic fluid, or coolant leaks.\n\n**Why it matters**\n\nAny fluid leak on the ground must be reported before operation."
+      },
+      {
+        "id": "headlights",
+        "title": "Headlights",
+        "subtitle": "Safety devices",
+        "image": "",
+        "description": "Switch on the headlights and confirm both lamps light up.\n\n**Why it matters**\n\nA headlight that does not light must be reported."
+      },
+      {
+        "id": "horn",
+        "title": "Horn",
+        "subtitle": "Safety devices",
+        "image": "",
+        "description": "Press the horn and confirm an audible warning sounds.\n\n**Why it matters**\n\nA horn that does not sound must be reported."
+      },
+      {
+        "id": "hydraulic-hoses",
+        "title": "Hydraulic Hoses",
+        "subtitle": "Hydraulic hoses and cylinders",
+        "image": "",
+        "description": "Check hydraulic hoses and cylinders for visible leaks, cracks, or wear.\n\n**Why it matters**\n\nHydraulic leaks can affect lifting safety and must be reported before operation."
+      },
+      {
+        "id": "ignition",
+        "title": "Ignition Switch",
+        "subtitle": "Engine start",
+        "image": "",
+        "description": "Turn the key to start the engine before beginning the operational checks.\n\n**Why it matters**\n\nThe engine must be running before operational checks can be made."
+      },
+      {
+        "id": "lift-chain",
+        "title": "Lift Chain",
+        "subtitle": "Load Handling Parts",
+        "image": "",
+        "description": "Transfers lifting force through the mast assembly.\n\n**What to inspect**\n\nObserve for slack, uneven movement, or visible damage before operation.\n\n**Safety**\n\nDo not touch or inspect the chain while the engine is running or the forks are moving.\n\n**Quick checklist**\n\n- Look for slack\n- Check for uneven movement\n- Keep clear while lifting\n\n*Related training: Walk-Around Check*"
+      },
+      {
+        "id": "lift-tilt-functions",
+        "title": "Lift and Tilt Functions",
+        "subtitle": "Operational controls",
+        "image": "",
+        "description": "Raise, lower, and tilt the mast and listen for unusual noise.\n\n**Why it matters**\n\nJerky mast movement or unusual noise must be reported."
+      },
+      {
+        "id": "lpg-tank",
+        "title": "LPG Tank and Battery",
+        "subtitle": "LPG tank, mounting bracket, and battery area",
+        "image": "",
+        "description": "Check the propane tank, mounting bracket, hose fittings, and battery area for leaks, damage, or corrosion.\n\n**Why it matters**\n\nA propane leak or unsafe battery condition is hazardous and must be reported before operation."
+      },
+      {
+        "id": "mast",
+        "title": "Mast",
+        "subtitle": "Load Handling Parts",
+        "image": "",
+        "description": "Guides the vertical movement of the carriage and forks.\n\n**What to inspect**\n\nLook for visible damage, obstruction, or unsafe movement in the lift path.\n\n**Safety**\n\nKeep hands, feet, and loose clothing away from the mast and lift chain path.\n\n**Quick checklist**\n\n- Look for visible damage\n- Check lift path clearance\n- Raise load smoothly\n\n*Related training: Walk-Around Check*"
+      },
+      {
+        "id": "operator-area",
+        "title": "Operator Area",
+        "subtitle": "Operator and Controls",
+        "image": "",
+        "description": "Contains the seat, steering, pedals, levers, and dashboard controls used by the operator.\n\n**What to inspect**\n\nConfirm controls are understood, accessible, and checked before operation.\n\n**Safety**\n\nFasten the seat belt and confirm controls are understood before operation.\n\n**Quick checklist**\n\n- Fasten seat belt\n- Check mirrors\n- Test horn and brakes\n\n*Related training: Walk-Around Check*"
+      },
+      {
+        "id": "overhead-guard",
+        "title": "Overhead Guard",
+        "subtitle": "Stability and Structure",
+        "image": "",
+        "description": "Helps protect the operator from falling objects within the forklift safety limits.\n\n**What to inspect**\n\nCheck for visible bending, cracks, or missing sections.\n\n**Safety**\n\nDo not operate if the overhead guard is visibly damaged.\n\n**Quick checklist**\n\n- Check structural damage\n- Keep guard unobstructed\n- Never remove the guard\n\n*Related training: Walk-Around Check*"
+      },
+      {
+        "id": "seat-belt",
+        "title": "Seat Belt",
+        "subtitle": "Operator seat and restraint",
+        "image": "",
+        "description": "Check the seat condition and confirm the seat belt latches and retracts properly.\n\n**Why it matters**\n\nA damaged or non-functioning seat belt must be reported before operation."
+      },
+      {
+        "id": "steering-response",
+        "title": "Steering Response",
+        "subtitle": "Operational controls",
+        "image": "",
+        "description": "Turn the steering wheel and check for smooth response with no excessive play.\n\n**Why it matters**\n\nExcessive steering play must be reported before operation."
+      },
+      {
+        "id": "tail-lights",
+        "title": "Tail Lights",
+        "subtitle": "Safety devices",
+        "image": "",
+        "description": "Confirm the tail lights light up at the rear of the forklift.\n\n**Why it matters**\n\nA tail light that does not light must be reported."
+      },
+      {
+        "id": "tires",
+        "title": "Tires",
+        "subtitle": "Stability and Structure",
+        "image": "",
+        "description": "Support forklift movement and stability across the work surface.\n\n**What to inspect**\n\nCheck for visible wear, damage, or unsafe tire condition.\n\n**Safety**\n\nDamaged or underinflated tires can affect stability and steering.\n\n**Quick checklist**\n\n- Check visible wear\n- Check inflation or damage\n- Report unsafe tire condition\n\n*Related training: Walk-Around Check*"
+      },
+      {
+        "id": "turn-signals",
+        "title": "Turn Signals",
+        "subtitle": "Safety devices",
+        "image": "",
+        "description": "Operate the turn signals and confirm they flash on both sides.\n\n**Why it matters**\n\nA turn signal that does not flash must be reported."
+      },
+      {
+        "id": "warning-beacon",
+        "title": "Warning Beacon",
+        "subtitle": "Safety devices",
+        "image": "",
+        "description": "Confirm the warning beacon flashes so nearby workers can see the forklift.\n\n**Why it matters**\n\nA beacon that does not flash must be reported."
+      },
+      {
+        "id": "warning-devices",
+        "title": "Warning Devices",
+        "subtitle": "Safety and Identification",
+        "image": "",
+        "description": "Includes lights, horn, and backup alarm used to alert nearby workers.\n\n**What to inspect**\n\nTest horn, lights, beacon, and backup alarm during pre-operation checks.\n\n**Safety**\n\nDo not operate if required warning devices are not working.\n\n**Quick checklist**\n\n- Test horn\n- Check lights\n- Check backup alarm\n\n*Related training: Walk-Around Check*"
+      }
+    ],
+    "Course": [
+      {
+        "id": "load-handling-briefing",
+        "moduleSlug": "load-handling",
+        "sortOrder": 1,
+        "kind": "briefing",
+        "title": "Scenario Briefing",
+        "objective": "Prepare for a simplified guided driving exercise, without real forklift physics.",
+        "instructions": "Review why operational-control familiarization comes before supervised practical training.",
+        "hint": "The goal is control familiarization and decision-making, not physics-accurate driving.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "body": "This simplified simulation lets you practice the basic operating controls of a forklift: starting the engine, accelerating, braking, and steering.\n\nThis is a simplified control-familiarization exercise, not a physics-accurate driving simulator. It does not model collisions, real vehicle dynamics, or unsupervised operation.\n\nEach guided step introduces one control at a time before combining them in a short driving course.",
+          "image": "/images/controls-wasd.png",
+          "syllabus": {
+            "element": "Element 4: Perform load handling operation",
+            "location": "Section 2",
+            "unitCode": "505833315",
+            "pageReferences": "pp. 55, 57-58"
+          },
+          "sceneBody": "",
+          "objectives": [
+            "Identify the basic operating controls used to start and drive a forklift in this simulation.",
+            "Practice accelerating and braking smoothly to control forklift speed.",
+            "Practice steering left and right while maintaining a safe course.",
+            "Combine starting, accelerating, braking, and steering in a short guided driving course."
+          ],
+          "showSyllabus": true
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "controls-intro",
+        "moduleSlug": "load-handling",
+        "sortOrder": 2,
+        "kind": "driving",
+        "title": "Controls & Engine Start",
+        "objective": "Learn the WASD driving controls and start the engine.",
+        "instructions": "Press E to start the engine, then try W, A, S, and D at least once each on the open practice pad.",
+        "hint": "The engine must be running before the forklift will accelerate or steer.",
+        "goalType": "free",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [],
+          "decorations": [],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "accelerate-course",
+        "moduleSlug": "load-handling",
+        "sortOrder": 3,
+        "kind": "driving",
+        "title": "Accelerate Course",
+        "objective": "Practice accelerating the forklift forward using the W key.",
+        "instructions": "Press E to start the engine if needed, then press W to accelerate forward to the finish line.",
+        "hint": "Hold W steadily - you do not need to reach maximum speed to finish.",
+        "goalType": "checkpoints",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [
+            {
+              "id": "accelerate-finish",
+              "type": "pass",
+              "label": "Finish Line",
+              "shape": "line",
+              "position": [
+                0,
+                0,
+                14
+              ],
+              "halfWidth": 3,
+              "lineDepth": 1.4,
+              "completeMessage": "You accelerated forward and crossed the finish line."
+            }
+          ],
+          "decorations": [],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "accelerate-brake",
+        "moduleSlug": "load-handling",
+        "sortOrder": 4,
+        "kind": "driving",
+        "title": "Accelerate and Brake",
+        "objective": "Practice accelerating and braking to a controlled stop.",
+        "instructions": "Press W to accelerate, then press S in time to stop inside the marked stop zone.",
+        "hint": "Begin braking before you reach the zone - stopping distance is not instant.",
+        "goalType": "checkpoints",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [
+            {
+              "id": "brake-stop-zone",
+              "type": "stop",
+              "label": "Stop Zone",
+              "radius": 1.2,
+              "maxSpeed": 0.25,
+              "position": [
+                0,
+                0,
+                12
+              ],
+              "completeMessage": "You braked in time and stopped inside the marked zone."
+            }
+          ],
+          "decorations": [],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "turning-practice",
+        "moduleSlug": "load-handling",
+        "sortOrder": 5,
+        "kind": "driving",
+        "title": "Left and Right Turning",
+        "objective": "Practice steering left and right while moving.",
+        "instructions": "Accelerate with W, then use A and D to steer through the marked gates in order.",
+        "hint": "Steering only responds while the forklift is moving.",
+        "goalType": "checkpoints",
+        "data": {
+          "id": "turning-practice",
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "goalType": "checkpoints",
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [
+            {
+              "id": "slalom-1",
+              "type": "pass",
+              "label": "Slalom Gate 1",
+              "radius": 0.6,
+              "position": [
+                0.5,
+                0,
+                3
+              ],
+              "completeMessage": "Slalom Gate 1 clear - keep weaving through the cones."
+            },
+            {
+              "id": "slalom-2",
+              "type": "pass",
+              "label": "Slalom Gate 2",
+              "radius": 0.6,
+              "position": [
+                -0.5,
+                0,
+                5.5
+              ],
+              "completeMessage": "Slalom Gate 2 clear - keep weaving through the cones."
+            },
+            {
+              "id": "slalom-3",
+              "type": "pass",
+              "label": "Slalom Gate 3",
+              "radius": 0.6,
+              "position": [
+                0.5,
+                0,
+                8
+              ],
+              "completeMessage": "Slalom Gate 3 clear - keep weaving through the cones."
+            },
+            {
+              "id": "slalom-4",
+              "type": "pass",
+              "label": "Slalom Gate 4",
+              "radius": 0.6,
+              "position": [
+                -0.5,
+                0,
+                10.5
+              ],
+              "completeMessage": "Slalom Gate 4 clear - keep weaving through the cones."
+            },
+            {
+              "id": "slalom-5",
+              "type": "pass",
+              "label": "Slalom Gate 5",
+              "radius": 0.6,
+              "position": [
+                0.5,
+                0,
+                13
+              ],
+              "completeMessage": "Slalom Gate 5 clear - keep weaving through the cones."
+            },
+            {
+              "id": "slalom-6",
+              "type": "pass",
+              "label": "Slalom Gate 6",
+              "radius": 0.6,
+              "position": [
+                -0.5,
+                0,
+                15.5
+              ],
+              "completeMessage": "Slalom Gate 6 clear - keep weaving through the cones."
+            },
+            {
+              "id": "slalom-7",
+              "type": "pass",
+              "label": "Slalom Gate 7",
+              "radius": 0.6,
+              "position": [
+                0.5,
+                0,
+                17.5
+              ],
+              "completeMessage": "Slalom Gate 7 clear - keep weaving through the cones."
+            },
+            {
+              "id": "turning-finish",
+              "type": "pass",
+              "label": "Finish Line",
+              "radius": 1.6,
+              "position": [
+                0,
+                0,
+                21
+              ],
+              "completeMessage": "Serpentine complete - smooth, controlled weaving keeps loads and pedestrians safe."
+            }
+          ],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                5.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                13
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                15.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                10
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                12
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                13
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                14
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                10
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                12
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                13
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                14
+              ]
+            }
+          ],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "driving-course",
+        "moduleSlug": "load-handling",
+        "sortOrder": 6,
+        "kind": "driving",
+        "title": "Driving Course",
+        "objective": "Combine starting, accelerating, braking, and steering through a full course with turns, cone lanes, and a mid-course stop.",
+        "instructions": "Start the engine, then drive through each checkpoint in order - weaving through the cone lanes, stopping fully at the yield point, and clearing the boundary walls - before parking in the final bay.",
+        "hint": "Hitting a cone or wall fails the attempt just like in Turning Practice - take the turns slowly and keep clear of the lane markers.",
+        "goalType": "checkpoints",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [
+            {
+              "id": "course-checkpoint-1",
+              "type": "pass",
+              "label": "Checkpoint 1",
+              "radius": 0.9,
+              "position": [
+                0,
+                0,
+                9
+              ],
+              "completeMessage": "Checkpoint 1 clear - a right turn is coming up."
+            },
+            {
+              "id": "course-checkpoint-2",
+              "type": "pass",
+              "label": "Checkpoint 2 - Right Turn",
+              "radius": 0.9,
+              "position": [
+                -2.6,
+                0,
+                16
+              ],
+              "completeMessage": "Checkpoint 2 clear - now steer left."
+            },
+            {
+              "id": "course-checkpoint-3",
+              "type": "pass",
+              "label": "Checkpoint 3 - Left Turn",
+              "radius": 0.9,
+              "position": [
+                2.6,
+                0,
+                23
+              ],
+              "completeMessage": "Checkpoint 3 clear - a yield point is ahead, straighten up and be ready to stop."
+            },
+            {
+              "id": "course-yield",
+              "type": "stop",
+              "label": "Yield Point",
+              "radius": 0.9,
+              "maxSpeed": 0.3,
+              "position": [
+                0,
+                0,
+                27
+              ],
+              "completeMessage": "Yield point clear - one more right turn before the parking bay."
+            },
+            {
+              "id": "course-checkpoint-4",
+              "type": "pass",
+              "label": "Checkpoint 4 - Right Turn",
+              "radius": 0.9,
+              "position": [
+                -2.6,
+                0,
+                33
+              ],
+              "completeMessage": "Checkpoint 4 clear - bring the forklift to the parking bay."
+            },
+            {
+              "id": "course-park",
+              "type": "stop",
+              "label": "Parking Bay",
+              "radius": 1.2,
+              "maxSpeed": 0.25,
+              "position": [
+                0,
+                0,
+                40
+              ],
+              "completeMessage": "You completed the full driving course and parked safely."
+            }
+          ],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                -0.75,
+                0,
+                0
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.75,
+                0,
+                0
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.75,
+                0,
+                1.29
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.75,
+                0,
+                1.29
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.75,
+                0,
+                2.57
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.75,
+                0,
+                2.57
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.75,
+                0,
+                3.86
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.75,
+                0,
+                3.86
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.75,
+                0,
+                5.14
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.75,
+                0,
+                5.14
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.75,
+                0,
+                6.43
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.75,
+                0,
+                6.43
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.75,
+                0,
+                7.71
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.75,
+                0,
+                7.71
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.75,
+                0,
+                9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.75,
+                0,
+                9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.14,
+                0,
+                9.91
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.27,
+                0,
+                10.43
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.57,
+                0,
+                11.07
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.16,
+                0,
+                11.59
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                12.24
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.6,
+                0,
+                12.76
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.44,
+                0,
+                13.41
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.03,
+                0,
+                13.93
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.87,
+                0,
+                14.57
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.46,
+                0,
+                15.09
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.3,
+                0,
+                15.74
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.9,
+                0,
+                16.26
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.46,
+                0,
+                17.45
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.26,
+                0,
+                16.55
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.72,
+                0,
+                18.45
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.51,
+                0,
+                17.55
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.97,
+                0,
+                19.45
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.23,
+                0,
+                18.55
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.23,
+                0,
+                20.45
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.97,
+                0,
+                19.55
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.51,
+                0,
+                21.45
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.72,
+                0,
+                20.55
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.26,
+                0,
+                22.45
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.46,
+                0,
+                21.55
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.2,
+                0,
+                22.55
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.32,
+                0,
+                23.59
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.58,
+                0,
+                24.41
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.67,
+                0,
+                24.59
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.93,
+                0,
+                25.41
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.02,
+                0,
+                25.59
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.28,
+                0,
+                26.41
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.63,
+                0,
+                26.59
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.63,
+                0,
+                27.41
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.21,
+                0,
+                27.9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.17,
+                0,
+                28.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.73,
+                0,
+                29.1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.35,
+                0,
+                29.7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.25,
+                0,
+                30.3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.87,
+                0,
+                30.9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.77,
+                0,
+                31.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.39,
+                0,
+                32.1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.29,
+                0,
+                32.7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.91,
+                0,
+                33.3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.87,
+                0,
+                34.43
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.46,
+                0,
+                33.91
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.44,
+                0,
+                35.59
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.03,
+                0,
+                35.07
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                36.76
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.6,
+                0,
+                36.24
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.57,
+                0,
+                37.93
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.16,
+                0,
+                37.41
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.14,
+                0,
+                39.09
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.27,
+                0,
+                38.57
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.7,
+                0,
+                40.26
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.7,
+                0,
+                39.74
+              ]
+            }
+          ],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "pallet-pickup",
+        "moduleSlug": "load-handling",
+        "sortOrder": 7,
+        "kind": "driving",
+        "title": "Pallet Pickup & Placement",
+        "objective": "Pick up a pallet with the forks and place it in the marked drop zone.",
+        "instructions": "Drive up to the pallet with the forks lowered (F), slide them under the load, raise with R to lift, carry the pallet to the drop zone, lower with F, then reverse away to release it.",
+        "hint": "Approach the pallet slowly and squarely - the forks only engage when they are low and centered under the load.",
+        "goalType": "pallet",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [
+            {
+              "id": "pallet-1",
+              "position": [
+                0,
+                0,
+                10
+              ],
+              "rotation": 0
+            }
+          ],
+          "dropZone": {
+            "label": "Drop Zone",
+            "radius": 0.9,
+            "position": [
+              -2.6,
+              0,
+              18
+            ]
+          },
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                -0.9,
+                0,
+                6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.9,
+                0,
+                6
+              ]
+            },
+            {
+              "type": "wall",
+              "length": 3.2,
+              "position": [
+                4.4,
+                0,
+                14
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.4,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.4,
+                0,
+                4.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.4,
+                0,
+                7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.4,
+                0,
+                9.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.4,
+                0,
+                12
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.4,
+                0,
+                14.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.4,
+                0,
+                17
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3.4,
+                0,
+                19.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.4,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.4,
+                0,
+                4.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.4,
+                0,
+                7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.4,
+                0,
+                9.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.4,
+                0,
+                12
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.4,
+                0,
+                14.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.4,
+                0,
+                17
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.4,
+                0,
+                19.5
+              ]
+            }
+          ],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "load-handling-summary",
+        "moduleSlug": "load-handling",
+        "sortOrder": 8,
+        "kind": "summary",
+        "title": "Completion Summary",
+        "objective": "Review completed driving control tasks.",
+        "instructions": "Confirm engine start, acceleration, braking, turning, the driving course, and the pallet pickup task are complete.",
+        "hint": "Completion means you can identify and use the basic forklift operating controls in this simplified simulation.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "body": "",
+          "counters": [],
+          "nextRoute": "postOperation",
+          "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
+          "incompleteMessage": "Complete all guided driving tasks to finish this module."
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "pallet-testing-briefing",
+        "moduleSlug": "pallet-testing",
+        "sortOrder": 1,
+        "kind": "briefing",
+        "title": "Scenario Briefing",
+        "objective": "Understand rated capacity, load stability, and the fail conditions in this assessment.",
+        "instructions": "Review why overloading tips a forklift forward, why cones must never be struck, and why sudden braking throws the load off the forks. Any of these fails the attempt.",
+        "hint": "The counterweight only balances loads up to the rated capacity shown in the HUD.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "body": "A forklift stays upright because the counterweight balances the load - lifting more than the rated capacity shifts the combined center of gravity past the front axle and tips the truck forward.\n\nTraffic cones mark pedestrian lanes and hazards. Striking one in this assessment fails the attempt, the same way it would fail a practical evaluation.\n\nSudden braking throws the load forward off the forks. Slow down early and brake gently while carrying.",
+          "image": "",
+          "syllabus": {
+            "element": "Element 4: Perform load handling operation",
+            "location": "Section 2",
+            "unitCode": "505833315",
+            "pageReferences": "pp. 55, 57-58"
+          },
+          "sceneBody": "### Fail Conditions\n\n- **Overload tip-over** - lifting a pallet heavier than the rated capacity shifts the center of gravity past the front axle and pitches the forklift forward.\n- **Cone strike** - touching any traffic cone ends the attempt, the same as striking a pedestrian lane marker in a practical evaluation.\n- **Load thrown off** - braking hard above walking speed throws the pallet off the forks. Slow down early and brake gently while carrying.\n\nRated capacity in this assessment: **1,000 kg**. After a fail, use **Reset Attempt** and try again - failed attempts are counted but never block completion.",
+          "objectives": [
+            "Compare load weight against rated capacity before lifting.",
+            "Recognize that overloading tips the forklift forward.",
+            "Keep a safe path and avoid striking obstacles while carrying a load.",
+            "Brake gradually so the load does not slide off the forks."
+          ],
+          "showSyllabus": true
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "precision-carry",
+        "moduleSlug": "pallet-testing",
+        "sortOrder": 2,
+        "kind": "driving",
+        "title": "Precision Carry",
+        "objective": "Carry a pallet through a cone-lined lane and deliver it without a single fail condition.",
+        "instructions": "Pick up the pallet, carry it down the cone corridor to the drop zone, lower it with F, and reverse away. Hitting a cone or braking hard while carrying fails the attempt - use Reset Attempt and try again.",
+        "hint": "Ease off W early and let the forklift coast instead of slamming S at speed.",
+        "goalType": "pallet",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [
+            {
+              "id": "carry-pallet",
+              "position": [
+                0,
+                0,
+                5
+              ],
+              "rotation": 0,
+              "weightKg": 500
+            }
+          ],
+          "dropZone": {
+            "label": "Drop Zone",
+            "radius": 0.9,
+            "position": [
+              0,
+              0,
+              19
+            ]
+          },
+          "capacityKg": 1000,
+          "parkingBay": null,
+          "checkpoints": [],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                -1.2,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.2,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.2,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.2,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.2,
+                0,
+                14
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.2,
+                0,
+                14
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.2,
+                0,
+                17
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.2,
+                0,
+                17
+              ]
+            },
+            {
+              "type": "wall",
+              "length": 3.2,
+              "position": [
+                4.4,
+                0,
+                12
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "wall",
+              "length": 3.2,
+              "position": [
+                -4.4,
+                0,
+                12
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                5.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                13
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                15.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                18
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                20.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                5.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                13
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                15.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                18
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                20.5
+              ]
+            }
+          ],
+          "failConditions": {
+            "overload": true,
+            "suddenStop": true
+          }
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "load-limits",
+        "moduleSlug": "pallet-testing",
+        "sortOrder": 3,
+        "kind": "driving",
+        "title": "Load Limits",
+        "objective": "Judge which pallet is within the rated capacity and deliver it safely.",
+        "instructions": "Three pallets are labeled with their weight. The forklift capacity is shown in the HUD. Lift a pallet within capacity and deliver it to the drop zone. Lifting the overweight pallet will tip the forklift and fail the attempt.",
+        "hint": "Read the weight labels before driving in - the heaviest pallet exceeds the rated capacity.",
+        "goalType": "pallet",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [
+            {
+              "id": "pallet-600",
+              "position": [
+                -2.2,
+                0,
+                7
+              ],
+              "rotation": 0,
+              "weightKg": 600
+            },
+            {
+              "id": "pallet-1500",
+              "position": [
+                0,
+                0,
+                7
+              ],
+              "rotation": 0,
+              "weightKg": 1500
+            },
+            {
+              "id": "pallet-400",
+              "position": [
+                2.2,
+                0,
+                7
+              ],
+              "rotation": 0,
+              "weightKg": 400
+            }
+          ],
+          "dropZone": {
+            "label": "Drop Zone",
+            "radius": 0.9,
+            "position": [
+              0,
+              0,
+              16
+            ]
+          },
+          "capacityKg": 1000,
+          "parkingBay": null,
+          "checkpoints": [],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                -3.4,
+                0,
+                10
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3.4,
+                0,
+                10
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.6,
+                0,
+                13
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.6,
+                0,
+                13
+              ]
+            },
+            {
+              "type": "wall",
+              "length": 3.2,
+              "position": [
+                4.6,
+                0,
+                7
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "wall",
+              "length": 3.2,
+              "position": [
+                -4.6,
+                0,
+                7
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                5.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                13
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                15.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                18
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                5.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                13
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                15.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                18
+              ]
+            }
+          ],
+          "failConditions": {
+            "overload": true,
+            "suddenStop": true
+          }
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "pallet-testing-summary",
+        "moduleSlug": "pallet-testing",
+        "sortOrder": 4,
+        "kind": "summary",
+        "title": "Completion Summary",
+        "objective": "Review the assessment results.",
+        "instructions": "Confirm the precision carry and load limit exercises are complete.",
+        "hint": "Completion means you can plan a safe carry and refuse an overweight load.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "body": "",
+          "counters": [
+            "failedAttempts"
+          ],
+          "nextRoute": "equipment",
+          "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
+          "incompleteMessage": "Complete every assessment exercise to finish this module."
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "post-operation-briefing",
+        "moduleSlug": "post-operation",
+        "sortOrder": 1,
+        "kind": "briefing",
+        "title": "Scenario Briefing",
+        "objective": "Understand why shutdown and secure parking are part of safe operation.",
+        "instructions": "Review the expected order for parking and securing the forklift.",
+        "hint": "A parked forklift can still create hazards if not secured.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "body": "Post-operation discipline prevents parked forklifts from becoming hazards.\n\nA proficient park means the truck sits straight inside the painted lines, stopped, with forks lowered and the engine off - cones along the route mark limits that must not be touched.\n\nForks should be lowered, controls set to neutral, and the parking brake engaged before leaving the equipment.\n\nAny unsafe condition or visible damage should be reported for qualified follow-up.",
+          "image": "",
+          "syllabus": {
+            "element": "Post-operation procedure and equipment securing",
+            "location": "Section 2",
+            "unitCode": "CON833309",
+            "pageReferences": "pp. 38, 41-42"
+          },
+          "sceneBody": "### Secure Parking Discipline\n\n- Park inside the painted bay, clear of traffic lanes and cones.\n- Lower the forks flat, set controls to neutral, and engage the parking brake.\n- Switch off the equipment and report anything unsafe found during the shift.\n\nThe next step is a driving exercise: the parking is only accepted when the forklift is inside the lines, straight, stopped, forks lowered, and the engine is off. Cones along the route are live - hitting one fails the attempt.",
+          "objectives": [
+            "Park inside painted bay lines without striking cones or markers.",
+            "Sequence safe parking and shutdown actions.",
+            "Identify why forks, controls, and parking brake must be secured.",
+            "Recognize when unsafe conditions should be reported after operation."
+          ],
+          "showSyllabus": true
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "secure-parking",
+        "moduleSlug": "post-operation",
+        "sortOrder": 2,
+        "kind": "driving",
+        "title": "Secure Parking",
+        "objective": "Park the forklift inside the painted bay without striking a cone.",
+        "instructions": "Drive the cone-lined route to the painted parking bay, straighten up between the lines, stop completely, lower the forks with F, then switch the engine off with E. Hitting a cone fails the attempt.",
+        "hint": "The status badge at the top tells you which parking requirement is still missing.",
+        "goalType": "parking",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": {
+            "depth": 1,
+            "label": "Parking Bay",
+            "width": 0.45,
+            "heading": 0,
+            "position": [
+              -2.6,
+              0,
+              16
+            ]
+          },
+          "checkpoints": [],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                -1.2,
+                0,
+                4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.2,
+                0,
+                4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.2,
+                0,
+                7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.2,
+                0,
+                7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.6,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4.6,
+                0,
+                12
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.6,
+                0,
+                13.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4.4,
+                0,
+                16
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.8,
+                0,
+                16.6
+              ]
+            },
+            {
+              "type": "wall",
+              "length": 2.6,
+              "position": [
+                -2.6,
+                0,
+                18.2
+              ],
+              "rotation": 1.570796326794897
+            },
+            {
+              "type": "wall",
+              "length": 3.2,
+              "position": [
+                4.4,
+                0,
+                8
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                4.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                9.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                12
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                14.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -5.4,
+                0,
+                17
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                4.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                9.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                12
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                14.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                5.4,
+                0,
+                17
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.975,
+                0,
+                15.35
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.975,
+                0,
+                16
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.225,
+                0,
+                15.35
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.225,
+                0,
+                16
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.975,
+                0,
+                16.65
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                16.65
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.225,
+                0,
+                16.65
+              ]
+            }
+          ],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "parallel-parking",
+        "moduleSlug": "post-operation",
+        "sortOrder": 3,
+        "kind": "driving",
+        "title": "Parallel Parking",
+        "objective": "Ease sideways into a narrow parallel bay between the boundary cones.",
+        "instructions": "Steer into the gap in the left-hand cone line, straighten up so the forklift sits flush with the bay, then stop, lower the forks with F, and switch off with E.",
+        "hint": "The bay is only slightly wider than the forklift - small steering corrections beat big ones.",
+        "goalType": "parking",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": {
+            "depth": 1.3,
+            "label": "Parallel Bay",
+            "width": 0.42,
+            "heading": 0,
+            "position": [
+              -1.2,
+              0,
+              13
+            ]
+          },
+          "checkpoints": [],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                -1.56,
+                0,
+                12.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.84,
+                0,
+                12.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.56,
+                0,
+                13.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.84,
+                0,
+                13.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                3.3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                4.6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                5.9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                7.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                8.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                9.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                11.1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                14.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                16.1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                17.4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                18.7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                20
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                21.3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                22.6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.2,
+                0,
+                23.9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                3.3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                4.6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                5.9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                7.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                8.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                9.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                11.1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                12.4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                13.7
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                15
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                16.3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                17.6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                18.9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                20.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                21.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.2,
+                0,
+                22.8
+              ]
+            }
+          ],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "forklift-gap-parking",
+        "moduleSlug": "post-operation",
+        "sortOrder": 4,
+        "kind": "driving",
+        "title": "Parking Between Forklifts",
+        "objective": "Park in a tight gap between two parked forklifts without clipping either one.",
+        "instructions": "Approach slowly and centered - the parked forklifts on both sides are live obstacles, so drifting toward either one ends the attempt just like hitting a wall.",
+        "hint": "Center up early. There is very little room to correct once you are between the two forklifts.",
+        "goalType": "parking",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": {
+            "depth": 1,
+            "label": "Forklift Gap",
+            "width": 0.35,
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              16
+            ]
+          },
+          "checkpoints": [],
+          "decorations": [
+            {
+              "type": "forklift",
+              "position": [
+                -0.45,
+                0,
+                16
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "forklift",
+              "position": [
+                0.45,
+                0,
+                16
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                4.4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                6.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                9.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                4.4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                6.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                9.2
+              ]
+            }
+          ],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "shutdown-sequence",
+        "moduleSlug": "post-operation",
+        "sortOrder": 5,
+        "kind": "activity",
+        "title": "Shutdown Sequence",
+        "objective": "Place post-operation steps in a safe order.",
+        "instructions": "Select the six shutdown actions in the correct order: park level, lower forks, neutral controls, parking brake, power off, then report concerns. Wrong picks are counted.",
+        "hint": "Lowering forks and securing movement controls are essential before leaving equipment.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "activityId": "shutdown-sequence"
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "reporting",
+        "moduleSlug": "post-operation",
+        "sortOrder": 6,
+        "kind": "activity",
+        "title": "Unsafe Condition Reporting",
+        "objective": "Decide what needs to be reported after operation.",
+        "instructions": "For each end-of-shift condition, choose Report or No Action. Correct every card to complete the step.",
+        "hint": "Maintenance is outside this prototype; learners should report concerns to qualified personnel.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "activityId": "reporting"
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "post-operation-summary",
+        "moduleSlug": "post-operation",
+        "sortOrder": 7,
+        "kind": "summary",
+        "title": "Completion Summary",
+        "objective": "Review parking, shutdown, and reporting results.",
+        "instructions": "Confirm all three parking drives, shutdown ordering, and reporting decisions are complete.",
+        "hint": "Completion means the learner can park precisely in tight spaces, then secure and hand over a forklift safely.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "body": "",
+          "counters": [
+            "failedAttempts",
+            "shutdownMistakes"
+          ],
+          "nextRoute": "palletTesting",
+          "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
+          "incompleteMessage": "Complete every parking drive, the shutdown ordering, and the reporting decisions to finish this module."
+        },
+        "published": true,
+        "builtIn": true
+      }
+    ],
+    "ChecklistItem": [
+      {
+        "id": "walk-around-check-check-1",
+        "moduleId": 1,
+        "text": "Check for engine oil, hydraulic oil, coolant, and battery leaks.",
+        "sortOrder": 1
+      },
+      {
+        "id": "walk-around-check-check-2",
+        "moduleId": 1,
+        "text": "Inspect tires for damage, wear, or unsafe condition.",
+        "sortOrder": 2
+      },
+      {
+        "id": "walk-around-check-check-3",
+        "moduleId": 1,
+        "text": "Check forks, mast, carriage, and lift chain for visible damage.",
+        "sortOrder": 3
+      },
+      {
+        "id": "walk-around-check-check-4",
+        "moduleId": 1,
+        "text": "Confirm horn, lights, warning beacon, and backup alarm are working.",
+        "sortOrder": 4
+      },
+      {
+        "id": "walk-around-check-check-5",
+        "moduleId": 1,
+        "text": "Check gauges and dashboard indicators before operation.",
+        "sortOrder": 5
+      },
+      {
+        "id": "walk-around-check-check-6",
+        "moduleId": 1,
+        "text": "Confirm brakes, steering, and controls respond before entering the work area.",
+        "sortOrder": 6
+      },
+      {
+        "id": "load-handling-check-1",
+        "moduleId": 2,
+        "text": "Start the engine before attempting to move.",
+        "sortOrder": 1
+      },
+      {
+        "id": "load-handling-check-2",
+        "moduleId": 2,
+        "text": "Accelerate smoothly using the forward control.",
+        "sortOrder": 2
+      },
+      {
+        "id": "load-handling-check-3",
+        "moduleId": 2,
+        "text": "Brake smoothly and stop within the marked zone.",
+        "sortOrder": 3
+      },
+      {
+        "id": "load-handling-check-4",
+        "moduleId": 2,
+        "text": "Steer left and right with controlled inputs.",
+        "sortOrder": 4
+      },
+      {
+        "id": "load-handling-check-5",
+        "moduleId": 2,
+        "text": "Complete the combined guided driving course.",
+        "sortOrder": 5
+      },
+      {
+        "id": "post-operation-check-1",
+        "moduleId": 3,
+        "text": "Park on a level surface.",
+        "sortOrder": 1
+      },
+      {
+        "id": "post-operation-check-2",
+        "moduleId": 3,
+        "text": "Lower forks completely.",
+        "sortOrder": 2
+      },
+      {
+        "id": "post-operation-check-3",
+        "moduleId": 3,
+        "text": "Set controls to neutral.",
+        "sortOrder": 3
+      },
+      {
+        "id": "post-operation-check-4",
+        "moduleId": 3,
+        "text": "Engage the parking brake.",
+        "sortOrder": 4
+      },
+      {
+        "id": "post-operation-check-5",
+        "moduleId": 3,
+        "text": "Turn off the equipment.",
+        "sortOrder": 5
+      },
+      {
+        "id": "post-operation-check-6",
+        "moduleId": 3,
+        "text": "Report unsafe conditions or visible damage.",
+        "sortOrder": 6
+      },
+      {
+        "id": "pallet-testing-check-1",
+        "moduleId": 4,
+        "text": "Check the load weight against the rated capacity before lifting.",
+        "sortOrder": 1
+      },
+      {
+        "id": "pallet-testing-check-2",
+        "moduleId": 4,
+        "text": "Refuse to lift a load that exceeds the rated capacity.",
+        "sortOrder": 2
+      },
+      {
+        "id": "pallet-testing-check-3",
+        "moduleId": 4,
+        "text": "Keep the travel path clear of cones and obstacles.",
+        "sortOrder": 3
+      },
+      {
+        "id": "pallet-testing-check-4",
+        "moduleId": 4,
+        "text": "Brake gradually while carrying a load.",
+        "sortOrder": 4
+      },
+      {
+        "id": "pallet-testing-check-5",
+        "moduleId": 4,
+        "text": "Deliver the load to the marked drop zone and reverse away.",
+        "sortOrder": 5
+      }
+    ],
+    "QuizQuestion": [
+      {
+        "id": "walk-fluid-leaks",
+        "moduleId": 1,
+        "prompt": "What should be checked during a walk-around inspection?",
+        "answer": "Fluid leaks",
+        "options": [
+          {
+            "id": "walk-fluid-leaks-option-1",
+            "text": "Fluid leaks",
+            "sortOrder": 1
+          },
+          {
+            "id": "walk-fluid-leaks-option-2",
+            "text": "Lunch schedule",
+            "sortOrder": 2
+          },
+          {
+            "id": "walk-fluid-leaks-option-3",
+            "text": "Paint color",
+            "sortOrder": 3
+          },
+          {
+            "id": "walk-fluid-leaks-option-4",
+            "text": "Radio volume",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "walk-warning-devices",
+        "moduleId": 1,
+        "prompt": "Which devices should be tested before operation?",
+        "answer": "Horn and lights",
+        "options": [
+          {
+            "id": "walk-warning-devices-option-1",
+            "text": "Horn and lights",
+            "sortOrder": 1
+          },
+          {
+            "id": "walk-warning-devices-option-2",
+            "text": "Cup holder",
+            "sortOrder": 2
+          },
+          {
+            "id": "walk-warning-devices-option-3",
+            "text": "Seat fabric",
+            "sortOrder": 3
+          },
+          {
+            "id": "walk-warning-devices-option-4",
+            "text": "Dashboard color",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 2
+      },
+      {
+        "id": "walk-tires",
+        "moduleId": 1,
+        "prompt": "Why inspect tires before operation?",
+        "answer": "They affect stability and steering",
+        "options": [
+          {
+            "id": "walk-tires-option-1",
+            "text": "They affect stability and steering",
+            "sortOrder": 1
+          },
+          {
+            "id": "walk-tires-option-2",
+            "text": "They change the training score",
+            "sortOrder": 2
+          },
+          {
+            "id": "walk-tires-option-3",
+            "text": "They control the horn",
+            "sortOrder": 3
+          },
+          {
+            "id": "walk-tires-option-4",
+            "text": "They identify the operator",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "engine-start-key",
+        "moduleId": 2,
+        "prompt": "Which key starts the engine in this simulation?",
+        "answer": "E",
+        "options": [
+          {
+            "id": "engine-start-key-option-1",
+            "text": "E",
+            "sortOrder": 1
+          },
+          {
+            "id": "engine-start-key-option-2",
+            "text": "W",
+            "sortOrder": 2
+          },
+          {
+            "id": "engine-start-key-option-3",
+            "text": "S",
+            "sortOrder": 3
+          },
+          {
+            "id": "engine-start-key-option-4",
+            "text": "A",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "accelerate-key",
+        "moduleId": 2,
+        "prompt": "Which key accelerates the forklift forward?",
+        "answer": "W",
+        "options": [
+          {
+            "id": "accelerate-key-option-1",
+            "text": "W",
+            "sortOrder": 1
+          },
+          {
+            "id": "accelerate-key-option-2",
+            "text": "S",
+            "sortOrder": 2
+          },
+          {
+            "id": "accelerate-key-option-3",
+            "text": "A",
+            "sortOrder": 3
+          },
+          {
+            "id": "accelerate-key-option-4",
+            "text": "D",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 2
+      },
+      {
+        "id": "brake-key",
+        "moduleId": 2,
+        "prompt": "Which key slows down or stops the forklift?",
+        "answer": "S",
+        "options": [
+          {
+            "id": "brake-key-option-1",
+            "text": "S",
+            "sortOrder": 1
+          },
+          {
+            "id": "brake-key-option-2",
+            "text": "W",
+            "sortOrder": 2
+          },
+          {
+            "id": "brake-key-option-3",
+            "text": "A",
+            "sortOrder": 3
+          },
+          {
+            "id": "brake-key-option-4",
+            "text": "D",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "post-forks",
+        "moduleId": 3,
+        "prompt": "What should be done to the forks after operation?",
+        "answer": "Lower them completely",
+        "options": [
+          {
+            "id": "post-forks-option-1",
+            "text": "Lower them completely",
+            "sortOrder": 1
+          },
+          {
+            "id": "post-forks-option-2",
+            "text": "Leave them raised",
+            "sortOrder": 2
+          },
+          {
+            "id": "post-forks-option-3",
+            "text": "Remove them",
+            "sortOrder": 3
+          },
+          {
+            "id": "post-forks-option-4",
+            "text": "Paint them",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "post-controls",
+        "moduleId": 3,
+        "prompt": "Where should controls be placed during shutdown?",
+        "answer": "Neutral",
+        "options": [
+          {
+            "id": "post-controls-option-1",
+            "text": "Neutral",
+            "sortOrder": 1
+          },
+          {
+            "id": "post-controls-option-2",
+            "text": "Reverse",
+            "sortOrder": 2
+          },
+          {
+            "id": "post-controls-option-3",
+            "text": "Lift position",
+            "sortOrder": 3
+          },
+          {
+            "id": "post-controls-option-4",
+            "text": "Tilt position",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 2
+      },
+      {
+        "id": "post-report",
+        "moduleId": 3,
+        "prompt": "What should be reported after operation?",
+        "answer": "Unsafe conditions or visible damage",
+        "options": [
+          {
+            "id": "post-report-option-1",
+            "text": "Unsafe conditions or visible damage",
+            "sortOrder": 1
+          },
+          {
+            "id": "post-report-option-2",
+            "text": "Only the weather",
+            "sortOrder": 2
+          },
+          {
+            "id": "post-report-option-3",
+            "text": "Only the operator name",
+            "sortOrder": 3
+          },
+          {
+            "id": "post-report-option-4",
+            "text": "Nothing ever",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "pallet-overload",
+        "moduleId": 4,
+        "prompt": "What happens when a forklift lifts more than its rated capacity?",
+        "answer": "It can tip forward",
+        "options": [
+          {
+            "id": "pallet-overload-option-1",
+            "text": "It can tip forward",
+            "sortOrder": 1
+          },
+          {
+            "id": "pallet-overload-option-2",
+            "text": "It drives faster",
+            "sortOrder": 2
+          },
+          {
+            "id": "pallet-overload-option-3",
+            "text": "Nothing changes",
+            "sortOrder": 3
+          },
+          {
+            "id": "pallet-overload-option-4",
+            "text": "The horn sounds",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "pallet-braking",
+        "moduleId": 4,
+        "prompt": "How should you brake while carrying a load?",
+        "answer": "Gradually and early",
+        "options": [
+          {
+            "id": "pallet-braking-option-1",
+            "text": "Gradually and early",
+            "sortOrder": 1
+          },
+          {
+            "id": "pallet-braking-option-2",
+            "text": "As hard as possible",
+            "sortOrder": 2
+          },
+          {
+            "id": "pallet-braking-option-3",
+            "text": "Only in reverse",
+            "sortOrder": 3
+          },
+          {
+            "id": "pallet-braking-option-4",
+            "text": "Never brake",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 2
+      },
+      {
+        "id": "pallet-cones",
+        "moduleId": 4,
+        "prompt": "What do traffic cones mark in a work area?",
+        "answer": "Hazards and travel limits",
+        "options": [
+          {
+            "id": "pallet-cones-option-1",
+            "text": "Hazards and travel limits",
+            "sortOrder": 1
+          },
+          {
+            "id": "pallet-cones-option-2",
+            "text": "Parking rewards",
+            "sortOrder": 2
+          },
+          {
+            "id": "pallet-cones-option-3",
+            "text": "Fuel stations",
+            "sortOrder": 3
+          },
+          {
+            "id": "pallet-cones-option-4",
+            "text": "Speed boosts",
+            "sortOrder": 4
+          }
+        ],
+        "sortOrder": 3
+      }
+    ]
+  }
+}

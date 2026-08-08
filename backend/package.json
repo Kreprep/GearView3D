@@ -8,6 +8,8 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "seed": "node prisma/seed.js",
+    "content:export": "node scripts/exportContent.js",
+    "content:import": "node scripts/importContent.js",
     "migrate": "prisma migrate dev",
     "studio": "prisma studio"
   },
