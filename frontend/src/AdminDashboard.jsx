@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import CourseAdmin from './components/admin/CourseAdmin'
 import PracticeQuizAdmin from './components/admin/PracticeQuizAdmin'
+import WalkAroundHotspotAdmin from './components/admin/WalkAroundHotspotAdmin'
 import {
   adminDeleteChecklistItem,
   adminDeleteModule,
@@ -27,6 +28,7 @@ const adminTabs = [
   [routes.adminParts, 'Parts'],
   [routes.adminPractice, 'Practice Quiz'],
   [routes.adminCourses, 'Courses'],
+  [routes.adminHotspots, 'Walk-Around Hotspots'],
   [routes.adminChecklists, 'Checklists'],
   [routes.adminQuizzes, 'Quizzes'],
   [routes.adminUsers, 'Users'],
@@ -479,6 +481,19 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               Edits are saved as a draft; learners keep the published version until you press Publish.
             </p>
             <CourseAdmin onMessage={refreshMessage} />
+          </section>
+        </main>
+      )}
+
+      {activePath === routes.adminHotspots && (
+        <main className="admin-grid">
+          <section className="admin-panel wide-panel">
+            <h2>Walk-Around Hotspot Editor</h2>
+            <p className="admin-panel-note">
+              Click a point on the 3D model to place a hotspot, or drag an existing marker to reposition it.
+              Edits are saved as a draft; learners keep the published position and text until you press Publish.
+            </p>
+            <WalkAroundHotspotAdmin onMessage={refreshMessage} />
           </section>
         </main>
       )}
