@@ -233,6 +233,20 @@ export async function adminDeleteQuizQuestion(questionId) {
   return request(`/admin/quiz-questions/${encodeURIComponent(questionId)}`, { method: 'DELETE' })
 }
 
+// --- Admin: users ---
+
+export async function adminCreateUser(payload) {
+  return request('/admin/users', { method: 'POST', body: payload })
+}
+
+export async function adminUpdateUser(userId, payload) {
+  return request(`/admin/users/${encodeURIComponent(userId)}`, { method: 'PATCH', body: payload })
+}
+
+export async function adminDeleteUser(userId) {
+  return request(`/admin/users/${encodeURIComponent(userId)}`, { method: 'DELETE' })
+}
+
 // --- Admin: driving course editor ---
 // Courses carry large geometry blobs, so they are fetched separately from
 // adminListContent() rather than bundled into it.

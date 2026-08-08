@@ -3,10 +3,12 @@ import CourseAdmin from './components/admin/CourseAdmin'
 import PracticeQuizAdmin from './components/admin/PracticeQuizAdmin'
 import WalkAroundHotspotAdmin from './components/admin/WalkAroundHotspotAdmin'
 import {
+  adminCreateUser,
   adminDeleteChecklistItem,
   adminDeleteModule,
   adminDeletePart,
   adminDeleteQuizQuestion,
+  adminDeleteUser,
   adminListContent,
   adminPublishPart,
   adminPublishPartDetail,
@@ -18,6 +20,7 @@ import {
   adminUpdatePart,
   adminUpdatePartDetail,
   adminUpdateQuizQuestion,
+  adminUpdateUser,
 } from './lib/api'
 import { routes } from './lib/router'
 import './AdminDashboard.css'
@@ -74,6 +77,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [editingEquipment, setEditingEquipment] = useState(null)
   const [editingChecklist, setEditingChecklist] = useState(null)
   const [editingQuiz, setEditingQuiz] = useState(null)
+  const [editingUser, setEditingUser] = useState(null)
+  const [newUser, setNewUser] = useState({ email: '', fullName: '', role: 'TRAINEE', password: '' })
   const [saveMessage, setSaveMessage] = useState('')
 
   const activePath = path || routes.admin
@@ -264,6 +269,45 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     if (!window.confirm('Delete this quiz question?')) return
     await adminDeleteQuizQuestion(questionId)
     setContent((current) => ({ ...current, quizQuestions: current.quizQuestions.filter((question) => question.id !== questionId) }))
+  }
+
+  const handleCreateUser = async () => {
+    if (!newUser.email.trim() || !newUser.fullName.trim() || !newUser.password) return
+    try {
+      const result = await adminCreateUser(newUser)
+      setContent((current) => ({ ...current, users: [...current.users, result.user] }))
+      setNewUser({ email: '', fullName: '', role: 'TRAINEE', password: '' })
+      refreshMessage('User created.')
+    } catch (err) {
+      refreshMessage(err.message)
+    }
+  }
+
+  const handleSaveUser = async () => {
+    if (!editingUser) return
+    try {
+      const result = await adminUpdateUser(editingUser.id, editingUser)
+      setContent((current) => ({
+        ...current,
+        users: current.users.map((entry) => (entry.id === editingUser.id ? result.user : entry)),
+      }))
+      setEditingUser({ ...result.user, password: '' })
+      refreshMessage('User saved.')
+    } catch (err) {
+      refreshMessage(err.message)
+    }
+  }
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Delete this user? Their saved progress is deleted with them.')) return
+    try {
+      await adminDeleteUser(userId)
+      setContent((current) => ({ ...current, users: current.users.filter((entry) => entry.id !== userId) }))
+      setEditingUser((current) => (current?.id === userId ? null : current))
+      refreshMessage('User deleted.')
+    } catch (err) {
+      refreshMessage(err.message)
+    }
   }
 
   const exportReports = () => {
@@ -556,14 +600,73 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
 
       {activePath === routes.adminUsers && (
         <main className="admin-grid">
-          <section className="admin-panel wide-panel">
-            <h2>Learner Users</h2>
+          <section className="admin-panel">
+            <h2>Users</h2>
             {content.users.map((learner) => (
               <article key={learner.id} className="admin-list-item">
                 <h3>{learner.fullName}</h3>
                 <p>{learner.email} - {learner.role}</p>
+                <div className="admin-row-actions">
+                  <button onClick={() => setEditingUser({ ...learner, password: '' })}>Edit</button>
+                  {learner.id !== user.id && (
+                    <button onClick={() => handleDeleteUser(learner.id)}>Delete</button>
+                  )}
+                </div>
               </article>
             ))}
+
+            <h2>New user</h2>
+            <label>
+              Full name
+              <input value={newUser.fullName} onChange={(event) => setNewUser({ ...newUser, fullName: event.target.value })} />
+            </label>
+            <label>
+              Email
+              <input value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} />
+            </label>
+            <label>
+              Password
+              <input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} />
+            </label>
+            <label>
+              Role
+              <select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
+                <option value="TRAINEE">Trainee</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </label>
+            <button className="admin-save" onClick={handleCreateUser}>Create user</button>
+          </section>
+          <section className="admin-panel admin-editor">
+            <h2>Edit user</h2>
+            {editingUser ? (
+              <>
+                <label>Full name<input value={editingUser.fullName} onChange={(event) => setEditingUser({ ...editingUser, fullName: event.target.value })} /></label>
+                <label>Email<input value={editingUser.email} onChange={(event) => setEditingUser({ ...editingUser, email: event.target.value })} /></label>
+                <label>
+                  New password
+                  <input
+                    type="password"
+                    value={editingUser.password}
+                    placeholder="Leave blank to keep the current password"
+                    onChange={(event) => setEditingUser({ ...editingUser, password: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Role
+                  <select
+                    value={editingUser.role}
+                    disabled={editingUser.id === user.id}
+                    onChange={(event) => setEditingUser({ ...editingUser, role: event.target.value })}
+                  >
+                    <option value="TRAINEE">Trainee</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </label>
+                {editingUser.id === user.id && <p className="admin-panel-note">You cannot change your own role.</p>}
+                <button className="admin-save" onClick={handleSaveUser}>Save user</button>
+              </>
+            ) : <p>Select a user to edit.</p>}
           </section>
         </main>
       )}
