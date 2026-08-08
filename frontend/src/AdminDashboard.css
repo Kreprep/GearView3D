@@ -187,6 +187,7 @@
 }
 
 .admin-editor input,
+.admin-editor select,
 .admin-editor textarea {
   width: 100%;
   box-sizing: border-box;

@@ -600,7 +600,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
 
       {activePath === routes.adminUsers && (
         <main className="admin-grid">
-          <section className="admin-panel">
+          <section className="admin-panel wide-panel">
             <h2>Users</h2>
             {content.users.map((learner) => (
               <article key={learner.id} className="admin-list-item">
@@ -614,7 +614,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 </div>
               </article>
             ))}
-
+          </section>
+          <section className="admin-panel admin-editor">
             <h2>New user</h2>
             <label>
               Full name
