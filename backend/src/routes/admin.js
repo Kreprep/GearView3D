@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma.js'
 import { publicUser, requireAdmin, requireAuth } from '../lib/auth.js'
 import { buildAdminProgressReport } from '../lib/progressSummary.js'
@@ -13,6 +14,12 @@ import {
   validateCoursePayload,
 } from '../lib/courses.js'
 import { courseModuleSlugs } from '../../../frontend/src/data/courseDefaults.js'
+import {
+  adminHotspot,
+  defaultHotspotFor,
+  editableHotspot,
+  hotspotDraftFields,
+} from '../lib/walkAroundHotspots.js'
 
 const router = Router()
 
@@ -306,6 +313,83 @@ router.delete('/modules/:id', async (req, res) => {
   res.json({ deleted: true })
 })
 
+// --- Users ------------------------------------------------------------------
+// Learner/admin accounts save immediately, no draft/publish - there's nothing
+// for a learner to see ahead of time, just an account that works or doesn't.
+
+router.post('/users', async (req, res) => {
+  const payload = req.body || {}
+  const email = String(payload.email || '').trim().toLowerCase()
+  const role = payload.role === 'ADMIN' ? 'ADMIN' : 'TRAINEE'
+
+  if (!email || !payload.fullName?.trim() || !payload.password) {
+    return res.status(400).json({ error: 'Email, full name, and password are required' })
+  }
+  if (payload.password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' })
+  }
+  if (await prisma.user.findUnique({ where: { email } })) {
+    return res.status(409).json({ error: `An account with email "${email}" already exists` })
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      email,
+      fullName: payload.fullName.trim(),
+      role,
+      passwordHash: await bcrypt.hash(payload.password, 10),
+    },
+  })
+  res.json({ user: publicUser(user) })
+})
+
+// `password` is optional: omit it to leave the account's password unchanged.
+router.patch('/users/:id', async (req, res) => {
+  const payload = req.body || {}
+  const data = {}
+
+  if (payload.fullName !== undefined) {
+    if (!payload.fullName.trim()) return res.status(400).json({ error: 'Full name is required' })
+    data.fullName = payload.fullName.trim()
+  }
+  if (payload.email !== undefined) {
+    const email = String(payload.email).trim().toLowerCase()
+    if (!email) return res.status(400).json({ error: 'Email is required' })
+    const existing = await prisma.user.findUnique({ where: { email } })
+    if (existing && existing.id !== req.params.id) {
+      return res.status(409).json({ error: `An account with email "${email}" already exists` })
+    }
+    data.email = email
+  }
+  if (payload.role !== undefined) {
+    const role = payload.role === 'ADMIN' ? 'ADMIN' : 'TRAINEE'
+    if (req.params.id === req.user.id && role !== 'ADMIN') {
+      return res.status(400).json({ error: 'You cannot change your own role' })
+    }
+    data.role = role
+  }
+  if (payload.password) {
+    if (payload.password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' })
+    }
+    data.passwordHash = await bcrypt.hash(payload.password, 10)
+  }
+
+  const user = await prisma.user.update({ where: { id: req.params.id }, data })
+  res.json({ user: publicUser(user) })
+})
+
+// An admin cannot delete their own account - the dashboard they're using to
+// do it would disappear out from under them.
+router.delete('/users/:id', async (req, res) => {
+  if (req.params.id === req.user.id) {
+    return res.status(400).json({ error: 'You cannot delete your own account' })
+  }
+
+  await prisma.user.delete({ where: { id: req.params.id } })
+  res.json({ deleted: true })
+})
+
 router.patch('/checklist-items/:id', async (req, res) => {
   const item = await prisma.checklistItem.update({
     where: { id: req.params.id },
@@ -484,6 +568,139 @@ router.post('/courses/reorder', async (req, res) => {
 // re-adding the course restores completion (see lib/simulationProgress.js).
 router.delete('/courses/:id', async (req, res) => {
   await prisma.course.delete({ where: { id: req.params.id } })
+  res.json({ deleted: true })
+})
+
+// --- Walk-around hotspot editor --------------------------------------------
+// Module 1's 3D inspection hotspots, placed/dragged on the model in the admin
+// dashboard. Same draft/publish/builtIn shape as courses, above.
+
+router.get('/walkaround-hotspots', async (req, res) => {
+  const rows = await prisma.walkAroundHotspot.findMany({ orderBy: { sortOrder: 'asc' } })
+  res.json({ hotspots: rows.map(adminHotspot) })
+})
+
+router.post('/walkaround-hotspots', async (req, res) => {
+  const payload = req.body || {}
+  if (!payload.label?.trim()) {
+    return res.status(400).json({ error: 'Hotspot label is required' })
+  }
+
+  const id = (payload.id || payload.label).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  if (!id) {
+    return res.status(400).json({ error: 'Hotspot id could not be derived from the label' })
+  }
+  if (await prisma.walkAroundHotspot.findUnique({ where: { id } })) {
+    return res.status(409).json({ error: `A hotspot with id "${id}" already exists` })
+  }
+
+  const last = await prisma.walkAroundHotspot.findFirst({ orderBy: { sortOrder: 'desc' } })
+
+  // Created unpublished: a new hotspot has no position worth showing a learner
+  // until the admin places it, so it must not reach them before first publish.
+  const hotspot = await prisma.walkAroundHotspot.create({
+    data: {
+      id,
+      label: payload.label.trim(),
+      position: payload.position || [0, 0.3, 0],
+      state: payload.state || 'engine-off',
+      category: payload.category || '',
+      inspect: payload.inspect || '',
+      safeFeedback: payload.safeFeedback || '',
+      unsafeFeedback: payload.unsafeFeedback || '',
+      unsafeScenarios: payload.unsafeScenarios || [],
+      sortOrder: (last?.sortOrder || 0) + 1,
+      published: false,
+      builtIn: false,
+    },
+  })
+  res.json({ hotspot: adminHotspot(hotspot) })
+})
+
+// Saves an edit as a draft; learners keep seeing the published position/text
+// until Publish.
+router.put('/walkaround-hotspots/:id', async (req, res) => {
+  const row = await prisma.walkAroundHotspot.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
+
+  const draft = { ...editableHotspot(row), ...pick(req.body, hotspotDraftFields) }
+  const hotspot = await prisma.walkAroundHotspot.update({
+    where: { id: row.id },
+    data: {
+      draft,
+      ...(typeof req.body?.sortOrder === 'number' ? { sortOrder: req.body.sortOrder } : {}),
+    },
+  })
+  res.json({ hotspot: adminHotspot(hotspot) })
+})
+
+router.post('/walkaround-hotspots/:id/publish', async (req, res) => {
+  const row = await prisma.walkAroundHotspot.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
+  if (!row.draft) return res.status(400).json({ error: 'There is no draft to publish' })
+
+  const hotspot = await prisma.walkAroundHotspot.update({
+    where: { id: row.id },
+    data: { ...pick(row.draft, hotspotDraftFields), draft: null, published: true },
+  })
+  res.json({ hotspot: adminHotspot(hotspot) })
+})
+
+router.post('/walkaround-hotspots/:id/revert', async (req, res) => {
+  const hotspot = await prisma.walkAroundHotspot.update({
+    where: { id: req.params.id },
+    data: { draft: null },
+  })
+  res.json({ hotspot: adminHotspot(hotspot) })
+})
+
+// Built-in hotspots only: restores the seeded position/text and clears any draft.
+router.post('/walkaround-hotspots/:id/reset', async (req, res) => {
+  const row = await prisma.walkAroundHotspot.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
+
+  const defaults = defaultHotspotFor(row.id)
+  if (!row.builtIn || !defaults) {
+    return res.status(400).json({ error: 'This hotspot has no built-in default to reset to' })
+  }
+
+  const hotspot = await prisma.walkAroundHotspot.update({
+    where: { id: row.id },
+    data: {
+      label: defaults.label,
+      position: defaults.position,
+      state: defaults.state,
+      category: defaults.category,
+      inspect: defaults.inspect,
+      safeFeedback: defaults.safeFeedback,
+      unsafeFeedback: defaults.unsafeFeedback,
+      unsafeScenarios: defaults.unsafeScenarios || [],
+      draft: null,
+      published: true,
+    },
+  })
+  res.json({ hotspot: adminHotspot(hotspot) })
+})
+
+// Whole-list reorder; ids not in the list are left alone.
+router.post('/walkaround-hotspots/reorder', async (req, res) => {
+  const { ids } = req.body || {}
+  if (!Array.isArray(ids)) {
+    return res.status(400).json({ error: 'ids is required' })
+  }
+
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.walkAroundHotspot.update({ where: { id }, data: { sortOrder: index + 1 } }),
+    ),
+  )
+
+  const rows = await prisma.walkAroundHotspot.findMany({ orderBy: { sortOrder: 'asc' } })
+  res.json({ hotspots: rows.map(adminHotspot) })
+})
+
+router.delete('/walkaround-hotspots/:id', async (req, res) => {
+  await prisma.walkAroundHotspot.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })
 

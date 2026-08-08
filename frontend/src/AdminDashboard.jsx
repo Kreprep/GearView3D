@@ -1,11 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
+import {
+  Activity,
+  BarChart3,
+  FileQuestion,
+  HelpCircle,
+  Layers,
+  LayoutGrid,
+  ListChecks,
+  MapPin,
+  Route,
+  TrendingUp,
+  Truck,
+  Users as UsersIcon,
+  Wrench,
+} from 'lucide-react'
 import CourseAdmin from './components/admin/CourseAdmin'
 import PracticeQuizAdmin from './components/admin/PracticeQuizAdmin'
+import WalkAroundHotspotAdmin from './components/admin/WalkAroundHotspotAdmin'
 import {
+  adminCreateUser,
   adminDeleteChecklistItem,
   adminDeleteModule,
   adminDeletePart,
   adminDeleteQuizQuestion,
+  adminDeleteUser,
   adminListContent,
   adminPublishPart,
   adminPublishPartDetail,
@@ -17,20 +35,28 @@ import {
   adminUpdatePart,
   adminUpdatePartDetail,
   adminUpdateQuizQuestion,
+  adminUpdateUser,
 } from './lib/api'
 import { routes } from './lib/router'
 import './AdminDashboard.css'
 
-const adminTabs = [
-  [routes.admin, 'Overview'],
-  [routes.adminModules, 'Modules'],
-  [routes.adminParts, 'Parts'],
-  [routes.adminPractice, 'Practice Quiz'],
-  [routes.adminCourses, 'Courses'],
-  [routes.adminChecklists, 'Checklists'],
-  [routes.adminQuizzes, 'Quizzes'],
-  [routes.adminUsers, 'Users'],
-  [routes.adminReports, 'Reports'],
+// Every one of these is Forklift-only content today (the schema has no
+// per-equipment scoping yet - Backhoe/Crane are still non-clickable catalog
+// cards), but grouping them under "Forklift" now previews the structure a
+// second equipment type would need later, rather than a flat tab row.
+const forkliftContentTabs = [
+  [routes.adminModules, 'Modules', Layers],
+  [routes.adminParts, 'Parts', Wrench],
+  [routes.adminPractice, 'Practice Quiz', HelpCircle],
+  [routes.adminCourses, 'Courses', Route],
+  [routes.adminHotspots, 'Walk-Around Hotspots', MapPin],
+  [routes.adminChecklists, 'Checklists', ListChecks],
+  [routes.adminQuizzes, 'Quizzes', FileQuestion],
+]
+
+const trailingTabs = [
+  [routes.adminUsers, 'Users', UsersIcon],
+  [routes.adminReports, 'Reports', BarChart3],
 ]
 
 // Parts, part details and practice questions store the published row in their
@@ -53,6 +79,23 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(url)
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function formatRelativeTime(dateString) {
+  const elapsed = Date.now() - new Date(dateString).getTime()
+  if (elapsed < 60 * 1000) return 'just now'
+  if (elapsed < 60 * 60 * 1000) return `${Math.floor(elapsed / (60 * 1000))}m ago`
+  if (elapsed < DAY_MS) return `${Math.floor(elapsed / (60 * 60 * 1000))}h ago`
+  return `${Math.floor(elapsed / DAY_MS)}d ago`
+}
+
+function describeActivity(entry, moduleTitle) {
+  const who = entry.user?.fullName || entry.user?.email || 'A learner'
+  if (entry.action === 'quiz_attempt') return `${who} completed a quiz in ${moduleTitle || entry.detail}`
+  if (entry.action === 'parts_practice_attempt') return `${who} scored ${entry.detail} on parts practice`
+  return `${who} - ${entry.action}`
+}
+
 function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [content, setContent] = useState({
     equipment: [],
@@ -72,12 +115,50 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [editingEquipment, setEditingEquipment] = useState(null)
   const [editingChecklist, setEditingChecklist] = useState(null)
   const [editingQuiz, setEditingQuiz] = useState(null)
+  const [editingUser, setEditingUser] = useState(null)
+  const [newUser, setNewUser] = useState({ email: '', fullName: '', role: 'TRAINEE', password: '' })
   const [saveMessage, setSaveMessage] = useState('')
+  // Captured once rather than read live, so computing "recent" activity stays
+  // a pure function of state/props during render.
+  const [loadedAt] = useState(() => Date.now())
 
   const activePath = path || routes.admin
+  const isForkliftSection = forkliftContentTabs.some(([tabPath]) => tabPath === activePath)
   const modulesById = useMemo(() => {
     return content.modules.reduce((map, module) => ({ ...map, [module.id]: module }), {})
   }, [content.modules])
+  const moduleTitleBySlug = useMemo(() => {
+    return content.modules.reduce((map, module) => ({ ...map, [module.slug]: module.title || module.fullTitle }), {})
+  }, [content.modules])
+
+  // The Overview tab is built entirely from data adminListContent() already
+  // fetched (content.progress / content.activityLogs) - no extra API calls.
+  const traineeCount = useMemo(() => content.users.filter((entry) => entry.role === 'TRAINEE').length, [content.users])
+  const averageCompletion = useMemo(() => {
+    if (!content.progress.length) return 0
+    return Math.round(content.progress.reduce((sum, entry) => sum + entry.progress, 0) / content.progress.length)
+  }, [content.progress])
+  const recentActivityCount = useMemo(
+    () => content.activityLogs.filter((entry) => loadedAt - new Date(entry.createdAt).getTime() <= 7 * DAY_MS).length,
+    [content.activityLogs, loadedAt],
+  )
+  const moduleCompletion = useMemo(() => {
+    const totals = {}
+    for (const entry of content.progress) {
+      const bucket = totals[entry.moduleSlug] || { sum: 0, count: 0 }
+      bucket.sum += entry.progress
+      bucket.count += 1
+      totals[entry.moduleSlug] = bucket
+    }
+    return Object.entries(totals)
+      .map(([slug, { sum, count }]) => ({
+        slug,
+        title: moduleTitleBySlug[slug] || slug,
+        average: Math.round(sum / count),
+      }))
+      .sort((a, b) => b.average - a.average)
+  }, [content.progress, moduleTitleBySlug])
+  const recentActivity = useMemo(() => content.activityLogs.slice(0, 8), [content.activityLogs])
 
   useEffect(() => {
     adminListContent().then((data) => {
@@ -264,6 +345,45 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     setContent((current) => ({ ...current, quizQuestions: current.quizQuestions.filter((question) => question.id !== questionId) }))
   }
 
+  const handleCreateUser = async () => {
+    if (!newUser.email.trim() || !newUser.fullName.trim() || !newUser.password) return
+    try {
+      const result = await adminCreateUser(newUser)
+      setContent((current) => ({ ...current, users: [...current.users, result.user] }))
+      setNewUser({ email: '', fullName: '', role: 'TRAINEE', password: '' })
+      refreshMessage('User created.')
+    } catch (err) {
+      refreshMessage(err.message)
+    }
+  }
+
+  const handleSaveUser = async () => {
+    if (!editingUser) return
+    try {
+      const result = await adminUpdateUser(editingUser.id, editingUser)
+      setContent((current) => ({
+        ...current,
+        users: current.users.map((entry) => (entry.id === editingUser.id ? result.user : entry)),
+      }))
+      setEditingUser({ ...result.user, password: '' })
+      refreshMessage('User saved.')
+    } catch (err) {
+      refreshMessage(err.message)
+    }
+  }
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Delete this user? Their saved progress is deleted with them.')) return
+    try {
+      await adminDeleteUser(userId)
+      setContent((current) => ({ ...current, users: current.users.filter((entry) => entry.id !== userId) }))
+      setEditingUser((current) => (current?.id === userId ? null : current))
+      refreshMessage('User deleted.')
+    } catch (err) {
+      refreshMessage(err.message)
+    }
+  }
+
   const exportReports = () => {
     downloadCsv('gearview3d-progress-report.csv', [
       ['Learner', 'Module', 'Progress', 'Updated At'],
@@ -280,21 +400,51 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           <p>Signed in as {user?.email}</p>
         </div>
         <div className="admin-actions">
-          <button onClick={onBack}>Back to App</button>
+          <button className="back-button" onClick={onBack}>Back to App</button>
         </div>
       </header>
 
       <nav className="admin-tabs" aria-label="Admin sections">
-        {adminTabs.map(([tabPath, label]) => (
+        <button
+          className={activePath === routes.admin ? 'active' : ''}
+          onClick={() => onNavigate(routes.admin)}
+        >
+          <LayoutGrid size={16} />
+          Overview
+        </button>
+        <button
+          className={isForkliftSection ? 'active' : ''}
+          onClick={() => onNavigate(routes.adminModules)}
+        >
+          <Truck size={16} />
+          Forklift
+        </button>
+        {trailingTabs.map(([tabPath, label, Icon]) => (
           <button
             key={tabPath}
             className={activePath === tabPath ? 'active' : ''}
             onClick={() => onNavigate(tabPath)}
           >
+            <Icon size={16} />
             {label}
           </button>
         ))}
       </nav>
+
+      {isForkliftSection && (
+        <nav className="admin-subtabs" aria-label="Forklift content sections">
+          {forkliftContentTabs.map(([tabPath, label, Icon]) => (
+            <button
+              key={tabPath}
+              className={activePath === tabPath ? 'active' : ''}
+              onClick={() => onNavigate(tabPath)}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {content.localOnly && (
         <div className="admin-alert">
@@ -305,18 +455,52 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
       {saveMessage && <div className="admin-save-message">{saveMessage}</div>}
 
       {activePath === routes.admin && (
-        <main className="admin-grid">
-          {[
-            ['Modules', content.modules.length],
-            ['Parts', content.parts.length],
-            ['Checklist Items', content.checklists.length],
-            ['Quiz Questions', content.quizQuestions.length],
-          ].map(([label, value]) => (
-            <section key={label} className="admin-panel stat-panel">
-              <p>{label}</p>
-              <strong>{value}</strong>
-            </section>
-          ))}
+        <main className="overview-grid">
+          <div className="overview-stat-row">
+            {[
+              [UsersIcon, 'Learners', traineeCount],
+              [TrendingUp, 'Average completion', `${averageCompletion}%`],
+              [Layers, 'Modules published', content.modules.length],
+              [Activity, 'Activity, last 7 days', recentActivityCount],
+            ].map(([Icon, label, value]) => (
+              <section key={label} className="overview-stat-card">
+                <span className="overview-stat-icon"><Icon size={20} /></span>
+                <div>
+                  <strong>{value}</strong>
+                  <p>{label}</p>
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <section className="admin-panel">
+            <h2>Completion by module</h2>
+            {moduleCompletion.length === 0 && <p className="admin-panel-note">No learner progress recorded yet.</p>}
+            <div className="overview-meter-list">
+              {moduleCompletion.map((entry) => (
+                <div key={entry.slug} className="overview-meter-row">
+                  <span className="overview-meter-label">{entry.title}</span>
+                  <div className="overview-meter-track">
+                    <div className="overview-meter-fill" style={{ width: `${entry.average}%` }} />
+                  </div>
+                  <span className="overview-meter-value">{entry.average}%</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-panel">
+            <h2>Recent activity</h2>
+            {recentActivity.length === 0 && <p className="admin-panel-note">No learner activity recorded yet.</p>}
+            <ul className="overview-activity-list">
+              {recentActivity.map((entry) => (
+                <li key={entry.id}>
+                  <span>{describeActivity(entry, moduleTitleBySlug[entry.detail])}</span>
+                  <time>{formatRelativeTime(entry.createdAt)}</time>
+                </li>
+              ))}
+            </ul>
+          </section>
         </main>
       )}
 
@@ -358,7 +542,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           <section className="admin-panel">
             <h2>Training Modules</h2>
             {content.modules.map((module) => (
-              <article key={module.id} className="admin-list-item">
+              <article key={module.id} className={`admin-list-item ${editingModule?.id === module.id ? 'is-editing' : ''}`}>
                 <h3>{module.title}</h3>
                 <p>{module.description}</p>
                 <div className="admin-row-actions">
@@ -483,12 +667,25 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         </main>
       )}
 
+      {activePath === routes.adminHotspots && (
+        <main className="admin-grid">
+          <section className="admin-panel wide-panel">
+            <h2>Walk-Around Hotspot Editor</h2>
+            <p className="admin-panel-note">
+              Click a point on the 3D model to place a hotspot, or drag an existing marker to reposition it.
+              Edits are saved as a draft; learners keep the published position and text until you press Publish.
+            </p>
+            <WalkAroundHotspotAdmin onMessage={refreshMessage} />
+          </section>
+        </main>
+      )}
+
       {activePath === routes.adminChecklists && (
         <main className="admin-grid">
           <section className="admin-panel">
             <h2>Checklist Items</h2>
             {content.checklists.map((item) => (
-              <article key={item.id} className="admin-list-item">
+              <article key={item.id} className={`admin-list-item ${editingChecklist?.id === item.id ? 'is-editing' : ''}`}>
                 <h3>{modulesById[item.moduleId]?.title || item.module?.title || `Module ${item.moduleId}`}</h3>
                 <p>{item.text}</p>
                 <div className="admin-row-actions">
@@ -515,7 +712,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           <section className="admin-panel">
             <h2>Quiz Questions</h2>
             {content.quizQuestions.map((question) => (
-              <article key={question.id} className="admin-list-item">
+              <article key={question.id} className={`admin-list-item ${editingQuiz?.id === question.id ? 'is-editing' : ''}`}>
                 <h3>{modulesById[question.moduleId]?.title || question.module?.title}</h3>
                 <p>{question.prompt}</p>
                 <div className="admin-row-actions">
@@ -542,13 +739,73 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
       {activePath === routes.adminUsers && (
         <main className="admin-grid">
           <section className="admin-panel wide-panel">
-            <h2>Learner Users</h2>
+            <h2>Users</h2>
             {content.users.map((learner) => (
-              <article key={learner.id} className="admin-list-item">
+              <article key={learner.id} className={`admin-list-item ${editingUser?.id === learner.id ? 'is-editing' : ''}`}>
                 <h3>{learner.fullName}</h3>
                 <p>{learner.email} - {learner.role}</p>
+                <div className="admin-row-actions">
+                  <button onClick={() => setEditingUser({ ...learner, password: '' })}>Edit</button>
+                  {learner.id !== user.id && (
+                    <button onClick={() => handleDeleteUser(learner.id)}>Delete</button>
+                  )}
+                </div>
               </article>
             ))}
+          </section>
+          <section className="admin-panel admin-editor">
+            <h2>New user</h2>
+            <label>
+              Full name
+              <input value={newUser.fullName} onChange={(event) => setNewUser({ ...newUser, fullName: event.target.value })} />
+            </label>
+            <label>
+              Email
+              <input value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} />
+            </label>
+            <label>
+              Password
+              <input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} />
+            </label>
+            <label>
+              Role
+              <select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
+                <option value="TRAINEE">Trainee</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </label>
+            <button className="admin-save" onClick={handleCreateUser}>Create user</button>
+          </section>
+          <section className="admin-panel admin-editor">
+            <h2>Edit user</h2>
+            {editingUser ? (
+              <>
+                <label>Full name<input value={editingUser.fullName} onChange={(event) => setEditingUser({ ...editingUser, fullName: event.target.value })} /></label>
+                <label>Email<input value={editingUser.email} onChange={(event) => setEditingUser({ ...editingUser, email: event.target.value })} /></label>
+                <label>
+                  New password
+                  <input
+                    type="password"
+                    value={editingUser.password}
+                    placeholder="Leave blank to keep the current password"
+                    onChange={(event) => setEditingUser({ ...editingUser, password: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Role
+                  <select
+                    value={editingUser.role}
+                    disabled={editingUser.id === user.id}
+                    onChange={(event) => setEditingUser({ ...editingUser, role: event.target.value })}
+                  >
+                    <option value="TRAINEE">Trainee</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </label>
+                {editingUser.id === user.id && <p className="admin-panel-note">You cannot change your own role.</p>}
+                <button className="admin-save" onClick={handleSaveUser}>Save user</button>
+              </>
+            ) : <p>Select a user to edit.</p>}
           </section>
         </main>
       )}

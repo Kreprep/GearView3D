@@ -107,6 +107,19 @@
   box-shadow: 0 0 10px 3px rgba(249, 115, 22, 0.7);
 }
 
+.hotspot-marker.admin-editable {
+  cursor: grab;
+  border-color: #a78bfa;
+}
+
+.hotspot-marker.admin-editable:active {
+  cursor: grabbing;
+}
+
+.interactive-viewer-canvas-shell.placing-active canvas {
+  cursor: crosshair;
+}
+
 .hotspot-marker-tooltip {
   position: absolute;
   bottom: 100%;
