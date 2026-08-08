@@ -32,9 +32,24 @@ function pick(source, keys) {
 
 const partFields = ['label', 'category', 'position', 'functionText', 'inspectionReminder', 'safetyNote', 'relatedModule', 'checklist', 'sortOrder']
 const partDetailFields = ['title', 'subtitle', 'image', 'description']
-const moduleFields = ['title', 'subtitle', 'description', 'imageUrl', 'sortOrder']
-const equipmentFields = ['title', 'description', 'modelUrl', 'imageUrl', 'sortOrder']
+const moduleFields = ['title', 'fullTitle', 'subtitle', 'description', 'imageUrl', 'sortOrder']
+const equipmentFields = ['title', 'description', 'modelUrl', 'imageUrl', 'sortOrder', 'available']
 const checklistFields = ['text', 'sortOrder']
+const practiceFields = ['prompt', 'options', 'answer', 'sortOrder']
+const partCategoryFields = ['label', 'sortOrder']
+
+// Parts, part details and practice questions follow the same rule as courses:
+// the columns are what learners see and `draft` is the admin's pending edit as
+// a whole payload. A draft merges over whatever is already pending, so editing
+// one field twice never discards the other.
+function mergedDraft(row, payload, fields) {
+  return { ...(row.draft || pick(row, fields)), ...pick(payload, fields) }
+}
+
+function publishedFrom(row, fields) {
+  if (!row?.draft) return null
+  return { ...pick(row.draft, fields), draft: null }
+}
 
 function quizOptions(questionId, options = []) {
   return options.map((option, index) => ({
@@ -45,11 +60,24 @@ function quizOptions(questionId, options = []) {
 }
 
 router.get('/content', async (req, res) => {
-  const [equipment, modules, parts, partDetails, checklists, quizQuestions, users, snapshots] = await Promise.all([
+  const [
+    equipment,
+    modules,
+    parts,
+    partDetails,
+    partCategories,
+    practiceQuestions,
+    checklists,
+    quizQuestions,
+    users,
+    snapshots,
+  ] = await Promise.all([
     prisma.equipment.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.module.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.part.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.partDetail.findMany(),
+    prisma.partCategory.findMany({ orderBy: { sortOrder: 'asc' } }),
+    prisma.practiceQuestion.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.checklistItem.findMany({ orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.quizQuestion.findMany({ orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.user.findMany({ orderBy: { createdAt: 'asc' } }),
@@ -72,6 +100,8 @@ router.get('/content', async (req, res) => {
     modules,
     parts,
     partDetails: Object.fromEntries(partDetails.map((detail) => [detail.id, detail])),
+    partCategories,
+    practiceQuestions,
     checklists,
     quizQuestions,
     users: users.map(publicUser),
@@ -98,11 +128,30 @@ router.post('/parts', async (req, res) => {
   res.json({ part })
 })
 
+// Saves a draft rather than writing the published columns; learners keep
+// seeing the current part until Publish.
 router.patch('/parts/:id', async (req, res) => {
+  const current = await prisma.part.findUnique({ where: { id: req.params.id } })
+  if (!current) return res.status(404).json({ error: 'Record not found' })
+
   const part = await prisma.part.update({
     where: { id: req.params.id },
-    data: pick(req.body, partFields),
+    data: { draft: mergedDraft(current, req.body, partFields) },
   })
+  res.json({ part })
+})
+
+router.post('/parts/:id/publish', async (req, res) => {
+  const current = await prisma.part.findUnique({ where: { id: req.params.id } })
+  const data = publishedFrom(current, partFields)
+  if (!data) return res.status(400).json({ error: 'There is no draft to publish' })
+
+  const part = await prisma.part.update({ where: { id: req.params.id }, data })
+  res.json({ part })
+})
+
+router.post('/parts/:id/revert', async (req, res) => {
+  const part = await prisma.part.update({ where: { id: req.params.id }, data: { draft: null } })
   res.json({ part })
 })
 
@@ -112,15 +161,128 @@ router.delete('/parts/:id', async (req, res) => {
 })
 
 // Upsert, because detail entries can be edited for hotspots that were never
-// seeded (for example a part the admin just created).
+// seeded (for example a part the admin just created). A row created here starts
+// with its draft already filled in, so nothing reaches learners until Publish.
 router.patch('/part-details/:id', async (req, res) => {
-  const data = pick(req.body, partDetailFields)
+  const current = await prisma.partDetail.findUnique({ where: { id: req.params.id } })
+  const draft = mergedDraft(current || {}, req.body, partDetailFields)
+
   const detail = await prisma.partDetail.upsert({
     where: { id: req.params.id },
-    update: data,
-    create: { id: req.params.id, title: data.title || req.params.id, ...data },
+    update: { draft },
+    create: { id: req.params.id, title: '', draft },
   })
   res.json({ detail })
+})
+
+router.post('/part-details/:id/publish', async (req, res) => {
+  const current = await prisma.partDetail.findUnique({ where: { id: req.params.id } })
+  const data = publishedFrom(current, partDetailFields)
+  if (!data) return res.status(400).json({ error: 'There is no draft to publish' })
+
+  const detail = await prisma.partDetail.update({ where: { id: req.params.id }, data })
+  res.json({ detail })
+})
+
+router.post('/part-details/:id/revert', async (req, res) => {
+  const detail = await prisma.partDetail.update({ where: { id: req.params.id }, data: { draft: null } })
+  res.json({ detail })
+})
+
+// Parts Identification practice quiz. Same draft/publish rule as parts.
+router.post('/practice-questions', async (req, res) => {
+  const payload = req.body || {}
+  if (!payload.prompt) {
+    return res.status(400).json({ error: 'Question prompt is required' })
+  }
+
+  const last = await prisma.practiceQuestion.findFirst({ orderBy: { sortOrder: 'desc' } })
+  const question = await prisma.practiceQuestion.create({
+    data: {
+      id: payload.id || `question-${Date.now()}`,
+      prompt: payload.prompt,
+      options: payload.options || [],
+      answer: payload.answer || '',
+      sortOrder: (last?.sortOrder || 0) + 1,
+    },
+  })
+  res.json({ question })
+})
+
+router.patch('/practice-questions/:id', async (req, res) => {
+  const current = await prisma.practiceQuestion.findUnique({ where: { id: req.params.id } })
+  if (!current) return res.status(404).json({ error: 'Record not found' })
+
+  const question = await prisma.practiceQuestion.update({
+    where: { id: req.params.id },
+    data: { draft: mergedDraft(current, req.body, practiceFields) },
+  })
+  res.json({ question })
+})
+
+router.post('/practice-questions/:id/publish', async (req, res) => {
+  const current = await prisma.practiceQuestion.findUnique({ where: { id: req.params.id } })
+  const data = publishedFrom(current, practiceFields)
+  if (!data) return res.status(400).json({ error: 'There is no draft to publish' })
+
+  // An answer that is not one of the options would be unanswerable, so this is
+  // checked at publish time rather than while the admin is still typing.
+  if (!(data.options || []).includes(data.answer)) {
+    return res.status(400).json({ error: 'The answer must be one of the options' })
+  }
+
+  const question = await prisma.practiceQuestion.update({ where: { id: req.params.id }, data })
+  res.json({ question })
+})
+
+router.post('/practice-questions/:id/revert', async (req, res) => {
+  const question = await prisma.practiceQuestion.update({
+    where: { id: req.params.id },
+    data: { draft: null },
+  })
+  res.json({ question })
+})
+
+router.delete('/practice-questions/:id', async (req, res) => {
+  await prisma.practiceQuestion.delete({ where: { id: req.params.id } })
+  res.json({ deleted: true })
+})
+
+// Category rows are a short list of labels with no learner-visible body text,
+// so they save immediately rather than through a draft.
+router.post('/part-categories', async (req, res) => {
+  const payload = req.body || {}
+  if (!payload.label) {
+    return res.status(400).json({ error: 'Category label is required' })
+  }
+
+  const last = await prisma.partCategory.findFirst({ orderBy: { sortOrder: 'desc' } })
+  const category = await prisma.partCategory.create({
+    data: {
+      id: payload.id || payload.label,
+      label: payload.label,
+      sortOrder: (last?.sortOrder || 0) + 1,
+    },
+  })
+  res.json({ category })
+})
+
+router.patch('/part-categories/:id', async (req, res) => {
+  const category = await prisma.partCategory.update({
+    where: { id: req.params.id },
+    data: pick(req.body, partCategoryFields),
+  })
+  res.json({ category })
+})
+
+router.delete('/part-categories/:id', async (req, res) => {
+  const inUse = await prisma.part.count({ where: { category: req.params.id } })
+  if (inUse) {
+    return res.status(400).json({ error: `${inUse} part(s) still use this category` })
+  }
+
+  await prisma.partCategory.delete({ where: { id: req.params.id } })
+  res.json({ deleted: true })
 })
 
 router.patch('/equipment/:id', async (req, res) => {

@@ -4,7 +4,9 @@ import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ModuleSummary from './components/ModuleSummary'
 import { BriefingScene, BriefingTask } from './components/ModuleBriefing'
+import { ChecklistScene, ModuleRowsTask, QuizScene } from './components/ModuleChecklistStep'
 import { useModuleCourses } from './hooks/useModuleCourses'
+import { useModuleRecord } from './hooks/useModuleRecord'
 import { useProgress } from './hooks/useProgress'
 import { courseTaskCopy } from './lib/courseGoals'
 import { moduleObjectives, nextModuleRoute } from './lib/moduleContent'
@@ -24,7 +26,7 @@ const legacyStepFields = {
 
 function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
-  const module = equipmentUsageModules.find((item) => item.slug === moduleSlug)
+  const module = useModuleRecord(moduleSlug, equipmentUsageModules.find((item) => item.slug === moduleSlug))
   const { steps, stepById, courseById, loading, error } = useModuleCourses(moduleSlug)
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
@@ -84,6 +86,14 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
       return <BriefingScene content={step.content} />
     }
 
+    if (step?.kind === 'checklist') {
+      return <ChecklistScene content={step.content} moduleSlug={moduleSlug} title={step.title} />
+    }
+
+    if (step?.kind === 'quiz') {
+      return <QuizScene content={step.content} moduleSlug={moduleSlug} title={step.title} />
+    }
+
     const course = courseById[currentStep.id]
 
     if (course) {
@@ -120,6 +130,9 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
   const renderTask = ({ currentStep }) => {
     const step = stepById[currentStep.id]
     if (step?.kind === 'briefing') return <BriefingTask content={step.content} module={module} />
+    if (step?.kind === 'checklist' || step?.kind === 'quiz') {
+      return <ModuleRowsTask content={step.content} kind={step.kind} />
+    }
     if (courseById[currentStep.id]) return renderCourseTask(currentStep)
     return null
   }

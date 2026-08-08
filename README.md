@@ -99,6 +99,9 @@ Admin routes (log in as the admin account):
 
 - `/admin` — overview
 - `/admin/modules`, `/admin/parts`, `/admin/checklists`, `/admin/quizzes` — edit content (part detail cards support Markdown descriptions and reference images)
+- `/admin/practice` — the Parts Identification practice quiz and the category filter chips
+
+Parts, part detail cards, practice questions and course steps use **Save draft / Publish**: learners keep seeing the published version until you press Publish, and Discard draft throws the pending edit away. Modules, the equipment cards, checklists and quizzes save immediately.
 - `/admin/users`, `/admin/reports` — learners, progress, CSV export
 
 - `/admin/courses` — the step and 3D map editor for Modules 2-4

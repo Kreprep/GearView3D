@@ -7,11 +7,24 @@
 // Import order matters. ChecklistItem and QuizQuestion have a foreign key to
 // Module, so Module has to exist first; the list is written in dependency order
 // and imported in that order.
+//
+// `prunable` marks the tables whose rows an admin can delete outright, which
+// are the only ones `--prune` removes from the target database.
 export const contentTables = [
   { model: 'equipment', label: 'Equipment', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
   { model: 'module', label: 'Module', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
-  { model: 'part', label: 'Part', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
-  { model: 'partDetail', label: 'PartDetail', orderBy: [{ id: 'asc' }] },
+  { model: 'partCategory', label: 'PartCategory', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
+  // `draft` is one admin's unfinished work, so it never travels - the same rule
+  // as Course below.
+  { model: 'part', label: 'Part', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }], omit: ['draft'], prunable: true },
+  { model: 'partDetail', label: 'PartDetail', orderBy: [{ id: 'asc' }], omit: ['draft'] },
+  {
+    model: 'practiceQuestion',
+    label: 'PracticeQuestion',
+    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    omit: ['draft'],
+    prunable: true,
+  },
   {
     model: 'course',
     label: 'Course',
@@ -19,8 +32,6 @@ export const contentTables = [
     // `draft` is one admin's unfinished work and `updatedAt` is managed by the
     // database, so neither travels.
     omit: ['draft', 'updatedAt'],
-    // The only content an admin can delete outright, so it is the only table
-    // `--prune` touches.
     prunable: true,
   },
   { model: 'checklistItem', label: 'ChecklistItem', orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] },

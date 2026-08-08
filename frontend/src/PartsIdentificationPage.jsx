@@ -5,6 +5,7 @@ import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
 import { getPartDetails, getParts } from './lib/api'
 import { partCategories, partsHotspots, partsPracticeQuestions } from './lib/trainingData'
+import { getPartCategories, getPracticeQuestions } from './lib/api'
 import './PartsIdentificationPage.css'
 
 const partsModule = {
@@ -46,6 +47,10 @@ function buildDetail(hotspot, partDetails) {
 function PartsIdentificationPage({ moduleName, user, onBack }) {
   const isAdmin = user?.role === 'ADMIN'
   const [hotspots, setHotspots] = useState(partsHotspots)
+  // Categories and practice questions are DB rows the Parts tab edits; the
+  // static lists are only the pre-fetch fallback.
+  const [categories, setCategories] = useState(partCategories)
+  const [practiceQuestions, setPracticeQuestions] = useState(partsPracticeQuestions)
   const [partDetails, setPartDetails] = useState({})
   const [selectedPartId, setSelectedPartId] = useState(null)
   const [selectedDetail, setSelectedDetail] = useState(null)
@@ -61,11 +66,17 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
       }
     })
     getPartDetails().then(setPartDetails)
+    getPartCategories().then((rows) => {
+      if (rows.length > 0) setCategories(rows.map((row) => row.label))
+    })
+    getPracticeQuestions().then((rows) => {
+      if (rows.length > 0) setPracticeQuestions(rows)
+    })
   }, [])
 
   const latestPractice = progress.parts.practiceAttempts[0]
   const viewedIds = new Set(summary.viewedParts)
-  const practiceScore = partsPracticeQuestions.reduce((score, question) => {
+  const practiceScore = practiceQuestions.reduce((score, question) => {
     return score + (practiceAnswers[question.id] === question.answer ? 1 : 0)
   }, 0)
 
@@ -84,7 +95,7 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
 
   const submitPractice = () => {
     setPracticeSubmitted(true)
-    savePartsPracticeAttempt({ score: practiceScore, total: partsPracticeQuestions.length })
+    savePartsPracticeAttempt({ score: practiceScore, total: practiceQuestions.length })
   }
 
   const retryPractice = () => {
@@ -113,7 +124,7 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
     <div className="parts-task-stack">
       <ScopeNotice />
       <div className="category-grid">
-        {partCategories.map((category) => (
+        {categories.map((category) => (
           <div key={category} className="category-group">
             <h4>{category}</h4>
             {hotspots
@@ -142,7 +153,7 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
         Latest practice: {latestPractice ? `${latestPractice.score}/${latestPractice.total} (${latestPractice.percentage}%)` : 'No attempt yet'}
       </p>
       <div className="practice-list">
-        {partsPracticeQuestions.map((question) => {
+        {practiceQuestions.map((question) => {
           const selected = practiceAnswers[question.id]
           const isCorrect = selected === question.answer
 
@@ -176,7 +187,7 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
           type="button"
           className="primary-action"
           onClick={submitPractice}
-          disabled={Object.keys(practiceAnswers).length < partsPracticeQuestions.length || practiceSubmitted}
+          disabled={Object.keys(practiceAnswers).length < practiceQuestions.length || practiceSubmitted}
         >
           Submit Practice
         </button>
@@ -184,7 +195,7 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
           Retry
         </button>
       </div>
-      {practiceSubmitted && <p className="task-note">Score: {practiceScore}/{partsPracticeQuestions.length}. Click Complete Module to finish.</p>}
+      {practiceSubmitted && <p className="task-note">Score: {practiceScore}/{practiceQuestions.length}. Click Complete Module to finish.</p>}
     </div>
   )
 

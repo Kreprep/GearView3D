@@ -1,11 +1,30 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useProgress } from '../hooks/useProgress'
-import { moduleQuizQuestions } from '../lib/trainingData'
+import { getModuleQuiz } from '../lib/api'
 import './ModuleQuiz.css'
 
 function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
-  const questions = useMemo(() => moduleQuizQuestions[moduleSlug] || [], [moduleSlug])
+  // Questions come from the QuizQuestion rows the Quizzes tab edits, not from
+  // data/, so an admin's edit reaches learners without a rebuild.
+  const [questions, setQuestions] = useState([])
   const { progress, saveQuizAttempt } = useProgress()
+
+  useEffect(() => {
+    let cancelled = false
+
+    getModuleQuiz(moduleSlug)
+      .then((rows) => {
+        if (!cancelled) setQuestions(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setQuestions([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [moduleSlug])
+
   const [answers, setAnswers] = useState({})
   const [submitted, setSubmitted] = useState(false)
   const latestAttempt = progress.quizzes[moduleSlug]?.[0]

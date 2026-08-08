@@ -15,9 +15,10 @@ export { COURSE_KINDS, emptyCourseContent, emptyCourseGeometry }
 // the step list is a list operation that applies immediately, not a draft.
 export const courseDraftFields = ['title', 'objective', 'instructions', 'hint', 'goalType', 'data', 'content']
 
-// Kinds an admin may create. `activity` is excluded: those steps are hardcoded
-// React keyed by id, so a new one would render blank.
-export const CREATABLE_KINDS = ['briefing', 'driving', 'summary']
+// Kinds an admin may create. `activity` is excluded: those steps are React
+// screens keyed by a fixed activityId, so a new one would render blank. Their
+// cards and answers are still editable as content.
+export const CREATABLE_KINDS = ['briefing', 'driving', 'checklist', 'quiz', 'summary']
 
 // What a learner's module page consumes: the step's text plus whichever payload
 // its kind needs. `course` is what DrivingSimulationViewer takes, and is null

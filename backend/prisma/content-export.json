@@ -1,10 +1,12 @@
 {
-  "exportedAt": "2026-08-08T04:46:54.297Z",
+  "exportedAt": "2026-08-08T09:57:34.661Z",
   "counts": {
-    "Equipment": 1,
+    "Equipment": 3,
     "Module": 4,
+    "PartCategory": 4,
     "Part": 10,
     "PartDetail": 26,
+    "PracticeQuestion": 7,
     "Course": 19,
     "ChecklistItem": 22,
     "QuizQuestion": 12
@@ -17,7 +19,26 @@
         "description": "Learn safe forklift familiarization through guided lessons and a labeled 3D model.",
         "modelUrl": "/models/Forklift_SEPERATED.glb",
         "imageUrl": "/images/forklift-card.png",
-        "sortOrder": 1
+        "sortOrder": 1,
+        "available": true
+      },
+      {
+        "id": "backhoe",
+        "title": "Backhoe Loader",
+        "description": "Heavy equipment training model. Coming soon.",
+        "modelUrl": "",
+        "imageUrl": "",
+        "sortOrder": 2,
+        "available": false
+      },
+      {
+        "id": "crane",
+        "title": "Mobile Crane",
+        "description": "Heavy equipment training model. Coming soon.",
+        "modelUrl": "",
+        "imageUrl": "",
+        "sortOrder": 3,
+        "available": false
       }
     ],
     "Module": [
@@ -25,6 +46,7 @@
         "id": 1,
         "slug": "walk-around-check",
         "title": "Walk-Around Check",
+        "fullTitle": "Walk-Around Check (Visual Inspection)",
         "subtitle": "Visual Inspection",
         "description": "Inspect a Class V (LPG) forklift before use: forks, mast, chains, hydraulic hoses, tires, counterweight, LPG tank/battery, seat belt, overhead guard, and ground leaks, then confirm dashboard indicators, steering, brakes, lift/tilt, travel, and warning devices.",
         "imageUrl": "/images/modules/walk-around-check.png",
@@ -34,6 +56,7 @@
         "id": 2,
         "slug": "load-handling",
         "title": "Load Handling and Operational Controls",
+        "fullTitle": "Load Handling and Operational Controls",
         "subtitle": "Operational Controls",
         "description": "Practice basic forklift operational controls in a simplified guided drive: engine start-up, acceleration, braking, and steering, without real vehicle physics or collision.",
         "imageUrl": "/images/modules/load-handling.png",
@@ -43,6 +66,7 @@
         "id": 3,
         "slug": "post-operation",
         "title": "Post-Operation and Secure Parking",
+        "fullTitle": "Post-Operation and Secure Parking",
         "subtitle": "Secure Parking",
         "description": "Park the forklift inside a painted bay on a cone-lined route, then secure it: fork lowering, neutral controls, brake engagement, power off, and reporting. Hitting a cone fails the parking attempt.",
         "imageUrl": "/images/modules/post-operation.png",
@@ -52,9 +76,32 @@
         "id": 4,
         "slug": "pallet-testing",
         "title": "Pallet Handling Assessment",
+        "fullTitle": "Pallet Handling Assessment",
         "subtitle": "Load Safety",
         "description": "Apply load-handling judgment under fail conditions: respect rated capacity, avoid traffic cones, and brake smoothly so the load stays on the forks. Overloading, collisions, and sudden stops fail the attempt.",
         "imageUrl": "/images/modules/pallet-testing.png",
+        "sortOrder": 4
+      }
+    ],
+    "PartCategory": [
+      {
+        "id": "Load Handling Parts",
+        "label": "Load Handling Parts",
+        "sortOrder": 1
+      },
+      {
+        "id": "Stability and Structure",
+        "label": "Stability and Structure",
+        "sortOrder": 2
+      },
+      {
+        "id": "Operator and Controls",
+        "label": "Operator and Controls",
+        "sortOrder": 3
+      },
+      {
+        "id": "Safety and Identification",
+        "label": "Safety and Identification",
         "sortOrder": 4
       }
     ],
@@ -442,6 +489,92 @@
         "subtitle": "Safety and Identification",
         "image": "",
         "description": "Includes lights, horn, and backup alarm used to alert nearby workers.\n\n**What to inspect**\n\nTest horn, lights, beacon, and backup alarm during pre-operation checks.\n\n**Safety**\n\nDo not operate if required warning devices are not working.\n\n**Quick checklist**\n\n- Test horn\n- Check lights\n- Check backup alarm\n\n*Related training: Walk-Around Check*"
+      }
+    ],
+    "PracticeQuestion": [
+      {
+        "id": "select-capacity-plate",
+        "prompt": "Which part shows the rated load capacity and forklift specifications?",
+        "options": [
+          "Capacity Plate",
+          "Counterweight",
+          "Operator Area",
+          "Mast"
+        ],
+        "answer": "Capacity Plate",
+        "sortOrder": 1
+      },
+      {
+        "id": "balance-part",
+        "prompt": "Which part balances the forklift?",
+        "options": [
+          "Counterweight",
+          "Forks",
+          "Warning Devices",
+          "Lift Chain"
+        ],
+        "answer": "Counterweight",
+        "sortOrder": 2
+      },
+      {
+        "id": "load-support",
+        "prompt": "Which part supports the pallet or load?",
+        "options": [
+          "Forks",
+          "Tires",
+          "Overhead Guard",
+          "Capacity Plate"
+        ],
+        "answer": "Forks",
+        "sortOrder": 3
+      },
+      {
+        "id": "operator-controls",
+        "prompt": "Which area contains the operator controls?",
+        "options": [
+          "Operator Area",
+          "Carriage",
+          "Mast",
+          "Counterweight"
+        ],
+        "answer": "Operator Area",
+        "sortOrder": 4
+      },
+      {
+        "id": "warning-devices",
+        "prompt": "Which devices include lights, horn, and backup alarm?",
+        "options": [
+          "Warning Devices",
+          "Forks",
+          "Lift Chain",
+          "Tires"
+        ],
+        "answer": "Warning Devices",
+        "sortOrder": 5
+      },
+      {
+        "id": "raises-forks",
+        "prompt": "Which part raises and lowers the forks?",
+        "options": [
+          "Mast",
+          "Counterweight",
+          "Capacity Plate",
+          "Tires"
+        ],
+        "answer": "Mast",
+        "sortOrder": 6
+      },
+      {
+        "id": "connects-forks",
+        "prompt": "Which part connects the forks to the mast?",
+        "options": [
+          "Carriage",
+          "Overhead Guard",
+          "Operator Area",
+          "Warning Devices"
+        ],
+        "answer": "Carriage",
+        "sortOrder": 7
       }
     ],
     "Course": [
@@ -3277,7 +3410,53 @@
         "goalType": "free",
         "data": null,
         "content": {
-          "activityId": "shutdown-sequence"
+          "actions": [
+            {
+              "id": "park-level",
+              "label": "Park on a level surface",
+              "order": 1,
+              "detail": "Away from traffic lanes, slopes, exits, and obstructions."
+            },
+            {
+              "id": "lower-forks",
+              "label": "Lower the forks completely",
+              "order": 2,
+              "detail": "Flat on the floor so they are not a trip or impact hazard."
+            },
+            {
+              "id": "neutral-controls",
+              "label": "Set controls to neutral",
+              "order": 3,
+              "detail": "Direction and hydraulic levers centered before leaving the seat."
+            },
+            {
+              "id": "parking-brake",
+              "label": "Engage the parking brake",
+              "order": 4,
+              "detail": "The truck must not be able to roll once you step off."
+            },
+            {
+              "id": "power-off",
+              "label": "Turn off the equipment",
+              "order": 5,
+              "detail": "Switch the ignition off and remove the key if required."
+            },
+            {
+              "id": "report-conditions",
+              "label": "Report unsafe conditions or damage",
+              "order": 6,
+              "detail": "Tell qualified personnel about anything found during the shift."
+            }
+          ],
+          "activityId": "shutdown-sequence",
+          "displayOrder": [
+            "parking-brake",
+            "park-level",
+            "report-conditions",
+            "lower-forks",
+            "power-off",
+            "neutral-controls"
+          ]
         },
         "published": true,
         "builtIn": true
@@ -3294,6 +3473,43 @@
         "goalType": "free",
         "data": null,
         "content": {
+          "prompts": [
+            {
+              "id": "hydraulic-drip",
+              "text": "A fresh oil patch is forming on the floor under the parked forklift.",
+              "feedback": "Correct - fluid leaks must be reported before the next shift uses the truck.",
+              "shouldReport": true,
+              "wrongFeedback": "A forming oil patch means an active leak. This must be reported."
+            },
+            {
+              "id": "forks-flat",
+              "text": "The forks are lowered flat on the floor inside the parking bay.",
+              "feedback": "Correct - lowered forks are the expected parked condition, nothing to report.",
+              "shouldReport": false,
+              "wrongFeedback": "Lowered forks are exactly what secure parking requires - no report needed."
+            },
+            {
+              "id": "chain-kink",
+              "text": "One lift chain has a kinked, stiff link after the shift.",
+              "feedback": "Correct - damaged lifting parts must be reported so the truck is not used.",
+              "shouldReport": true,
+              "wrongFeedback": "A kinked chain link can fail under load. This must be reported."
+            },
+            {
+              "id": "seat-belt-fray",
+              "text": "The seat belt webbing is frayed near the buckle.",
+              "feedback": "Correct - a damaged seat belt is a safety device defect and must be reported.",
+              "shouldReport": true,
+              "wrongFeedback": "A frayed seat belt may not restrain the operator. This must be reported."
+            },
+            {
+              "id": "beacon-intact",
+              "text": "The warning beacon lens is clean and flashes normally during the test.",
+              "feedback": "Correct - a working beacon is a normal condition, nothing to report.",
+              "shouldReport": false,
+              "wrongFeedback": "The beacon is working as designed - no report is needed."
+            }
+          ],
           "activityId": "reporting"
         },
         "published": true,

@@ -12,6 +12,7 @@ export const routes = {
   admin: '/admin',
   adminModules: '/admin/modules',
   adminParts: '/admin/parts',
+  adminPractice: '/admin/practice',
   adminCourses: '/admin/courses',
   adminChecklists: '/admin/checklists',
   adminQuizzes: '/admin/quizzes',

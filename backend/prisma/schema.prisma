@@ -23,18 +23,24 @@ model User {
 }
 
 model Equipment {
-  id          String @id
+  id          String  @id
   title       String
-  description String @default("")
-  modelUrl    String @default("")
-  imageUrl    String @default("")
-  sortOrder   Int    @default(0)
+  description String  @default("")
+  modelUrl    String  @default("")
+  imageUrl    String  @default("")
+  sortOrder   Int     @default(0)
+  // false renders the catalogue card as a non-interactive "Coming Soon"
+  // placeholder instead of a link into training.
+  available   Boolean @default(true)
 }
 
 model Module {
   id             Int             @id
   slug           String          @unique
   title          String
+  // The long form shown as the module page's own heading. `title` is the short
+  // label used in lists; blank here falls back to it.
+  fullTitle      String          @default("")
   subtitle       String          @default("")
   description    String          @default("")
   imageUrl       String          @default("")
@@ -45,6 +51,9 @@ model Module {
 
 // 3D hotspot + instructional text for a forklift part. `position` is the
 // [x, y, z] marker position in the viewer; `checklist` is an array of strings.
+// Like Course, the columns are the *published* row learners see and `draft`
+// holds the admin's pending edit as a whole payload, null when nothing is
+// pending.
 model Part {
   id                 String @id
   label              String
@@ -56,6 +65,27 @@ model Part {
   relatedModule      String @default("")
   checklist          Json
   sortOrder          Int    @default(0)
+  draft              Json?
+}
+
+// The category filter chips on the Parts Identification page. `id` is the
+// value stored on Part.category, so renaming a category means editing its
+// label, not its id.
+model PartCategory {
+  id        String @id
+  label     String
+  sortOrder Int    @default(0)
+}
+
+// One question of the Parts Identification practice quiz. `options` is an array
+// of strings and `answer` must be one of them.
+model PracticeQuestion {
+  id        String @id
+  prompt    String
+  options   Json
+  answer    String
+  sortOrder Int    @default(0)
+  draft     Json?
 }
 
 // Detail card shown when a part/hotspot is clicked. `description` is markdown.
@@ -68,18 +98,22 @@ model PartDetail {
   subtitle    String @default("")
   image       String @default("")
   description String @default("")
+  draft       Json?
 }
 
 // One step of an equipment module (Modules 2-4), in `sortOrder`. Every step is
 // a row - there is no hardcoded step list left for these modules - and `kind`
 // picks how the page renders it:
 //
-//   briefing - reference image + markdown, no simulation
-//   driving  - the WASD course DrivingSimulationViewer runs (uses `data`)
-//   activity - a hardcoded React activity keyed by `content.activityId`
-//              (shutdown-sequence, reporting); admins can reorder or remove
-//              these but cannot author new ones, since the UI is code
-//   summary  - the auto-built completion grid plus editable copy
+//   briefing  - reference image + markdown, no simulation
+//   driving   - the WASD course DrivingSimulationViewer runs (uses `data`)
+//   activity  - a React activity keyed by `content.activityId`
+//               (shutdown-sequence, reporting). The screen is code but the
+//               cards, answers and feedback are `content`, so admins can edit
+//               them; they still cannot author a new activityId.
+//   checklist - the module's ChecklistItem rows, ticked off by the learner
+//   quiz      - the module's QuizQuestion rows
+//   summary   - the auto-built completion grid plus editable copy
 //
 // The columns hold the *published* version that learners see. `draft` holds the
 // admin's unpublished edit as a whole payload

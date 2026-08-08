@@ -21,6 +21,7 @@ import {
 } from '../../lib/courseEdit'
 import { emptySyllabus, NEXT_ROUTE_OPTIONS, SUMMARY_COUNTER_LABELS } from '../../data/courseDefaults'
 import { COURSE_GOAL_TYPES, validateCourse } from '../../lib/courseGoals'
+import { ReportingActivityFields, ShutdownActivityFields } from './ActivityContentFields'
 import CourseCanvas from './CourseCanvas'
 import CourseGeneratorTools from './CourseGeneratorTools'
 import CourseInspector from './CourseInspector'
@@ -454,12 +455,49 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
 
         {stepKind === 'activity' && (
           <section className="admin-panel course-editor-content">
-            <h3>Built-in activity</h3>
+            <h3>Activity content</h3>
             <p className="admin-panel-note">
-              This step runs the hardcoded <strong>{content.activityId || 'unknown'}</strong> activity. Its cards,
-              answers and feedback live in the code, so only the step's title and text can be edited here. You can
-              still reorder or delete the step.
+              This step runs the <strong>{content.activityId || 'unknown'}</strong> screen. The screen itself is code
+              and cannot be swapped, but every card, answer and feedback line below is content. You can also reorder
+              or delete the step.
             </p>
+
+            {content.activityId === 'shutdown-sequence' && (
+              <ShutdownActivityFields content={content} onChange={setContent} />
+            )}
+            {content.activityId === 'reporting' && (
+              <ReportingActivityFields content={content} onChange={setContent} />
+            )}
+          </section>
+        )}
+
+        {(stepKind === 'checklist' || stepKind === 'quiz') && (
+          <section className="admin-panel course-editor-content">
+            <h3>{stepKind === 'checklist' ? 'Checklist step' : 'Quiz step'}</h3>
+            <p className="admin-panel-note">
+              This step shows the module's{' '}
+              {stepKind === 'checklist' ? 'checklist items' : 'quiz questions'}, which are edited in the{' '}
+              <strong>{stepKind === 'checklist' ? 'Checklists' : 'Quizzes'}</strong> tab rather than here - they
+              belong to the module, not to this step. Neither kind blocks Next, so a learner is never stuck on one.
+            </p>
+
+            <label>
+              Intro text (Markdown, optional)
+              <textarea rows={4} value={content.body || ''} onChange={(event) => setContent({ body: event.target.value })} />
+            </label>
+
+            <label>
+              Task panel message
+              <textarea
+                rows={2}
+                value={(stepKind === 'quiz' ? content.passMessage : content.completeMessage) || ''}
+                onChange={(event) =>
+                  setContent(stepKind === 'quiz'
+                    ? { passMessage: event.target.value }
+                    : { completeMessage: event.target.value })
+                }
+              />
+            </label>
           </section>
         )}
 
