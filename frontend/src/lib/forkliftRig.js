@@ -1,15 +1,15 @@
 import { Box3, Group, Matrix4, Mesh, Vector3 } from 'three'
+import { DEFAULT_RIG } from '../data/vehicleProfile.js'
 
-// Shared rig builder for forklift.glb, used by the driving simulation
-// and the interactive walk-around viewer.
+// Shared rig builder, used by the driving simulation and the interactive
+// walk-around viewer. Node names come from the equipment's vehicle profile
+// (data/vehicleProfile.js), defaulting to forklift.glb's - a model with none
+// of them still builds a rig, just an empty one, so the vehicle drives as a
+// solid body instead of throwing.
 
-export const WHEEL_NODE_NAMES = { FL: 'Wheel_FL', FR: 'Wheel_FR', RL: 'Wheel_RL', RR: 'Wheel_RR' }
+export const WHEEL_NODE_NAMES = DEFAULT_RIG.wheels
 export const REAR_WHEEL_KEYS = ['RL', 'RR']
 export const WHEEL_RADIUS_FALLBACK = 0.07
-
-// World-space location of the mast foot, measured from the GLB. Tilting around
-// this point swings the mast/carriage assembly the way a real tilt cylinder does.
-const MAST_FOOT_WORLD = [0, 0.024, 0.246]
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max)
@@ -22,8 +22,13 @@ function clamp(value, min, max) {
 // the same geometry/material and its true on-screen pose baked in (bind pose
 // equals rest pose, so output is identical), then wrap the moving parts in
 // pivot groups that can be driven from a frame loop.
-export function buildForkliftRig(root) {
+export function buildForkliftRig(root, rigConfig = DEFAULT_RIG) {
   if (root.userData.__forkliftRig) return root.userData.__forkliftRig
+
+  const wheelNames = rigConfig?.wheels || DEFAULT_RIG.wheels
+  const mastName = rigConfig?.mast || DEFAULT_RIG.mast
+  const carriageName = rigConfig?.carriage || DEFAULT_RIG.carriage
+  const mastFootWorld = rigConfig?.mastFoot || DEFAULT_RIG.mastFoot
 
   root.updateMatrixWorld(true)
 
@@ -67,7 +72,7 @@ export function buildForkliftRig(root) {
   root.updateMatrixWorld(true)
 
   const wheels = {}
-  Object.entries(WHEEL_NODE_NAMES).forEach(([key, name]) => {
+  Object.entries(wheelNames).forEach(([key, name]) => {
     const mesh = root.getObjectByName(name)
     if (!mesh) return
 
@@ -103,12 +108,12 @@ export function buildForkliftRig(root) {
   // the whole mast assembly and lifting still travels along the tilted mast.
   // Lift groups are identity children of the pivot, keeping `position.y = h`
   // valid as the lift control; the meshes' own offsets are baked in by attach().
-  const mastMesh = root.getObjectByName('Mast')
-  const carriageMesh = root.getObjectByName('Lift_Carriage')
+  const mastMesh = mastName ? root.getObjectByName(mastName) : null
+  const carriageMesh = carriageName ? root.getObjectByName(carriageName) : null
   let tiltPivot = null
   if (mastMesh) {
     tiltPivot = new Group()
-    tiltPivot.position.copy(mastMesh.parent.worldToLocal(new Vector3(...MAST_FOOT_WORLD)))
+    tiltPivot.position.copy(mastMesh.parent.worldToLocal(new Vector3(...mastFootWorld)))
     mastMesh.parent.add(tiltPivot)
     tiltPivot.updateMatrixWorld(true)
   }

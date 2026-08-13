@@ -15,10 +15,13 @@ import HubContentEditor from './components/admin/HubContentEditor'
 import ModuleEditor from './components/admin/ModuleEditor'
 import ModuleListAdmin from './components/admin/ModuleListAdmin'
 import QuizAdmin from './components/admin/QuizAdmin'
+import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
 import WalkAroundHotspotAdmin from './components/admin/WalkAroundHotspotAdmin'
 import {
+  adminCreateEquipment,
   adminCreatePartCategory,
   adminCreateUser,
+  adminDeleteEquipment,
   adminDeletePartCategory,
   adminDeletePart,
   adminDeleteUser,
@@ -111,6 +114,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [activeEquipmentId, setActiveEquipmentId] = useState('forklift')
   const [editingUser, setEditingUser] = useState(null)
   const [newCategory, setNewCategory] = useState('')
+  const [newEquipmentTitle, setNewEquipmentTitle] = useState('')
   // Placement mode for the selected part's 3D marker.
   const [placingPart, setPlacingPart] = useState(false)
   const [newUser, setNewUser] = useState({ email: '', fullName: '', role: 'TRAINEE', password: '' })
@@ -345,6 +349,36 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     }
   }
 
+  const handleAddEquipment = async () => {
+    if (!newEquipmentTitle.trim()) return
+    try {
+      const result = await adminCreateEquipment({ title: newEquipmentTitle.trim() })
+      setContent((current) => ({ ...current, equipment: [...current.equipment, result.equipment] }))
+      setNewEquipmentTitle('')
+      openEquipmentSection(result.equipment.id)
+      // openEquipmentSection reads `content.equipment`, which has not
+      // re-rendered with the new row yet, so the card editor is pointed at it
+      // directly.
+      setEditingEquipment(result.equipment)
+      refreshMessage('Equipment created. Add its modules and hotspots, then tick Available.')
+    } catch (error) {
+      refreshMessage(error.message)
+    }
+  }
+
+  const handleDeleteEquipment = async (equipment) => {
+    if (!window.confirm(`Delete "${equipment.title}"? Only an equipment with no content of its own can be deleted.`)) return
+    try {
+      await adminDeleteEquipment(equipment.id)
+      const remaining = content.equipment.filter((item) => item.id !== equipment.id)
+      setContent((current) => ({ ...current, equipment: remaining }))
+      if (remaining[0]) openEquipmentSection(remaining[0].id)
+      refreshMessage('Equipment deleted.')
+    } catch (error) {
+      refreshMessage(error.message)
+    }
+  }
+
   const handleSaveEquipment = async () => {
     if (!editingEquipment) return
     const result = await adminUpdateEquipment(editingEquipment.id, editingEquipment)
@@ -454,6 +488,15 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               {equipment.title}
             </button>
           ))}
+          <span className="admin-equipment-add">
+            <input
+              value={newEquipmentTitle}
+              placeholder="New equipment"
+              onChange={(event) => setNewEquipmentTitle(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') handleAddEquipment() }}
+            />
+            <button onClick={handleAddEquipment} disabled={!newEquipmentTitle.trim()}>Add</button>
+          </span>
         </nav>
       )}
 
@@ -764,9 +807,28 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                   Available for training
                 </label>
                 <p className="admin-panel-note">Unchecked renders the catalog card as a non-interactive &quot;Coming Soon&quot; placeholder.</p>
-                <button className="admin-save" onClick={handleSaveEquipment}>Save equipment card</button>
+                <div className="admin-row-actions">
+                  <button className="admin-save" onClick={handleSaveEquipment}>Save equipment card</button>
+                  <button onClick={() => handleDeleteEquipment(editingEquipment)}>Delete equipment</button>
+                </div>
+                <p className="admin-panel-note">Deleting is refused while the equipment still has modules, hotspots or quiz questions.</p>
               </>
             ) : <p>No equipment card available.</p>}
+          </section>
+          <section className="admin-panel admin-editor wide-panel">
+            <h2>Driving Simulation</h2>
+            <VehicleProfileEditor
+              key={activeEquipment?.id || 'none'}
+              equipment={activeEquipment}
+              onSaved={(equipment) => {
+                setContent((current) => ({
+                  ...current,
+                  equipment: current.equipment.map((item) => (item.id === equipment.id ? equipment : item)),
+                }))
+                setEditingEquipment((current) => (current?.id === equipment.id ? equipment : current))
+              }}
+              onMessage={refreshMessage}
+            />
           </section>
           <section className="admin-panel admin-editor">
             <h2>Hub Content</h2>

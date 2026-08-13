@@ -3,21 +3,18 @@ import { ArrowRight, Clock } from 'lucide-react'
 import PageLayout from './components/PageLayout'
 import ScopeNotice from './components/ScopeNotice'
 import { getEquipment } from './lib/api'
-import { routes } from './lib/router'
 import './ModulesPage.css'
 
-// Which equipment ids have an actual training page to send learners to.
-// `available` alone isn't enough to gate navigation on - it's an admin-
-// editable DB flag with no guarantee a page exists behind it yet (Backhoe and
-// Mobile Crane are catalogue rows with no model/scenario content at all), so
-// an admin flipping it on shouldn't be able to send learners into a redirect
-// to the wrong equipment's page. Add an entry here when a new equipment's
-// training page is actually built.
-const EQUIPMENT_TRAINING_ROUTES = {
-  forklift: routes.forklift,
-  // Every other equipment routes into the generic, data-driven training hub
-  // (App.jsx's /training/:equipmentId branch) rather than a static route key.
-  backhoe: '/training/backhoe',
+// Every equipment's training lives at the same data-driven route, so which
+// cards are clickable is derived rather than listed: an equipment has training
+// once an admin marks it available AND it actually has something behind the
+// card - at least one module, or a 3D model for its identification page.
+// That keeps a card from linking into an empty hub while letting a new
+// equipment go live with no code change.
+function trainingRouteFor(equipment) {
+  if (equipment.available === false) return null
+  if (!equipment.moduleCount && !equipment.modelUrl) return null
+  return `/training/${equipment.id}`
 }
 
 function ModulesPage({ user, onLogout, onNavigate }) {
@@ -28,11 +25,10 @@ function ModulesPage({ user, onLogout, onNavigate }) {
     getEquipment().then(setEquipment).finally(() => setLoading(false))
   }, [])
 
-  // A card only renders as a clickable link into training when it's both
-  // marked available AND has an implemented route; everything else - including
-  // an "available" equipment with no page yet - falls back to "Coming Soon".
-  const modules = equipment.filter((item) => item.available !== false && EQUIPMENT_TRAINING_ROUTES[item.id])
-  const comingSoonEquipment = equipment.filter((item) => item.available === false || !EQUIPMENT_TRAINING_ROUTES[item.id])
+  // Anything without a route - unavailable, or available but still empty -
+  // falls back to a "Coming Soon" card.
+  const modules = equipment.filter((item) => trainingRouteFor(item))
+  const comingSoonEquipment = equipment.filter((item) => !trainingRouteFor(item))
 
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
@@ -51,11 +47,11 @@ function ModulesPage({ user, onLogout, onNavigate }) {
               className="module-card"
               role="button"
               tabIndex={0}
-              onClick={() => onNavigate(EQUIPMENT_TRAINING_ROUTES[module.id])}
+              onClick={() => onNavigate(trainingRouteFor(module))}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault()
-                  onNavigate(EQUIPMENT_TRAINING_ROUTES[module.id])
+                  onNavigate(trainingRouteFor(module))
                 }
               }}
             >
@@ -75,7 +71,7 @@ function ModulesPage({ user, onLogout, onNavigate }) {
                   className="catalog-start-button"
                   onClick={(event) => {
                     event.stopPropagation()
-                    onNavigate(EQUIPMENT_TRAINING_ROUTES[module.id])
+                    onNavigate(trainingRouteFor(module))
                   }}
                 >
                   Start Training <ArrowRight size={15} />

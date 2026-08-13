@@ -14,9 +14,20 @@ import {
 
 const router = Router()
 
+// `moduleCount` rides along because the catalogue decides whether a card is
+// clickable from whether the equipment actually has training behind it -
+// modules, or a model for its identification page - rather than from a
+// hardcoded allow-list.
 router.get('/equipment', async (req, res) => {
-  const equipment = await prisma.equipment.findMany({ orderBy: { sortOrder: 'asc' } })
-  res.json(equipment)
+  const [equipment, moduleCounts] = await Promise.all([
+    prisma.equipment.findMany({ orderBy: { sortOrder: 'asc' } }),
+    prisma.module.groupBy({ by: ['equipmentId'], _count: { _all: true } }),
+  ])
+
+  res.json(equipment.map((row) => ({
+    ...row,
+    moduleCount: moduleCounts.find((entry) => entry.equipmentId === row.id)?._count._all || 0,
+  })))
 })
 
 // `?equipment=` scopes to one equipment's modules (used by a hub page that

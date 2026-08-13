@@ -196,6 +196,14 @@ export async function adminDeletePartCategory(categoryId) {
   return request(`/admin/part-categories/${encodeURIComponent(categoryId)}`, { method: 'DELETE' })
 }
 
+export async function adminCreateEquipment(payload) {
+  return request('/admin/equipment', { method: 'POST', body: payload })
+}
+
+export async function adminDeleteEquipment(equipmentId) {
+  return request(`/admin/equipment/${encodeURIComponent(equipmentId)}`, { method: 'DELETE' })
+}
+
 export async function adminUpdateEquipment(equipmentId, payload) {
   return request(`/admin/equipment/${encodeURIComponent(equipmentId)}`, { method: 'PATCH', body: payload })
 }
