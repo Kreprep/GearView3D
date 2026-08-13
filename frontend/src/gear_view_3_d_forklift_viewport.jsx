@@ -38,10 +38,10 @@ class ViewportErrorBoundary extends React.Component {
         <div className="flex h-full min-h-[520px] items-center justify-center rounded-2xl border border-dashed bg-slate-950 p-8 text-center text-slate-100">
           <div className="max-w-md space-y-3">
             <BadgeInfo className="mx-auto h-8 w-8" />
-            <h3 className="text-xl font-semibold">Forklift model could not be loaded</h3>
+            <h3 className="text-xl font-semibold">3D model could not be loaded</h3>
             <p className="text-sm text-slate-300">
               Confirm the GLB is available at{' '}
-              <code className="rounded bg-white/10 px-1.5 py-0.5">/models/forklift.glb</code>.
+              <code className="rounded bg-white/10 px-1.5 py-0.5">{this.props.modelUrl || DEFAULT_MODEL_URL}</code>.
             </p>
           </div>
         </div>
@@ -272,7 +272,7 @@ function LoadingPanel() {
     <Html center>
       <div className="w-56 rounded-2xl border border-white/10 bg-slate-950/90 p-4 text-center text-white shadow-2xl backdrop-blur">
         <div className="mx-auto mb-3 h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-cyan-300" />
-        <p className="text-sm font-medium">Loading forklift model</p>
+        <p className="text-sm font-medium">Loading 3D model</p>
         <p className="mt-1 text-xs text-slate-400">Preparing GearView3D viewport...</p>
       </div>
     </Html>
@@ -376,7 +376,7 @@ export default function ForkliftViewport({
         Drag to rotate - Scroll to zoom - Right-drag to pan
       </div>
 
-      <ViewportErrorBoundary>
+      <ViewportErrorBoundary modelUrl={modelUrl}>
         <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
           <Suspense fallback={<LoadingPanel />}>{Scene}</Suspense>
         </Canvas>
@@ -385,5 +385,3 @@ export default function ForkliftViewport({
     </div>
   )
 }
-
-useGLTF.preload(DEFAULT_MODEL_URL)

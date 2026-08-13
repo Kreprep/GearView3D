@@ -4,7 +4,7 @@ import { getEquipment, getEquipmentHotspots, getTrainingModules } from './lib/ap
 import { getGenericHotspotProgress, getGenericOverallProgress, getModuleProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
 import PageLayout from './components/PageLayout'
-import ScopeNotice from './components/ScopeNotice'
+import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { routes } from './lib/router'
 import './TrainingHubPage.css'
 
@@ -67,7 +67,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
 
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
-      <ScopeNotice />
+      <ScopeNotice note={isForklift ? FORKLIFT_SCOPE_NOTE : undefined} />
 
       {loading ? (
         <p className="progress-grid-empty">Loading modules...</p>
