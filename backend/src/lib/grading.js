@@ -74,13 +74,26 @@ export function intoModuleQuiz(moduleSlug) {
   })
 }
 
-export function intoPartsPractice(data, attempt) {
-  return {
-    ...data,
-    parts: {
+// Parts-quiz attempts. Forklift's keep going to `parts.practiceAttempts`,
+// the key its progress percentage and the assessment page have always read -
+// renaming it would strand every existing learner's attempts. Every other
+// equipment's go to `parts.quizzes[equipmentId]`, which is per-equipment
+// because that key never was.
+export function intoPartsQuiz(equipmentId) {
+  return (data, attempt) => {
+    const parts = {
       ...(data.parts || {}),
       viewedPartIds: data.parts?.viewedPartIds || [],
-      practiceAttempts: [attempt, ...(data.parts?.practiceAttempts || [])],
-    },
+      practiceAttempts: data.parts?.practiceAttempts || [],
+      quizzes: data.parts?.quizzes || {},
+    }
+
+    if (equipmentId === 'forklift') {
+      parts.practiceAttempts = [attempt, ...parts.practiceAttempts]
+    } else {
+      parts.quizzes = { ...parts.quizzes, [equipmentId]: [attempt, ...(parts.quizzes[equipmentId] || [])] }
+    }
+
+    return { ...data, parts }
   }
 }

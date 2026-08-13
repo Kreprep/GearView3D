@@ -1,10 +1,12 @@
-// Parts Identification practice questions.
+// The parts quiz - the multiple-choice step of Forklift's Parts
+// Identification page.
 //
 // Split out of partsData.js for the same reason as moduleQuizzes.js: each
 // question carries its correct `answer`, and partsData.js is imported by the
 // page for its hotspots. This file is imported by the seed only; at runtime
-// the questions come from the PracticeQuestion table without their answers.
-export const partsPracticeQuestions = [
+// the questions come from the QuizQuestion table (context 'parts') without
+// their answers.
+export const partsQuizQuestions = [
   {
     id: 'select-capacity-plate',
     prompt: 'Which part shows the rated load capacity and forklift specifications?',
@@ -49,10 +51,14 @@ export const partsPracticeQuestions = [
   },
 ]
 
-// Seed rows for the PracticeQuestion table.
-export function buildDefaultPracticeQuestions() {
-  return partsPracticeQuestions.map((question, index) => ({
+// Seed rows for the QuizQuestion table. `context: 'parts'` and no module -
+// these belong to the equipment's parts page, not to a module's quiz step.
+export function buildDefaultPartsQuizQuestions(equipmentId = 'forklift') {
+  return partsQuizQuestions.map((question, index) => ({
     id: question.id,
+    equipmentId,
+    context: 'parts',
+    moduleId: null,
     prompt: question.prompt,
     options: question.options,
     answer: question.answer,

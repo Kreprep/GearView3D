@@ -10,9 +10,9 @@ import {
   trainingModules,
 } from '../../frontend/src/data/trainingModules.js'
 import { buildDefaultPartCategories, partsHotspots } from '../../frontend/src/data/partsData.js'
-// Quiz and practice answers live in their own files so the frontend bundle
-// never imports them; the seed is the only consumer.
-import { buildDefaultPracticeQuestions } from '../../frontend/src/data/practiceQuestions.js'
+// Quiz answers live in their own files so the frontend bundle never imports
+// them; the seed is the only consumer.
+import { buildDefaultPartsQuizQuestions } from '../../frontend/src/data/partsQuizzes.js'
 import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
 import { buildDefaultPartDetails } from '../../frontend/src/data/partDetails.js'
 import { buildDefaultCourses, emptyCourseContent } from '../../frontend/src/data/courseDefaults.js'
@@ -211,9 +211,11 @@ async function seedPartCategories() {
   }
 }
 
-async function seedPracticeQuestions() {
-  for (const question of buildDefaultPracticeQuestions()) {
-    await prisma.practiceQuestion.upsert({
+// Forklift's parts quiz. Every other equipment starts with no parts
+// questions; an admin adds them in the dashboard.
+async function seedPartsQuizQuestions() {
+  for (const question of buildDefaultPartsQuizQuestions('forklift')) {
+    await prisma.quizQuestion.upsert({
       where: { id: question.id },
       update: {},
       create: question,
@@ -252,15 +254,13 @@ async function seedQuizQuestions() {
         update: {},
         create: {
           id: question.id,
+          equipmentId: module.equipmentId || 'forklift',
+          context: 'module',
           moduleId: module.id,
           prompt: question.prompt,
           answer: question.answer,
           sortOrder: index + 1,
-          options: question.options.map((text, optionIndex) => ({
-            id: `${question.id}-option-${optionIndex + 1}`,
-            text,
-            sortOrder: optionIndex + 1,
-          })),
+          options: question.options,
         },
       })
     }
@@ -324,7 +324,7 @@ async function main() {
   await seedParts()
   await seedPartDetails()
   await seedPartCategories()
-  await seedPracticeQuestions()
+  await seedPartsQuizQuestions()
   await seedChecklists()
   await seedQuizQuestions()
   await seedCourses()
@@ -337,7 +337,6 @@ async function main() {
     parts: await prisma.part.count(),
     partDetails: await prisma.partDetail.count(),
     partCategories: await prisma.partCategory.count(),
-    practiceQuestions: await prisma.practiceQuestion.count(),
     checklistItems: await prisma.checklistItem.count(),
     quizQuestions: await prisma.quizQuestion.count(),
     courses: await prisma.course.count(),

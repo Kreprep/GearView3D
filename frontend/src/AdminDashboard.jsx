@@ -3,7 +3,6 @@ import {
   Activity,
   BarChart3,
   FileQuestion,
-  HelpCircle,
   Layers,
   LayoutGrid,
   ListChecks,
@@ -17,14 +16,15 @@ import {
 import CourseAdmin from './components/admin/CourseAdmin'
 import EquipmentHotspotAdmin from './components/admin/EquipmentHotspotAdmin'
 import HubContentEditor from './components/admin/HubContentEditor'
-import PracticeQuizAdmin from './components/admin/PracticeQuizAdmin'
+import QuizAdmin from './components/admin/QuizAdmin'
 import WalkAroundHotspotAdmin from './components/admin/WalkAroundHotspotAdmin'
 import {
+  adminCreatePartCategory,
   adminCreateUser,
   adminDeleteChecklistItem,
   adminDeleteModule,
+  adminDeletePartCategory,
   adminDeletePart,
-  adminDeleteQuizQuestion,
   adminDeleteUser,
   adminListContent,
   adminPublishPart,
@@ -34,23 +34,22 @@ import {
   adminUpdateChecklistItem,
   adminUpdateEquipment,
   adminUpdateModule,
+  adminUpdatePartCategory,
   adminUpdatePart,
   adminUpdatePartDetail,
-  adminUpdateQuizQuestion,
   adminUpdateUser,
 } from './lib/api'
 import { routes } from './lib/router'
 import './AdminDashboard.css'
 
-// The seven sub-tabs every equipment section gets. Paths stay equipment-
+// The sub-tabs every equipment section gets. Paths stay equipment-
 // agnostic (no router change needed - same precedent as CourseAdmin's own
 // in-page module tabs); which equipment's data fills them is tracked by
 // `activeEquipmentId` state instead.
 const equipmentContentTabs = [
   [routes.adminModules, 'Modules', Layers],
   [routes.adminParts, 'Parts', Wrench],
-  [routes.adminPractice, 'Practice Quiz', HelpCircle],
-  [routes.adminCourses, 'Courses', Route],
+  [routes.adminCourses, 'Driving Courses', Route],
   [routes.adminHotspots, 'Walk-Around Hotspots', MapPin],
   [routes.adminChecklists, 'Checklists', ListChecks],
   [routes.adminQuizzes, 'Quizzes', FileQuestion],
@@ -99,7 +98,7 @@ function formatRelativeTime(dateString) {
 function describeActivity(entry, moduleTitle) {
   const who = entry.user?.fullName || entry.user?.email || 'A learner'
   if (entry.action === 'quiz_attempt') return `${who} completed a quiz in ${moduleTitle || entry.detail}`
-  if (entry.action === 'parts_practice_attempt') return `${who} scored ${entry.detail} on parts practice`
+  if (entry.action === 'parts_practice_attempt') return `${who} scored ${entry.detail} on the parts quiz`
   return `${who} - ${entry.action}`
 }
 
@@ -109,6 +108,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     modules: [],
     parts: [],
     partDetails: {},
+    partCategories: [],
     checklists: [],
     quizQuestions: [],
     users: [],
@@ -125,8 +125,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   // modules/parts/courses/etc. the tab bodies below show.
   const [activeEquipmentId, setActiveEquipmentId] = useState('forklift')
   const [editingChecklist, setEditingChecklist] = useState(null)
-  const [editingQuiz, setEditingQuiz] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
+  const [newCategory, setNewCategory] = useState('')
   const [newUser, setNewUser] = useState({ email: '', fullName: '', role: 'TRAINEE', password: '' })
   const [saveMessage, setSaveMessage] = useState('')
   // Captured once rather than read live, so computing "recent" activity stays
@@ -158,10 +158,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     () => content.checklists.filter((item) => modulesById[item.moduleId]?.equipmentId === activeEquipmentId),
     [content.checklists, modulesById, activeEquipmentId],
   )
-  const activeEquipmentQuizQuestions = useMemo(
-    () => content.quizQuestions.filter((question) => modulesById[question.moduleId]?.equipmentId === activeEquipmentId),
-    [content.quizQuestions, modulesById, activeEquipmentId],
-  )
   const activeEquipment = content.equipment.find((item) => item.id === activeEquipmentId) || null
   // Forklift keeps its own dedicated Parts/PartDetail + WalkAroundHotspot
   // systems regardless of this flag. For any other equipment, a configured
@@ -176,7 +172,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     setActiveEquipmentId(equipmentId)
     setEditingModule(null)
     setEditingChecklist(null)
-    setEditingQuiz(null)
     setEditingEquipment(content.equipment.find((item) => item.id === equipmentId) || null)
     onNavigate(routes.adminModules)
   }
@@ -217,6 +212,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         modules: [],
         parts: [],
         partDetails: {},
+        partCategories: [],
         checklists: [],
         quizQuestions: [],
         users: [],
@@ -333,6 +329,41 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     setSelectedDetail(null)
   }
 
+  // Category rows are short labels with no learner-visible body, so they save
+  // immediately - the same rule as modules and checklist items.
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) return
+    try {
+      const result = await adminCreatePartCategory({ label: newCategory.trim() })
+      setContent((current) => ({ ...current, partCategories: [...current.partCategories, result.category] }))
+      setNewCategory('')
+      refreshMessage('Category added.')
+    } catch (error) {
+      refreshMessage(error.message)
+    }
+  }
+
+  const handleRenameCategory = async (category, label) => {
+    const result = await adminUpdatePartCategory(category.id, { label })
+    setContent((current) => ({
+      ...current,
+      partCategories: current.partCategories.map((entry) => (entry.id === category.id ? result.category : entry)),
+    }))
+  }
+
+  const handleDeleteCategory = async (category) => {
+    try {
+      await adminDeletePartCategory(category.id)
+      setContent((current) => ({
+        ...current,
+        partCategories: current.partCategories.filter((entry) => entry.id !== category.id),
+      }))
+      refreshMessage('Category deleted.')
+    } catch (error) {
+      refreshMessage(error.message)
+    }
+  }
+
   const handleSaveEquipment = async () => {
     if (!editingEquipment) return
     const result = await adminUpdateEquipment(editingEquipment.id, editingEquipment)
@@ -374,25 +405,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     if (!window.confirm('Delete this checklist item?')) return
     await adminDeleteChecklistItem(itemId)
     setContent((current) => ({ ...current, checklists: current.checklists.filter((item) => item.id !== itemId) }))
-  }
-
-  const handleSaveQuiz = async () => {
-    if (!editingQuiz) return
-    const result = await adminUpdateQuizQuestion(editingQuiz.id, {
-      ...editingQuiz,
-      options: editingQuiz.options.map((option) => option.text || option),
-    })
-    setContent((current) => ({
-      ...current,
-      quizQuestions: current.quizQuestions.map((question) => (question.id === editingQuiz.id ? result.question : question)),
-    }))
-    refreshMessage('Quiz question saved.')
-  }
-
-  const handleDeleteQuiz = async (questionId) => {
-    if (!window.confirm('Delete this quiz question?')) return
-    await adminDeleteQuizQuestion(questionId)
-    setContent((current) => ({ ...current, quizQuestions: current.quizQuestions.filter((question) => question.id !== questionId) }))
   }
 
   const handleCreateUser = async () => {
@@ -672,6 +684,20 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 {part.label}
               </button>
             ))}
+            <h2>Part Categories</h2>
+            <p className="admin-panel-note">The filter chips above the parts list on the learner page. A category still used by a part cannot be deleted.</p>
+            {content.partCategories.map((category) => (
+              <div key={category.id} className="admin-row-actions">
+                <input value={category.label} onChange={(event) => handleRenameCategory(category, event.target.value)} />
+                <button onClick={() => handleDeleteCategory(category)}>Delete</button>
+              </div>
+            ))}
+            <label>
+              New category
+              <input value={newCategory} onChange={(event) => setNewCategory(event.target.value)} />
+            </label>
+            <button className="admin-save" onClick={handleAddCategory} disabled={!newCategory.trim()}>Add category</button>
+
             <h2>Inspection Hotspots</h2>
             <p className="admin-panel-note">Walk-around checks that are not standalone parts. Each has the same detail card (image + markdown description).</p>
             {Object.values(content.partDetails)
@@ -733,27 +759,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               </>
             ) : <p>Select a forklift part or inspection hotspot to edit its detail card.</p>}
           </section>
-        </main>
-      )}
-
-      {activePath === routes.adminPractice && !isForklift && (
-        <main className="admin-grid">
-          <section className="admin-panel wide-panel">
-            <h2>Practice Quiz</h2>
-            <p className="admin-panel-note">The parts-identification practice quiz is Forklift-only for now - it has no per-equipment scoping or generic learner page yet.</p>
-          </section>
-        </main>
-      )}
-
-      {activePath === routes.adminPractice && isForklift && (
-        <main className="admin-grid">
-          <PracticeQuizAdmin
-            questions={content.practiceQuestions || []}
-            categories={content.partCategories || []}
-            onQuestionsChanged={(practiceQuestions) => setContent((current) => ({ ...current, practiceQuestions }))}
-            onCategoriesChanged={(partCategories) => setContent((current) => ({ ...current, partCategories }))}
-            onMessage={refreshMessage}
-          />
         </main>
       )}
 
@@ -825,30 +830,14 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
 
       {activePath === routes.adminQuizzes && (
         <main className="admin-grid">
-          <section className="admin-panel">
-            <h2>Quiz Questions</h2>
-            {activeEquipmentQuizQuestions.map((question) => (
-              <article key={question.id} className={`admin-list-item ${editingQuiz?.id === question.id ? 'is-editing' : ''}`}>
-                <h3>{modulesById[question.moduleId]?.title || question.module?.title}</h3>
-                <p>{question.prompt}</p>
-                <div className="admin-row-actions">
-                  <button onClick={() => setEditingQuiz(question)}>Edit</button>
-                  <button onClick={() => handleDeleteQuiz(question.id)}>Delete</button>
-                </div>
-              </article>
-            ))}
-          </section>
-          <section className="admin-panel admin-editor">
-            <h2>Quiz Editor</h2>
-            {editingQuiz ? (
-              <>
-                <label>Prompt<textarea value={editingQuiz.prompt} onChange={(event) => setEditingQuiz({ ...editingQuiz, prompt: event.target.value })} /></label>
-                <label>Correct answer<input value={editingQuiz.answer} onChange={(event) => setEditingQuiz({ ...editingQuiz, answer: event.target.value })} /></label>
-                <label>Choices<textarea value={editingQuiz.options.map((option) => option.text || option).join('\n')} onChange={(event) => setEditingQuiz({ ...editingQuiz, options: event.target.value.split('\n').filter(Boolean) })} /></label>
-                <button className="admin-save" onClick={handleSaveQuiz}>Save quiz question</button>
-              </>
-            ) : <p>Select a quiz question to edit.</p>}
-          </section>
+          <QuizAdmin
+            key={activeEquipmentId}
+            equipmentId={activeEquipmentId}
+            modules={activeEquipmentModules}
+            questions={content.quizQuestions}
+            onQuestionsChanged={(quizQuestions) => setContent((current) => ({ ...current, quizQuestions }))}
+            onMessage={refreshMessage}
+          />
         </main>
       )}
 

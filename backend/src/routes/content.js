@@ -8,7 +8,7 @@ import {
   appendAttempt,
   buildAttempt,
   intoModuleQuiz,
-  intoPartsPractice,
+  intoPartsQuiz,
   scoreAnswers,
 } from '../lib/grading.js'
 
@@ -56,29 +56,6 @@ router.get('/part-categories', async (req, res) => {
   res.json(categories)
 })
 
-// `answer` is deliberately absent: the correct choice stays on the server until
-// the learner submits, and the submit endpoint below does the scoring.
-router.get('/practice-questions', async (req, res) => {
-  const questions = await prisma.practiceQuestion.findMany({
-    orderBy: { sortOrder: 'asc' },
-    select: { id: true, prompt: true, options: true, sortOrder: true },
-  })
-  res.json(questions)
-})
-
-router.post('/practice-questions/submit', requireAuth, async (req, res) => {
-  const questions = await prisma.practiceQuestion.findMany({
-    orderBy: { sortOrder: 'asc' },
-    select: { id: true, answer: true },
-  })
-
-  const scored = scoreAnswers(questions, req.body?.answers)
-  const attempt = buildAttempt(scored)
-  await appendAttempt(req.user.id, attempt, intoPartsPractice)
-
-  res.json({ ...scored, attempt })
-})
-
 // Returned as an object keyed by id, matching the shape the frontend uses.
 router.get('/part-details', async (req, res) => {
   const details = await prisma.partDetail.findMany({
@@ -117,46 +94,55 @@ router.get('/checklists/:moduleSlug', async (req, res) => {
   res.json(items.map((item) => item.text))
 })
 
-// Quiz questions for one module. `options` is stored as { id, text, sortOrder }
-// objects but ModuleQuiz compares plain strings against `answer`, so the text is
-// flattened here.
-router.get('/quizzes/:moduleSlug', async (req, res) => {
-  const module = await prisma.module.findUnique({ where: { slug: req.params.moduleSlug } })
-  if (!module) {
-    return res.json([])
+// One endpoint for every quiz, module and parts alike:
+//
+//   GET /quizzes?module=<slug>                 a module's quiz step
+//   GET /quizzes?equipment=<id>&context=parts  that equipment's parts quiz
+//
+// `answer` is deliberately absent from the response: the correct choice stays
+// on the server until the learner submits, and /quizzes/submit does the
+// scoring.
+async function quizScope(query = {}) {
+  if (query.context === 'parts') {
+    if (!query.equipment) return null
+    return { where: { context: 'parts', equipmentId: query.equipment }, place: intoPartsQuiz(query.equipment) }
   }
 
+  const module = await prisma.module.findUnique({ where: { slug: query.module || '' } })
+  if (!module) return null
+  return { where: { context: 'module', moduleId: module.id }, place: intoModuleQuiz(module.slug) }
+}
+
+router.get('/quizzes', async (req, res) => {
+  const scope = await quizScope(req.query)
+  if (!scope) return res.json([])
+
   const questions = await prisma.quizQuestion.findMany({
-    where: { moduleId: module.id },
+    where: scope.where,
     orderBy: { sortOrder: 'asc' },
+    select: { id: true, prompt: true, options: true, sortOrder: true },
   })
 
-  // As with the practice quiz, `answer` is withheld until submission.
   res.json(questions.map((question) => ({
     id: question.id,
     prompt: question.prompt,
-    options: (question.options || [])
-      .slice()
-      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
-      .map((option) => option.text),
+    options: question.options || [],
   })))
 })
 
-router.post('/quizzes/:moduleSlug/submit', requireAuth, async (req, res) => {
-  const module = await prisma.module.findUnique({ where: { slug: req.params.moduleSlug } })
-  if (!module) {
-    return res.status(404).json({ error: 'Unknown module' })
-  }
+router.post('/quizzes/submit', requireAuth, async (req, res) => {
+  const scope = await quizScope(req.body)
+  if (!scope) return res.status(404).json({ error: 'Unknown quiz' })
 
   const questions = await prisma.quizQuestion.findMany({
-    where: { moduleId: module.id },
+    where: scope.where,
     orderBy: { sortOrder: 'asc' },
     select: { id: true, answer: true },
   })
 
   const scored = scoreAnswers(questions, req.body?.answers)
   const attempt = buildAttempt(scored)
-  await appendAttempt(req.user.id, attempt, intoModuleQuiz(req.params.moduleSlug))
+  await appendAttempt(req.user.id, attempt, scope.place)
 
   res.json({ ...scored, attempt })
 })

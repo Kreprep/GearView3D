@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, CircleGauge, ClipboardList, Layers, PackageSearch, RotateCcw } from 'lucide-react'
-import { getEquipment, getEquipmentHotspots, getTrainingModules } from './lib/api'
-import { getGenericHotspotProgress, getGenericModuleProgress, getGenericOverallProgress } from './lib/progressService'
+import { getEquipment, getEquipmentHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
+import { getGenericModuleProgress, getGenericOverallProgress, getGenericPartsProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
 import PageLayout from './components/PageLayout'
@@ -26,21 +26,26 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
   const [equipment, setEquipment] = useState(null)
   const [modules, setModules] = useState([])
   const [hotspots, setHotspots] = useState([])
+  const [hasPartsQuiz, setHasPartsQuiz] = useState(false)
   const [loading, setLoading] = useState(true)
   const { summary, resetProgress } = useProgress()
 
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getEquipment(), getTrainingModules(equipmentId), getEquipmentHotspots(equipmentId)]).then(
-      ([equipmentRows, moduleRows, hotspotRows]) => {
-        if (cancelled) return
-        setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
-        setModules(moduleRows)
-        setHotspots(hotspotRows)
-        setLoading(false)
-      },
-    )
+    Promise.all([
+      getEquipment(),
+      getTrainingModules(equipmentId),
+      getEquipmentHotspots(equipmentId),
+      getQuizQuestions({ equipment: equipmentId, context: 'parts' }).catch(() => []),
+    ]).then(([equipmentRows, moduleRows, hotspotRows, partsQuestions]) => {
+      if (cancelled) return
+      setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
+      setModules(moduleRows)
+      setHotspots(hotspotRows)
+      setHasPartsQuiz(partsQuestions.length > 0)
+      setLoading(false)
+    })
 
     return () => {
       cancelled = true
@@ -52,13 +57,15 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
   // other equipment gets the hotspot page once it has a model configured.
   const hasPartsPage = isForklift || Boolean(equipment?.modelUrl)
   const partsRoute = isForklift ? routes.parts : `/training/${equipmentId}/parts`
-  const partsProgress = isForklift ? summary.parts : getGenericHotspotProgress(summary.raw, hotspots.map((hotspot) => hotspot.id))
+  const partsProgress = isForklift
+    ? summary.parts
+    : getGenericPartsProgress(summary.raw, hotspots.map((hotspot) => hotspot.id), equipmentId, hasPartsQuiz)
   const moduleSlugs = modules.map((module) => module.slug)
   const moduleProgress = isForklift ? summary.equipment : getGenericModuleProgress(summary.raw, moduleSlugs)
 
   const overall = isForklift
     ? summary.overall
-    : getGenericOverallProgress(summary.raw, moduleSlugs, hotspots.map((hotspot) => hotspot.id))
+    : getGenericOverallProgress(summary.raw, moduleSlugs, hasPartsPage ? partsProgress : null)
   const modulesRoute = `/training/${equipmentId}/modules`
   const assessmentRoute = `/training/${equipmentId}/assessment`
 

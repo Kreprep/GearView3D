@@ -98,13 +98,14 @@ Learner progress is saved per account in the database, so the same login shows t
 Admin routes (log in as the admin account):
 
 - `/admin` — overview
-- `/admin/modules`, `/admin/parts`, `/admin/checklists`, `/admin/quizzes` — edit content (part detail cards support Markdown descriptions and reference images)
-- `/admin/practice` — the Parts Identification practice quiz and the category filter chips
-
-Parts, part detail cards, practice questions and course steps use **Save draft / Publish**: learners keep seeing the published version until you press Publish, and Discard draft throws the pending edit away. Modules, the equipment cards, checklists and quizzes save immediately.
+- `/admin/modules` — training modules plus the equipment card and its **Hub content** (the copy on that equipment's training hub and module list; leave a field blank to use the default)
+- `/admin/parts` — parts, part detail cards (Markdown descriptions and reference images) and the category filter chips
+- `/admin/quizzes` — every quiz for that equipment: the parts quiz and each module's quiz, in one editor
+- `/admin/checklists`, `/admin/hotspots` — checklist items and walk-around hotspots
+- `/admin/courses` — the driving-course step and 3D map editor for Modules 2-4
 - `/admin/users`, `/admin/reports` — learners, progress, CSV export
 
-- `/admin/courses` — the step and 3D map editor for Modules 2-4
+Parts, part detail cards and course steps use **Save draft / Publish**: learners keep seeing the published version until you press Publish, and Discard draft throws the pending edit away. Modules, the equipment cards, hub content, checklists and quiz questions save immediately.
 
 Admin edits are saved in PostgreSQL through the API and are visible to everyone using the same backend.
 

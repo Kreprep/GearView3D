@@ -21,13 +21,6 @@ export const contentTables = [
   { model: 'part', label: 'Part', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }], omit: ['draft'], prunable: true },
   { model: 'partDetail', label: 'PartDetail', orderBy: [{ id: 'asc' }], omit: ['draft'] },
   {
-    model: 'practiceQuestion',
-    label: 'PracticeQuestion',
-    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
-    omit: ['draft'],
-    prunable: true,
-  },
-  {
     model: 'course',
     label: 'Course',
     orderBy: [{ moduleSlug: 'asc' }, { sortOrder: 'asc' }],
@@ -37,7 +30,14 @@ export const contentTables = [
     prunable: true,
   },
   { model: 'checklistItem', label: 'ChecklistItem', orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] },
-  { model: 'quizQuestion', label: 'QuizQuestion', orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] },
+  // Module quizzes and parts quizzes share this table; parts questions have a
+  // null moduleId, so ordering leads with equipment and context.
+  {
+    model: 'quizQuestion',
+    label: 'QuizQuestion',
+    orderBy: [{ equipmentId: 'asc' }, { context: 'asc' }, { sortOrder: 'asc' }],
+    prunable: true,
+  },
 ]
 
 export const exportPath = new URL('../prisma/content-export.json', import.meta.url)
