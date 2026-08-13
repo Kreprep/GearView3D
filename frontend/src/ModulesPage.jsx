@@ -6,6 +6,17 @@ import { getEquipment } from './lib/api'
 import { routes } from './lib/router'
 import './ModulesPage.css'
 
+// Which equipment ids have an actual training page to send learners to.
+// `available` alone isn't enough to gate navigation on - it's an admin-
+// editable DB flag with no guarantee a page exists behind it yet (Backhoe and
+// Mobile Crane are catalogue rows with no model/scenario content at all), so
+// an admin flipping it on shouldn't be able to send learners into a redirect
+// to the wrong equipment's page. Add an entry here when a new equipment's
+// training page is actually built.
+const EQUIPMENT_TRAINING_ROUTES = {
+  forklift: routes.forklift,
+}
+
 function ModulesPage({ user, onLogout, onNavigate }) {
   const [equipment, setEquipment] = useState([])
   const [loading, setLoading] = useState(true)
@@ -14,11 +25,11 @@ function ModulesPage({ user, onLogout, onNavigate }) {
     getEquipment().then(setEquipment).finally(() => setLoading(false))
   }, [])
 
-  // `available` decides which card a row renders as: a link into training, or
-  // a non-interactive "Coming Soon" placeholder. Both are Equipment rows now,
-  // so adding a future machine is a dashboard edit rather than a code change.
-  const modules = equipment.filter((item) => item.available !== false)
-  const comingSoonEquipment = equipment.filter((item) => item.available === false)
+  // A card only renders as a clickable link into training when it's both
+  // marked available AND has an implemented route; everything else - including
+  // an "available" equipment with no page yet - falls back to "Coming Soon".
+  const modules = equipment.filter((item) => item.available !== false && EQUIPMENT_TRAINING_ROUTES[item.id])
+  const comingSoonEquipment = equipment.filter((item) => item.available === false || !EQUIPMENT_TRAINING_ROUTES[item.id])
 
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
@@ -37,11 +48,11 @@ function ModulesPage({ user, onLogout, onNavigate }) {
               className="module-card"
               role="button"
               tabIndex={0}
-              onClick={() => onNavigate(routes.forklift)}
+              onClick={() => onNavigate(EQUIPMENT_TRAINING_ROUTES[module.id])}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault()
-                  onNavigate(routes.forklift)
+                  onNavigate(EQUIPMENT_TRAINING_ROUTES[module.id])
                 }
               }}
             >
@@ -61,7 +72,7 @@ function ModulesPage({ user, onLogout, onNavigate }) {
                   className="catalog-start-button"
                   onClick={(event) => {
                     event.stopPropagation()
-                    onNavigate(routes.forklift)
+                    onNavigate(EQUIPMENT_TRAINING_ROUTES[module.id])
                   }}
                 >
                   Start Training <ArrowRight size={15} />
