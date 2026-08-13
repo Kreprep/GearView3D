@@ -1,30 +1,43 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useProgress } from './hooks/useProgress'
 import PageLayout from './components/PageLayout'
-import ScopeNotice from './components/ScopeNotice'
-import { getEquipment, getEquipmentHotspots, getTrainingModules } from './lib/api'
+import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
+import { getEquipment, getEquipmentHotspots, getParts, getTrainingModules } from './lib/api'
 import { getGenericHotspotProgress, getGenericModuleProgress, getGenericOverallProgress } from './lib/progressService'
+import { routes } from './lib/router'
 import './AssessmentPage.css'
 
-// The equivalent of AssessmentPage for any equipment other than Forklift:
-// same status/review/recommendation layout, but reads modules + hotspots for
-// `equipmentId` instead of the fixed forklift module slugs and Part table.
+// The final-assessment page for every equipment. The layout is shared; what
+// varies per equipment is where the "parts" numbers come from: Forklift's
+// parts progress is the Part-table-based summary.parts (plus its parts
+// practice quiz), while other equipment reads its EquipmentHotspot rows.
+// The fork disappears once parts practice becomes per-equipment.
 function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
+  const isForklift = equipmentId === 'forklift'
   const { summary } = useProgress()
   const [equipment, setEquipment] = useState(null)
   const [modules, setModules] = useState([])
   const [hotspots, setHotspots] = useState([])
+  const [parts, setParts] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getEquipment(), getTrainingModules(equipmentId), getEquipmentHotspots(equipmentId)])
-      .then(([equipmentRows, moduleRows, hotspotRows]) => {
+    Promise.all([
+      getEquipment(),
+      getTrainingModules(equipmentId),
+      isForklift ? getParts() : getEquipmentHotspots(equipmentId),
+    ])
+      .then(([equipmentRows, moduleRows, partOrHotspotRows]) => {
         if (cancelled) return
         setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
         setModules(moduleRows)
-        setHotspots(hotspotRows)
+        if (isForklift) {
+          setParts(partOrHotspotRows)
+        } else {
+          setHotspots(partOrHotspotRows)
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -33,15 +46,15 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
     return () => {
       cancelled = true
     }
-  }, [equipmentId])
+  }, [equipmentId, isForklift])
 
   const moduleSlugs = useMemo(() => modules.map((module) => module.slug), [modules])
   const hotspotIds = useMemo(() => hotspots.map((hotspot) => hotspot.id), [hotspots])
-  const hasHotspots = hotspotIds.length > 0
+  const hasPartsSection = isForklift || hotspotIds.length > 0
 
-  const moduleProgress = getGenericModuleProgress(summary.raw, moduleSlugs)
-  const hotspotProgress = getGenericHotspotProgress(summary.raw, hotspotIds)
-  const overall = getGenericOverallProgress(summary.raw, moduleSlugs, hotspotIds)
+  const moduleProgress = isForklift ? summary.equipment : getGenericModuleProgress(summary.raw, moduleSlugs)
+  const partsProgress = isForklift ? summary.parts : getGenericHotspotProgress(summary.raw, hotspotIds)
+  const overall = isForklift ? summary.overall : getGenericOverallProgress(summary.raw, moduleSlugs, hotspotIds)
 
   const moduleLabels = useMemo(
     () => Object.fromEntries(modules.map((module) => [module.slug, module.title])),
@@ -51,12 +64,13 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
     .filter(([moduleSlug]) => moduleSlugs.includes(moduleSlug))
     .flatMap(([moduleSlug, attempts]) => attempts.map((attempt) => ({ ...attempt, moduleSlug })))
   const viewedPartSet = new Set(summary.viewedParts)
+  const latestPartsPractice = isForklift ? summary.partsPracticeAttempts[0] : null
 
-  const requiredComplete = moduleProgress === 100 && (!hasHotspots || hotspotProgress === 100)
+  const requiredComplete = moduleProgress === 100 && (!hasPartsSection || partsProgress === 100)
   const recommendedAction = requiredComplete
     ? 'Ready for instructor review or thesis demo presentation.'
-    : hasHotspots && hotspotProgress < moduleProgress
-      ? 'Review remaining hotspots on the 3D model.'
+    : hasPartsSection && partsProgress < moduleProgress
+      ? 'Review remaining parts on the 3D model.'
       : 'Continue training modules and checklists.'
 
   return (
@@ -68,7 +82,7 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
         <h1 className="page-heading">{equipment?.title || 'Equipment'} - Final Assessment</h1>
       </div>
 
-      <ScopeNotice />
+      <ScopeNotice note={isForklift ? FORKLIFT_SCOPE_NOTE : undefined} />
       <section className="assessment-card">
         <p className="assessment-kicker">Progress Review</p>
         <h2>{requiredComplete ? 'Prototype Module Completion' : 'Training still in progress'}</h2>
@@ -86,10 +100,10 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
             <span>Modules</span>
             <strong>{moduleProgress}%</strong>
           </div>
-          {hasHotspots && (
+          {hasPartsSection && (
             <div>
-              <span>Hotspot Identification</span>
-              <strong>{hotspotProgress}%</strong>
+              <span>Parts Identification</span>
+              <strong>{partsProgress}%</strong>
             </div>
           )}
         </div>
@@ -116,11 +130,20 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
             )}
           </article>
 
-          {hasHotspots && (
+          {hasPartsSection && (
             <article>
-              <h3>Hotspot Review</h3>
+              <h3>Parts Review</h3>
               {loading ? (
-                <p>Loading hotspots...</p>
+                <p>Loading parts...</p>
+              ) : isForklift ? (
+                <>
+                  <p>{summary.viewedParts.length} of {parts.length} parts viewed.</p>
+                  <ul>
+                    {parts.map((part) => (
+                      <li key={part.id}>{part.label}: {viewedPartSet.has(part.id) ? 'viewed' : 'not viewed'}</li>
+                    ))}
+                  </ul>
+                </>
               ) : (
                 <>
                   <p>{hotspots.filter((hotspot) => viewedPartSet.has(hotspot.id)).length} of {hotspots.length} hotspots viewed.</p>
@@ -152,6 +175,11 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
           <article>
             <h3>Recommended Next Action</h3>
             <p>{recommendedAction}</p>
+            {isForklift && (
+              <p>
+                Parts practice: {latestPartsPractice ? `${latestPartsPractice.score}/${latestPartsPractice.total} (${latestPartsPractice.percentage}%)` : 'not attempted'}.
+              </p>
+            )}
           </article>
         </div>
 
@@ -161,8 +189,10 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
 
         <div className="assessment-actions">
           <button onClick={() => onNavigate(`/training/${equipmentId}`)}>Review training modules</button>
-          {hasHotspots && (
-            <button onClick={() => onNavigate(`/training/${equipmentId}/parts`)}>Review hotspot identification</button>
+          {hasPartsSection && (
+            <button onClick={() => onNavigate(isForklift ? routes.parts : `/training/${equipmentId}/parts`)}>
+              Review parts identification
+            </button>
           )}
         </div>
       </section>

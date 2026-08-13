@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import ForkliftViewport from './gear_view_3_d_forklift_viewport'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
+import SimulationPageLayout from './components/SimulationPageLayout'
 import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
 import { getPartDetails, getParts } from './lib/api'
@@ -224,35 +225,28 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
   }
 
   return (
-    <div className="module-page-container parts-identification-page">
-      <header className="module-page-header">
-        <button className="back-button" onClick={onBack}>
-          Back to Modules
-        </button>
-        <div className="module-title-section">
-          <h1>{partsModule.fullTitle}</h1>
-          <h2>{moduleName} Familiarization</h2>
-        </div>
-      </header>
-
-      <main className="module-content wide-simulation-content">
-        <ModuleSimulationShell
-          module={partsModule}
-          steps={steps}
-          currentStepIndex={currentStepIndex}
-          objectives={partsModule.learningObjectives}
-          progress={summary.parts}
-          canProceed
-          onBackStep={() => goToStep(currentStepIndex - 1)}
-          onNextStep={() => goToStep(currentStepIndex + 1)}
-          onComplete={completeModule}
-          renderScene={renderScene}
-          renderTask={renderTask}
-          selectedDetail={selectedDetail}
-          onClearDetail={clearSelectedDetail}
-        />
-      </main>
-    </div>
+    <SimulationPageLayout
+      className="parts-identification-page"
+      title={partsModule.fullTitle}
+      subtitle={`${moduleName} Familiarization`}
+      onBack={onBack}
+    >
+      <ModuleSimulationShell
+        module={partsModule}
+        steps={steps}
+        currentStepIndex={currentStepIndex}
+        objectives={partsModule.learningObjectives}
+        progress={summary.parts}
+        canProceed
+        onBackStep={() => goToStep(currentStepIndex - 1)}
+        onNextStep={() => goToStep(currentStepIndex + 1)}
+        onComplete={completeModule}
+        renderScene={renderScene}
+        renderTask={renderTask}
+        selectedDetail={selectedDetail}
+        onClearDetail={clearSelectedDetail}
+      />
+    </SimulationPageLayout>
   )
 }
 

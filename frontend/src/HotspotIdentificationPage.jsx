@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import ForkliftViewport from './gear_view_3_d_forklift_viewport'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
+import SimulationPageLayout from './components/SimulationPageLayout'
 import ScopeNotice from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
 import { getEquipment, getEquipmentHotspots } from './lib/api'
@@ -74,19 +75,13 @@ function HotspotIdentificationPage({ equipmentId, user, onBack }) {
   )
 
   return (
-    <div className="module-page-container parts-identification-page">
-      <header className="module-page-header">
-        <button className="back-button" onClick={onBack}>
-          Back to Modules
-        </button>
-        <div className="module-title-section">
-          <h1>Hotspot Identification</h1>
-          <h2>{equipment?.title || 'Equipment'} Familiarization</h2>
-        </div>
-      </header>
-
-      <main className="module-content wide-simulation-content">
-        {loading ? (
+    <SimulationPageLayout
+      className="parts-identification-page"
+      title="Hotspot Identification"
+      subtitle={`${equipment?.title || 'Equipment'} Familiarization`}
+      onBack={onBack}
+    >
+      {loading ? (
           <p className="admin-panel-note">Loading hotspots...</p>
         ) : (
           <ModuleSimulationShell
@@ -105,8 +100,7 @@ function HotspotIdentificationPage({ equipmentId, user, onBack }) {
             onClearDetail={() => setSelectedId(null)}
           />
         )}
-      </main>
-    </div>
+    </SimulationPageLayout>
   )
 }
 

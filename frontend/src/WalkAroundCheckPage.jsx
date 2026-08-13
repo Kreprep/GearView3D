@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
+import SimulationPageLayout from './components/SimulationPageLayout'
 import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { useModuleRecord } from './hooks/useModuleRecord'
 import { useProgress } from './hooks/useProgress'
@@ -590,19 +591,13 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
   }
 
   return (
-    <div className="module-page-container walkaround-simulation-page">
-      <header className="module-page-header">
-        <button className="back-button" onClick={onBack}>
-          Back to Modules
-        </button>
-        <div className="module-title-section">
-          <h1>{module.fullTitle}</h1>
-          <h2>{moduleName} Guided Simulation</h2>
-        </div>
-      </header>
-
-      <main className="module-content wide-simulation-content">
-        {hotspotsLoading || hotspotsError ? (
+    <SimulationPageLayout
+      className="walkaround-simulation-page"
+      title={module.fullTitle}
+      subtitle={`${moduleName} Guided Simulation`}
+      onBack={onBack}
+    >
+      {hotspotsLoading || hotspotsError ? (
           <ModuleLoadingState loading={hotspotsLoading} error={hotspotsError} />
         ) : (
           <ModuleSimulationShell
@@ -624,8 +619,7 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
             onClearDetail={clearSelectedDetail}
           />
         )}
-      </main>
-    </div>
+    </SimulationPageLayout>
   )
 }
 
