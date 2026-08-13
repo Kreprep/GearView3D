@@ -294,6 +294,29 @@
   resize: vertical;
 }
 
+/* Grouping for editors with many small fields (hub content). */
+.admin-fieldset {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  margin: 0;
+  padding: 12px;
+}
+
+.admin-fieldset legend {
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0 4px;
+  text-transform: uppercase;
+}
+
+.admin-fieldset textarea {
+  min-height: 64px;
+}
+
 /* --- Overview tab ------------------------------------------------------- */
 
 .overview-stat-row {

@@ -3,6 +3,7 @@ import { ArrowRight, CircleGauge, ClipboardList, Layers, PackageSearch, RotateCc
 import { getEquipment, getEquipmentHotspots, getTrainingModules } from './lib/api'
 import { getGenericHotspotProgress, getGenericModuleProgress, getGenericOverallProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
+import { hubContentContext, resolveHubContent } from './lib/hubContent'
 import PageLayout from './components/PageLayout'
 import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { routes } from './lib/router'
@@ -63,6 +64,14 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
 
   const continueTarget = modules.length ? modulesRoute : hasPartsPage ? partsRoute : null
 
+  const copy = resolveHubContent(equipment, hubContentContext({
+    equipmentTitle,
+    learnerName: user?.fullName || 'learner',
+    isForklift,
+    hasPartsPage,
+    moduleTitles: modules.map((module) => module.subtitle || module.title),
+  }))
+
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
       <ScopeNotice note={isForklift ? FORKLIFT_SCOPE_NOTE : undefined} />
@@ -73,13 +82,13 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
         <>
           <section className="training-hub-hero">
             <div>
-              <p className="training-hub-kicker">{equipmentTitle} Training</p>
-              <h1>Welcome back, {user?.fullName || 'learner'}.</h1>
-              <p>Continue your {equipmentTitle.toLowerCase()} familiarization training through the sections below.</p>
+              <p className="training-hub-kicker">{copy.kicker}</p>
+              <h1>{copy.heading}</h1>
+              <p>{copy.intro}</p>
             </div>
             {continueTarget && (
               <button className="continue-button" onClick={() => onNavigate(continueTarget)}>
-                Continue Training <ArrowRight size={16} />
+                {copy.continueLabel} <ArrowRight size={16} />
               </button>
             )}
           </section>
@@ -90,11 +99,8 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
                 <CircleGauge size={26} />
               </div>
               <div className="overall-progress-text">
-                <p className="training-hub-kicker">Overall Progress</p>
-                <p>
-                  Combined progress across all training modules
-                  {hasPartsPage ? ' and parts identification' : ''}.
-                </p>
+                <p className="training-hub-kicker">{copy.overallTitle}</p>
+                <p>{copy.overallDescription}</p>
               </div>
               <div className="overall-progress-stat">
                 <strong>{overall}%</strong>
@@ -105,7 +111,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
               <div><i style={{ width: `${overall}%` }} /></div>
             </div>
             <button onClick={() => onNavigate(assessmentRoute)}>
-              View final assessment <ArrowRight size={16} />
+              {copy.assessmentCta} <ArrowRight size={16} />
             </button>
           </article>
 
@@ -116,18 +122,15 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
                   <Layers size={22} />
                 </div>
                 <div className="progress-card-body">
-                  <h2>Training Modules</h2>
-                  <p>
-                    {modules.length} guided {modules.length === 1 ? 'module' : 'modules'}:{' '}
-                    {modules.map((module) => module.subtitle || module.title).join(', ')}.
-                  </p>
+                  <h2>{copy.modulesTitle}</h2>
+                  <p>{copy.modulesDescription}</p>
                 </div>
                 <div className="progress-meter">
                   <span>{moduleProgress}%</span>
                   <div><i style={{ width: `${moduleProgress}%` }} /></div>
                 </div>
                 <button onClick={() => onNavigate(modulesRoute)}>
-                  Open training modules <ArrowRight size={16} />
+                  {copy.modulesCta} <ArrowRight size={16} />
                 </button>
               </article>
             )}
@@ -138,19 +141,15 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
                   <PackageSearch size={22} />
                 </div>
                 <div className="progress-card-body">
-                  <h2>Parts Identification</h2>
-                  <p>
-                    {isForklift
-                      ? 'Review major forklift components, functions, and safety reminders.'
-                      : 'Tap hotspots on the 3D model to learn what each part is.'}
-                  </p>
+                  <h2>{copy.partsTitle}</h2>
+                  <p>{copy.partsDescription}</p>
                 </div>
                 <div className="progress-meter">
                   <span>{partsProgress}%</span>
                   <div><i style={{ width: `${partsProgress}%` }} /></div>
                 </div>
                 <button onClick={() => onNavigate(partsRoute)}>
-                  Open parts identification <ArrowRight size={16} />
+                  {copy.partsCta} <ArrowRight size={16} />
                 </button>
               </article>
             )}
@@ -165,10 +164,8 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
               <ClipboardList size={22} />
             </div>
             <div className="recent-activity-body">
-              <h2>Training activity will appear here</h2>
-              <p>
-                This placeholder will later show recently completed checklists, quiz attempts, and module updates.
-              </p>
+              <h2>{copy.activityTitle}</h2>
+              <p>{copy.activityBody}</p>
             </div>
             <div className="recent-actions">
               <button onClick={() => onNavigate('/catalog')}>Equipment selection</button>

@@ -11,6 +11,8 @@
 // `prunable` marks the tables whose rows an admin can delete outright, which
 // are the only ones `--prune` removes from the target database.
 export const contentTables = [
+  // `content` (the hub copy overrides) travels with the row - it is published
+  // content, not a draft, so there is nothing to omit here.
   { model: 'equipment', label: 'Equipment', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
   { model: 'module', label: 'Module', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
   { model: 'partCategory', label: 'PartCategory', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },

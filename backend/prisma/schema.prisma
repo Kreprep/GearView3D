@@ -32,6 +32,13 @@ model Equipment {
   // false renders the catalogue card as a non-interactive "Coming Soon"
   // placeholder instead of a link into training.
   available   Boolean @default(true)
+  // Admin overrides for the copy on this equipment's training hub and module
+  // list - see frontend/src/data/hubContent.js for the keys and their
+  // defaults. Holds *only* what an admin changed; a missing or blank key falls
+  // back to the coded default, so improving a default still reaches every
+  // equipment that never overrode it. No draft column: these are short labels,
+  // the same reason Module and ChecklistItem save immediately.
+  content     Json?
 }
 
 model Module {

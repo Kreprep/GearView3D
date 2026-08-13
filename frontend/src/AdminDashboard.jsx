@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import CourseAdmin from './components/admin/CourseAdmin'
 import EquipmentHotspotAdmin from './components/admin/EquipmentHotspotAdmin'
+import HubContentEditor from './components/admin/HubContentEditor'
 import PracticeQuizAdmin from './components/admin/PracticeQuizAdmin'
 import WalkAroundHotspotAdmin from './components/admin/WalkAroundHotspotAdmin'
 import {
@@ -592,6 +593,23 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 <button className="admin-save" onClick={handleSaveEquipment}>Save equipment card</button>
               </>
             ) : <p>No equipment card available.</p>}
+          </section>
+          <section className="admin-panel admin-editor">
+            <h2>Hub Content</h2>
+            <HubContentEditor
+              key={activeEquipment?.id || 'none'}
+              equipment={activeEquipment}
+              moduleTitles={activeEquipmentModules.map((module) => module.subtitle || module.title)}
+              hasPartsPage={hasModelForActiveEquipment}
+              onSaved={(equipment) => {
+                setContent((current) => ({
+                  ...current,
+                  equipment: current.equipment.map((item) => (item.id === equipment.id ? equipment : item)),
+                }))
+                setEditingEquipment((current) => (current?.id === equipment.id ? equipment : current))
+              }}
+              onMessage={refreshMessage}
+            />
           </section>
           <section className="admin-panel">
             <h2>Training Modules</h2>
