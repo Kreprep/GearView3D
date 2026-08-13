@@ -4,13 +4,13 @@
 // (walkAround, loadHandling, postOperation, palletTesting) and `equipment`
 // are kept because Course summary rows store their post-Submit destination as
 // one of these keys (see NEXT_ROUTE_OPTIONS in data/courseDefaults.js) -
-// deleting a key would strand saved content. `equipment` points at the hub
-// since the standalone Equipment Usage page was folded into it.
+// deleting a key would strand saved content. `equipment` is the module list
+// (formerly the standalone Equipment Usage page), `forklift` the hub above it.
 export const routes = {
   login: '/login',
   catalog: '/catalog',
   forklift: '/training/forklift',
-  equipment: '/training/forklift',
+  equipment: '/training/forklift/modules',
   walkAround: '/training/forklift/modules/walk-around-check',
   loadHandling: '/training/forklift/modules/load-handling',
   postOperation: '/training/forklift/modules/post-operation',

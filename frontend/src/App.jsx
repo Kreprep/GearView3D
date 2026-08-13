@@ -5,6 +5,7 @@ import ModulesPage from './ModulesPage'
 import WalkAroundCheckPage from './WalkAroundCheckPage'
 import PartsIdentificationPage from './PartsIdentificationPage'
 import GenericModulePage from './GenericModulePage'
+import ModuleListPage from './ModuleListPage'
 import GenericAssessmentPage from './GenericAssessmentPage'
 import HotspotIdentificationPage from './HotspotIdentificationPage'
 import AdminDashboard from './AdminDashboard'
@@ -78,7 +79,7 @@ function App() {
     // /training/forklift/modules/:slug scheme instead.
     if (isLoggedIn && path.startsWith('/training/forklift/equipment')) {
       const legacySlug = path.split('/')[4]
-      const target = legacySlug === 'walk-around' ? routes.walkAround : legacySlug ? `/training/forklift/modules/${legacySlug}` : routes.forklift
+      const target = legacySlug === 'walk-around' ? routes.walkAround : legacySlug ? `/training/forklift/modules/${legacySlug}` : routes.equipment
       goTo(target, { replace: true })
     }
   }, [isLoggedIn, path])
@@ -141,9 +142,23 @@ function App() {
       return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
     }
 
-    if (section === 'modules' && moduleSlug) {
+    if (section === 'modules') {
+      const modulesRoute = `/training/${equipmentId}/modules`
+
+      if (!moduleSlug) {
+        return (
+          <ModuleListPage
+            equipmentId={equipmentId}
+            user={user}
+            onLogout={handleLogout}
+            onBack={() => navigate(`/training/${equipmentId}`)}
+            onNavigate={navigate}
+          />
+        )
+      }
+
       if (equipmentId === 'forklift' && moduleSlug === 'walk-around-check') {
-        return <WalkAroundCheckPage moduleName="Forklift" user={user} onBack={() => navigate(routes.forklift)} onNavigate={navigate} />
+        return <WalkAroundCheckPage moduleName="Forklift" user={user} onBack={() => navigate(modulesRoute)} onNavigate={navigate} />
       }
 
       return (
@@ -151,7 +166,7 @@ function App() {
           equipmentId={equipmentId}
           moduleSlug={moduleSlug}
           user={user}
-          onBack={() => navigate(`/training/${equipmentId}`)}
+          onBack={() => navigate(modulesRoute)}
           onNavigate={navigate}
         />
       )

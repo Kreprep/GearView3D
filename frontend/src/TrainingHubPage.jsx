@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, CircleGauge, ClipboardList, Layers, PackageSearch, RotateCcw } from 'lucide-react'
 import { getEquipment, getEquipmentHotspots, getTrainingModules } from './lib/api'
-import { getGenericHotspotProgress, getGenericOverallProgress, getModuleProgress } from './lib/progressService'
+import { getGenericHotspotProgress, getGenericModuleProgress, getGenericOverallProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
 import PageLayout from './components/PageLayout'
 import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
@@ -9,9 +9,10 @@ import { routes } from './lib/router'
 import './TrainingHubPage.css'
 
 // Single hub shell (PageLayout Pattern A: hero + overall-progress +
-// progress-grid) for every equipment's /training/:equipmentId. Every
-// equipment's module cards - Forklift's included - come straight from its
-// Module rows, so an admin can add/edit/remove them with no code change.
+// progress-grid) for every equipment's /training/:equipmentId. It lists
+// sections, not modules: the Training Modules card opens
+// /training/:equipmentId/modules (ModuleListPage), which is where the
+// per-module cards live for every equipment.
 //
 // What still tells Forklift apart: its Parts Identification card points at
 // the richer part-practice page (categories + practice quiz, backed by the
@@ -52,18 +53,15 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
   const partsRoute = isForklift ? routes.parts : `/training/${equipmentId}/parts`
   const partsProgress = isForklift ? summary.parts : getGenericHotspotProgress(summary.raw, hotspots.map((hotspot) => hotspot.id))
   const moduleSlugs = modules.map((module) => module.slug)
-  const moduleProgress = moduleSlugs.map((slug) => getModuleProgress(summary.raw, slug))
+  const moduleProgress = isForklift ? summary.equipment : getGenericModuleProgress(summary.raw, moduleSlugs)
 
   const overall = isForklift
     ? summary.overall
     : getGenericOverallProgress(summary.raw, moduleSlugs, hotspots.map((hotspot) => hotspot.id))
+  const modulesRoute = `/training/${equipmentId}/modules`
   const assessmentRoute = `/training/${equipmentId}/assessment`
 
-  const continueTarget = modules[0]
-    ? `/training/${equipmentId}/modules/${modules[0].slug}`
-    : hasPartsPage
-      ? partsRoute
-      : null
+  const continueTarget = modules.length ? modulesRoute : hasPartsPage ? partsRoute : null
 
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
@@ -77,7 +75,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
             <div>
               <p className="training-hub-kicker">{equipmentTitle} Training</p>
               <h1>Welcome back, {user?.fullName || 'learner'}.</h1>
-              <p>Continue your {equipmentTitle.toLowerCase()} familiarization training through the modules below.</p>
+              <p>Continue your {equipmentTitle.toLowerCase()} familiarization training through the sections below.</p>
             </div>
             {continueTarget && (
               <button className="continue-button" onClick={() => onNavigate(continueTarget)}>
@@ -112,24 +110,27 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
           </article>
 
           <section className="progress-grid" aria-label="Training progress">
-            {modules.map((module, index) => (
-              <article className="progress-card" key={module.id}>
+            {modules.length > 0 && (
+              <article className="progress-card">
                 <div className="progress-card-icon">
                   <Layers size={22} />
                 </div>
                 <div className="progress-card-body">
-                  <h2>{module.subtitle || module.title}</h2>
-                  <p>{module.description}</p>
+                  <h2>Training Modules</h2>
+                  <p>
+                    {modules.length} guided {modules.length === 1 ? 'module' : 'modules'}:{' '}
+                    {modules.map((module) => module.subtitle || module.title).join(', ')}.
+                  </p>
                 </div>
                 <div className="progress-meter">
-                  <span>{moduleProgress[index]}%</span>
-                  <div><i style={{ width: `${moduleProgress[index]}%` }} /></div>
+                  <span>{moduleProgress}%</span>
+                  <div><i style={{ width: `${moduleProgress}%` }} /></div>
                 </div>
-                <button onClick={() => onNavigate(`/training/${equipmentId}/modules/${module.slug}`)}>
-                  Start module <ArrowRight size={16} />
+                <button onClick={() => onNavigate(modulesRoute)}>
+                  Open training modules <ArrowRight size={16} />
                 </button>
               </article>
-            ))}
+            )}
 
             {hasPartsPage && (
               <article className="progress-card">
@@ -154,7 +155,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
               </article>
             )}
 
-            {modules.length === 0 && !hasPartsPage && (
+            {modules.length === 0 && !hasPartsPage && !loading && (
               <p className="progress-grid-empty">No modules are available yet.</p>
             )}
           </section>

@@ -181,8 +181,8 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     if (!simulation.complete && gradedStepIds.length > 0) return
 
     // The summary step's stored nextRoute wins when it resolves; otherwise
-    // return to the equipment's training hub.
-    setTimeout(() => onNavigate?.(nextModuleRoute(steps) || `/training/${equipmentId}`), NEXT_MODULE_DELAY_MS)
+    // return to the equipment's module list to pick the next one.
+    setTimeout(() => onNavigate?.(nextModuleRoute(steps) || `/training/${equipmentId}/modules`), NEXT_MODULE_DELAY_MS)
   }
 
   const getStepCanProceed = (stepId) =>

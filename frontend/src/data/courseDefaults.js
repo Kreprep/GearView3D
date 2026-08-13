@@ -39,11 +39,8 @@ export const SUMMARY_COUNTER_LABELS = {
 // summary step as a key of `routes` (lib/router.js) rather than a path, so a
 // route that moves does not strand saved content. Kept as plain strings here
 // because this file is imported by the backend seed, which has no router.
-// `equipment` now lands on the training hub too - the standalone Equipment
-// Usage overview page was folded into it - but the key is kept because seeded
-// rows store it.
 export const NEXT_ROUTE_OPTIONS = [
-  ['equipment', 'Forklift training hub'],
+  ['equipment', 'Forklift module list'],
   ['walkAround', 'Module 1 - Walk-Around Check'],
   ['loadHandling', 'Module 2 - Load Handling'],
   ['postOperation', 'Module 3 - Post-Operation'],
