@@ -22,6 +22,7 @@ import {
 import { emptySyllabus, NEXT_ROUTE_OPTIONS, SUMMARY_COUNTER_LABELS } from '../../data/courseDefaults'
 import { COURSE_GOAL_TYPES, validateCourse } from '../../lib/courseGoals'
 import { ReportingActivityFields, ShutdownActivityFields } from './ActivityContentFields'
+import WalkAroundContentFields from './WalkAroundContentFields'
 import CourseCanvas from './CourseCanvas'
 import CourseGeneratorTools from './CourseGeneratorTools'
 import CourseInspector from './CourseInspector'
@@ -30,6 +31,7 @@ import './CourseEditor.css'
 const KIND_LABELS = {
   briefing: 'Briefing',
   driving: 'Driving course',
+  'walk-around': 'Walk-around',
   activity: 'Built-in activity',
   summary: 'Completion summary',
 }
@@ -476,6 +478,27 @@ function CourseEditor({ course, isForklift = false, onCourseChanged, onCourseDel
             {content.activityId === 'reporting' && (
               <ReportingActivityFields content={content} onChange={setContent} />
             )}
+          </section>
+        )}
+
+        {stepKind === 'walk-around' && (
+          <section className="admin-panel course-editor-content">
+            <h3>Walk-around content</h3>
+            <p className="admin-panel-note">
+              What this inspection step asks the learner to do. Markers on the 3D model are this equipment&apos;s
+              hotspots, matched to the ids below - Forklift uses its walk-around hotspots, every other equipment
+              the ones edited under Parts Identification.
+            </p>
+
+            <label>
+              Intro text (Markdown, optional)
+              <textarea rows={3} value={content.body || ''} onChange={(event) => setContent({ body: event.target.value })} />
+            </label>
+
+            <WalkAroundContentFields
+              data={data || {}}
+              onChange={(nextData) => { setDraft((current) => ({ ...current, data: nextData })); setDirty(true) }}
+            />
           </section>
         )}
 

@@ -10,6 +10,7 @@ import './CourseAdmin.css'
 const KIND_LABELS = {
   briefing: 'Read Up',
   driving: 'Driving Course',
+  'walk-around': 'Walk Around',
   checklist: 'Checklist',
   quiz: 'Quiz',
   activity: 'Built-in Activity',

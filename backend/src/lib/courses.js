@@ -6,10 +6,12 @@ import {
   COURSE_KINDS,
   emptyCourseContent,
   emptyCourseGeometry,
+  emptyWalkAroundData,
+  WALK_AROUND_PHASES,
 } from '../../../frontend/src/data/courseDefaults.js'
 import { COURSE_GOAL_TYPES, validateCourse } from '../../../frontend/src/lib/courseGoals.js'
 
-export { COURSE_KINDS, emptyCourseContent, emptyCourseGeometry }
+export { COURSE_KINDS, emptyCourseContent, emptyCourseGeometry, emptyWalkAroundData }
 
 // The whole editable payload. `sortOrder` is deliberately absent - reordering
 // the step list is a list operation that applies immediately, not a draft.
@@ -18,7 +20,7 @@ export const courseDraftFields = ['title', 'objective', 'instructions', 'hint', 
 // Kinds an admin may create. `activity` is excluded: those steps are React
 // screens keyed by a fixed activityId, so a new one would render blank. Their
 // cards and answers are still editable as content.
-export const CREATABLE_KINDS = ['briefing', 'driving', 'checklist', 'quiz', 'summary']
+export const CREATABLE_KINDS = ['briefing', 'driving', 'walk-around', 'checklist', 'quiz', 'summary']
 
 // What a learner's module page consumes: the step's text plus whichever payload
 // its kind needs. `course` is what DrivingSimulationViewer takes, and is null
@@ -36,6 +38,9 @@ export function publishedCourse(row) {
     goalType: row.goalType,
     content: row.content || null,
     course: row.kind === 'driving' && row.data ? { id: row.id, goalType: row.goalType, ...row.data } : null,
+    // Walk-around steps carry their inspection payload the way driving steps
+    // carry geometry; every other kind sends null.
+    walkAround: row.kind === 'walk-around' ? row.data || emptyWalkAroundData() : null,
   }
 }
 
@@ -71,6 +76,24 @@ export function validateCoursePayload(kind, payload) {
   const problems = []
 
   if (!payload.title?.trim()) problems.push('Step needs a title.')
+
+  if (kind === 'walk-around') {
+    const data = payload.data || {}
+    if (!WALK_AROUND_PHASES.includes(data.phase)) {
+      problems.push(`Unknown walk-around phase "${data.phase}".`)
+      return problems
+    }
+    if (data.phase === 'engine-off' && !(data.checks || []).length) {
+      problems.push('An engine-off step needs at least one inspection check.')
+    }
+    if (data.phase === 'engine-on' && !(data.gauges || []).length && !(data.devices || []).length) {
+      problems.push('An engine-on step needs at least one gauge or device test.')
+    }
+    if (data.phase === 'defect-test' && !(data.scenarios || []).length) {
+      problems.push('A defect test step needs at least one scenario.')
+    }
+    return problems
+  }
 
   if (kind !== 'driving') return problems
 

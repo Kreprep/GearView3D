@@ -1,124 +1,12 @@
-/* Page shell classes (module-page-container/header, back-button,
-   module-content) moved to components/SimulationPageLayout.css. */
+/* Styles for the `walk-around` step kind (components/WalkAroundStep.jsx) plus
+   a few classes the other simulation pages share. Page shell classes
+   (module-page-container/header, back-button, module-content) live in
+   components/SimulationPageLayout.css. */
 
-.syllabus-section,
-.learning-objectives,
-.critical-reminder {
-  grid-column: 1 / -1;
-}
-
-.syllabus-section,
-.learning-objectives,
-.inspection-state,
-.operation-module,
-.operation-step,
-.critical-reminder {
-  border: 1px solid #dbe3ef;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 20px;
-}
-
-.inspection-section,
-.operation-section,
-.post-operation-section {
-  display: grid;
-  gap: 18px;
-}
-
-.syllabus-section h3,
-.learning-objectives h3,
-.inspection-section h3,
-.operation-section h3,
-.post-operation-section h3,
-.critical-reminder h3 {
-  color: #0f172a;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.syllabus-info {
-  display: grid;
-  gap: 8px;
-}
-
-.syllabus-info p,
-.learning-objectives p,
-.inspection-area p,
-.operation-area p,
-.step-content p,
-.step-details p,
-.critical-reminder p {
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.syllabus-info strong,
-.operation-area strong {
-  color: #0f172a;
-}
-
-.inspection-state h3,
-.operation-module h3,
-.operation-step h3 {
-  margin-bottom: 12px;
-  color: #0891b2;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.inspection-area,
-.operation-area,
-.step-content {
-  display: grid;
-  gap: 12px;
-}
-
-.inspection-area + .inspection-area,
-.operation-area + .operation-area {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.inspection-area h4,
-.operation-area h4,
-.step-content h4,
-.step-details h5 {
-  color: #0f172a;
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.inspection-area ul,
-.operation-area ul {
-  margin: 0 0 0 20px;
+.walkaround-intro {
   color: #475569;
   font-size: 14px;
-  line-height: 1.7;
-}
-
-.step-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  padding: 14px 0;
-  border-top: 1px solid #e2e8f0;
-}
-
-.step-number {
-  display: inline-flex;
-  width: 36px;
-  height: 36px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: #0f172a;
-  color: #ffffff;
-  font-weight: 700;
+  line-height: 1.6;
 }
 
 .guided-checklist {
@@ -197,46 +85,6 @@
   gap: 10px;
 }
 
-.engine-state-toggle {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.engine-state-toggle button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #0f172a;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 9px 11px;
-}
-
-.engine-state-toggle button.active {
-  border-color: #06b6d4;
-  background: #ecfeff;
-  color: #155e75;
-}
-
-.engine-state-toggle span {
-  border-radius: 999px;
-  background: #e2e8f0;
-  color: #334155;
-  font-size: 12px;
-  padding: 5px 8px;
-}
-
-.engine-state-toggle button.active span {
-  background: #0891b2;
-  color: #ffffff;
-}
-
 .reference-card,
 .lesson-bubble,
 .task-note {
@@ -298,11 +146,6 @@
   color: #67e8f9;
   font-size: 11.5px;
   line-height: 1.35;
-}
-
-.engine-state-toggle button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .subsection-label {

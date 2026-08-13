@@ -11,6 +11,7 @@ import {
   editableCourse,
   emptyCourseContent,
   emptyCourseGeometry,
+  emptyWalkAroundData,
   validateCoursePayload,
 } from '../lib/courses.js'
 import {
@@ -41,16 +42,11 @@ function pick(source, keys) {
   return result
 }
 
-// Walk-Around Check is deliberately excluded: it is still a fully hardcoded
-// page with no Course-backed steps, unlike every other module (Forklift's
-// other 3, and every new equipment's modules from here on).
-const HARDCODED_PAGE_MODULE_SLUGS = ['walk-around-check']
-
-// Which module slugs can own Course rows - any real Module except the
-// hardcoded-page exception above. DB-driven (rather than a static whitelist)
-// so a module created for a new equipment is immediately usable.
+// Every module is course-backed now that walk-around checks are step rows, so
+// this is just "does the module exist" - DB-driven so a module created for a
+// new equipment is immediately usable.
 async function isCourseCapableModuleSlug(moduleSlug) {
-  if (!moduleSlug || HARDCODED_PAGE_MODULE_SLUGS.includes(moduleSlug)) return false
+  if (!moduleSlug) return false
   const module = await prisma.module.findUnique({ where: { slug: moduleSlug } })
   return Boolean(module)
 }
@@ -594,7 +590,12 @@ router.post('/courses', async (req, res) => {
       instructions: payload.instructions || '',
       hint: payload.hint || '',
       goalType: kind === 'driving' ? payload.goalType || 'checkpoints' : 'free',
-      data: kind === 'driving' ? payload.data || emptyCourseGeometry() : null,
+      data:
+        kind === 'driving'
+          ? payload.data || emptyCourseGeometry()
+          : kind === 'walk-around'
+            ? payload.data || emptyWalkAroundData(payload.phase)
+            : null,
       content: payload.content || emptyCourseContent(kind),
       published: false,
       builtIn: false,
