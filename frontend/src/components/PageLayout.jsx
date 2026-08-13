@@ -6,7 +6,8 @@ import './PageLayout.css'
  * instead of hand-rolling a header + wrapper div.
  *
  * Reference implementations (follow these, not older pages):
- * - Home/root page: ForkliftTrainingPage.jsx (hero + card grid pattern)
+ * - Home/root page: TrainingHubPage.jsx (hero + card grid pattern; the single
+ *   hub shell for every equipment's /training/:equipmentId, forklift included)
  * - Sub-page nested under a hub: AssessmentPage.jsx, EquipmentUsagePage.jsx,
  *   PartsIdentificationPage.jsx (page-back-row + page-heading pattern)
  * - Intentional exception: NotFoundPage.jsx (centered error card, no PageLayout)
@@ -14,9 +15,9 @@ import './PageLayout.css'
  * --- Pattern A: root/hub page (hero + card grid) ---
  *
  * <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
- *   <section className="forklift-training-hero">
+ *   <section className="training-hub-hero">
  *     <div>
- *       <p className="forklift-training-kicker">{moduleName} Training</p>
+ *       <p className="training-hub-kicker">{equipmentTitle} Training</p>
  *       <h1>Welcome back, {user?.fullName}.</h1>
  *       <p>Short one-line description of this hub.</p>
  *     </div>
@@ -24,7 +25,7 @@ import './PageLayout.css'
  *   </section>
  *
  *   <article className="overall-progress-card">
- *     <p className="forklift-training-kicker">Overall Progress</p>
+ *     <p className="training-hub-kicker">Overall Progress</p>
  *     ...
  *   </article>
  *

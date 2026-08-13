@@ -282,6 +282,29 @@ export function getOverallProgress(progress) {
   return Math.round((getEquipmentProgress(progress) + getPartsProgress(progress)) / 2)
 }
 
+// Equivalent of getEquipmentProgress/getPartsProgress/getOverallProgress for
+// any equipment other than Forklift, where the module list and hotspot ids
+// are data-driven rather than the fixed equipmentModuleSlugs/partsHotspots.
+export function getGenericModuleProgress(progress, moduleSlugs) {
+  if (!moduleSlugs.length) return 0
+  return Math.round(
+    moduleSlugs.reduce((sum, slug) => sum + getModuleProgress(progress, slug), 0) / moduleSlugs.length,
+  )
+}
+
+export function getGenericHotspotProgress(progress, hotspotIds) {
+  if (!hotspotIds.length) return 0
+  const viewed = new Set(progress.parts.viewedPartIds)
+  const viewedCount = hotspotIds.filter((id) => viewed.has(id)).length
+  return Math.round((viewedCount / hotspotIds.length) * 100)
+}
+
+export function getGenericOverallProgress(progress, moduleSlugs, hotspotIds) {
+  const moduleProgress = getGenericModuleProgress(progress, moduleSlugs)
+  if (!hotspotIds.length) return moduleProgress
+  return Math.round((moduleProgress + getGenericHotspotProgress(progress, hotspotIds)) / 2)
+}
+
 export function getProgressSummary(progress = getStoredProgress()) {
   return {
     raw: progress,
