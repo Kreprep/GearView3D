@@ -4,6 +4,7 @@ import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ModuleSummary from './components/ModuleSummary'
 import { BriefingScene, BriefingTask } from './components/ModuleBriefing'
+import { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { ChecklistScene, ModuleRowsTask, QuizScene } from './components/ModuleChecklistStep'
 import { useModuleCourses } from './hooks/useModuleCourses'
 import { useModuleRecord } from './hooks/useModuleRecord'
@@ -129,7 +130,7 @@ function PalletTestingPage({ moduleName, user, onBack, onNavigate }) {
 
   const renderTask = ({ currentStep }) => {
     const step = stepById[currentStep.id]
-    if (step?.kind === 'briefing') return <BriefingTask content={step.content} module={module} />
+    if (step?.kind === 'briefing') return <BriefingTask content={step.content} module={module} scopeNote={FORKLIFT_SCOPE_NOTE} />
     if (step?.kind === 'checklist' || step?.kind === 'quiz') {
       return <ModuleRowsTask content={step.content} kind={step.kind} />
     }

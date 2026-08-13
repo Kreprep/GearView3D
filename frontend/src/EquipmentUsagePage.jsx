@@ -3,7 +3,7 @@ import { getTrainingModules } from './lib/api'
 import { useProgress } from './hooks/useProgress'
 import { routes } from './lib/router'
 import PageLayout from './components/PageLayout'
-import ScopeNotice from './components/ScopeNotice'
+import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import './EquipmentUsagePage.css'
 
 const moduleRoutes = {
@@ -31,7 +31,7 @@ function EquipmentUsagePage({ moduleName, user, onLogout, onBack, onNavigate }) 
         <h1 className="page-heading">{moduleName} - Equipment Usage Modules</h1>
       </div>
 
-      <ScopeNotice />
+      <ScopeNotice note={FORKLIFT_SCOPE_NOTE} />
       <p className="intro-text">Select a module to begin your forklift training:</p>
 
       <div className="modules-grid">

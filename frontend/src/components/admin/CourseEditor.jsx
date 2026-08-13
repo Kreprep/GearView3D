@@ -67,7 +67,7 @@ function draftOf(course) {
   }
 }
 
-function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
+function CourseEditor({ course, isForklift = false, onCourseChanged, onCourseDeleted, onMessage }) {
   const [draft, setDraft] = useState(() => draftOf(course))
   const [selectedKeys, setSelectedKeys] = useState([])
   const [tool, setTool] = useState(null)
@@ -426,18 +426,26 @@ function CourseEditor({ course, onCourseChanged, onCourseDeleted, onMessage }) {
               <textarea rows={2} value={content.incompleteMessage || ''} onChange={(event) => setContent({ incompleteMessage: event.target.value })} />
             </label>
 
-            <label>
-              Where Submit sends the learner
-              <select
-                value={content.nextRoute || ''}
-                onChange={(event) => setContent({ nextRoute: event.target.value })}
-              >
-                <option value="">Module default</option>
-                {NEXT_ROUTE_OPTIONS.map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </label>
+            {/* NEXT_ROUTE_OPTIONS are Forklift's fixed routes, and the generic
+                module page ignores nextRoute (Submit always returns to the
+                equipment's training hub) - so the picker only renders for
+                Forklift modules. */}
+            {isForklift ? (
+              <label>
+                Where Submit sends the learner
+                <select
+                  value={content.nextRoute || ''}
+                  onChange={(event) => setContent({ nextRoute: event.target.value })}
+                >
+                  <option value="">Module default</option>
+                  {NEXT_ROUTE_OPTIONS.map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="admin-panel-note">Submit returns the learner to this equipment's training hub.</p>
+            )}
 
             <p className="admin-panel-note">Extra counters to show under the grid:</p>
             {Object.entries(SUMMARY_COUNTER_LABELS).map(([key, label]) => (

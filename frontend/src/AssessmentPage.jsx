@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { routes } from './lib/router'
 import { useProgress } from './hooks/useProgress'
 import PageLayout from './components/PageLayout'
-import ScopeNotice from './components/ScopeNotice'
+import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { getParts, getTrainingModules } from './lib/api'
 import './AssessmentPage.css'
 
@@ -57,7 +57,7 @@ function AssessmentPage({ moduleName, user, onLogout, onBack, onNavigate }) {
         <h1 className="page-heading">{moduleName} - Final Assessment</h1>
       </div>
 
-      <ScopeNotice />
+      <ScopeNotice note={FORKLIFT_SCOPE_NOTE} />
       <section className="assessment-card">
         <p className="assessment-kicker">Progress Review</p>
         <h2>{requiredComplete ? 'Prototype Module Completion' : 'Training still in progress'}</h2>

@@ -10,7 +10,8 @@ import './ModuleBriefing.css'
 //
 // ScopeNotice is deliberately not admin-editable - it is the "preparatory
 // learning only, not a certification simulator" disclaimer and must appear on
-// every briefing.
+// every briefing. `scopeNote` lets an equipment-specific page (Forklift's
+// module pages) pass its own equipment sentence; generic pages leave it unset.
 
 export function BriefingScene({ content }) {
   const image = content?.image
@@ -32,7 +33,7 @@ export function BriefingScene({ content }) {
   )
 }
 
-export function BriefingTask({ content, module }) {
+export function BriefingTask({ content, module, scopeNote }) {
   // Rows seeded before the syllabus became editable have no `syllabus` object,
   // so each field falls back to the static module definition.
   const syllabus = {
@@ -45,7 +46,7 @@ export function BriefingTask({ content, module }) {
 
   return (
     <div className="load-task-stack">
-      <ScopeNotice />
+      <ScopeNotice note={scopeNote} />
       {showSyllabus && (
         <div className="reference-card">
           {syllabus.location && <p><strong>Syllabus Location:</strong> {syllabus.location}</p>}

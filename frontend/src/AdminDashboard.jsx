@@ -747,7 +747,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               Place cones, walls, pallets, checkpoints and parking bays on a top-down map of each simulation step.
               Edits are saved as a draft; learners keep the published version until you press Publish.
             </p>
-            <CourseAdmin modules={courseCapableModules} onMessage={refreshMessage} />
+            <CourseAdmin modules={courseCapableModules} isForklift={isForklift} onMessage={refreshMessage} />
           </section>
         </main>
       )}

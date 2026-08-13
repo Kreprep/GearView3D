@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
-import ScopeNotice from './components/ScopeNotice'
+import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { useModuleRecord } from './hooks/useModuleRecord'
 import { useProgress } from './hooks/useProgress'
 import { useWalkAroundHotspots } from './hooks/useWalkAroundHotspots'
@@ -390,7 +390,7 @@ function WalkAroundCheckPage({ moduleName, user, onBack, onNavigate }) {
 
   const renderBriefing = () => (
     <div className="walkaround-task-stack">
-      <ScopeNotice />
+      <ScopeNotice note={FORKLIFT_SCOPE_NOTE} />
       {renderInspectionToggle()}
       <div className="reference-card">
         <p><strong>Syllabus Location:</strong> {module.syllabusLocation}</p>

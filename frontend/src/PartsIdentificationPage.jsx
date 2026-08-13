@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import ForkliftViewport from './gear_view_3_d_forklift_viewport'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
-import ScopeNotice from './components/ScopeNotice'
+import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
 import { getPartDetails, getParts } from './lib/api'
 import { partCategories, partsHotspots } from './lib/trainingData'
@@ -137,7 +137,7 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
 
   const renderExploreTask = () => (
     <div className="parts-task-stack">
-      <ScopeNotice />
+      <ScopeNotice note={FORKLIFT_SCOPE_NOTE} />
       <div className="category-grid">
         {categories.map((category) => (
           <div key={category} className="category-group">

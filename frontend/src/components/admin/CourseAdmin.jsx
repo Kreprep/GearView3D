@@ -13,8 +13,9 @@ const KIND_LABELS = {
 // `modules` is the current equipment's course-capable modules, as
 // { slug, title } pairs in display order (Walk-Around Check and any other
 // hardcoded-page module already filtered out by the caller - see
-// AdminDashboard's HARDCODED_PAGE_MODULE_SLUGS).
-function CourseAdmin({ modules, onMessage }) {
+// AdminDashboard's HARDCODED_PAGE_MODULE_SLUGS). `isForklift` gates the
+// Forklift-only editor fields (the summary step's next-route picker).
+function CourseAdmin({ modules, isForklift = false, onMessage }) {
   const [courses, setCourses] = useState([])
   const [creatableKinds, setCreatableKinds] = useState(['driving'])
   const [selectedModuleSlug, setSelectedModuleSlug] = useState(null)
@@ -180,6 +181,7 @@ function CourseAdmin({ modules, onMessage }) {
             <CourseEditor
               key={selected.id}
               course={selected}
+              isForklift={isForklift}
               onCourseChanged={replaceCourse}
               onCourseDeleted={handleDeleted}
               onMessage={onMessage}
