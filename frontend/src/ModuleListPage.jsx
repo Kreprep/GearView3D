@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getEquipment, getTrainingModules } from './lib/api'
 import { getModuleProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
+import { hubContentContext, resolveHubContent } from './lib/hubContent'
 import PageLayout from './components/PageLayout'
 import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import './ModuleListPage.css'
@@ -35,19 +36,24 @@ function ModuleListPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
   const equipmentTitle = equipment?.title || 'Equipment'
   const openModule = (module) => onNavigate(`/training/${equipmentId}/modules/${module.slug}`)
 
+  const copy = resolveHubContent(equipment, hubContentContext({
+    equipmentTitle,
+    learnerName: user?.fullName || 'learner',
+    isForklift,
+    moduleTitles: modules.map((module) => module.subtitle || module.title),
+  }))
+
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
       <div className="page-back-row">
         <button className="back-button" onClick={onBack}>
           Back to Training Hub
         </button>
-        <h1 className="page-heading">{equipmentTitle} - Training Modules</h1>
+        <h1 className="page-heading">{copy.moduleListHeading}</h1>
       </div>
 
       <ScopeNotice note={isForklift ? FORKLIFT_SCOPE_NOTE : undefined} />
-      <p className="module-list-intro">
-        Select a module to begin your {equipmentTitle.toLowerCase()} training:
-      </p>
+      <p className="module-list-intro">{copy.moduleListIntro}</p>
 
       <div className="module-list-grid">
         {loading && <div className="module-list-state">Loading training modules...</div>}

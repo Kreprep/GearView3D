@@ -58,7 +58,10 @@ async function isCourseCapableModuleSlug(moduleSlug) {
 const partFields = ['label', 'category', 'position', 'functionText', 'inspectionReminder', 'safetyNote', 'relatedModule', 'checklist', 'sortOrder']
 const partDetailFields = ['title', 'subtitle', 'image', 'description']
 const moduleFields = ['title', 'fullTitle', 'subtitle', 'description', 'imageUrl', 'sortOrder']
-const equipmentFields = ['title', 'description', 'modelUrl', 'imageUrl', 'sortOrder', 'available']
+// `content` is the hub/module-list copy overrides (frontend
+// data/hubContent.js); it is stored whole, so the client sends the full object
+// and blank keys mean "fall back to the coded default".
+const equipmentFields = ['title', 'description', 'modelUrl', 'imageUrl', 'sortOrder', 'available', 'content']
 const checklistFields = ['text', 'sortOrder']
 const practiceFields = ['prompt', 'options', 'answer', 'sortOrder']
 const partCategoryFields = ['label', 'sortOrder']
@@ -311,10 +314,19 @@ router.delete('/part-categories/:id', async (req, res) => {
 })
 
 router.patch('/equipment/:id', async (req, res) => {
-  const equipment = await prisma.equipment.update({
-    where: { id: req.params.id },
-    data: pick(req.body, equipmentFields),
-  })
+  const data = pick(req.body, equipmentFields)
+
+  // Only overrides are stored: a key an admin cleared is dropped so the coded
+  // default in data/hubContent.js applies again (and keeps applying when that
+  // default is improved later).
+  if ('content' in data) {
+    const entries = Object.entries(data.content || {}).filter(
+      ([, value]) => typeof value === 'string' && value.trim() !== '',
+    )
+    data.content = entries.length ? Object.fromEntries(entries.map(([key, value]) => [key, value.trim()])) : null
+  }
+
+  const equipment = await prisma.equipment.update({ where: { id: req.params.id }, data })
   res.json({ equipment })
 })
 
