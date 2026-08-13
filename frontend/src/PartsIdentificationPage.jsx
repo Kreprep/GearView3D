@@ -4,10 +4,9 @@ import ModuleSimulationShell from './components/ModuleSimulationShell'
 import SimulationPageLayout from './components/SimulationPageLayout'
 import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { useProgress } from './hooks/useProgress'
-import { getPartDetails, getParts } from './lib/api'
+import Quiz from './components/Quiz'
+import { getPartCategories, getPartDetails, getParts } from './lib/api'
 import { partCategories, partsHotspots } from './lib/trainingData'
-import { getPartCategories, getPracticeQuestions, submitPracticeQuiz } from './lib/api'
-import { hydrateProgressFromServer } from './lib/progressService'
 import './PartsIdentificationPage.css'
 
 const partsModule = {
@@ -16,7 +15,7 @@ const partsModule = {
   learningObjectives: [
     'Explore major forklift parts using the 3D model and the category list.',
     'View every part at least once to track exploration progress.',
-    'Answer the practice questions to check part recognition.',
+    'Answer the quiz questions to check part recognition.',
   ],
 }
 
@@ -28,8 +27,8 @@ const steps = [
     hint: 'Not sure where to start? Try tapping a marker directly on the 3D model, or pick a part from a category below.',
   },
   {
-    id: 'practice',
-    title: 'Practice Questions',
+    id: 'quiz',
+    title: 'Quiz',
     instructions: 'Answer each question to check part recognition. Results are saved to learner progress.',
     hint: 'Revisit any part you are unsure about in the Explore step before answering.',
   },
@@ -49,23 +48,17 @@ function buildDetail(hotspot, partDetails) {
 function PartsIdentificationPage({ moduleName, user, onBack }) {
   const isAdmin = user?.role === 'ADMIN'
   const [hotspots, setHotspots] = useState(partsHotspots)
-  // Categories and practice questions are DB rows the Parts tab edits; the
-  // static lists are only the pre-fetch fallback.
+  // Categories are DB rows the Parts tab edits; the static list is only the
+  // pre-fetch fallback. The quiz itself renders through the shared Quiz
+  // component, which fetches its own questions.
   const [categories, setCategories] = useState(partCategories)
-  // No static fallback: the questions carry their answers in data/, and
-  // importing them here would ship the answer key in the bundle.
-  const [practiceQuestions, setPracticeQuestions] = useState([])
   const [partDetails, setPartDetails] = useState({})
   const [selectedPartId, setSelectedPartId] = useState(null)
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [practiceAnswers, setPracticeAnswers] = useState({})
-  // The server's verdict: score plus, per question, whether the choice was
-  // right and what the right answer was. Questions arrive without answers, so
-  // there is nothing to score locally.
-  const [practiceResult, setPracticeResult] = useState(null)
-  const [practiceBusy, setPracticeBusy] = useState(false)
-  const { progress, summary, viewPart } = useProgress()
+  // Set once the learner submits the quiz, which is what unlocks Complete.
+  const [quizScored, setQuizScored] = useState(false)
+  const { summary, viewPart } = useProgress()
 
   useEffect(() => {
     getParts().then((items) => {
@@ -77,14 +70,9 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
     getPartCategories().then((rows) => {
       if (rows.length > 0) setCategories(rows.map((row) => row.label))
     })
-    getPracticeQuestions().then((rows) => {
-      if (rows.length > 0) setPracticeQuestions(rows)
-    })
   }, [])
 
-  const latestPractice = progress.parts.practiceAttempts[0]
   const viewedIds = new Set(summary.viewedParts)
-  const practiceSubmitted = practiceResult !== null
 
   const selectPart = (hotspot) => {
     setSelectedPartId(hotspot.id)
@@ -99,28 +87,8 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
     setSelectedDetail(null)
   }
 
-  const submitPractice = async () => {
-    setPracticeBusy(true)
-    try {
-      const scored = await submitPracticeQuiz(practiceAnswers)
-      setPracticeResult(scored)
-      // The server recorded the attempt, so the local progress copy is
-      // refreshed before its next debounced push overwrites it.
-      await hydrateProgressFromServer().catch(() => {})
-    } catch {
-      setPracticeResult(null)
-    } finally {
-      setPracticeBusy(false)
-    }
-  }
-
-  const retryPractice = () => {
-    setPracticeAnswers({})
-    setPracticeResult(null)
-  }
-
   const completeModule = () => {
-    if (!practiceSubmitted) return
+    if (!quizScored) return
     onBack?.()
   }
 
@@ -163,64 +131,20 @@ function PartsIdentificationPage({ moduleName, user, onBack }) {
     </div>
   )
 
-  const renderPracticeTask = () => (
+  const renderQuizTask = () => (
     <div className="parts-task-stack">
-      <p className="task-note">
-        Latest practice: {latestPractice ? `${latestPractice.score}/${latestPractice.total} (${latestPractice.percentage}%)` : 'No attempt yet'}
-      </p>
-      <div className="practice-list">
-        {practiceQuestions.map((question) => {
-          const selected = practiceAnswers[question.id]
-          const verdict = practiceResult?.results?.[question.id]
-
-          return (
-            <fieldset key={question.id} className="practice-question">
-              <legend>{question.prompt}</legend>
-              <div className="practice-options">
-                {question.options.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={selected === option ? 'answer-option selected' : 'answer-option'}
-                    onClick={() => !practiceSubmitted && setPracticeAnswers((answers) => ({ ...answers, [question.id]: option }))}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-              {verdict && (
-                <p className={verdict.correct ? 'feedback correct' : 'feedback incorrect'}>
-                  {verdict.correct ? 'Correct.' : `Incorrect. Correct answer: ${verdict.correctAnswer}.`}
-                </p>
-              )}
-            </fieldset>
-          )
-        })}
-      </div>
-
-      <div className="step-actions">
-        <button
-          type="button"
-          className="primary-action"
-          onClick={submitPractice}
-          disabled={practiceBusy || practiceSubmitted || Object.keys(practiceAnswers).length < practiceQuestions.length}
-        >
-          {practiceBusy ? 'Submitting...' : 'Submit Practice'}
-        </button>
-        <button type="button" onClick={retryPractice}>
-          Retry
-        </button>
-      </div>
-      {practiceResult && (
-        <p className="task-note">
-          Score: {practiceResult.score}/{practiceResult.total}. Click Complete Module to finish.
-        </p>
-      )}
+      <Quiz
+        scope={{ equipment: 'forklift', context: 'parts' }}
+        title="Quiz"
+        emptyMessage="No quiz questions have been added for this equipment yet."
+        onScored={() => setQuizScored(true)}
+      />
+      {quizScored && <p className="task-note">Click Complete Module to finish.</p>}
     </div>
   )
 
   const renderTask = ({ currentStep }) => {
-    if (currentStep.id === 'practice') return renderPracticeTask()
+    if (currentStep.id === 'quiz') return renderQuizTask()
     return renderExploreTask()
   }
 

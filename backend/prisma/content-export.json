@@ -1,15 +1,14 @@
 {
-  "exportedAt": "2026-08-08T09:57:34.661Z",
+  "exportedAt": "2026-08-13T17:12:55.312Z",
   "counts": {
     "Equipment": 3,
-    "Module": 4,
+    "Module": 5,
     "PartCategory": 4,
     "Part": 10,
     "PartDetail": 26,
-    "PracticeQuestion": 7,
-    "Course": 19,
+    "Course": 20,
     "ChecklistItem": 22,
-    "QuizQuestion": 12
+    "QuizQuestion": 19
   },
   "tables": {
     "Equipment": [
@@ -20,16 +19,18 @@
         "modelUrl": "/models/Forklift_SEPERATED.glb",
         "imageUrl": "/images/forklift-card.png",
         "sortOrder": 1,
-        "available": true
+        "available": true,
+        "content": null
       },
       {
         "id": "backhoe",
         "title": "Backhoe Loader",
         "description": "Heavy equipment training model. Coming soon.",
-        "modelUrl": "",
+        "modelUrl": "/models/backhoe.glb",
         "imageUrl": "",
         "sortOrder": 2,
-        "available": false
+        "available": true,
+        "content": null
       },
       {
         "id": "crane",
@@ -38,7 +39,8 @@
         "modelUrl": "",
         "imageUrl": "",
         "sortOrder": 3,
-        "available": false
+        "available": false,
+        "content": null
       }
     ],
     "Module": [
@@ -50,7 +52,19 @@
         "subtitle": "Visual Inspection",
         "description": "Inspect a Class V (LPG) forklift before use: forks, mast, chains, hydraulic hoses, tires, counterweight, LPG tank/battery, seat belt, overhead guard, and ground leaks, then confirm dashboard indicators, steering, brakes, lift/tilt, travel, and warning devices.",
         "imageUrl": "/images/modules/walk-around-check.png",
-        "sortOrder": 1
+        "sortOrder": 1,
+        "equipmentId": "forklift"
+      },
+      {
+        "id": 5,
+        "slug": "backhoe-getting-started",
+        "title": "New Module",
+        "fullTitle": "",
+        "subtitle": "Getting Started",
+        "description": "A starting point for Backhoe Loader training content. Edit this module in the Module Editor to add your own steps.",
+        "imageUrl": "",
+        "sortOrder": 1,
+        "equipmentId": "backhoe"
       },
       {
         "id": 2,
@@ -60,7 +74,8 @@
         "subtitle": "Operational Controls",
         "description": "Practice basic forklift operational controls in a simplified guided drive: engine start-up, acceleration, braking, and steering, without real vehicle physics or collision.",
         "imageUrl": "/images/modules/load-handling.png",
-        "sortOrder": 2
+        "sortOrder": 2,
+        "equipmentId": "forklift"
       },
       {
         "id": 3,
@@ -70,7 +85,8 @@
         "subtitle": "Secure Parking",
         "description": "Park the forklift inside a painted bay on a cone-lined route, then secure it: fork lowering, neutral controls, brake engagement, power off, and reporting. Hitting a cone fails the parking attempt.",
         "imageUrl": "/images/modules/post-operation.png",
-        "sortOrder": 3
+        "sortOrder": 3,
+        "equipmentId": "forklift"
       },
       {
         "id": 4,
@@ -80,7 +96,8 @@
         "subtitle": "Load Safety",
         "description": "Apply load-handling judgment under fail conditions: respect rated capacity, avoid traffic cones, and brake smoothly so the load stays on the forks. Overloading, collisions, and sudden stops fail the attempt.",
         "imageUrl": "/images/modules/pallet-testing.png",
-        "sortOrder": 4
+        "sortOrder": 4,
+        "equipmentId": "forklift"
       }
     ],
     "PartCategory": [
@@ -491,93 +508,34 @@
         "description": "Includes lights, horn, and backup alarm used to alert nearby workers.\n\n**What to inspect**\n\nTest horn, lights, beacon, and backup alarm during pre-operation checks.\n\n**Safety**\n\nDo not operate if required warning devices are not working.\n\n**Quick checklist**\n\n- Test horn\n- Check lights\n- Check backup alarm\n\n*Related training: Walk-Around Check*"
       }
     ],
-    "PracticeQuestion": [
-      {
-        "id": "select-capacity-plate",
-        "prompt": "Which part shows the rated load capacity and forklift specifications?",
-        "options": [
-          "Capacity Plate",
-          "Counterweight",
-          "Operator Area",
-          "Mast"
-        ],
-        "answer": "Capacity Plate",
-        "sortOrder": 1
-      },
-      {
-        "id": "balance-part",
-        "prompt": "Which part balances the forklift?",
-        "options": [
-          "Counterweight",
-          "Forks",
-          "Warning Devices",
-          "Lift Chain"
-        ],
-        "answer": "Counterweight",
-        "sortOrder": 2
-      },
-      {
-        "id": "load-support",
-        "prompt": "Which part supports the pallet or load?",
-        "options": [
-          "Forks",
-          "Tires",
-          "Overhead Guard",
-          "Capacity Plate"
-        ],
-        "answer": "Forks",
-        "sortOrder": 3
-      },
-      {
-        "id": "operator-controls",
-        "prompt": "Which area contains the operator controls?",
-        "options": [
-          "Operator Area",
-          "Carriage",
-          "Mast",
-          "Counterweight"
-        ],
-        "answer": "Operator Area",
-        "sortOrder": 4
-      },
-      {
-        "id": "warning-devices",
-        "prompt": "Which devices include lights, horn, and backup alarm?",
-        "options": [
-          "Warning Devices",
-          "Forks",
-          "Lift Chain",
-          "Tires"
-        ],
-        "answer": "Warning Devices",
-        "sortOrder": 5
-      },
-      {
-        "id": "raises-forks",
-        "prompt": "Which part raises and lowers the forks?",
-        "options": [
-          "Mast",
-          "Counterweight",
-          "Capacity Plate",
-          "Tires"
-        ],
-        "answer": "Mast",
-        "sortOrder": 6
-      },
-      {
-        "id": "connects-forks",
-        "prompt": "Which part connects the forks to the mast?",
-        "options": [
-          "Carriage",
-          "Overhead Guard",
-          "Operator Area",
-          "Warning Devices"
-        ],
-        "answer": "Carriage",
-        "sortOrder": 7
-      }
-    ],
     "Course": [
+      {
+        "id": "backhoe-getting-started-briefing",
+        "moduleSlug": "backhoe-getting-started",
+        "sortOrder": 1,
+        "kind": "briefing",
+        "title": "Briefing",
+        "objective": "",
+        "instructions": "",
+        "hint": "",
+        "goalType": "checkpoints",
+        "data": null,
+        "content": {
+          "body": "",
+          "image": "",
+          "syllabus": {
+            "element": "",
+            "location": "",
+            "unitCode": "",
+            "pageReferences": ""
+          },
+          "sceneBody": "",
+          "objectives": [],
+          "showSyllabus": true
+        },
+        "published": true,
+        "builtIn": false
+      },
       {
         "id": "load-handling-briefing",
         "moduleSlug": "load-handling",
@@ -2964,9 +2922,9 @@
             "width": 0.42,
             "heading": 0,
             "position": [
-              -1.2,
+              -2.3,
               0,
-              13
+              8
             ]
           },
           "checkpoints": [],
@@ -2974,79 +2932,127 @@
             {
               "type": "cone",
               "position": [
-                -1.56,
+                -3,
                 0,
-                12.2
+                9
               ]
             },
             {
               "type": "cone",
               "position": [
-                -0.84,
+                -2.5,
                 0,
-                12.2
+                7
               ]
             },
             {
               "type": "cone",
               "position": [
-                -1.56,
+                -3,
                 0,
-                13.8
+                8
               ]
             },
             {
               "type": "cone",
               "position": [
-                -0.84,
+                -2,
                 0,
-                13.8
+                4
               ]
             },
             {
               "type": "cone",
               "position": [
-                -2.2,
+                -2,
                 0,
-                2
+                5
               ]
             },
             {
               "type": "cone",
               "position": [
-                -2.2,
+                -2,
                 0,
-                3.3
+                6
               ]
             },
             {
               "type": "cone",
               "position": [
-                -2.2,
+                -2,
                 0,
-                4.6
+                7
               ]
             },
             {
               "type": "cone",
               "position": [
-                -2.2,
+                -3,
                 0,
-                5.9
+                7
               ]
             },
             {
               "type": "cone",
               "position": [
-                -2.2,
+                -2,
                 0,
-                7.2
+                9
               ]
             },
             {
               "type": "cone",
               "position": [
-                -2.2,
+                -2,
+                0,
+                10
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3,
+                0,
+                7.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3,
                 0,
                 8.5
               ]
@@ -3054,87 +3060,15 @@
             {
               "type": "cone",
               "position": [
-                -2.2,
+                -2,
                 0,
-                9.8
+                3
               ]
             },
             {
               "type": "cone",
               "position": [
-                -2.2,
-                0,
-                11.1
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.2,
-                0,
-                14.8
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.2,
-                0,
-                16.1
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.2,
-                0,
-                17.4
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.2,
-                0,
-                18.7
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.2,
-                0,
-                20
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.2,
-                0,
-                21.3
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.2,
-                0,
-                22.6
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.2,
-                0,
-                23.9
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.2,
+                -2,
                 0,
                 2
               ]
@@ -3142,129 +3076,129 @@
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                3.3
+                4
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                4.6
+                5
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                5.9
+                7
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                7.2
+                8
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                8.5
+                9
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                9.8
+                10
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                11.1
+                11
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                -2,
                 0,
-                12.4
+                11
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
                 0,
-                13.7
+                0,
+                10
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
                 0,
-                15
+                0,
+                9
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
                 0,
-                16.3
+                0,
+                8
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                17.6
+                6
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                18.9
+                3
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                20.2
+                2
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                2,
                 0,
-                21.5
+                1
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.2,
+                -2,
                 0,
-                22.8
+                1
               ]
             }
           ],
@@ -3677,351 +3611,288 @@
     "QuizQuestion": [
       {
         "id": "walk-fluid-leaks",
+        "equipmentId": "forklift",
+        "context": "module",
         "moduleId": 1,
         "prompt": "What should be checked during a walk-around inspection?",
         "answer": "Fluid leaks",
         "options": [
-          {
-            "id": "walk-fluid-leaks-option-1",
-            "text": "Fluid leaks",
-            "sortOrder": 1
-          },
-          {
-            "id": "walk-fluid-leaks-option-2",
-            "text": "Lunch schedule",
-            "sortOrder": 2
-          },
-          {
-            "id": "walk-fluid-leaks-option-3",
-            "text": "Paint color",
-            "sortOrder": 3
-          },
-          {
-            "id": "walk-fluid-leaks-option-4",
-            "text": "Radio volume",
-            "sortOrder": 4
-          }
+          "Fluid leaks",
+          "Lunch schedule",
+          "Paint color",
+          "Radio volume"
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "engine-start-key",
+        "equipmentId": "forklift",
+        "context": "module",
+        "moduleId": 2,
+        "prompt": "Which key starts the engine in this simulation?",
+        "answer": "E",
+        "options": [
+          "E",
+          "W",
+          "S",
+          "A"
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "post-forks",
+        "equipmentId": "forklift",
+        "context": "module",
+        "moduleId": 3,
+        "prompt": "What should be done to the forks after operation?",
+        "answer": "Lower them completely",
+        "options": [
+          "Lower them completely",
+          "Leave them raised",
+          "Remove them",
+          "Paint them"
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "pallet-overload",
+        "equipmentId": "forklift",
+        "context": "module",
+        "moduleId": 4,
+        "prompt": "What happens when a forklift lifts more than its rated capacity?",
+        "answer": "It can tip forward",
+        "options": [
+          "It can tip forward",
+          "It drives faster",
+          "Nothing changes",
+          "The horn sounds"
         ],
         "sortOrder": 1
       },
       {
         "id": "walk-warning-devices",
+        "equipmentId": "forklift",
+        "context": "module",
         "moduleId": 1,
         "prompt": "Which devices should be tested before operation?",
         "answer": "Horn and lights",
         "options": [
-          {
-            "id": "walk-warning-devices-option-1",
-            "text": "Horn and lights",
-            "sortOrder": 1
-          },
-          {
-            "id": "walk-warning-devices-option-2",
-            "text": "Cup holder",
-            "sortOrder": 2
-          },
-          {
-            "id": "walk-warning-devices-option-3",
-            "text": "Seat fabric",
-            "sortOrder": 3
-          },
-          {
-            "id": "walk-warning-devices-option-4",
-            "text": "Dashboard color",
-            "sortOrder": 4
-          }
+          "Horn and lights",
+          "Cup holder",
+          "Seat fabric",
+          "Dashboard color"
         ],
         "sortOrder": 2
       },
       {
-        "id": "walk-tires",
-        "moduleId": 1,
-        "prompt": "Why inspect tires before operation?",
-        "answer": "They affect stability and steering",
-        "options": [
-          {
-            "id": "walk-tires-option-1",
-            "text": "They affect stability and steering",
-            "sortOrder": 1
-          },
-          {
-            "id": "walk-tires-option-2",
-            "text": "They change the training score",
-            "sortOrder": 2
-          },
-          {
-            "id": "walk-tires-option-3",
-            "text": "They control the horn",
-            "sortOrder": 3
-          },
-          {
-            "id": "walk-tires-option-4",
-            "text": "They identify the operator",
-            "sortOrder": 4
-          }
-        ],
-        "sortOrder": 3
-      },
-      {
-        "id": "engine-start-key",
-        "moduleId": 2,
-        "prompt": "Which key starts the engine in this simulation?",
-        "answer": "E",
-        "options": [
-          {
-            "id": "engine-start-key-option-1",
-            "text": "E",
-            "sortOrder": 1
-          },
-          {
-            "id": "engine-start-key-option-2",
-            "text": "W",
-            "sortOrder": 2
-          },
-          {
-            "id": "engine-start-key-option-3",
-            "text": "S",
-            "sortOrder": 3
-          },
-          {
-            "id": "engine-start-key-option-4",
-            "text": "A",
-            "sortOrder": 4
-          }
-        ],
-        "sortOrder": 1
-      },
-      {
         "id": "accelerate-key",
+        "equipmentId": "forklift",
+        "context": "module",
         "moduleId": 2,
         "prompt": "Which key accelerates the forklift forward?",
         "answer": "W",
         "options": [
-          {
-            "id": "accelerate-key-option-1",
-            "text": "W",
-            "sortOrder": 1
-          },
-          {
-            "id": "accelerate-key-option-2",
-            "text": "S",
-            "sortOrder": 2
-          },
-          {
-            "id": "accelerate-key-option-3",
-            "text": "A",
-            "sortOrder": 3
-          },
-          {
-            "id": "accelerate-key-option-4",
-            "text": "D",
-            "sortOrder": 4
-          }
+          "W",
+          "S",
+          "A",
+          "D"
         ],
         "sortOrder": 2
-      },
-      {
-        "id": "brake-key",
-        "moduleId": 2,
-        "prompt": "Which key slows down or stops the forklift?",
-        "answer": "S",
-        "options": [
-          {
-            "id": "brake-key-option-1",
-            "text": "S",
-            "sortOrder": 1
-          },
-          {
-            "id": "brake-key-option-2",
-            "text": "W",
-            "sortOrder": 2
-          },
-          {
-            "id": "brake-key-option-3",
-            "text": "A",
-            "sortOrder": 3
-          },
-          {
-            "id": "brake-key-option-4",
-            "text": "D",
-            "sortOrder": 4
-          }
-        ],
-        "sortOrder": 3
-      },
-      {
-        "id": "post-forks",
-        "moduleId": 3,
-        "prompt": "What should be done to the forks after operation?",
-        "answer": "Lower them completely",
-        "options": [
-          {
-            "id": "post-forks-option-1",
-            "text": "Lower them completely",
-            "sortOrder": 1
-          },
-          {
-            "id": "post-forks-option-2",
-            "text": "Leave them raised",
-            "sortOrder": 2
-          },
-          {
-            "id": "post-forks-option-3",
-            "text": "Remove them",
-            "sortOrder": 3
-          },
-          {
-            "id": "post-forks-option-4",
-            "text": "Paint them",
-            "sortOrder": 4
-          }
-        ],
-        "sortOrder": 1
-      },
-      {
-        "id": "post-controls",
-        "moduleId": 3,
-        "prompt": "Where should controls be placed during shutdown?",
-        "answer": "Neutral",
-        "options": [
-          {
-            "id": "post-controls-option-1",
-            "text": "Neutral",
-            "sortOrder": 1
-          },
-          {
-            "id": "post-controls-option-2",
-            "text": "Reverse",
-            "sortOrder": 2
-          },
-          {
-            "id": "post-controls-option-3",
-            "text": "Lift position",
-            "sortOrder": 3
-          },
-          {
-            "id": "post-controls-option-4",
-            "text": "Tilt position",
-            "sortOrder": 4
-          }
-        ],
-        "sortOrder": 2
-      },
-      {
-        "id": "post-report",
-        "moduleId": 3,
-        "prompt": "What should be reported after operation?",
-        "answer": "Unsafe conditions or visible damage",
-        "options": [
-          {
-            "id": "post-report-option-1",
-            "text": "Unsafe conditions or visible damage",
-            "sortOrder": 1
-          },
-          {
-            "id": "post-report-option-2",
-            "text": "Only the weather",
-            "sortOrder": 2
-          },
-          {
-            "id": "post-report-option-3",
-            "text": "Only the operator name",
-            "sortOrder": 3
-          },
-          {
-            "id": "post-report-option-4",
-            "text": "Nothing ever",
-            "sortOrder": 4
-          }
-        ],
-        "sortOrder": 3
-      },
-      {
-        "id": "pallet-overload",
-        "moduleId": 4,
-        "prompt": "What happens when a forklift lifts more than its rated capacity?",
-        "answer": "It can tip forward",
-        "options": [
-          {
-            "id": "pallet-overload-option-1",
-            "text": "It can tip forward",
-            "sortOrder": 1
-          },
-          {
-            "id": "pallet-overload-option-2",
-            "text": "It drives faster",
-            "sortOrder": 2
-          },
-          {
-            "id": "pallet-overload-option-3",
-            "text": "Nothing changes",
-            "sortOrder": 3
-          },
-          {
-            "id": "pallet-overload-option-4",
-            "text": "The horn sounds",
-            "sortOrder": 4
-          }
-        ],
-        "sortOrder": 1
       },
       {
         "id": "pallet-braking",
+        "equipmentId": "forklift",
+        "context": "module",
         "moduleId": 4,
         "prompt": "How should you brake while carrying a load?",
         "answer": "Gradually and early",
         "options": [
-          {
-            "id": "pallet-braking-option-1",
-            "text": "Gradually and early",
-            "sortOrder": 1
-          },
-          {
-            "id": "pallet-braking-option-2",
-            "text": "As hard as possible",
-            "sortOrder": 2
-          },
-          {
-            "id": "pallet-braking-option-3",
-            "text": "Only in reverse",
-            "sortOrder": 3
-          },
-          {
-            "id": "pallet-braking-option-4",
-            "text": "Never brake",
-            "sortOrder": 4
-          }
+          "Gradually and early",
+          "As hard as possible",
+          "Only in reverse",
+          "Never brake"
+        ],
+        "sortOrder": 2
+      },
+      {
+        "id": "post-controls",
+        "equipmentId": "forklift",
+        "context": "module",
+        "moduleId": 3,
+        "prompt": "Where should controls be placed during shutdown?",
+        "answer": "Neutral",
+        "options": [
+          "Neutral",
+          "Reverse",
+          "Lift position",
+          "Tilt position"
         ],
         "sortOrder": 2
       },
       {
         "id": "pallet-cones",
+        "equipmentId": "forklift",
+        "context": "module",
         "moduleId": 4,
         "prompt": "What do traffic cones mark in a work area?",
         "answer": "Hazards and travel limits",
         "options": [
-          {
-            "id": "pallet-cones-option-1",
-            "text": "Hazards and travel limits",
-            "sortOrder": 1
-          },
-          {
-            "id": "pallet-cones-option-2",
-            "text": "Parking rewards",
-            "sortOrder": 2
-          },
-          {
-            "id": "pallet-cones-option-3",
-            "text": "Fuel stations",
-            "sortOrder": 3
-          },
-          {
-            "id": "pallet-cones-option-4",
-            "text": "Speed boosts",
-            "sortOrder": 4
-          }
+          "Hazards and travel limits",
+          "Parking rewards",
+          "Fuel stations",
+          "Speed boosts"
         ],
         "sortOrder": 3
+      },
+      {
+        "id": "brake-key",
+        "equipmentId": "forklift",
+        "context": "module",
+        "moduleId": 2,
+        "prompt": "Which key slows down or stops the forklift?",
+        "answer": "S",
+        "options": [
+          "S",
+          "W",
+          "A",
+          "D"
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "post-report",
+        "equipmentId": "forklift",
+        "context": "module",
+        "moduleId": 3,
+        "prompt": "What should be reported after operation?",
+        "answer": "Unsafe conditions or visible damage",
+        "options": [
+          "Unsafe conditions or visible damage",
+          "Only the weather",
+          "Only the operator name",
+          "Nothing ever"
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "walk-tires",
+        "equipmentId": "forklift",
+        "context": "module",
+        "moduleId": 1,
+        "prompt": "Why inspect tires before operation?",
+        "answer": "They affect stability and steering",
+        "options": [
+          "They affect stability and steering",
+          "They change the training score",
+          "They control the horn",
+          "They identify the operator"
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "select-capacity-plate",
+        "equipmentId": "forklift",
+        "context": "parts",
+        "moduleId": null,
+        "prompt": "Which part shows the rated load capacity and forklift specifications?",
+        "answer": "Capacity Plate",
+        "options": [
+          "Capacity Plate",
+          "Counterweight",
+          "Operator Area",
+          "Mast"
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "balance-part",
+        "equipmentId": "forklift",
+        "context": "parts",
+        "moduleId": null,
+        "prompt": "Which part balances the forklift?",
+        "answer": "Counterweight",
+        "options": [
+          "Counterweight",
+          "Forks",
+          "Warning Devices",
+          "Lift Chain"
+        ],
+        "sortOrder": 2
+      },
+      {
+        "id": "load-support",
+        "equipmentId": "forklift",
+        "context": "parts",
+        "moduleId": null,
+        "prompt": "Which part supports the pallet or load?",
+        "answer": "Forks",
+        "options": [
+          "Forks",
+          "Tires",
+          "Overhead Guard",
+          "Capacity Plate"
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "operator-controls",
+        "equipmentId": "forklift",
+        "context": "parts",
+        "moduleId": null,
+        "prompt": "Which area contains the operator controls?",
+        "answer": "Operator Area",
+        "options": [
+          "Operator Area",
+          "Carriage",
+          "Mast",
+          "Counterweight"
+        ],
+        "sortOrder": 4
+      },
+      {
+        "id": "warning-devices",
+        "equipmentId": "forklift",
+        "context": "parts",
+        "moduleId": null,
+        "prompt": "Which devices include lights, horn, and backup alarm?",
+        "answer": "Warning Devices",
+        "options": [
+          "Warning Devices",
+          "Forks",
+          "Lift Chain",
+          "Tires"
+        ],
+        "sortOrder": 5
+      },
+      {
+        "id": "raises-forks",
+        "equipmentId": "forklift",
+        "context": "parts",
+        "moduleId": null,
+        "prompt": "Which part raises and lowers the forks?",
+        "answer": "Mast",
+        "options": [
+          "Mast",
+          "Counterweight",
+          "Capacity Plate",
+          "Tires"
+        ],
+        "sortOrder": 6
+      },
+      {
+        "id": "connects-forks",
+        "equipmentId": "forklift",
+        "context": "parts",
+        "moduleId": null,
+        "prompt": "Which part connects the forks to the mast?",
+        "answer": "Carriage",
+        "options": [
+          "Carriage",
+          "Overhead Guard",
+          "Operator Area",
+          "Warning Devices"
+        ],
+        "sortOrder": 7
       }
     ]
   }

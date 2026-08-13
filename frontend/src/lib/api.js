@@ -84,31 +84,32 @@ export async function getPartCategories() {
   return request('/content/part-categories')
 }
 
-export async function getPracticeQuestions() {
-  return request('/content/practice-questions')
+// Every quiz - a module's quiz step and an equipment's parts quiz - comes from
+// the same endpoint, scoped by one of:
+//   { module: 'load-handling' }
+//   { equipment: 'forklift', context: 'parts' }
+function quizQuery(scope) {
+  return new URLSearchParams(
+    scope.context === 'parts'
+      ? { equipment: scope.equipment, context: 'parts' }
+      : { module: scope.module },
+  ).toString()
 }
 
-// Quizzes are scored on the server: these send the chosen options and get back
+export async function getQuizQuestions(scope) {
+  return request(`/content/quizzes?${quizQuery(scope)}`)
+}
+
+// Quizzes are scored on the server: this sends the chosen options and gets back
 // the score, the per-question results and the attempt the server recorded. The
-// correct answers are not in the GET payloads, so the client cannot mark its
+// correct answers are not in the GET payload, so the client cannot mark its
 // own work.
-export async function submitPracticeQuiz(answers) {
-  return request('/content/practice-questions/submit', { method: 'POST', body: { answers } })
-}
-
-export async function submitModuleQuiz(moduleSlug, answers) {
-  return request(`/content/quizzes/${encodeURIComponent(moduleSlug)}/submit`, {
-    method: 'POST',
-    body: { answers },
-  })
+export async function submitQuiz(scope, answers) {
+  return request('/content/quizzes/submit', { method: 'POST', body: { ...scope, answers } })
 }
 
 export async function getChecklistCounts() {
   return request('/content/checklist-counts')
-}
-
-export async function getModuleQuiz(moduleSlug) {
-  return request(`/content/quizzes/${encodeURIComponent(moduleSlug)}`)
 }
 
 export async function getChecklist(moduleSlug) {
@@ -161,8 +162,8 @@ export async function adminDeletePart(partId) {
   return request(`/admin/parts/${encodeURIComponent(partId)}`, { method: 'DELETE' })
 }
 
-// Parts, part details and practice questions save a draft; the published row a
-// learner sees only changes on publish.
+// Parts and part details save a draft; the published row a learner sees only
+// changes on publish.
 export async function adminPublishPart(partId) {
   return request(`/admin/parts/${encodeURIComponent(partId)}/publish`, { method: 'POST' })
 }
@@ -181,26 +182,6 @@ export async function adminPublishPartDetail(detailId) {
 
 export async function adminRevertPartDetail(detailId) {
   return request(`/admin/part-details/${encodeURIComponent(detailId)}/revert`, { method: 'POST' })
-}
-
-export async function adminCreatePracticeQuestion(payload) {
-  return request('/admin/practice-questions', { method: 'POST', body: payload })
-}
-
-export async function adminUpdatePracticeQuestion(questionId, payload) {
-  return request(`/admin/practice-questions/${encodeURIComponent(questionId)}`, { method: 'PATCH', body: payload })
-}
-
-export async function adminPublishPracticeQuestion(questionId) {
-  return request(`/admin/practice-questions/${encodeURIComponent(questionId)}/publish`, { method: 'POST' })
-}
-
-export async function adminRevertPracticeQuestion(questionId) {
-  return request(`/admin/practice-questions/${encodeURIComponent(questionId)}/revert`, { method: 'POST' })
-}
-
-export async function adminDeletePracticeQuestion(questionId) {
-  return request(`/admin/practice-questions/${encodeURIComponent(questionId)}`, { method: 'DELETE' })
 }
 
 export async function adminCreatePartCategory(payload) {
@@ -233,6 +214,13 @@ export async function adminUpdateChecklistItem(itemId, payload) {
 
 export async function adminDeleteChecklistItem(itemId) {
   return request(`/admin/checklist-items/${encodeURIComponent(itemId)}`, { method: 'DELETE' })
+}
+
+// Quiz questions, module and parts alike - one table, saved immediately (no
+// draft). A parts question needs { equipmentId, context: 'parts' }; a module
+// question needs { moduleId }.
+export async function adminCreateQuizQuestion(payload) {
+  return request('/admin/quiz-questions', { method: 'POST', body: payload })
 }
 
 export async function adminUpdateQuizQuestion(questionId, payload) {

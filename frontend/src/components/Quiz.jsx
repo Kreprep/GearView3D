@@ -1,19 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useProgress } from '../hooks/useProgress'
-import { getModuleQuiz, submitModuleQuiz } from '../lib/api'
-import { hydrateProgressFromServer } from '../lib/progressService'
-import './ModuleQuiz.css'
+import { getQuizQuestions, submitQuiz } from '../lib/api'
+import { getLatestQuizAttempt, hydrateProgressFromServer } from '../lib/progressService'
+import './Quiz.css'
 
-function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
-  // Questions come from the QuizQuestion rows the Quizzes tab edits, not from
-  // data/, so an admin's edit reaches learners without a rebuild.
+// Every quiz in the app renders through here - a module's quiz step and an
+// equipment's parts quiz alike. `scope` says which:
+//
+//   { module: 'load-handling' }              the module's quiz questions
+//   { equipment: 'forklift', context: 'parts' }  that equipment's parts quiz
+//
+// Questions come from the QuizQuestion rows the dashboard edits (never from
+// data/, which carries the answers), and grading happens on the server - the
+// GET payload has no answers, so there is nothing to score locally.
+function Quiz({ scope, title = 'Short Quiz', emptyMessage, onScored }) {
   const [questions, setQuestions] = useState([])
   const { progress } = useProgress()
+  const scopeKey = scope.context === 'parts' ? `parts:${scope.equipment}` : `module:${scope.module}`
 
   useEffect(() => {
     let cancelled = false
 
-    getModuleQuiz(moduleSlug)
+    getQuizQuestions(scope)
       .then((rows) => {
         if (!cancelled) setQuestions(rows)
       })
@@ -24,22 +32,25 @@ function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
     return () => {
       cancelled = true
     }
-  }, [moduleSlug])
+    // Re-fetching is keyed on the scope's identity, not the object literal a
+    // parent re-creates on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeKey])
 
   const [answers, setAnswers] = useState({})
   // `result` is the server's verdict: it holds the score and, per question,
-  // whether the choice was right and what the right answer was. There is no
-  // local score, because the questions arrive without their answers.
+  // whether the choice was right and what the right answer was.
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
   const submitted = result !== null
-  const latestAttempt = progress.quizzes[moduleSlug]?.[0]
+  const latestAttempt = getLatestQuizAttempt(progress, scope)
 
-  const submitQuiz = async () => {
+  const submit = async () => {
     setBusy(true)
     try {
-      const scored = await submitModuleQuiz(moduleSlug, answers)
+      const scored = await submitQuiz(scope, answers)
       setResult(scored)
+      onScored?.(scored)
       // The server wrote the attempt into the stored progress document, so the
       // local copy is refreshed before its next debounced push overwrites it.
       await hydrateProgressFromServer().catch(() => {})
@@ -50,7 +61,7 @@ function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
     }
   }
 
-  const retryQuiz = () => {
+  const retry = () => {
     setAnswers({})
     setResult(null)
   }
@@ -59,7 +70,7 @@ function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
     return (
       <section className="module-quiz">
         <h3>{title}</h3>
-        <p>No quiz questions are available for this module yet.</p>
+        <p>{emptyMessage || 'No quiz questions are available yet.'}</p>
       </section>
     )
   }
@@ -110,12 +121,12 @@ function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
         <button
           type="button"
           className="quiz-submit"
-          onClick={submitQuiz}
+          onClick={submit}
           disabled={busy || submitted || Object.keys(answers).length < questions.length}
         >
           {busy ? 'Submitting...' : 'Submit Quiz'}
         </button>
-        <button type="button" onClick={retryQuiz}>
+        <button type="button" onClick={retry}>
           Retry
         </button>
       </div>
@@ -129,4 +140,4 @@ function ModuleQuiz({ moduleSlug, title = 'Short Quiz' }) {
   )
 }
 
-export default ModuleQuiz
+export default Quiz

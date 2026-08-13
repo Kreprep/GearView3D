@@ -90,17 +90,6 @@ model PartCategory {
   sortOrder Int    @default(0)
 }
 
-// One question of the Parts Identification practice quiz. `options` is an array
-// of strings and `answer` must be one of them.
-model PracticeQuestion {
-  id        String @id
-  prompt    String
-  options   Json
-  answer    String
-  sortOrder Int    @default(0)
-  draft     Json?
-}
-
 // Detail card shown when a part/hotspot is clicked. `description` is markdown.
 // Ids overlap Part ids but also include walk-around-only hotspots
 // (hydraulic-hoses, ignition, horn, ...), so this is intentionally not a
@@ -221,14 +210,29 @@ model ChecklistItem {
 }
 
 // `options` is an array of { id, text, sortOrder } matching the frontend shape.
+// Every quiz question in the app, module quizzes and parts quizzes alike (the
+// PracticeQuestion table was merged in here). `context` says which one:
+//
+//   'module' - a step of that module's guided simulation; `moduleId` is set and
+//              attempts land in progress.quizzes[moduleSlug]
+//   'parts'  - the quiz step of that equipment's parts/hotspot page;
+//              `moduleId` is null
+//
+// `options` is an array of plain strings and `answer` must be one of them.
+// No draft column: a prompt plus four options is short enough to save
+// immediately, the same call as Module and ChecklistItem.
 model QuizQuestion {
-  id        String @id
-  module    Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  moduleId  Int
-  prompt    String
-  answer    String
-  options   Json
-  sortOrder Int    @default(0)
+  id          String  @id
+  equipmentId String  @default("forklift")
+  context     String  @default("module")
+  module      Module? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId    Int?
+  prompt      String
+  answer      String
+  options     Json
+  sortOrder   Int     @default(0)
+
+  @@index([equipmentId, context])
 }
 
 // One progress document per user, same JSON shape the frontend keeps in

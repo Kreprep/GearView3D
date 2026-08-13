@@ -2,16 +2,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { useProgress } from './hooks/useProgress'
 import PageLayout from './components/PageLayout'
 import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
-import { getEquipment, getEquipmentHotspots, getParts, getTrainingModules } from './lib/api'
-import { getGenericHotspotProgress, getGenericModuleProgress, getGenericOverallProgress } from './lib/progressService'
+import { getEquipment, getEquipmentHotspots, getParts, getQuizQuestions, getTrainingModules } from './lib/api'
+import {
+  getGenericModuleProgress,
+  getGenericOverallProgress,
+  getGenericPartsProgress,
+  getPartsQuizAttempts,
+} from './lib/progressService'
 import { routes } from './lib/router'
 import './AssessmentPage.css'
 
 // The final-assessment page for every equipment. The layout is shared; what
 // varies per equipment is where the "parts" numbers come from: Forklift's
-// parts progress is the Part-table-based summary.parts (plus its parts
-// practice quiz), while other equipment reads its EquipmentHotspot rows.
-// The fork disappears once parts practice becomes per-equipment.
+// parts progress is the Part-table-based summary.parts, while other equipment
+// reads its EquipmentHotspot rows. Both average in that equipment's parts quiz
+// when it has one.
 function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
   const isForklift = equipmentId === 'forklift'
   const { summary } = useProgress()
@@ -19,6 +24,7 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
   const [modules, setModules] = useState([])
   const [hotspots, setHotspots] = useState([])
   const [parts, setParts] = useState([])
+  const [hasPartsQuiz, setHasPartsQuiz] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,11 +34,13 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
       getEquipment(),
       getTrainingModules(equipmentId),
       isForklift ? getParts() : getEquipmentHotspots(equipmentId),
+      getQuizQuestions({ equipment: equipmentId, context: 'parts' }).catch(() => []),
     ])
-      .then(([equipmentRows, moduleRows, partOrHotspotRows]) => {
+      .then(([equipmentRows, moduleRows, partOrHotspotRows, partsQuestions]) => {
         if (cancelled) return
         setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
         setModules(moduleRows)
+        setHasPartsQuiz(partsQuestions.length > 0)
         if (isForklift) {
           setParts(partOrHotspotRows)
         } else {
@@ -53,8 +61,12 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
   const hasPartsSection = isForklift || hotspotIds.length > 0
 
   const moduleProgress = isForklift ? summary.equipment : getGenericModuleProgress(summary.raw, moduleSlugs)
-  const partsProgress = isForklift ? summary.parts : getGenericHotspotProgress(summary.raw, hotspotIds)
-  const overall = isForklift ? summary.overall : getGenericOverallProgress(summary.raw, moduleSlugs, hotspotIds)
+  const partsProgress = isForklift
+    ? summary.parts
+    : getGenericPartsProgress(summary.raw, hotspotIds, equipmentId, hasPartsQuiz)
+  const overall = isForklift
+    ? summary.overall
+    : getGenericOverallProgress(summary.raw, moduleSlugs, hasPartsSection ? partsProgress : null)
 
   const moduleLabels = useMemo(
     () => Object.fromEntries(modules.map((module) => [module.slug, module.title])),
@@ -64,7 +76,7 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
     .filter(([moduleSlug]) => moduleSlugs.includes(moduleSlug))
     .flatMap(([moduleSlug, attempts]) => attempts.map((attempt) => ({ ...attempt, moduleSlug })))
   const viewedPartSet = new Set(summary.viewedParts)
-  const latestPartsPractice = isForklift ? summary.partsPracticeAttempts[0] : null
+  const latestPartsQuiz = getPartsQuizAttempts(summary.raw, equipmentId)[0]
 
   const requiredComplete = moduleProgress === 100 && (!hasPartsSection || partsProgress === 100)
   const recommendedAction = requiredComplete
@@ -175,9 +187,9 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
           <article>
             <h3>Recommended Next Action</h3>
             <p>{recommendedAction}</p>
-            {isForklift && (
+            {(isForklift || hasPartsQuiz) && (
               <p>
-                Parts practice: {latestPartsPractice ? `${latestPartsPractice.score}/${latestPartsPractice.total} (${latestPartsPractice.percentage}%)` : 'not attempted'}.
+                Parts quiz: {latestPartsQuiz ? `${latestPartsQuiz.score}/${latestPartsQuiz.total} (${latestPartsQuiz.percentage}%)` : 'not attempted'}.
               </p>
             )}
           </article>

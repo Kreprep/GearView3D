@@ -63,10 +63,10 @@ const moduleFields = ['title', 'fullTitle', 'subtitle', 'description', 'imageUrl
 // and blank keys mean "fall back to the coded default".
 const equipmentFields = ['title', 'description', 'modelUrl', 'imageUrl', 'sortOrder', 'available', 'content']
 const checklistFields = ['text', 'sortOrder']
-const practiceFields = ['prompt', 'options', 'answer', 'sortOrder']
+const quizFields = ['prompt', 'options', 'answer', 'sortOrder']
 const partCategoryFields = ['label', 'sortOrder']
 
-// Parts, part details and practice questions follow the same rule as courses:
+// Parts and part details follow the same rule as courses:
 // the columns are what learners see and `draft` is the admin's pending edit as
 // a whole payload. A draft merges over whatever is already pending, so editing
 // one field twice never discards the other.
@@ -79,12 +79,13 @@ function publishedFrom(row, fields) {
   return { ...pick(row.draft, fields), draft: null }
 }
 
-function quizOptions(questionId, options = []) {
-  return options.map((option, index) => ({
-    id: `${questionId}-option-${index + 1}`,
-    text: typeof option === 'string' ? option : option.text,
-    sortOrder: index + 1,
-  }))
+// Options are stored as plain strings (`answer` is one of them). Rows written
+// before the practice/quiz merge held { id, text, sortOrder } objects, so an
+// editor still holding one of those is flattened rather than rejected.
+function normalizeOptions(options = []) {
+  return (Array.isArray(options) ? options : [])
+    .map((option) => (typeof option === 'string' ? option : option?.text || ''))
+    .filter(Boolean)
 }
 
 router.get('/content', async (req, res) => {
@@ -94,7 +95,6 @@ router.get('/content', async (req, res) => {
     parts,
     partDetails,
     partCategories,
-    practiceQuestions,
     checklists,
     quizQuestions,
     users,
@@ -105,9 +105,8 @@ router.get('/content', async (req, res) => {
     prisma.part.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.partDetail.findMany(),
     prisma.partCategory.findMany({ orderBy: { sortOrder: 'asc' } }),
-    prisma.practiceQuestion.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.checklistItem.findMany({ orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] }),
-    prisma.quizQuestion.findMany({ orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] }),
+    prisma.quizQuestion.findMany({ orderBy: [{ equipmentId: 'asc' }, { context: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.user.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.progressSnapshot.findMany({ include: { user: true } }),
   ])
@@ -129,7 +128,6 @@ router.get('/content', async (req, res) => {
     parts,
     partDetails: Object.fromEntries(partDetails.map((detail) => [detail.id, detail])),
     partCategories,
-    practiceQuestions,
     checklists,
     quizQuestions,
     users: users.map(publicUser),
@@ -215,65 +213,6 @@ router.post('/part-details/:id/publish', async (req, res) => {
 router.post('/part-details/:id/revert', async (req, res) => {
   const detail = await prisma.partDetail.update({ where: { id: req.params.id }, data: { draft: null } })
   res.json({ detail })
-})
-
-// Parts Identification practice quiz. Same draft/publish rule as parts.
-router.post('/practice-questions', async (req, res) => {
-  const payload = req.body || {}
-  if (!payload.prompt) {
-    return res.status(400).json({ error: 'Question prompt is required' })
-  }
-
-  const last = await prisma.practiceQuestion.findFirst({ orderBy: { sortOrder: 'desc' } })
-  const question = await prisma.practiceQuestion.create({
-    data: {
-      id: payload.id || `question-${Date.now()}`,
-      prompt: payload.prompt,
-      options: payload.options || [],
-      answer: payload.answer || '',
-      sortOrder: (last?.sortOrder || 0) + 1,
-    },
-  })
-  res.json({ question })
-})
-
-router.patch('/practice-questions/:id', async (req, res) => {
-  const current = await prisma.practiceQuestion.findUnique({ where: { id: req.params.id } })
-  if (!current) return res.status(404).json({ error: 'Record not found' })
-
-  const question = await prisma.practiceQuestion.update({
-    where: { id: req.params.id },
-    data: { draft: mergedDraft(current, req.body, practiceFields) },
-  })
-  res.json({ question })
-})
-
-router.post('/practice-questions/:id/publish', async (req, res) => {
-  const current = await prisma.practiceQuestion.findUnique({ where: { id: req.params.id } })
-  const data = publishedFrom(current, practiceFields)
-  if (!data) return res.status(400).json({ error: 'There is no draft to publish' })
-
-  // An answer that is not one of the options would be unanswerable, so this is
-  // checked at publish time rather than while the admin is still typing.
-  if (!(data.options || []).includes(data.answer)) {
-    return res.status(400).json({ error: 'The answer must be one of the options' })
-  }
-
-  const question = await prisma.practiceQuestion.update({ where: { id: req.params.id }, data })
-  res.json({ question })
-})
-
-router.post('/practice-questions/:id/revert', async (req, res) => {
-  const question = await prisma.practiceQuestion.update({
-    where: { id: req.params.id },
-    data: { draft: null },
-  })
-  res.json({ question })
-})
-
-router.delete('/practice-questions/:id', async (req, res) => {
-  await prisma.practiceQuestion.delete({ where: { id: req.params.id } })
-  res.json({ deleted: true })
 })
 
 // Category rows are a short list of labels with no learner-visible body text,
@@ -433,10 +372,54 @@ router.delete('/checklist-items/:id', async (req, res) => {
   res.json({ deleted: true })
 })
 
+// Quiz questions, module and parts alike - one table, one editor. A parts
+// question carries `equipmentId` and no module; a module question is scoped by
+// `moduleId` and inherits that module's equipment.
+router.post('/quiz-questions', async (req, res) => {
+  const payload = req.body || {}
+  if (!payload.prompt?.trim()) {
+    return res.status(400).json({ error: 'Question prompt is required' })
+  }
+
+  const context = payload.context === 'parts' ? 'parts' : 'module'
+  let equipmentId = payload.equipmentId
+  let moduleId = null
+
+  if (context === 'module') {
+    const module = payload.moduleId
+      ? await prisma.module.findUnique({ where: { id: Number(payload.moduleId) } })
+      : null
+    if (!module) return res.status(400).json({ error: 'Unknown module' })
+    moduleId = module.id
+    equipmentId = module.equipmentId
+  } else if (!equipmentId) {
+    return res.status(400).json({ error: 'equipmentId is required for a parts quiz question' })
+  }
+
+  const last = await prisma.quizQuestion.findFirst({
+    where: { context, ...(moduleId ? { moduleId } : { equipmentId }) },
+    orderBy: { sortOrder: 'desc' },
+  })
+
+  const question = await prisma.quizQuestion.create({
+    data: {
+      id: payload.id || `${context === 'parts' ? `${equipmentId}-parts` : moduleId}-question-${Date.now()}`,
+      equipmentId,
+      context,
+      moduleId,
+      prompt: payload.prompt.trim(),
+      answer: payload.answer || '',
+      options: normalizeOptions(payload.options),
+      sortOrder: (last?.sortOrder || 0) + 1,
+    },
+  })
+  res.json({ question })
+})
+
 router.patch('/quiz-questions/:id', async (req, res) => {
-  const data = pick(req.body, ['prompt', 'answer', 'sortOrder'])
+  const data = pick(req.body, quizFields)
   if (req.body?.options) {
-    data.options = quizOptions(req.params.id, req.body.options)
+    data.options = normalizeOptions(req.body.options)
   }
   const question = await prisma.quizQuestion.update({
     where: { id: req.params.id },

@@ -112,7 +112,11 @@ function emptyProgress() {
     checklists: {},
     parts: {
       viewedPartIds: [],
+      // Forklift's parts-quiz attempts, under their original key. Every other
+      // equipment's live in `quizzes`, keyed by equipment id - see
+      // getLatestQuizAttempt().
       practiceAttempts: [],
+      quizzes: {},
     },
     quizzes: {},
     simulations: {},
@@ -128,6 +132,7 @@ function normalizeProgress(progress) {
     parts: {
       viewedPartIds: progress?.parts?.viewedPartIds || [],
       practiceAttempts: progress?.parts?.practiceAttempts || [],
+      quizzes: progress?.parts?.quizzes || {},
     },
     quizzes: progress?.quizzes || {},
     simulations: progress?.simulations || {},
@@ -299,10 +304,39 @@ export function getGenericHotspotProgress(progress, hotspotIds) {
   return Math.round((viewedCount / hotspotIds.length) * 100)
 }
 
-export function getGenericOverallProgress(progress, moduleSlugs, hotspotIds) {
+// Parts-quiz attempts for one equipment, newest first. Forklift's are the
+// original `parts.practiceAttempts` list - the key its percentage has always
+// been computed from - and every other equipment's are under
+// `parts.quizzes[equipmentId]`, which is where new per-equipment attempts go.
+export function getPartsQuizAttempts(progress, equipmentId) {
+  if (equipmentId === 'forklift') return progress.parts.practiceAttempts || []
+  return progress.parts.quizzes?.[equipmentId] || []
+}
+
+// The latest attempt for either kind of quiz, given the same `scope` the Quiz
+// component and the API take.
+export function getLatestQuizAttempt(progress, scope) {
+  if (scope?.context === 'parts') return getPartsQuizAttempts(progress, scope.equipment)[0]
+  return progress.quizzes?.[scope?.module]?.[0]
+}
+
+// The parts/hotspot percentage for any equipment other than Forklift: hotspots
+// viewed, averaged with the latest parts-quiz score once that equipment has a
+// quiz. Forklift's equivalent is getPartsProgress().
+export function getGenericPartsProgress(progress, hotspotIds, equipmentId, hasQuiz = false) {
+  const viewed = getGenericHotspotProgress(progress, hotspotIds)
+  if (!hasQuiz) return viewed
+
+  const latest = getPartsQuizAttempts(progress, equipmentId)[0]
+  return Math.round(viewed * 0.5 + (latest ? latest.percentage : 0) * 0.5)
+}
+
+// `partsPercentage` is what getGenericPartsProgress() returned for the same
+// equipment, or null when it has no parts page to average in.
+export function getGenericOverallProgress(progress, moduleSlugs, partsPercentage) {
   const moduleProgress = getGenericModuleProgress(progress, moduleSlugs)
-  if (!hotspotIds.length) return moduleProgress
-  return Math.round((moduleProgress + getGenericHotspotProgress(progress, hotspotIds)) / 2)
+  if (partsPercentage === null || partsPercentage === undefined) return moduleProgress
+  return Math.round((moduleProgress + partsPercentage) / 2)
 }
 
 export function getProgressSummary(progress = getStoredProgress()) {

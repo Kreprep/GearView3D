@@ -1,6 +1,6 @@
 import GuidedChecklist from './GuidedChecklist'
 import MarkdownContent from './MarkdownContent'
-import ModuleQuiz from './ModuleQuiz'
+import Quiz from './Quiz'
 import './ModuleChecklistStep.css'
 
 // The `checklist` and `quiz` step kinds. Unlike every other kind, these render
@@ -22,7 +22,7 @@ export function QuizScene({ content, moduleSlug, title }) {
   return (
     <div className="module-rows-scene">
       <MarkdownContent className="module-rows-intro">{content?.body}</MarkdownContent>
-      <ModuleQuiz moduleSlug={moduleSlug} title={title} />
+      <Quiz scope={{ module: moduleSlug }} title={title} emptyMessage="No quiz questions are available for this module yet." />
     </div>
   )
 }
