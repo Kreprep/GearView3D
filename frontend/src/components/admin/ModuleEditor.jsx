@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { adminCreateCourse, adminListCourses, adminReorderCourses, adminUpdateModule } from '../../lib/api'
 import ChecklistAdmin from './ChecklistAdmin'
 import CourseEditor from './CourseEditor'
+import EquipmentHotspotAdmin from './EquipmentHotspotAdmin'
 import QuizAdmin from './QuizAdmin'
+import WalkAroundHotspotAdmin from './WalkAroundHotspotAdmin'
 import './CourseAdmin.css'
 
 // Learner-facing names for the step kinds. The DB values stay as they are;
@@ -23,6 +25,8 @@ const KIND_LABELS = {
 // renders them rather than in tabs of their own.
 function ModuleEditor({
   module,
+  equipmentId,
+  modelUrl,
   isForklift,
   checklists,
   quizQuestions,
@@ -116,19 +120,24 @@ function ModuleEditor({
       )
     }
 
-    // Checklist and quiz steps render the module's own rows, so their panel is
-    // those rows plus the step's intro copy (edited in CourseEditor above).
+    // Checklist, quiz and walk-around steps render rows that belong to the
+    // module or the equipment, so their panel is the step's own editor plus
+    // those rows.
+    const stepEditor = () => (
+      <CourseEditor
+        key={selected.id}
+        course={selected}
+        isForklift={isForklift}
+        onCourseChanged={(course) => setCourses((current) => current.map((entry) => (entry.id === course.id ? course : entry)))}
+        onCourseDeleted={(courseId) => { setCourses((current) => current.filter((entry) => entry.id !== courseId)); setSelectedId(null) }}
+        onMessage={onMessage}
+      />
+    )
+
     if (selected.kind === 'checklist') {
       return (
         <>
-          <CourseEditor
-            key={selected.id}
-            course={selected}
-            isForklift={isForklift}
-            onCourseChanged={(course) => setCourses((current) => current.map((entry) => (entry.id === course.id ? course : entry)))}
-            onCourseDeleted={(courseId) => { setCourses((current) => current.filter((entry) => entry.id !== courseId)); setSelectedId(null) }}
-            onMessage={onMessage}
-          />
+          {stepEditor()}
           <ChecklistAdmin
             moduleId={module.id}
             items={checklists}
@@ -139,17 +148,47 @@ function ModuleEditor({
       )
     }
 
+    // A walk-around step's markers are the equipment's inspection hotspots, so
+    // they are placed here, beside the checks that reference them - Forklift's
+    // own WalkAroundHotspot rows, or (for any other equipment) the shared
+    // EquipmentHotspot rows, which are edited under Parts Identification.
+    if (selected.kind === 'walk-around') {
+      return (
+        <>
+          {stepEditor()}
+          <section className="admin-panel">
+            <h2>Inspection Hotspots</h2>
+            {isForklift ? (
+              <>
+                <p className="admin-panel-note">
+                  The markers this step shows on the model. Click the model to place one, or drag a marker to move
+                  it; each has its own draft and publish.
+                </p>
+                <WalkAroundHotspotAdmin onMessage={onMessage} />
+              </>
+            ) : (
+              <>
+                <p className="admin-panel-note">
+                  This equipment&apos;s walk-around steps use the hotspots edited under Parts Identification, so a
+                  marker placed there shows up here too.
+                </p>
+                <EquipmentHotspotAdmin
+                  key={equipmentId}
+                  equipmentId={equipmentId}
+                  modelUrl={modelUrl}
+                  onMessage={onMessage}
+                />
+              </>
+            )}
+          </section>
+        </>
+      )
+    }
+
     if (selected.kind === 'quiz') {
       return (
         <>
-          <CourseEditor
-            key={selected.id}
-            course={selected}
-            isForklift={isForklift}
-            onCourseChanged={(course) => setCourses((current) => current.map((entry) => (entry.id === course.id ? course : entry)))}
-            onCourseDeleted={(courseId) => { setCourses((current) => current.filter((entry) => entry.id !== courseId)); setSelectedId(null) }}
-            onMessage={onMessage}
-          />
+          {stepEditor()}
           <QuizAdmin
             scope={{ context: 'module', moduleId: module.id }}
             questions={quizQuestions}
@@ -161,16 +200,7 @@ function ModuleEditor({
       )
     }
 
-    return (
-      <CourseEditor
-        key={selected.id}
-        course={selected}
-        isForklift={isForklift}
-        onCourseChanged={(course) => setCourses((current) => current.map((entry) => (entry.id === course.id ? course : entry)))}
-        onCourseDeleted={(courseId) => { setCourses((current) => current.filter((entry) => entry.id !== courseId)); setSelectedId(null) }}
-        onMessage={onMessage}
-      />
-    )
+    return stepEditor()
   }
 
   return (

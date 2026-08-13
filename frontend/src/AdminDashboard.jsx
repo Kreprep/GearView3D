@@ -16,7 +16,6 @@ import ModuleListAdmin from './components/admin/ModuleListAdmin'
 import PartHotspotAdmin from './components/admin/PartHotspotAdmin'
 import QuizAdmin from './components/admin/QuizAdmin'
 import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
-import WalkAroundHotspotAdmin from './components/admin/WalkAroundHotspotAdmin'
 import {
   adminCreateEquipment,
   adminCreatePartCategory,
@@ -478,6 +477,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             <ModuleEditor
               key={editingModuleSlug}
               module={moduleBySlug[editingModuleSlug]}
+              equipmentId={activeEquipmentId}
+              modelUrl={activeEquipment?.modelUrl}
               isForklift={isForklift}
               checklists={content.checklists}
               quizQuestions={content.quizQuestions}
@@ -579,14 +580,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             />
           </section>
 
-          <section className="admin-panel wide-panel">
-            <h2>Walk-Around Hotspots</h2>
-            <p className="admin-panel-note">
-              The inspection points of the Walk-Around Check simulation - a separate set from the parts above.
-              Click the model to place one, or drag a marker to move it; edits publish separately.
-            </p>
-            <WalkAroundHotspotAdmin onMessage={refreshMessage} />
-          </section>
         </main>
       )}
 

@@ -51,6 +51,9 @@ function PartHotspotAdmin({ parts, partDetails, categories, modelUrl, onPartsCha
   const stored = parts.find((entry) => entry.id === selectedId) || null
 
   const selectPart = (row) => {
+    if (row.id === selectedId) return
+    if (dirty && !window.confirm('Discard the unsaved changes to this part?')) return
+
     setSelectedId(row.id)
     setPart(editableRow(row))
     setDetail(detailFor(row, partDetails))
@@ -59,6 +62,9 @@ function PartHotspotAdmin({ parts, partDetails, categories, modelUrl, onPartsCha
   }
 
   const selectDetailOnly = (entry) => {
+    if (entry.id === selectedId) return
+    if (dirty && !window.confirm('Discard the unsaved changes to this part?')) return
+
     setSelectedId(entry.id)
     setPart(null)
     setDetail(editableRow(entry))
@@ -177,6 +183,31 @@ function PartHotspotAdmin({ parts, partDetails, categories, modelUrl, onPartsCha
 
   const position = part?.position || [0, 0.3, 0]
 
+  // Every part's marker is on the model, not just the selected one: placing a
+  // spot is a judgement about where it sits relative to its neighbours. The
+  // selected part shows its live (possibly unsaved) position; clicking any
+  // other marker switches the editor to it, and dragging moves whichever one
+  // is selected.
+  const markers = sortedParts.map((row) => {
+    const source = editableRow(row)
+    return {
+      id: row.id,
+      label: source.label,
+      position: row.id === selectedId && part ? position : source.position || [0, 0.3, 0],
+    }
+  })
+
+  const handleMarkerSelect = (marker) => {
+    const row = parts.find((entry) => entry.id === marker.id)
+    if (row) selectPart(row)
+  }
+
+  const handleMarkerDrag = (id, next) => {
+    // Only the selected marker moves; a drag that starts on another one has
+    // already selected it through the click above.
+    if (id === selectedId) setPartField({ position: next })
+  }
+
   return (
     <div className="hotspot-admin-body">
       <section className="admin-panel hotspot-list-panel">
@@ -267,13 +298,17 @@ function PartHotspotAdmin({ parts, partDetails, categories, modelUrl, onPartsCha
                       isAdmin
                       adminEditMode
                       placingActive={placing}
-                      hotspots={[{ id: part.id, label: part.label, position }]}
+                      hotspots={markers}
+                      selectedHotspotId={selectedId}
+                      onHotspotSelect={handleMarkerSelect}
                       onPlaceHotspot={(next) => { setPartField({ position: next }); setPlacing(false) }}
-                      onDragHotspot={(_id, next) => setPartField({ position: next })}
+                      onDragHotspot={handleMarkerDrag}
                     />
                   </div>
                   <p className="admin-panel-note">
-                    Position: {position.map((value) => Number(value).toFixed(3)).join(', ')}
+                    Every part is marked on the model. Click a marker to edit that part, drag the selected one to
+                    move it, or use Place part to click a new spot. Position:{' '}
+                    {position.map((value) => Number(value).toFixed(3)).join(', ')}
                   </p>
                 </section>
               )}
