@@ -188,7 +188,7 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
         )}
 
         <div className="assessment-actions">
-          <button onClick={() => onNavigate(`/training/${equipmentId}`)}>Review training modules</button>
+          <button onClick={() => onNavigate(`/training/${equipmentId}/modules`)}>Review training modules</button>
           {hasPartsSection && (
             <button onClick={() => onNavigate(isForklift ? routes.parts : `/training/${equipmentId}/parts`)}>
               Review parts identification
