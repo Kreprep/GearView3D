@@ -1,57 +1,5 @@
-.module-page-container {
-  min-height: 100vh;
-  background: #f4f7fb;
-}
-
-.module-page-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 16px 32px;
-  border-bottom: 1px solid #dbe3ef;
-  background: #ffffff;
-}
-
-.module-title-section h1 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.module-title-section h2 {
-  margin: 2px 0 0;
-  color: #64748b;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.back-button {
-  border: 1px solid #a5f3fc;
-  border-radius: 999px;
-  background: #ecfeff;
-  color: #155e75;
-  font-size: 14px;
-  font-weight: 800;
-  padding: 9px 14px;
-  white-space: nowrap;
-}
-
-.back-button:hover {
-  background: #cffafe;
-}
-
-.module-content {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 390px;
-  gap: 22px;
-  width: min(1760px, 100%);
-  margin: 0 auto;
-  padding: 28px 32px 48px;
-}
+/* Page shell classes (module-page-container/header, back-button,
+   module-content) moved to components/SimulationPageLayout.css. */
 
 .syllabus-section,
 .learning-objectives,
@@ -177,13 +125,6 @@
   position: sticky;
   top: 96px;
   align-self: start;
-}
-
-.wide-simulation-content {
-  display: block;
-  width: 100%;
-  min-height: calc(100vh - 78px);
-  padding: 24px;
 }
 
 .walkaround-scene-wrap {

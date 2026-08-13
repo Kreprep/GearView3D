@@ -8,8 +8,9 @@ import './PageLayout.css'
  * Reference implementations (follow these, not older pages):
  * - Home/root page: TrainingHubPage.jsx (hero + card grid pattern; the single
  *   hub shell for every equipment's /training/:equipmentId, forklift included)
- * - Sub-page nested under a hub: AssessmentPage.jsx, EquipmentUsagePage.jsx,
- *   PartsIdentificationPage.jsx (page-back-row + page-heading pattern)
+ * - Sub-page nested under a hub: GenericAssessmentPage.jsx
+ *   (page-back-row + page-heading pattern)
+ * - Full-width simulation pages use SimulationPageLayout.jsx instead
  * - Intentional exception: NotFoundPage.jsx (centered error card, no PageLayout)
  *
  * --- Pattern A: root/hub page (hero + card grid) ---

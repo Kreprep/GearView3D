@@ -1,12 +1,20 @@
+// Forklift's training pages now route through the same generic
+// /training/:equipmentId/... scheme as every other equipment (parsed in
+// App.jsx), so most keys here are aliases into that scheme. The module keys
+// (walkAround, loadHandling, postOperation, palletTesting) and `equipment`
+// are kept because Course summary rows store their post-Submit destination as
+// one of these keys (see NEXT_ROUTE_OPTIONS in data/courseDefaults.js) -
+// deleting a key would strand saved content. `equipment` points at the hub
+// since the standalone Equipment Usage page was folded into it.
 export const routes = {
   login: '/login',
   catalog: '/catalog',
   forklift: '/training/forklift',
-  equipment: '/training/forklift/equipment',
-  walkAround: '/training/forklift/equipment/walk-around',
-  loadHandling: '/training/forklift/equipment/load-handling',
-  postOperation: '/training/forklift/equipment/post-operation',
-  palletTesting: '/training/forklift/equipment/pallet-testing',
+  equipment: '/training/forklift',
+  walkAround: '/training/forklift/modules/walk-around-check',
+  loadHandling: '/training/forklift/modules/load-handling',
+  postOperation: '/training/forklift/modules/post-operation',
+  palletTesting: '/training/forklift/modules/pallet-testing',
   parts: '/training/forklift/parts',
   assessment: '/training/forklift/assessment',
   admin: '/admin',

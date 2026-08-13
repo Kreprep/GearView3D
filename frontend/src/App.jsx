@@ -2,13 +2,8 @@ import { useEffect, useState } from 'react'
 import LoginPage from './LoginPage'
 import TrainingHubPage from './TrainingHubPage'
 import ModulesPage from './ModulesPage'
-import EquipmentUsagePage from './EquipmentUsagePage'
 import WalkAroundCheckPage from './WalkAroundCheckPage'
-import LoadHandlingPage from './LoadHandlingPage'
-import PostOperationPage from './PostOperationPage'
-import PalletTestingPage from './PalletTestingPage'
 import PartsIdentificationPage from './PartsIdentificationPage'
-import AssessmentPage from './AssessmentPage'
 import GenericModulePage from './GenericModulePage'
 import GenericAssessmentPage from './GenericAssessmentPage'
 import HotspotIdentificationPage from './HotspotIdentificationPage'
@@ -77,6 +72,15 @@ function App() {
     if (isLoggedIn && (path === '/' || path === routes.login)) {
       goTo(routes.catalog, { replace: true })
     }
+
+    // Forklift's training pages used to live under /training/forklift/equipment;
+    // saved bookmarks and history entries for those paths land on the current
+    // /training/forklift/modules/:slug scheme instead.
+    if (isLoggedIn && path.startsWith('/training/forklift/equipment')) {
+      const legacySlug = path.split('/')[4]
+      const target = legacySlug === 'walk-around' ? routes.walkAround : legacySlug ? `/training/forklift/modules/${legacySlug}` : routes.forklift
+      goTo(target, { replace: true })
+    }
   }, [isLoggedIn, path])
 
   const navigate = (nextPath, options) => {
@@ -109,12 +113,10 @@ function App() {
     return <LoginPage onLogin={handleLogin} loginError={loginError} setLoginError={setLoginError} />
   }
 
-  if (path === '/' || path === routes.login) {
+  // Blank frame while a redirect effect above is moving the path (login
+  // bounce, or a legacy /training/forklift/equipment URL).
+  if (path === '/' || path === routes.login || path.startsWith('/training/forklift/equipment')) {
     return null
-  }
-
-  if (path === routes.forklift) {
-    return <TrainingHubPage equipmentId="forklift" user={user} onLogout={handleLogout} onNavigate={navigate} />
   }
 
   if (path === routes.catalog) {
@@ -127,69 +129,23 @@ function App() {
     )
   }
 
-  if (path === routes.equipment) {
-    return (
-      <EquipmentUsagePage
-        moduleName="Forklift"
-        user={user}
-        onLogout={handleLogout}
-        onBack={() => navigate(routes.forklift)}
-        onNavigate={navigate}
-      />
-    )
-  }
-
-  if (path === routes.walkAround) {
-    return <WalkAroundCheckPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
-  }
-
-  if (path === routes.loadHandling) {
-    return <LoadHandlingPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
-  }
-
-  if (path === routes.postOperation) {
-    return <PostOperationPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
-  }
-
-  if (path === routes.palletTesting) {
-    return <PalletTestingPage moduleName="Forklift" user={user} onBack={() => navigate(routes.equipment)} onNavigate={navigate} />
-  }
-
-  if (path === routes.parts) {
-    return (
-      <PartsIdentificationPage
-        moduleName="Forklift"
-        user={user}
-        onLogout={handleLogout}
-        onBack={() => navigate(routes.forklift)}
-        onNavigate={navigate}
-      />
-    )
-  }
-
-  if (path === routes.assessment) {
-    return (
-      <AssessmentPage
-        moduleName="Forklift"
-        user={user}
-        onLogout={handleLogout}
-        onBack={() => navigate(routes.forklift)}
-        onNavigate={navigate}
-      />
-    )
-  }
-
-  // Forklift keeps its own fixed routes above (matched by then); every other
-  // equipment's training pages are data-driven, so this branch parses the
-  // path directly instead of adding an entry per equipment/module to `routes`.
-  if (path.startsWith('/training/') && !path.startsWith('/training/forklift')) {
-    const [, , equipmentId, modulesSegment, moduleSlug] = path.split('/')
+  // Every equipment's training pages - Forklift included - are served from
+  // this one data-driven branch. The only pages still keyed to Forklift are
+  // Walk-Around Check (a hardcoded simulation with no Course-backed steps)
+  // and the richer Parts Identification page; both are matched by slug here
+  // rather than by a fixed route.
+  if (path.startsWith('/training/') && !path.startsWith('/training/forklift/equipment')) {
+    const [, , equipmentId, section, moduleSlug] = path.split('/')
 
     if (!equipmentId) {
       return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
     }
 
-    if (modulesSegment === 'modules' && moduleSlug) {
+    if (section === 'modules' && moduleSlug) {
+      if (equipmentId === 'forklift' && moduleSlug === 'walk-around-check') {
+        return <WalkAroundCheckPage moduleName="Forklift" user={user} onBack={() => navigate(routes.forklift)} onNavigate={navigate} />
+      }
+
       return (
         <GenericModulePage
           equipmentId={equipmentId}
@@ -201,7 +157,17 @@ function App() {
       )
     }
 
-    if (modulesSegment === 'parts') {
+    if (section === 'parts') {
+      if (equipmentId === 'forklift') {
+        return (
+          <PartsIdentificationPage
+            moduleName="Forklift"
+            user={user}
+            onBack={() => navigate(routes.forklift)}
+          />
+        )
+      }
+
       return (
         <HotspotIdentificationPage
           equipmentId={equipmentId}
@@ -211,7 +177,7 @@ function App() {
       )
     }
 
-    if (modulesSegment === 'assessment') {
+    if (section === 'assessment') {
       return (
         <GenericAssessmentPage
           equipmentId={equipmentId}

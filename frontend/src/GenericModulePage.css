@@ -1,0 +1,32 @@
+@import "./WalkAroundCheckPage.css";
+
+.load-scene-wrap {
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.load-task-stack {
+  display: grid;
+  gap: 14px;
+}
+
+/* Fail feedback under a driving step, moved from PalletTestingPage.css when
+   the module pages merged. */
+.pallet-fail-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #7f1d1d;
+  background: rgba(254, 226, 226, 0.95);
+  border: 1px solid rgba(220, 38, 38, 0.45);
+}
+
+.pallet-fail-note strong {
+  color: #991b1b;
+}
+
+
