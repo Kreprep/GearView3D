@@ -101,7 +101,7 @@ Admin routes (log in as the admin account):
 - **Training Content** — pick an equipment (or add one with the box beside the picker), then one of three sections:
   - `/admin/modules` — that equipment's modules: Edit, Move up, Move down, Delete, Add module
   - `/admin/modules/:slug` — the **Module Editor**: the module's card fields plus its ordered steps (Read Up, Driving Course, Walk Around, Checklist, Quiz, Built-in Activity, Completion Summary). Selecting a step edits it in place — a driving step gets the 3D map, a walk-around step its inspection checks / gauges / device tests / defect scenarios, a checklist step its items, a quiz step its questions
-  - `/admin/parts` — parts and their detail cards (Markdown + reference images), drag-to-place hotspots on the 3D model, part categories, the parts quiz, and (Forklift) the walk-around inspection hotspots
+  - `/admin/parts` — the parts list beside the 3D model: add a part, click the model to place its marker or drag one to move it, edit its detail card (Markdown + reference image), then Publish. Also part categories, the parts quiz, and (Forklift) the walk-around inspection hotspots
   - `/admin/settings` — the catalog card, the **Driving Simulation** profile (model, body footprint, GLB rig node names, whether the vehicle has forks) and the **Hub content** (the copy on that equipment's training hub and module list; leave a field blank to use the default). Equipment is also deleted here, once its content is gone
 
 Adding a new equipment needs no code change: create it, give it a model and modules, then tick Available - the catalogue card goes live once it has training behind it.

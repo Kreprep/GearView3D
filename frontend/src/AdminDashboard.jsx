@@ -9,11 +9,11 @@ import {
   Users as UsersIcon,
   Wrench,
 } from 'lucide-react'
-import InteractiveForkliftViewer from './components/InteractiveForkliftViewer'
 import EquipmentHotspotAdmin from './components/admin/EquipmentHotspotAdmin'
 import HubContentEditor from './components/admin/HubContentEditor'
 import ModuleEditor from './components/admin/ModuleEditor'
 import ModuleListAdmin from './components/admin/ModuleListAdmin'
+import PartHotspotAdmin from './components/admin/PartHotspotAdmin'
 import QuizAdmin from './components/admin/QuizAdmin'
 import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
 import WalkAroundHotspotAdmin from './components/admin/WalkAroundHotspotAdmin'
@@ -23,17 +23,10 @@ import {
   adminCreateUser,
   adminDeleteEquipment,
   adminDeletePartCategory,
-  adminDeletePart,
   adminDeleteUser,
   adminListContent,
-  adminPublishPart,
-  adminPublishPartDetail,
-  adminRevertPart,
-  adminRevertPartDetail,
   adminUpdateEquipment,
   adminUpdatePartCategory,
-  adminUpdatePart,
-  adminUpdatePartDetail,
   adminUpdateUser,
 } from './lib/api'
 import { adminModuleRoute, routes } from './lib/router'
@@ -53,15 +46,6 @@ const trailingTabs = [
   [routes.adminUsers, 'Users', UsersIcon],
   [routes.adminReports, 'Reports', BarChart3],
 ]
-
-// Parts, part details and practice questions store the published row in their
-// columns and the admin's pending edit in `draft`. The dashboard always edits
-// the draft when there is one, so reopening a row shows the work in progress
-// rather than the older published values.
-function editableRow(row) {
-  if (!row) return row
-  return row.draft ? { ...row, ...row.draft } : row
-}
 
 function downloadCsv(filename, rows) {
   const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(',')).join('\n')
@@ -105,8 +89,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     activityLogs: [],
     localOnly: true,
   })
-  const [selectedPart, setSelectedPart] = useState(null)
-  const [selectedDetail, setSelectedDetail] = useState(null)
   const [editingEquipment, setEditingEquipment] = useState(null)
   // Which equipment's section is expanded in the nav - the seven sub-tab
   // paths are shared by every equipment, so this (not the URL) decides whose
@@ -115,8 +97,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [editingUser, setEditingUser] = useState(null)
   const [newCategory, setNewCategory] = useState('')
   const [newEquipmentTitle, setNewEquipmentTitle] = useState('')
-  // Placement mode for the selected part's 3D marker.
-  const [placingPart, setPlacingPart] = useState(false)
   const [newUser, setNewUser] = useState({ email: '', fullName: '', role: 'TRAINEE', password: '' })
   const [saveMessage, setSaveMessage] = useState('')
   // Captured once rather than read live, so computing "recent" activity stays
@@ -212,106 +192,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const refreshMessage = (message) => {
     setSaveMessage(message)
     window.setTimeout(() => setSaveMessage(''), 2400)
-  }
-
-  // Selecting a part also loads its detail-card entry (image + markdown
-  // description) so both are edited and saved together.
-  const selectPartForEditing = (part) => {
-    setPlacingPart(false)
-    setSelectedPart(editableRow(part))
-    setSelectedDetail(
-      editableRow(content.partDetails[part.id]) || {
-        id: part.id,
-        title: part.label,
-        subtitle: part.category || '',
-        image: '',
-        description: '',
-      },
-    )
-  }
-
-  const selectDetailForEditing = (detail) => {
-    setSelectedPart(null)
-    setSelectedDetail(editableRow(detail))
-  }
-
-  // Publish and discard work off the selected ids rather than off the `draft`
-  // in state: Publish saves first, and that save has not landed in state by the
-  // time this runs. The API answers 400 when there is nothing pending, which is
-  // the expected case for whichever of the two was not edited.
-  const publishPartAndDetail = async () => {
-    let published = false
-
-    if (selectedPart) {
-      const result = await adminPublishPart(selectedPart.id).catch(() => null)
-      if (result) {
-        replacePart(result.part)
-        published = true
-      }
-    }
-    if (selectedDetail) {
-      const result = await adminPublishPartDetail(selectedDetail.id).catch(() => null)
-      if (result) {
-        replaceDetail(result.detail)
-        published = true
-      }
-    }
-
-    refreshMessage(published ? 'Published - learners see these changes now.' : 'Nothing to publish.')
-  }
-
-  const revertPartAndDetail = async () => {
-    if (!window.confirm('Discard the unpublished changes and go back to the published version?')) return
-
-    if (selectedPart) {
-      const result = await adminRevertPart(selectedPart.id).catch(() => null)
-      if (result) replacePart(result.part)
-    }
-    if (selectedDetail) {
-      const result = await adminRevertPartDetail(selectedDetail.id).catch(() => null)
-      if (result) replaceDetail(result.detail)
-    }
-    refreshMessage('Draft discarded.')
-  }
-
-  const replacePart = (part) => {
-    setContent((current) => ({
-      ...current,
-      parts: current.parts.map((entry) => (entry.id === part.id ? part : entry)),
-    }))
-    setSelectedPart(editableRow(part))
-  }
-
-  const replaceDetail = (detail) => {
-    setContent((current) => ({
-      ...current,
-      partDetails: { ...current.partDetails, [detail.id]: detail },
-    }))
-    setSelectedDetail(editableRow(detail))
-  }
-
-  const handleSaveDetail = async () => {
-    if (!selectedDetail) return null
-    const result = await adminUpdatePartDetail(selectedDetail.id, selectedDetail)
-    replaceDetail(result.detail)
-    return result.detail
-  }
-
-  const handleSavePart = async () => {
-    if (selectedPart) {
-      const result = await adminUpdatePart(selectedPart.id, selectedPart)
-      replacePart(result.part)
-    }
-    await handleSaveDetail()
-    refreshMessage('Draft saved. Publish to show it to learners.')
-  }
-
-  const handleDeletePart = async (partId) => {
-    if (!window.confirm('Delete this part from the admin content list?')) return
-    await adminDeletePart(partId)
-    setContent((current) => ({ ...current, parts: current.parts.filter((part) => part.id !== partId) }))
-    setSelectedPart(null)
-    setSelectedDetail(null)
   }
 
   // Category rows are short labels with no learner-visible body, so they save
@@ -654,13 +534,24 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
 
       {activePath === routes.adminParts && hasModelForActiveEquipment && isForklift && (
         <main className="admin-grid">
-          <section className="admin-panel admin-parts-list">
-            <h2>Forklift Parts</h2>
-            {content.parts.map((part) => (
-              <button key={part.id} type="button" className={`admin-part-button ${selectedPart?.id === part.id ? 'is-active' : ''}`} onClick={() => selectPartForEditing(part)}>
-                {part.label}
-              </button>
-            ))}
+          <section className="admin-panel wide-panel">
+            <h2>Parts Identification</h2>
+            <p className="admin-panel-note">
+              Click a point on the 3D model to place a part&apos;s marker, or drag an existing marker to move it.
+              Edits are saved as a draft; learners keep the published position and text until you press Publish.
+            </p>
+            <PartHotspotAdmin
+              parts={content.parts}
+              partDetails={content.partDetails}
+              categories={content.partCategories}
+              modelUrl={activeEquipment?.modelUrl}
+              onPartsChanged={(parts) => setContent((current) => ({ ...current, parts }))}
+              onPartDetailsChanged={(partDetails) => setContent((current) => ({ ...current, partDetails }))}
+              onMessage={refreshMessage}
+            />
+          </section>
+
+          <section className="admin-panel">
             <h2>Part Categories</h2>
             <p className="admin-panel-note">The filter chips above the parts list on the learner page. A category still used by a part cannot be deleted.</p>
             {content.partCategories.map((category) => (
@@ -674,93 +565,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               <input value={newCategory} onChange={(event) => setNewCategory(event.target.value)} />
             </label>
             <button className="admin-save" onClick={handleAddCategory} disabled={!newCategory.trim()}>Add category</button>
-
-            <h2>Inspection Hotspots</h2>
-            <p className="admin-panel-note">Walk-around checks that are not standalone parts. Each has the same detail card (image + markdown description).</p>
-            {Object.values(content.partDetails)
-              .filter((detail) => !content.parts.some((part) => part.id === detail.id))
-              .map((detail) => (
-                <button key={detail.id} type="button" className={`admin-part-button ${!selectedPart && selectedDetail?.id === detail.id ? 'is-active' : ''}`} onClick={() => selectDetailForEditing(detail)}>
-                  {detail.title}
-                </button>
-              ))}
-          </section>
-          <section className="admin-panel admin-editor">
-            <h2>Part Editor</h2>
-            {selectedPart && (
-              <>
-                <label>Part name<input value={selectedPart.label} onChange={(event) => setSelectedPart({ ...selectedPart, label: event.target.value })} /></label>
-                <label>Category<input value={selectedPart.category || ''} onChange={(event) => setSelectedPart({ ...selectedPart, category: event.target.value })} /></label>
-                <label>Function<textarea value={selectedPart.functionText} onChange={(event) => setSelectedPart({ ...selectedPart, functionText: event.target.value })} /></label>
-                <label>Inspection reminder<textarea value={selectedPart.inspectionReminder || ''} onChange={(event) => setSelectedPart({ ...selectedPart, inspectionReminder: event.target.value })} /></label>
-                <label>Safety note<textarea value={selectedPart.safetyNote} onChange={(event) => setSelectedPart({ ...selectedPart, safetyNote: event.target.value })} /></label>
-                <label>Related module<input value={selectedPart.relatedModule || ''} onChange={(event) => setSelectedPart({ ...selectedPart, relatedModule: event.target.value })} /></label>
-
-                <h3>Hotspot Position</h3>
-                <p className="admin-panel-note">
-                  Click a point on the model to place this part&apos;s marker, or drag the marker itself. The new
-                  position saves with the rest of the draft.
-                </p>
-                <button
-                  type="button"
-                  className={placingPart ? 'admin-save' : ''}
-                  onClick={() => setPlacingPart((value) => !value)}
-                >
-                  {placingPart ? 'Cancel placement' : 'Place on model'}
-                </button>
-                <div className="hotspot-editor-stage">
-                  <InteractiveForkliftViewer
-                    isAdmin
-                    adminEditMode
-                    placingActive={placingPart}
-                    hotspots={[{ id: selectedPart.id, label: selectedPart.label, position: selectedPart.position || [0, 0.3, 0] }]}
-                    onPlaceHotspot={(position) => { setSelectedPart({ ...selectedPart, position }); setPlacingPart(false) }}
-                    onDragHotspot={(_id, position) => setSelectedPart({ ...selectedPart, position })}
-                  />
-                </div>
-                <p className="admin-panel-note">
-                  Position: {(selectedPart.position || [0, 0, 0]).map((value) => Number(value).toFixed(3)).join(', ')}
-                </p>
-              </>
-            )}
-            {selectedDetail ? (
-              <>
-                <h2>Detail Card</h2>
-                <p className="admin-panel-note">Shown when the part is clicked in the 3D viewers (Parts Identification and Walk-Around Check).</p>
-                {!selectedPart && (
-                  <label>Title<input value={selectedDetail.title || ''} onChange={(event) => setSelectedDetail({ ...selectedDetail, title: event.target.value })} /></label>
-                )}
-                <label>Subtitle<input value={selectedDetail.subtitle || ''} onChange={(event) => setSelectedDetail({ ...selectedDetail, subtitle: event.target.value })} /></label>
-                <label>Reference image URL<input value={selectedDetail.image || ''} placeholder="/images/forks.png" onChange={(event) => setSelectedDetail({ ...selectedDetail, image: event.target.value })} /></label>
-                <label>Description (Markdown)
-                  <textarea rows={10} value={selectedDetail.description || ''} onChange={(event) => setSelectedDetail({ ...selectedDetail, description: event.target.value })} />
-                </label>
-                <p className="admin-panel-note">Supports markdown: **bold**, - bullet points, 1. numbered lists, and inline images anywhere via ![alt](/images/example.png).</p>
-                {(selectedPart?.draft || selectedDetail?.draft) && (
-                  <p className="admin-panel-note admin-draft-note">
-                    Unpublished draft - learners still see the published version until you press Publish.
-                  </p>
-                )}
-                <div className="admin-row-actions">
-                  {selectedPart ? (
-                    <>
-                      <button onClick={handleSavePart}>Save draft</button>
-                      <button className="admin-save" onClick={async () => { await handleSavePart(); await publishPartAndDetail() }}>Publish</button>
-                      {(selectedPart.draft || selectedDetail?.draft) && (
-                        <button onClick={revertPartAndDetail}>Discard draft</button>
-                      )}
-                      <button onClick={() => handleDeletePart(selectedPart.id)}>Delete part</button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={async () => { await handleSaveDetail(); refreshMessage('Draft saved.') }}>Save draft</button>
-                      <button className="admin-save" onClick={async () => { await handleSaveDetail(); await publishPartAndDetail() }}>Publish</button>
-                      {selectedDetail.draft && <button onClick={revertPartAndDetail}>Discard draft</button>}
-                    </>
-                  )}
-                </div>
-              </>
-            ) : <p>Select a forklift part or inspection hotspot to edit its detail card.</p>}
           </section>
 
           <section className="admin-panel wide-panel">
