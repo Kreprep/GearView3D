@@ -18,6 +18,7 @@ import {
   phaseStateFor,
   withPhaseState,
 } from './lib/walkAroundStep'
+import { resolveVehicleProfile } from './lib/vehicleProfile'
 import { useInspectionHotspots } from './hooks/useInspectionHotspots'
 import { useModuleCourses } from './hooks/useModuleCourses'
 import { useModuleRecord } from './hooks/useModuleRecord'
@@ -44,10 +45,11 @@ function unique(items) {
 // driving, checklist, quiz, activity, summary), so the only module page left
 // outside it is Forklift's hardcoded Walk-Around Check.
 //
-// `driving`-kind steps render through DrivingSimulationViewer, which still
-// defaults to forklift.glb when no equipment has its own model configured -
-// an admin adding a driving step for equipment with no model of its own sees
-// Forklift's model rather than a broken viewer.
+// `driving`-kind steps render through DrivingSimulationViewer with this
+// equipment's vehicle profile (model, rig node names, footprint, HUD copy,
+// fail messages - see lib/vehicleProfile.js). An equipment with no model of
+// its own falls back to forklift.glb, so a driving step is never an empty
+// scene; one whose model has no rig nodes simply drives as a solid body.
 function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
   const isForklift = equipmentId === 'forklift'
@@ -73,7 +75,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   const [activeDeviceEffect, setActiveDeviceEffect] = useState(null)
   const [activeScenarioId, setActiveScenarioId] = useState(null)
   const [partDetails, setPartDetails] = useState({})
-  const [equipmentModelUrl, setEquipmentModelUrl] = useState('')
+  const [equipmentRecord, setEquipmentRecord] = useState(null)
   const deviceEffectTimer = useRef(null)
   const engineStartTimer = useRef(null)
   const legacyStepFields = legacyStepFieldsFor(moduleSlug)
@@ -86,18 +88,23 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     hasWalkAround,
   )
 
-  // Only walk-around steps need the equipment's own model and the editable
-  // part-detail cards, so nothing else pays for the requests.
-  useEffect(() => {
-    if (!hasWalkAround) return undefined
+  // Walk-around and driving steps both need the equipment row - the first for
+  // its model, the second for its vehicle profile - and only walk-around steps
+  // need the editable part-detail cards.
+  const hasDriving = steps.some((step) => step.kind === 'driving')
 
-    getPartDetails().then(setPartDetails).catch(() => {})
+  useEffect(() => {
+    if (!hasWalkAround && !hasDriving) return undefined
+
     getEquipment()
-      .then((rows) => setEquipmentModelUrl(rows.find((row) => row.id === equipmentId)?.modelUrl || ''))
+      .then((rows) => setEquipmentRecord(rows.find((row) => row.id === equipmentId) || null))
       .catch(() => {})
+    if (hasWalkAround) getPartDetails().then(setPartDetails).catch(() => {})
 
     return undefined
-  }, [hasWalkAround, equipmentId])
+  }, [hasWalkAround, hasDriving, equipmentId])
+
+  const vehicleProfile = useMemo(() => resolveVehicleProfile(equipmentRecord), [equipmentRecord])
 
   useEffect(() => () => {
     clearTimeout(deviceEffectTimer.current)
@@ -447,7 +454,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
         <WalkAroundScene
           data={step.walkAround}
           hotspots={hotspots}
-          modelUrl={equipmentModelUrl || undefined}
+          modelUrl={equipmentRecord?.modelUrl || undefined}
           state={phaseStateFor(simulation, step.id)}
           engineStarted={simulation.engineStarted}
           activeScenarioId={scenarioIdFor(step)}
@@ -479,7 +486,12 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     if (course) {
       return (
         <div className="load-scene-wrap">
-          <DrivingSimulationViewer course={course} onEvent={handleDrivingEvent(currentStep)} isAdmin={isAdmin} />
+          <DrivingSimulationViewer
+            profile={vehicleProfile}
+            course={course}
+            onEvent={handleDrivingEvent(currentStep)}
+            isAdmin={isAdmin}
+          />
         </div>
       )
     }

@@ -1,5 +1,5 @@
 {
-  "exportedAt": "2026-08-13T20:14:26.668Z",
+  "exportedAt": "2026-08-13T20:26:49.559Z",
   "counts": {
     "Equipment": 3,
     "Module": 5,
@@ -20,7 +20,8 @@
         "imageUrl": "/images/forklift-card.png",
         "sortOrder": 1,
         "available": true,
-        "content": null
+        "content": null,
+        "simConfig": null
       },
       {
         "id": "backhoe",
@@ -30,7 +31,8 @@
         "imageUrl": "",
         "sortOrder": 2,
         "available": true,
-        "content": null
+        "content": null,
+        "simConfig": null
       },
       {
         "id": "crane",
@@ -40,7 +42,8 @@
         "imageUrl": "",
         "sortOrder": 3,
         "available": false,
-        "content": null
+        "content": null,
+        "simConfig": null
       }
     ],
     "Module": [

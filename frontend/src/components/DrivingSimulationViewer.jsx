@@ -5,9 +5,14 @@ import { DoubleSide, Quaternion, Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Compass, RotateCcw } from 'lucide-react'
 import { buildForkliftRig, REAR_WHEEL_KEYS } from '../lib/forkliftRig'
+import { DEFAULT_VEHICLE_MODEL_URL } from '../data/vehicleProfile'
+import { resolveVehicleProfile } from '../lib/vehicleProfile'
 import './DrivingSimulationViewer.css'
 
-const DEFAULT_MODEL_URL = '/models/forklift.glb'
+const DEFAULT_MODEL_URL = DEFAULT_VEHICLE_MODEL_URL
+// The forklift's own numbers, used whenever no profile is passed (the admin
+// preview, mostly). resolveVehicleProfile() fills these in per equipment.
+const DEFAULT_PROFILE = resolveVehicleProfile(null)
 
 const CONE_MODEL_URL = '/models/traffic-cone.glb'
 const PALLET_MODEL_LIGHT_URL = '/models/wooden-pallet.glb'
@@ -94,11 +99,9 @@ const CONE_FALL_ANGLE = 1.45
 const WALL_THICKNESS = 0.05 // matches CourseDecorations' wall boxGeometry
 const WALL_HALF_THICKNESS = WALL_THICKNESS / 2
 const WALL_HIT_MARGIN = 0.12
-// Parked-forklift footprint (half-extents), from forklift.glb's measured body
-// bounding box - width along local X, length along local Z, same convention
-// as the wall rectangle check.
-const FORKLIFT_HALF_WIDTH = 0.15
-const FORKLIFT_HALF_LENGTH = 0.45
+// Body footprint (half-extents) comes from the equipment's vehicle profile -
+// width along local X, length along local Z, same convention as the wall
+// rectangle check. The defaults are forklift.glb's measured bounding box.
 const BODY_SAMPLE_OFFSETS = [0.38, 0, -0.32]
 const SUDDEN_STOP_DECEL = 1.6
 const SUDDEN_STOP_MIN_SPEED = 0.85
@@ -113,39 +116,6 @@ const PARKING_MARGIN_Z = 0.105
 const PARKING_ALIGN_TOLERANCE = 0.26
 const PARKING_SPEED_EPSILON = 0.03
 const PARKING_FORK_MAX = 0.02
-
-const FAIL_MESSAGES = {
-  cone: {
-    title: 'Cone Struck',
-    message: 'You hit a traffic cone. Treat cones as people or racking - reset the attempt and keep the lane clear.',
-  },
-  wall: {
-    title: 'Wall Struck',
-    message: 'You hit a wall or racking upright. Keep clear of structures while driving - reset the attempt and watch your clearance.',
-  },
-  forklift: {
-    title: 'Forklift Struck',
-    message: 'You clipped a parked forklift. Ease in slowly and keep clearance on both sides - reset the attempt and try again.',
-  },
-  overload: {
-    title: 'Tip-Over: Overloaded',
-    message: 'That pallet exceeds the rated capacity, so the forklift tipped forward. Reset and choose a load within capacity.',
-  },
-  'load-dropped': {
-    title: 'Load Thrown Off',
-    message: 'Braking hard at speed threw the pallet off the forks. Reset, slow down early, and brake gently while loaded.',
-  },
-}
-
-const KEY_LEGEND = [
-  { key: 'w', caption: 'Accelerate' },
-  { key: 'a', caption: 'Steer Left' },
-  { key: 's', caption: 'Brake' },
-  { key: 'd', caption: 'Steer Right' },
-  { key: 'e', caption: 'Engine' },
-  { key: 'r', caption: 'Raise Forks' },
-  { key: 'f', caption: 'Lower Forks' },
-]
 
 const PALLET_STATE_LABELS = {
   ground: 'Pallet: On Ground',
@@ -337,10 +307,10 @@ function ModelProp({ url }) {
   return <primitive object={cloned} scale={scale} position={position} />
 }
 
-// Static parked forklift used as a parking obstacle (park-between-forklifts
-// scenario) - same model as the drivable one, just not wired to the rig/keys.
-function ParkedForklift({ position, rotation }) {
-  const { scene } = useGLTF(DEFAULT_MODEL_URL)
+// Static parked vehicle used as a parking obstacle (park-between-vehicles
+// scenario) - the profile's parked model, just not wired to the rig/keys.
+function ParkedVehicle({ position, rotation, modelUrl }) {
+  const { scene } = useGLTF(modelUrl || DEFAULT_MODEL_URL)
   const cloned = useMemo(() => {
     const next = cloneSkeleton(scene)
     next.traverse((object) => {
@@ -356,7 +326,7 @@ function ParkedForklift({ position, rotation }) {
 // Renders decorative course furniture. Cones are not handled here - they're
 // unified with course.obstacles into `liveCones` so every rendered cone is a
 // live collider (see DrivingScene), rendered once via <ObstacleCones>.
-function CourseDecorations({ decorations }) {
+function CourseDecorations({ decorations, parkedModelUrl }) {
   return (
     <group>
       {decorations.map((item, index) => {
@@ -377,7 +347,12 @@ function CourseDecorations({ decorations }) {
 
         if (item.type === 'forklift') {
           return (
-            <ParkedForklift key={index} position={[item.position[0], item.position[1] ?? 0, item.position[2]]} rotation={item.rotation} />
+            <ParkedVehicle
+              key={index}
+              modelUrl={parkedModelUrl}
+              position={[item.position[0], item.position[1] ?? 0, item.position[2]]}
+              rotation={item.rotation}
+            />
           )
         }
 
@@ -499,7 +474,7 @@ function DrivingLoadingPanel() {
 }
 
 function DrivingScene({
-  modelUrl,
+  profile,
   course,
   forkliftGroupRef,
   posRef,
@@ -518,8 +493,10 @@ function DrivingScene({
   onParkingUpdate,
   freeCam,
 }) {
-  const { scene } = useGLTF(modelUrl)
+  const { scene } = useGLTF(profile.modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
+  const halfWidth = profile.footprint.halfWidth
+  const halfLength = profile.footprint.halfLength
   const rigRef = useRef(null)
   const { camera } = useThree()
   const checkpoints = course.checkpoints || []
@@ -537,8 +514,8 @@ function DrivingScene({
   )
 
   useEffect(() => {
-    rigRef.current = buildForkliftRig(forklift)
-  }, [forklift])
+    rigRef.current = buildForkliftRig(forklift, profile.rig)
+  }, [forklift, profile.rig])
 
   useEffect(() => {
     forklift.traverse((object) => {
@@ -713,8 +690,8 @@ function DrivingScene({
         const dz = cone.position[2] - posRef.current.z
         const localRight = dx * forwardZ - dz * forwardX
         const localForward = dx * forwardX + dz * forwardZ
-        const edgeRight = localRight - clamp(localRight, -FORKLIFT_HALF_WIDTH, FORKLIFT_HALF_WIDTH)
-        const edgeForward = localForward - clamp(localForward, -FORKLIFT_HALF_LENGTH, FORKLIFT_HALF_LENGTH)
+        const edgeRight = localRight - clamp(localRight, -halfWidth, halfWidth)
+        const edgeForward = localForward - clamp(localForward, -halfLength, halfLength)
         if (Math.hypot(edgeRight, edgeForward) <= CONE_RADIUS) {
           const len = Math.hypot(dx, dz) || 1
           coneSims[i] = { hit: true, angle: 0, dirX: dx / len, dirZ: dz / len }
@@ -747,8 +724,8 @@ function DrivingScene({
         const rot = wall.rotation || 0
         const cosRot = Math.cos(rot)
         const sinRot = Math.sin(rot)
-        const halfThickness = isForklift ? FORKLIFT_HALF_WIDTH : WALL_HALF_THICKNESS
-        const halfLen = isForklift ? FORKLIFT_HALF_LENGTH : (wall.length || 3) / 2
+        const halfThickness = isForklift ? halfWidth : WALL_HALF_THICKNESS
+        const halfLen = isForklift ? halfLength : (wall.length || 3) / 2
         for (const offset of BODY_SAMPLE_OFFSETS) {
           const dx = posRef.current.x + forwardX * offset - wall.position[0]
           const dz = posRef.current.z + forwardZ * offset - wall.position[2]
@@ -1019,7 +996,9 @@ function DrivingScene({
         />
       ))}
 
-      {course.decorations && <CourseDecorations decorations={course.decorations} />}
+      {course.decorations && (
+        <CourseDecorations decorations={course.decorations} parkedModelUrl={profile.parkedModelUrl} />
+      )}
       {liveCones.length > 0 && <ObstacleCones obstacles={liveCones} coneRefs={coneRefs} />}
 
       {pallets.map((palletDef, index) => (
@@ -1048,7 +1027,7 @@ function DrivingScene({
   )
 }
 
-function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, className, isAdmin }) {
+function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, className, isAdmin }) {
   const [freeCam, setFreeCam] = useState(false)
   const start = course.start || { position: [0, 0, 0], heading: 0 }
   const forkliftGroupRef = useRef(null)
@@ -1082,7 +1061,7 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
   }
 
   const handleFail = (reason) => {
-    const info = FAIL_MESSAGES[reason] || { title: 'Attempt Failed', message: 'Reset the attempt and try again.' }
+    const info = profile.failMessages[reason] || { title: 'Attempt Failed', message: 'Reset the attempt and try again.' }
     failInfoRef.current = { reason, ...info }
     setFailInfo({ reason, ...info })
     setCarriedLoad(null)
@@ -1130,7 +1109,7 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
       <Canvas shadows dpr={[1, 1.35]} camera={{ position: [0, 2, -4], fov: 55 }}>
         <Suspense fallback={<DrivingLoadingPanel />}>
           <DrivingScene
-            modelUrl={modelUrl}
+            profile={profile}
             course={course}
             forkliftGroupRef={forkliftGroupRef}
             posRef={posRef}
@@ -1199,7 +1178,7 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
           </button>
         )}
         <div className="driving-keys">
-          {KEY_LEGEND.map(({ key, caption }) => (
+          {profile.keyLegend.map(({ key, caption }) => (
             <div key={key} className="driving-key-wrap">
               <span className={`driving-key ${pressed[key] ? 'active' : ''}`}>{key.toUpperCase()}</span>
               <span className="driving-key-caption">{caption}</span>
@@ -1208,7 +1187,7 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
         </div>
         <p className="driving-hud-help">
           {engineOn
-            ? 'Hold W to accelerate, S to brake or reverse, A / D to steer, R / F to raise or lower the forks.'
+            ? `Hold W to accelerate, S to brake or reverse, A / D to steer${profile.hasForks ? ', R / F to raise or lower the forks' : ''}.`
             : 'Press E to start the engine.'}
         </p>
       </div>
@@ -1216,13 +1195,17 @@ function DrivingSimulationInner({ modelUrl, course, onEvent, onRequestReset, cla
   )
 }
 
-export default function DrivingSimulationViewer({ modelUrl = DEFAULT_MODEL_URL, course, onEvent, className = '', isAdmin = false }) {
+// `profile` is the equipment's vehicle profile (lib/vehicleProfile.js): model,
+// rig node names, body footprint, HUD captions and fail messages. Omitted, it
+// falls back to the forklift defaults - which is also what an equipment with no
+// model of its own gets, so a driving step is never an empty scene.
+export default function DrivingSimulationViewer({ profile = DEFAULT_PROFILE, course, onEvent, className = '', isAdmin = false }) {
   const [resetSeed, setResetSeed] = useState(0)
 
   return (
     <DrivingSimulationInner
       key={`${course.id}-${resetSeed}`}
-      modelUrl={modelUrl}
+      profile={profile}
       course={course}
       onEvent={onEvent}
       onRequestReset={() => setResetSeed((value) => value + 1)}

@@ -57,7 +57,7 @@ const moduleFields = ['title', 'fullTitle', 'subtitle', 'description', 'imageUrl
 // `content` is the hub/module-list copy overrides (frontend
 // data/hubContent.js); it is stored whole, so the client sends the full object
 // and blank keys mean "fall back to the coded default".
-const equipmentFields = ['title', 'description', 'modelUrl', 'imageUrl', 'sortOrder', 'available', 'content']
+const equipmentFields = ['title', 'description', 'modelUrl', 'imageUrl', 'sortOrder', 'available', 'content', 'simConfig']
 const checklistFields = ['text', 'sortOrder']
 const quizFields = ['prompt', 'options', 'answer', 'sortOrder']
 const partCategoryFields = ['label', 'sortOrder']
@@ -248,6 +248,60 @@ router.delete('/part-categories/:id', async (req, res) => {
   res.json({ deleted: true })
 })
 
+// Equipment rows are content too: an admin can add one and build its modules,
+// hotspots and quizzes without a code change or a seed edit.
+router.post('/equipment', async (req, res) => {
+  const payload = req.body || {}
+  const title = String(payload.title || '').trim()
+  if (!title) return res.status(400).json({ error: 'Equipment title is required' })
+
+  const idBase = String(payload.id || title)
+    .trim()
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  let id = idBase || 'equipment'
+  let suffix = 2
+  while (await prisma.equipment.findUnique({ where: { id } })) {
+    id = `${idBase}-${suffix++}`
+  }
+
+  const last = await prisma.equipment.findFirst({ orderBy: { sortOrder: 'desc' }, select: { sortOrder: true } })
+  const equipment = await prisma.equipment.create({
+    data: {
+      id,
+      title,
+      description: payload.description || '',
+      modelUrl: payload.modelUrl || '',
+      imageUrl: payload.imageUrl || '',
+      sortOrder: (last?.sortOrder || 0) + 1,
+      // New equipment starts hidden: the catalogue card stays "Coming Soon"
+      // until an admin has given it content and ticked Available.
+      available: payload.available === true,
+    },
+  })
+  res.json({ equipment })
+})
+
+// Refused while the equipment still owns content, so deleting one is never a
+// silent cascade through a learner's modules.
+router.delete('/equipment/:id', async (req, res) => {
+  const [modules, hotspots, quizQuestions] = await Promise.all([
+    prisma.module.count({ where: { equipmentId: req.params.id } }),
+    prisma.equipmentHotspot.count({ where: { equipmentId: req.params.id } }),
+    prisma.quizQuestion.count({ where: { equipmentId: req.params.id } }),
+  ])
+
+  if (modules || hotspots || quizQuestions) {
+    return res.status(400).json({
+      error: `Delete this equipment's content first: ${modules} module(s), ${hotspots} hotspot(s), ${quizQuestions} quiz question(s).`,
+    })
+  }
+
+  await prisma.equipment.delete({ where: { id: req.params.id } })
+  res.json({ deleted: true })
+})
+
 router.patch('/equipment/:id', async (req, res) => {
   const data = pick(req.body, equipmentFields)
 
@@ -259,6 +313,18 @@ router.patch('/equipment/:id', async (req, res) => {
       ([, value]) => typeof value === 'string' && value.trim() !== '',
     )
     data.content = entries.length ? Object.fromEntries(entries.map(([key, value]) => [key, value.trim()])) : null
+  }
+
+  // Same rule for the vehicle profile (data/vehicleProfile.js): an empty
+  // object means "everything is default", so the column goes back to null.
+  if ('simConfig' in data) {
+    const entries = Object.entries(data.simConfig || {}).filter(([, value]) => {
+      if (value === null || value === undefined || value === '') return false
+      if (Array.isArray(value)) return value.length > 0
+      if (typeof value === 'object') return Object.keys(value).length > 0
+      return true
+    })
+    data.simConfig = entries.length ? Object.fromEntries(entries) : null
   }
 
   const equipment = await prisma.equipment.update({ where: { id: req.params.id }, data })

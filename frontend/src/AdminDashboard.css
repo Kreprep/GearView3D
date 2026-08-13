@@ -159,6 +159,32 @@
   border-color: #0891b2;
 }
 
+.admin-equipment-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.admin-equipment-add input {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  width: 160px;
+}
+
+.admin-equipment-add button {
+  border: 1px dashed #94a3b8;
+  border-radius: 999px;
+  background: transparent;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 12px;
+}
+
 .admin-equipment-picker button.active {
   border-color: #0891b2;
   background: #0891b2;

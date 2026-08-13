@@ -39,6 +39,11 @@ model Equipment {
   // equipment that never overrode it. No draft column: these are short labels,
   // the same reason Module and ChecklistItem save immediately.
   content     Json?
+  // Admin overrides for how this equipment drives in DrivingSimulationViewer -
+  // model, rig node names, body footprint, HUD key captions, fail messages.
+  // See frontend/src/data/vehicleProfile.js for the keys and their defaults;
+  // like `content`, it holds only what an admin changed.
+  simConfig   Json?
 }
 
 model Module {
