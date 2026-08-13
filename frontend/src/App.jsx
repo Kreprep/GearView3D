@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import LoginPage from './LoginPage'
 import TrainingHubPage from './TrainingHubPage'
 import ModulesPage from './ModulesPage'
-import WalkAroundCheckPage from './WalkAroundCheckPage'
 import PartsIdentificationPage from './PartsIdentificationPage'
 import GenericModulePage from './GenericModulePage'
 import ModuleListPage from './ModuleListPage'
@@ -131,10 +130,9 @@ function App() {
   }
 
   // Every equipment's training pages - Forklift included - are served from
-  // this one data-driven branch. The only pages still keyed to Forklift are
-  // Walk-Around Check (a hardcoded simulation with no Course-backed steps)
-  // and the richer Parts Identification page; both are matched by slug here
-  // rather than by a fixed route.
+  // this one data-driven branch. The only page still keyed to Forklift is its
+  // richer Parts Identification page, matched by equipment id here rather than
+  // by a fixed route.
   if (path.startsWith('/training/') && !path.startsWith('/training/forklift/equipment')) {
     const [, , equipmentId, section, moduleSlug] = path.split('/')
 
@@ -155,10 +153,6 @@ function App() {
             onNavigate={navigate}
           />
         )
-      }
-
-      if (equipmentId === 'forklift' && moduleSlug === 'walk-around-check') {
-        return <WalkAroundCheckPage moduleName="Forklift" user={user} onBack={() => navigate(modulesRoute)} onNavigate={navigate} />
       }
 
       return (

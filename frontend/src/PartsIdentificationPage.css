@@ -1,4 +1,4 @@
-@import "./WalkAroundCheckPage.css";
+@import "./components/WalkAroundStep.css";
 
 .parts-scene-wrap {
   position: relative;

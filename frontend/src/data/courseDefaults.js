@@ -9,6 +9,13 @@
 // in backend/prisma/schema.prisma.
 import { courseGoalType } from '../lib/courseGoals.js'
 import { drivingCourses } from './drivingCourse.js'
+import {
+  defectRecognitionScenarios,
+  engineOffInspectionChecks,
+  engineOnControlChecks,
+  engineOnGaugeChecks,
+  safetyDeviceTests,
+} from './inspectionScenarios.js'
 import { moduleScenarioSteps } from './moduleScenarios.js'
 import {
   postOperationReportPrompts,
@@ -17,10 +24,16 @@ import {
 } from './postOperationScenarios.js'
 import { equipmentUsageModules } from './trainingModules.js'
 
-// Walk-around-check is deliberately absent: it is still a fully hardcoded page.
-export const courseModuleSlugs = ['load-handling', 'post-operation', 'pallet-testing']
+export const courseModuleSlugs = ['walk-around-check', 'load-handling', 'post-operation', 'pallet-testing']
 
-export const COURSE_KINDS = ['briefing', 'driving', 'activity', 'checklist', 'quiz', 'summary']
+export const COURSE_KINDS = ['briefing', 'driving', 'walk-around', 'activity', 'checklist', 'quiz', 'summary']
+
+// The three phases a `walk-around` step can run, each its own step row so a
+// module can have any subset of them:
+//   engine-off  - click through the inspection checks, then start the engine
+//   engine-on   - judge the dashboard gauges and test the devices/controls
+//   defect-test - decide whether the equipment in each visual state is usable
+export const WALK_AROUND_PHASES = ['engine-off', 'engine-on', 'defect-test']
 
 // `checklist` and `quiz` steps render the module's ChecklistItem / QuizQuestion
 // rows, which are edited in their own dashboard tabs rather than on the step.
@@ -85,6 +98,20 @@ export function normalizeCourseGeometry(course = {}) {
   }
 }
 
+// The editable payload of a `walk-around` step. Only the lists its phase uses
+// are filled in, but all of them exist so an admin switching phase does not
+// hit undefined.
+export function emptyWalkAroundData(phase = 'engine-off') {
+  return {
+    phase,
+    requireEngineStart: phase === 'engine-off',
+    checks: [],
+    gauges: [],
+    devices: [],
+    scenarios: [],
+  }
+}
+
 export function emptyCourseGeometry() {
   return {
     start: { position: [0, 0, 0], heading: 0 },
@@ -119,6 +146,8 @@ export function emptyCourseContent(kind) {
       }
     case 'activity':
       return { activityId: '' }
+    case 'walk-around':
+      return { body: '' }
     case 'checklist':
       return { body: '', completeMessage: 'Checklist complete.' }
     case 'quiz':
@@ -220,11 +249,50 @@ function lessonMarkdown(moduleSlug) {
   return (lessonModule(moduleSlug)?.lessonContent || []).join('\n\n')
 }
 
+// Which walk-around phase each of Forklift's original step ids became.
+const WALK_AROUND_STEP_PHASES = {
+  'engine-off-inspection': 'engine-off',
+  'engine-on-inspection': 'engine-on',
+  'defect-recognition': 'defect-test',
+}
+
 function stepKind(stepId) {
   if (drivingCourses[stepId]) return 'driving'
+  if (WALK_AROUND_STEP_PHASES[stepId]) return 'walk-around'
   if (stepId === 'briefing') return 'briefing'
   if (stepId === 'summary') return 'summary'
   return 'activity'
+}
+
+// Forklift's inspection content, moved out of data/inspectionScenarios.js and
+// onto the step row that renders it. `hotspotId` defaults to the check's own
+// id, which is how the 3D markers were matched before.
+function walkAroundData(stepId) {
+  const phase = WALK_AROUND_STEP_PHASES[stepId]
+
+  if (phase === 'engine-off') {
+    return {
+      ...emptyWalkAroundData(phase),
+      requireEngineStart: true,
+      checks: engineOffInspectionChecks.map((check) => ({ ...check })),
+    }
+  }
+
+  if (phase === 'engine-on') {
+    return {
+      ...emptyWalkAroundData(phase),
+      gauges: engineOnGaugeChecks.map((gauge) => ({ ...gauge })),
+      devices: [
+        ...safetyDeviceTests.map((device) => ({ ...device, group: 'safety' })),
+        ...engineOnControlChecks.map((control) => ({ ...control, group: 'controls' })),
+      ],
+    }
+  }
+
+  return {
+    ...emptyWalkAroundData(phase),
+    scenarios: defectRecognitionScenarios.map((scenario) => ({ ...scenario })),
+  }
 }
 
 // Briefing and summary ids are namespaced by module because every module has
@@ -270,6 +338,10 @@ function stepContent(moduleSlug, stepId, kind) {
     return activityContent(stepId)
   }
 
+  if (kind === 'walk-around') {
+    return { body: '' }
+  }
+
   return null
 }
 
@@ -297,7 +369,12 @@ export function buildDefaultCourses() {
         instructions: step.instructions || '',
         hint: step.hint || '',
         goalType: kind === 'driving' ? courseGoalType(drivingCourses[step.id]) : 'free',
-        data: kind === 'driving' ? normalizeCourseGeometry(drivingCourses[step.id]) : null,
+        data:
+          kind === 'driving'
+            ? normalizeCourseGeometry(drivingCourses[step.id])
+            : kind === 'walk-around'
+              ? walkAroundData(step.id)
+              : null,
         content: stepContent(moduleSlug, step.id, kind),
       })
     }

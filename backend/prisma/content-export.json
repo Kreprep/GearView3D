@@ -1,12 +1,12 @@
 {
-  "exportedAt": "2026-08-13T17:12:55.312Z",
+  "exportedAt": "2026-08-13T20:14:26.668Z",
   "counts": {
     "Equipment": 3,
     "Module": 5,
     "PartCategory": 4,
     "Part": 10,
     "PartDetail": 26,
-    "Course": 20,
+    "Course": 25,
     "ChecklistItem": 22,
     "QuizQuestion": 19
   },
@@ -16,7 +16,7 @@
         "id": "forklift",
         "title": "Forklift",
         "description": "Learn safe forklift familiarization through guided lessons and a labeled 3D model.",
-        "modelUrl": "/models/Forklift_SEPERATED.glb",
+        "modelUrl": "/models/forklift.glb",
         "imageUrl": "/images/forklift-card.png",
         "sortOrder": 1,
         "available": true,
@@ -56,17 +56,6 @@
         "equipmentId": "forklift"
       },
       {
-        "id": 5,
-        "slug": "backhoe-getting-started",
-        "title": "New Module",
-        "fullTitle": "",
-        "subtitle": "Getting Started",
-        "description": "A starting point for Backhoe Loader training content. Edit this module in the Module Editor to add your own steps.",
-        "imageUrl": "",
-        "sortOrder": 1,
-        "equipmentId": "backhoe"
-      },
-      {
         "id": 2,
         "slug": "load-handling",
         "title": "Load Handling and Operational Controls",
@@ -76,6 +65,17 @@
         "imageUrl": "/images/modules/load-handling.png",
         "sortOrder": 2,
         "equipmentId": "forklift"
+      },
+      {
+        "id": 5,
+        "slug": "backhoe-getting-started",
+        "title": "New Module",
+        "fullTitle": "",
+        "subtitle": "Getting Started",
+        "description": "A starting point for Backhoe Loader training content. Edit this module in the Module Editor to add your own steps.",
+        "imageUrl": "",
+        "sortOrder": 2,
+        "equipmentId": "backhoe"
       },
       {
         "id": 3,
@@ -3469,6 +3469,363 @@
           "nextRoute": "palletTesting",
           "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
           "incompleteMessage": "Complete every parking drive, the shutdown ordering, and the reporting decisions to finish this module."
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "walk-around-check-briefing",
+        "moduleSlug": "walk-around-check",
+        "sortOrder": 1,
+        "kind": "briefing",
+        "title": "Scenario Briefing",
+        "objective": "Understand the purpose of a forklift walk-around check before operation.",
+        "instructions": "Review why a forklift-specific inspection separates engine-off visual checks from engine-on control checks.",
+        "hint": "Think of this as a safety gate before the forklift enters the work area.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "body": "Forklift walk-around inspection adapts familiar vehicle inspection routines into equipment-specific safety checks.\n\nEngine-off checks cover forks, mast, lift chains, hydraulic hoses, tires and wheels, counterweight, LPG tank and battery, seat belt, overhead guard, and ground leaks.\n\nEngine-on checks confirm dashboard indicators, steering, brakes, lift and tilt functions, forward/reverse travel, horn, lights, beacon, and backup alarm before entering the work area.",
+          "syllabus": {
+            "element": "Element 1: Perform visual check of equipment",
+            "location": "Section 2",
+            "unitCode": "CON833309",
+            "pageReferences": "pp. 38, 41-42"
+          },
+          "objectives": [
+            "Differentiate engine-off and engine-on inspection tasks.",
+            "Recognize visible defects that make a forklift unsafe to use.",
+            "Practice reporting unsafe conditions before operation."
+          ],
+          "showSyllabus": true
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "engine-off-inspection",
+        "moduleSlug": "walk-around-check",
+        "sortOrder": 2,
+        "kind": "walk-around",
+        "title": "Engine-Off Inspection",
+        "objective": "Inspect visible components before starting or moving the equipment.",
+        "instructions": "Use hotspots or inspection cards to check forks, mast, lift chains, hydraulic hoses, tires and wheels, counterweight, LPG tank and battery, seat belt, overhead guard, and ground leaks. Start the engine once every area is clear.",
+        "hint": "Visible leaks, unsafe tires, or damaged lifting parts should stop operation. The engine is only started after the walk-around is complete.",
+        "goalType": "free",
+        "data": {
+          "phase": "engine-off",
+          "checks": [
+            {
+              "id": "forks",
+              "found": "Forks show no visible cracks, bending, or wear in this inspection state.",
+              "label": "Forks",
+              "status": "safe",
+              "inspect": "Check fork tips, heel area, and mounting pins for cracks, bending, or wear.",
+              "feedback": "Damaged or bent forks can fail under load and must be reported before use.",
+              "targetArea": "Fork blades and heel"
+            },
+            {
+              "id": "mast",
+              "found": "No mast crack or damage is visible in this inspection state.",
+              "label": "Mast Assembly",
+              "status": "safe",
+              "inspect": "Inspect the mast channels and lift path for cracks, bending, or obstruction.",
+              "feedback": "A cracked or damaged mast can make lifting unsafe and must be reported.",
+              "targetArea": "Mast and lift channels"
+            },
+            {
+              "id": "lift-chain",
+              "found": "Lift chains appear properly lubricated with no visible damage.",
+              "label": "Lift Chains",
+              "status": "safe",
+              "inspect": "Check the lift chains for proper lubrication and any broken, stretched, or damaged links.",
+              "feedback": "Damaged, dry, or stretched chains must be reported before lifting operations.",
+              "targetArea": "Lift chain and rollers"
+            },
+            {
+              "id": "hydraulic-hoses",
+              "found": "No hydraulic leak is visible in this inspection state.",
+              "label": "Hydraulic Hoses",
+              "status": "safe",
+              "inspect": "Check hydraulic hoses and cylinders for visible leaks, cracks, or wear.",
+              "feedback": "Hydraulic leaks can affect lifting safety and must be reported before operation.",
+              "targetArea": "Hydraulic hoses and cylinders"
+            },
+            {
+              "id": "tires",
+              "found": "Tires and wheel nuts appear acceptable in this inspection state.",
+              "label": "Tires and Wheels",
+              "status": "safe",
+              "inspect": "Check tire condition, wheel nuts, and tire pressure (for pneumatic tires).",
+              "feedback": "Unsafe tire condition or loose wheel nuts affect steering and stability.",
+              "targetArea": "Tires and wheel nuts"
+            },
+            {
+              "id": "counterweight",
+              "found": "Counterweight mounting appears secure in this inspection state.",
+              "label": "Counterweight",
+              "status": "safe",
+              "inspect": "Check the counterweight mounting and rear clearance for visible damage.",
+              "feedback": "A loose or damaged counterweight affects forklift balance and must be reported.",
+              "targetArea": "Rear counterweight"
+            },
+            {
+              "id": "lpg-tank",
+              "found": "No LPG leak, damaged mounting, or battery concern is visible in this inspection state.",
+              "label": "LPG Tank and Battery",
+              "status": "safe",
+              "inspect": "Check the propane tank, mounting bracket, hose fittings, and battery area for leaks, damage, or corrosion.",
+              "feedback": "A propane leak or unsafe battery condition is hazardous and must be reported before operation.",
+              "targetArea": "LPG tank, mounting bracket, and battery area"
+            },
+            {
+              "id": "seat-belt",
+              "found": "Seat and seat belt appear in working condition in this inspection state.",
+              "label": "Seat Belt",
+              "status": "safe",
+              "inspect": "Check the seat condition and confirm the seat belt latches and retracts properly.",
+              "feedback": "A damaged or non-functioning seat belt must be reported before operation.",
+              "targetArea": "Operator seat and restraint"
+            },
+            {
+              "id": "overhead-guard",
+              "found": "The overhead guard shows no visible structural damage in this inspection state.",
+              "label": "Overhead Guard",
+              "status": "safe",
+              "inspect": "Check the overhead guard for bending, cracks, or missing sections.",
+              "feedback": "A damaged overhead guard reduces operator protection and must be reported.",
+              "targetArea": "Overhead guard structure"
+            },
+            {
+              "id": "ground-leaks",
+              "found": "No fluid leak is visible on the ground in this inspection state.",
+              "label": "Ground Leaks",
+              "status": "safe",
+              "inspect": "Check the ground beneath the forklift for oil, fuel, hydraulic fluid, or coolant leaks.",
+              "feedback": "Any fluid leak on the ground must be reported before operation.",
+              "targetArea": "Ground beneath the forklift"
+            }
+          ],
+          "gauges": [],
+          "devices": [],
+          "scenarios": [],
+          "requireEngineStart": true
+        },
+        "content": {
+          "body": ""
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "engine-on-inspection",
+        "moduleSlug": "walk-around-check",
+        "sortOrder": 3,
+        "kind": "walk-around",
+        "title": "Engine-On Inspection",
+        "objective": "Judge gauge readings and confirm controls respond before entering the work area.",
+        "instructions": "Read each dashboard gauge and decide whether it is normal or abnormal, then test the horn, lights, beacon, backup alarm, steering, brakes, lift and tilt, and travel controls.",
+        "hint": "Not every gauge reads normal. A warning light that stays lit or a needle in the red zone must be reported.",
+        "goalType": "free",
+        "data": {
+          "phase": "engine-on",
+          "checks": [],
+          "gauges": [
+            {
+              "id": "warning-lights",
+              "label": "Warning Lights",
+              "answer": "Normal",
+              "reading": "No warning lights active",
+              "dialAngle": -30,
+              "correctFeedback": "Correct. No warning light is lit, so the forklift is clear to continue the check.",
+              "incorrectFeedback": "A dashboard with no active warning light is a normal reading."
+            },
+            {
+              "id": "battery-charge-indicator",
+              "label": "Battery Charge Indicator",
+              "answer": "Abnormal",
+              "reading": "Charge warning light stays lit",
+              "dialAngle": -42,
+              "correctFeedback": "Correct. A charge light that stays on means the charging system is not keeping up. Report it.",
+              "incorrectFeedback": "A charge warning that stays lit is abnormal. It means the battery is not charging."
+            },
+            {
+              "id": "lpg-level-gauge",
+              "label": "LPG Level Gauge",
+              "answer": "Normal",
+              "reading": "Sufficient LPG level",
+              "dialAngle": 24,
+              "correctFeedback": "Correct. There is enough LPG to complete the shift.",
+              "incorrectFeedback": "A sufficient LPG level is a normal reading. Only a near-empty tank needs action."
+            },
+            {
+              "id": "hour-meter",
+              "label": "Hour Meter",
+              "answer": "Normal",
+              "reading": "Reading logged for maintenance tracking",
+              "dialAngle": 0,
+              "correctFeedback": "Correct. The hour meter is a record, not a fault indicator. Log it and continue.",
+              "incorrectFeedback": "The hour meter only records running hours. Logging the reading is a normal step."
+            },
+            {
+              "id": "engine-temperature-gauge",
+              "label": "Engine Temperature Gauge",
+              "answer": "Abnormal",
+              "reading": "Needle in the red zone",
+              "dialAngle": 44,
+              "correctFeedback": "Correct. An overheating engine must be shut down and reported before operation.",
+              "incorrectFeedback": "A needle in the red zone means overheating. That is an abnormal reading and must be reported."
+            }
+          ],
+          "devices": [
+            {
+              "id": "horn",
+              "group": "safety",
+              "label": "Test Horn",
+              "feedback": "Horn responds. Audible warning device is working in this scenario."
+            },
+            {
+              "id": "headlights",
+              "group": "safety",
+              "label": "Test Headlights",
+              "feedback": "Headlights respond. Lighting check passes in this scenario."
+            },
+            {
+              "id": "tail-lights",
+              "group": "safety",
+              "label": "Test Tail Lights",
+              "feedback": "Tail lights respond. Lighting check passes in this scenario."
+            },
+            {
+              "id": "turn-signals",
+              "group": "safety",
+              "label": "Test Turn Signals",
+              "feedback": "Turn signals respond. Signal check passes in this scenario."
+            },
+            {
+              "id": "warning-beacon",
+              "group": "safety",
+              "label": "Test Warning Beacon",
+              "feedback": "Warning beacon responds. Visual warning check passes in this scenario."
+            },
+            {
+              "id": "backup-alarm",
+              "group": "safety",
+              "label": "Test Backup Alarm",
+              "feedback": "Backup alarm responds. Reverse warning check passes in this scenario."
+            },
+            {
+              "id": "steering-response",
+              "group": "controls",
+              "label": "Steering Response",
+              "feedback": "Steering responds smoothly with no excessive play in this training scenario."
+            },
+            {
+              "id": "brakes",
+              "group": "controls",
+              "label": "Brakes",
+              "feedback": "Service brake and parking brake respond correctly in this training scenario."
+            },
+            {
+              "id": "lift-tilt-functions",
+              "group": "controls",
+              "label": "Lift and Tilt Functions",
+              "feedback": "Mast raises, lowers, and tilts smoothly with no unusual noise in this training scenario."
+            },
+            {
+              "id": "forward-reverse-travel",
+              "group": "controls",
+              "label": "Forward/Reverse Travel",
+              "feedback": "Forward/reverse selector and accelerator respond correctly in this training scenario."
+            }
+          ],
+          "scenarios": [],
+          "requireEngineStart": false
+        },
+        "content": {
+          "body": ""
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "defect-recognition",
+        "moduleSlug": "walk-around-check",
+        "sortOrder": 4,
+        "kind": "walk-around",
+        "title": "Defect Recognition Test",
+        "objective": "Decide if the forklift is usable based on visible scenario conditions.",
+        "instructions": "Review each visual state and choose whether the forklift may be used for operation.",
+        "hint": "If a visible condition affects stability, steering, lifting, or fluid safety, choose No.",
+        "goalType": "free",
+        "data": {
+          "phase": "defect-test",
+          "checks": [],
+          "gauges": [],
+          "devices": [],
+          "scenarios": [
+            {
+              "id": "leaking-oil",
+              "title": "Scenario 1: Obvious defect - leaking oil",
+              "answer": "No",
+              "choices": [
+                "Yes",
+                "No"
+              ],
+              "feedback": "Visible fluid leaks may indicate engine oil, hydraulic oil, coolant, or battery electrolyte problems. The forklift should not be used until the issue is reported and cleared.",
+              "question": "Is this forklift usable for operation?",
+              "visualState": "oil-leak"
+            },
+            {
+              "id": "good-forklift",
+              "title": "Scenario 2: Good forklift",
+              "answer": "Yes",
+              "choices": [
+                "Yes",
+                "No"
+              ],
+              "feedback": "If the walk-around inspection and engine-on controls show no unsafe condition, the forklift may proceed to supervised training use.",
+              "question": "Is this forklift usable for operation?",
+              "visualState": "normal"
+            },
+            {
+              "id": "flat-tire",
+              "title": "Scenario 3: Worn-out or flat tire",
+              "answer": "No",
+              "choices": [
+                "Yes",
+                "No"
+              ],
+              "feedback": "Unsafe tire condition affects steering and stability. The forklift must not be used until the issue is reported and corrected.",
+              "question": "Is this forklift usable for operation?",
+              "visualState": "flat-tire"
+            }
+          ],
+          "requireEngineStart": false
+        },
+        "content": {
+          "body": ""
+        },
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "walk-around-check-summary",
+        "moduleSlug": "walk-around-check",
+        "sortOrder": 5,
+        "kind": "summary",
+        "title": "Completion Summary",
+        "objective": "Review completed checks and scenario score.",
+        "instructions": "Confirm that required engine-off checks, engine-on checks, and defect recognition questions are complete.",
+        "hint": "Completion means the learner can identify what to inspect and when to report unsafe conditions.",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "body": "",
+          "counters": [],
+          "nextRoute": "equipment",
+          "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
+          "incompleteMessage": "Complete every graded step to finish this module."
         },
         "published": true,
         "builtIn": true

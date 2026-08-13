@@ -100,7 +100,7 @@ Admin routes (log in as the admin account):
 - `/admin` — overview: learner count, average completion, per-module completion, recent activity
 - **Training Content** — pick an equipment (Forklift / Backhoe / Mobile Crane), then one of three sections:
   - `/admin/modules` — that equipment's modules: Edit, Move up, Move down, Delete, Add module
-  - `/admin/modules/:slug` — the **Module Editor**: the module's card fields plus its ordered steps (Read Up, Driving Course, Checklist, Quiz, Built-in Activity, Completion Summary). Selecting a step edits it in place — a driving step gets the 3D map, a checklist step its items, a quiz step its questions
+  - `/admin/modules/:slug` — the **Module Editor**: the module's card fields plus its ordered steps (Read Up, Driving Course, Walk Around, Checklist, Quiz, Built-in Activity, Completion Summary). Selecting a step edits it in place — a driving step gets the 3D map, a walk-around step its inspection checks / gauges / device tests / defect scenarios, a checklist step its items, a quiz step its questions
   - `/admin/parts` — parts and their detail cards (Markdown + reference images), drag-to-place hotspots on the 3D model, part categories, the parts quiz, and (Forklift) the walk-around inspection hotspots
   - `/admin/settings` — the catalog card and the **Hub content** (the copy on that equipment's training hub and module list; leave a field blank to use the default)
 - `/admin/users`, `/admin/reports` — learners, progress, CSV export
