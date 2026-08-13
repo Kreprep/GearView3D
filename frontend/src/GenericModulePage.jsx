@@ -193,6 +193,10 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     setCurrentStepIndex(nextIndex)
   }
 
+  // Steps arrive after the first render and an admin can delete one, so the
+  // saved index is clamped rather than indexed into blindly.
+  const stepIndex = Math.min(currentStepIndex, Math.max(steps.length - 1, 0))
+
   const renderScene = ({ currentStep }) => {
     const step = stepById[currentStep.id]
 
@@ -337,13 +341,13 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
         <ModuleSimulationShell
           module={module}
           steps={steps}
-          currentStepIndex={currentStepIndex}
+          currentStepIndex={stepIndex}
           objectives={moduleObjectives(steps, module)}
           progress={simulation.percentage}
           score={simulation.percentage}
-          canProceed={getStepCanProceed(steps[currentStepIndex].id)}
-          onBackStep={() => changeStep(Math.max(currentStepIndex - 1, 0))}
-          onNextStep={() => changeStep(Math.min(currentStepIndex + 1, steps.length - 1))}
+          canProceed={getStepCanProceed(steps[stepIndex].id)}
+          onBackStep={() => changeStep(Math.max(stepIndex - 1, 0))}
+          onNextStep={() => changeStep(Math.min(stepIndex + 1, steps.length - 1))}
           onComplete={completeModule}
           renderScene={renderScene}
           renderTask={renderTask}

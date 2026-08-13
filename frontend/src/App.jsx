@@ -162,7 +162,11 @@ function App() {
       }
 
       return (
+        // Keyed so moving between modules (a summary step's nextRoute, for
+        // one) remounts the page instead of reusing the previous module's
+        // step index and simulation state.
         <GenericModulePage
+          key={`${equipmentId}/${moduleSlug}`}
           equipmentId={equipmentId}
           moduleSlug={moduleSlug}
           user={user}
