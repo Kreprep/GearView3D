@@ -15,6 +15,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import CourseAdmin from './components/admin/CourseAdmin'
+import EquipmentHotspotAdmin from './components/admin/EquipmentHotspotAdmin'
 import PracticeQuizAdmin from './components/admin/PracticeQuizAdmin'
 import WalkAroundHotspotAdmin from './components/admin/WalkAroundHotspotAdmin'
 import {
@@ -160,7 +161,13 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     () => content.quizQuestions.filter((question) => modulesById[question.moduleId]?.equipmentId === activeEquipmentId),
     [content.quizQuestions, modulesById, activeEquipmentId],
   )
-  const hasModelForActiveEquipment = activeEquipmentId === 'forklift'
+  const activeEquipment = content.equipment.find((item) => item.id === activeEquipmentId) || null
+  // Forklift keeps its own dedicated Parts/PartDetail + WalkAroundHotspot
+  // systems regardless of this flag. For any other equipment, a configured
+  // Model URL is what turns the Parts tab from a disabled note into the
+  // generic EquipmentHotspotAdmin editor.
+  const isForklift = activeEquipmentId === 'forklift'
+  const hasModelForActiveEquipment = isForklift || Boolean(activeEquipment?.modelUrl)
 
   // Switching sections clears whatever was selected under the old one, so a
   // Backhoe screen never shows a stale Forklift module/checklist/quiz mid-edit.
@@ -571,6 +578,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 <label>Title<input value={editingEquipment.title} onChange={(event) => setEditingEquipment({ ...editingEquipment, title: event.target.value })} /></label>
                 <label>Description<textarea value={editingEquipment.description} onChange={(event) => setEditingEquipment({ ...editingEquipment, description: event.target.value })} /></label>
                 <label>Image URL<input value={editingEquipment.imageUrl || ''} onChange={(event) => setEditingEquipment({ ...editingEquipment, imageUrl: event.target.value })} /></label>
+                <label>Model URL<input value={editingEquipment.modelUrl || ''} placeholder="/models/backhoe.glb" onChange={(event) => setEditingEquipment({ ...editingEquipment, modelUrl: event.target.value })} /></label>
+                <p className="admin-panel-note">Turns on the Parts tab's hotspot editor and the learner-facing Hotspot Identification page for this equipment.</p>
                 <label className="admin-checkbox">
                   <input
                     type="checkbox"
@@ -623,7 +632,20 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         </main>
       )}
 
-      {activePath === routes.adminParts && hasModelForActiveEquipment && (
+      {activePath === routes.adminParts && hasModelForActiveEquipment && !isForklift && (
+        <main className="admin-grid">
+          <section className="admin-panel wide-panel">
+            <h2>Hotspot Identification</h2>
+            <p className="admin-panel-note">
+              Click a point on the 3D model to place a hotspot, or drag an existing marker to reposition it.
+              Edits are saved as a draft; learners keep the published position and text until you press Publish.
+            </p>
+            <EquipmentHotspotAdmin key={activeEquipmentId} equipmentId={activeEquipmentId} modelUrl={activeEquipment?.modelUrl} onMessage={refreshMessage} />
+          </section>
+        </main>
+      )}
+
+      {activePath === routes.adminParts && hasModelForActiveEquipment && isForklift && (
         <main className="admin-grid">
           <section className="admin-panel admin-parts-list">
             <h2>Forklift Parts</h2>
@@ -696,16 +718,16 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         </main>
       )}
 
-      {activePath === routes.adminPractice && !hasModelForActiveEquipment && (
+      {activePath === routes.adminPractice && !isForklift && (
         <main className="admin-grid">
           <section className="admin-panel wide-panel">
             <h2>Practice Quiz</h2>
-            <p className="admin-panel-note">This equipment has no 3D model or parts configured yet, so there is nothing to quiz on.</p>
+            <p className="admin-panel-note">The parts-identification practice quiz is Forklift-only for now - it has no per-equipment scoping or generic learner page yet.</p>
           </section>
         </main>
       )}
 
-      {activePath === routes.adminPractice && hasModelForActiveEquipment && (
+      {activePath === routes.adminPractice && isForklift && (
         <main className="admin-grid">
           <PracticeQuizAdmin
             questions={content.practiceQuestions || []}
@@ -730,16 +752,20 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         </main>
       )}
 
-      {activePath === routes.adminHotspots && !hasModelForActiveEquipment && (
+      {activePath === routes.adminHotspots && !isForklift && (
         <main className="admin-grid">
           <section className="admin-panel wide-panel">
             <h2>Walk-Around Hotspots</h2>
-            <p className="admin-panel-note">This equipment has no 3D model configured yet, so there is nothing to place hotspots on.</p>
+            <p className="admin-panel-note">
+              Walk-Around Check is a Forklift-specific hardcoded simulation flow (engine-on/off states, defect
+              scenarios) - there is no generic equivalent for other equipment yet. Use the Parts tab's Hotspot
+              Identification editor for labelled 3D hotspots on this equipment's model.
+            </p>
           </section>
         </main>
       )}
 
-      {activePath === routes.adminHotspots && hasModelForActiveEquipment && (
+      {activePath === routes.adminHotspots && isForklift && (
         <main className="admin-grid">
           <section className="admin-panel wide-panel">
             <h2>Walk-Around Hotspot Editor</h2>

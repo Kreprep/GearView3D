@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../lib/auth.js'
 import { publishedCourse } from '../lib/courses.js'
 import { publishedHotspot } from '../lib/walkAroundHotspots.js'
+import { publishedEquipmentHotspot } from '../lib/equipmentHotspots.js'
 import {
   appendAttempt,
   buildAttempt,
@@ -179,6 +180,16 @@ router.get('/walkaround-hotspots', async (req, res) => {
     orderBy: { sortOrder: 'asc' },
   })
   res.json(rows.map(publishedHotspot))
+})
+
+// The generic per-equipment Hotspot Identification page's data - every
+// equipment other than Forklift uses this instead of /parts.
+router.get('/equipment-hotspots', async (req, res) => {
+  const rows = await prisma.equipmentHotspot.findMany({
+    where: { published: true, ...(req.query.equipment ? { equipmentId: req.query.equipment } : {}) },
+    orderBy: { sortOrder: 'asc' },
+  })
+  res.json(rows.map(publishedEquipmentHotspot))
 })
 
 export default router

@@ -41,6 +41,37 @@ function EquipmentTrainingPage({ equipmentId, user, onLogout, onNavigate }) {
       </div>
 
       <ScopeNotice />
+
+      {equipment?.modelUrl && (
+        <div
+          className="module-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onNavigate(`/training/${equipmentId}/parts`)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onNavigate(`/training/${equipmentId}/parts`)
+            }
+          }}
+        >
+          <div className="module-image-placeholder">
+            <span className="placeholder-text">Hotspot Identification</span>
+          </div>
+          <h4>Explore the model</h4>
+          <p>Tap hotspots on the 3D model to learn what each part is.</p>
+          <button
+            className="start-module-button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onNavigate(`/training/${equipmentId}/parts`)
+            }}
+          >
+            Open Hotspot Identification
+          </button>
+        </div>
+      )}
+
       <p className="intro-text">Select a module to begin your training:</p>
 
       <div className="modules-grid">
