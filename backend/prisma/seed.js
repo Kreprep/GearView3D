@@ -107,11 +107,20 @@ async function seedModules() {
 // Editor / Course editor rather than an empty list. Create-if-missing, same
 // as the rest of this file, so admin edits are never overwritten.
 const equipmentStarterModules = [
-  { equipmentId: 'backhoe', id: 5, slug: 'backhoe-getting-started', title: 'New Module' },
+  {
+    equipmentId: 'backhoe',
+    id: 5,
+    slug: 'backhoe-getting-started',
+    title: 'New Module',
+    subtitle: 'Getting Started',
+    description: 'A starting point for Backhoe Loader training content. Edit this module in the Module Editor to add your own steps.',
+  },
 ]
 
 async function seedEquipmentStarterModules() {
   for (const starter of equipmentStarterModules) {
+    const existingModule = await prisma.module.findUnique({ where: { id: starter.id } })
+
     await prisma.module.upsert({
       where: { id: starter.id },
       update: {},
@@ -119,10 +128,22 @@ async function seedEquipmentStarterModules() {
         id: starter.id,
         slug: starter.slug,
         title: starter.title,
+        subtitle: starter.subtitle,
+        description: starter.description,
         equipmentId: starter.equipmentId,
         sortOrder: 1,
       },
     })
+
+    // subtitle/description are newer than this row, so a row seeded before
+    // they existed gets them backfilled here too - same as fullTitle in
+    // seedModules() above. Only an empty value is replaced.
+    if (existingModule && !existingModule.subtitle && !existingModule.description) {
+      await prisma.module.update({
+        where: { id: starter.id },
+        data: { subtitle: starter.subtitle, description: starter.description },
+      })
+    }
 
     const briefingId = `${starter.slug}-briefing`
     const existing = await prisma.course.findUnique({ where: { id: briefingId } })

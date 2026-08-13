@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import LoginPage from './LoginPage'
-import ForkliftTrainingPage from './ForkliftTrainingPage'
+import TrainingHubPage from './TrainingHubPage'
 import ModulesPage from './ModulesPage'
 import EquipmentUsagePage from './EquipmentUsagePage'
 import WalkAroundCheckPage from './WalkAroundCheckPage'
@@ -9,8 +9,8 @@ import PostOperationPage from './PostOperationPage'
 import PalletTestingPage from './PalletTestingPage'
 import PartsIdentificationPage from './PartsIdentificationPage'
 import AssessmentPage from './AssessmentPage'
-import EquipmentTrainingPage from './EquipmentTrainingPage'
 import GenericModulePage from './GenericModulePage'
+import GenericAssessmentPage from './GenericAssessmentPage'
 import HotspotIdentificationPage from './HotspotIdentificationPage'
 import AdminDashboard from './AdminDashboard'
 import NotFoundPage from './NotFoundPage'
@@ -114,7 +114,7 @@ function App() {
   }
 
   if (path === routes.forklift) {
-    return <ForkliftTrainingPage moduleName="Forklift" user={user} onLogout={handleLogout} onNavigate={navigate} />
+    return <TrainingHubPage equipmentId="forklift" user={user} onLogout={handleLogout} onNavigate={navigate} />
   }
 
   if (path === routes.catalog) {
@@ -211,8 +211,20 @@ function App() {
       )
     }
 
+    if (modulesSegment === 'assessment') {
+      return (
+        <GenericAssessmentPage
+          equipmentId={equipmentId}
+          user={user}
+          onLogout={handleLogout}
+          onBack={() => navigate(`/training/${equipmentId}`)}
+          onNavigate={navigate}
+        />
+      )
+    }
+
     return (
-      <EquipmentTrainingPage
+      <TrainingHubPage
         equipmentId={equipmentId}
         user={user}
         onLogout={handleLogout}

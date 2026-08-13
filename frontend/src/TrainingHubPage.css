@@ -1,4 +1,4 @@
-.forklift-training-hero,
+.training-hub-hero,
 .overall-progress-card,
 .progress-card,
 .recent-activity {
@@ -7,7 +7,7 @@
   background: var(--panel);
 }
 
-.forklift-training-hero {
+.training-hub-hero {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -18,7 +18,7 @@
   background: #0f172a;
 }
 
-.forklift-training-kicker {
+.training-hub-kicker {
   color: var(--accent-strong);
   font-size: 12px;
   font-weight: 700;
@@ -26,11 +26,11 @@
   text-transform: uppercase;
 }
 
-.forklift-training-hero .forklift-training-kicker {
+.training-hub-hero .training-hub-kicker {
   color: #67e8f9;
 }
 
-.forklift-training-hero h1 {
+.training-hub-hero h1 {
   max-width: 720px;
   margin: 10px 0 12px;
   color: #ffffff;
@@ -39,7 +39,7 @@
   line-height: 1.05;
 }
 
-.forklift-training-hero p {
+.training-hub-hero p {
   max-width: 560px;
   color: #cbd5e1;
   font-size: 15px;
@@ -115,7 +115,7 @@
   min-width: 0;
 }
 
-.overall-progress-card .forklift-training-kicker {
+.overall-progress-card .training-hub-kicker {
   color: #67e8f9;
 }
 
@@ -290,6 +290,12 @@
   background: #fee2e2 !important;
 }
 
+.progress-grid-empty {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 15px;
+}
+
 @media (max-width: 980px) {
   .progress-grid {
     grid-template-columns: 1fr;
@@ -297,7 +303,7 @@
 }
 
 @media (max-width: 760px) {
-  .forklift-training-hero {
+  .training-hub-hero {
     align-items: flex-start;
     flex-direction: column;
   }
