@@ -6,7 +6,8 @@
 /* AdminDashboard.css only styles form controls inside .admin-editor, and the
    course panels need selects and checkboxes it does not cover. */
 .course-editor label,
-.course-admin label {
+.course-admin label,
+.module-editor label {
   display: grid;
   gap: 5px;
   color: #334155;
@@ -17,7 +18,9 @@
 .course-editor input,
 .course-editor select,
 .course-editor textarea,
-.course-admin input {
+.course-admin input,
+.module-editor .course-create input,
+.module-editor .course-create select {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid #cbd5e1;

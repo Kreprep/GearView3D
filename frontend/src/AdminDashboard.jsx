@@ -815,11 +815,13 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               </>
             ) : <p>No equipment card available.</p>}
           </section>
-          <section className="admin-panel admin-editor wide-panel">
-            <h2>Driving Simulation</h2>
-            <VehicleProfileEditor
+          <section className="admin-panel admin-editor">
+            <h2>Hub Content</h2>
+            <HubContentEditor
               key={activeEquipment?.id || 'none'}
               equipment={activeEquipment}
+              moduleTitles={activeEquipmentModules.map((module) => module.subtitle || module.title)}
+              hasPartsPage={hasModelForActiveEquipment}
               onSaved={(equipment) => {
                 setContent((current) => ({
                   ...current,
@@ -830,13 +832,11 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               onMessage={refreshMessage}
             />
           </section>
-          <section className="admin-panel admin-editor">
-            <h2>Hub Content</h2>
-            <HubContentEditor
+          <section className="admin-panel admin-editor wide-panel">
+            <h2>Driving Simulation</h2>
+            <VehicleProfileEditor
               key={activeEquipment?.id || 'none'}
               equipment={activeEquipment}
-              moduleTitles={activeEquipmentModules.map((module) => module.subtitle || module.title)}
-              hasPartsPage={hasModelForActiveEquipment}
               onSaved={(equipment) => {
                 setContent((current) => ({
                   ...current,
