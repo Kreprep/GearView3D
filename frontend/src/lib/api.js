@@ -200,12 +200,24 @@ export async function adminUpdateEquipment(equipmentId, payload) {
   return request(`/admin/equipment/${encodeURIComponent(equipmentId)}`, { method: 'PATCH', body: payload })
 }
 
+export async function adminCreateModule(payload) {
+  return request('/admin/modules', { method: 'POST', body: payload })
+}
+
+export async function adminReorderModules(equipmentId, ids) {
+  return request('/admin/modules/reorder', { method: 'POST', body: { equipmentId, ids } })
+}
+
 export async function adminUpdateModule(moduleId, payload) {
   return request(`/admin/modules/${encodeURIComponent(moduleId)}`, { method: 'PATCH', body: payload })
 }
 
 export async function adminDeleteModule(moduleId) {
   return request(`/admin/modules/${encodeURIComponent(moduleId)}`, { method: 'DELETE' })
+}
+
+export async function adminCreateChecklistItem(payload) {
+  return request('/admin/checklist-items', { method: 'POST', body: payload })
 }
 
 export async function adminUpdateChecklistItem(itemId, payload) {

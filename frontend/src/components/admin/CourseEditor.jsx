@@ -483,10 +483,10 @@ function CourseEditor({ course, isForklift = false, onCourseChanged, onCourseDel
           <section className="admin-panel course-editor-content">
             <h3>{stepKind === 'checklist' ? 'Checklist step' : 'Quiz step'}</h3>
             <p className="admin-panel-note">
-              This step shows the module's{' '}
-              {stepKind === 'checklist' ? 'checklist items' : 'quiz questions'}, which are edited in the{' '}
-              <strong>{stepKind === 'checklist' ? 'Checklists' : 'Quizzes'}</strong> tab rather than here - they
-              belong to the module, not to this step. Neither kind blocks Next, so a learner is never stuck on one.
+              This step shows the module&apos;s{' '}
+              {stepKind === 'checklist' ? 'checklist items' : 'quiz questions'}, edited in the panel below - they
+              belong to the module, so every {stepKind} step of it shows the same rows. Neither kind blocks Next,
+              so a learner is never stuck on one.
             </p>
 
             <label>
