@@ -45,8 +45,14 @@ model Module {
   description    String          @default("")
   imageUrl       String          @default("")
   sortOrder      Int             @default(0)
+  // Which Equipment row this module belongs to. Loose reference (matches the
+  // Course.moduleSlug convention below) rather than a formal relation, so
+  // deleting an Equipment row never cascades into deleting its modules.
+  equipmentId    String          @default("forklift")
   checklistItems ChecklistItem[]
   quizQuestions  QuizQuestion[]
+
+  @@index([equipmentId])
 }
 
 // 3D hotspot + instructional text for a forklift part. `position` is the

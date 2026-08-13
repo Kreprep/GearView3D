@@ -64,8 +64,12 @@ export async function getEquipment() {
   return request('/content/equipment')
 }
 
-export async function getTrainingModules() {
-  return request('/content/modules')
+// `equipmentId` scopes the result to one equipment's modules (used by an
+// equipment hub page listing only its own modules); omitted returns every
+// module - fine for callers that just look up one known module by its
+// globally-unique slug.
+export async function getTrainingModules(equipmentId) {
+  return request(equipmentId ? `/content/modules?equipment=${encodeURIComponent(equipmentId)}` : '/content/modules')
 }
 
 export async function getParts() {

@@ -9,6 +9,8 @@ import PostOperationPage from './PostOperationPage'
 import PalletTestingPage from './PalletTestingPage'
 import PartsIdentificationPage from './PartsIdentificationPage'
 import AssessmentPage from './AssessmentPage'
+import EquipmentTrainingPage from './EquipmentTrainingPage'
+import GenericModulePage from './GenericModulePage'
 import AdminDashboard from './AdminDashboard'
 import NotFoundPage from './NotFoundPage'
 import { getCurrentUser, loginUser, setAuthToken } from './lib/api'
@@ -171,6 +173,38 @@ function App() {
         user={user}
         onLogout={handleLogout}
         onBack={() => navigate(routes.forklift)}
+        onNavigate={navigate}
+      />
+    )
+  }
+
+  // Forklift keeps its own fixed routes above (matched by then); every other
+  // equipment's training pages are data-driven, so this branch parses the
+  // path directly instead of adding an entry per equipment/module to `routes`.
+  if (path.startsWith('/training/') && !path.startsWith('/training/forklift')) {
+    const [, , equipmentId, modulesSegment, moduleSlug] = path.split('/')
+
+    if (!equipmentId) {
+      return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
+    }
+
+    if (modulesSegment === 'modules' && moduleSlug) {
+      return (
+        <GenericModulePage
+          equipmentId={equipmentId}
+          moduleSlug={moduleSlug}
+          user={user}
+          onBack={() => navigate(`/training/${equipmentId}`)}
+          onNavigate={navigate}
+        />
+      )
+    }
+
+    return (
+      <EquipmentTrainingPage
+        equipmentId={equipmentId}
+        user={user}
+        onLogout={handleLogout}
         onNavigate={navigate}
       />
     )

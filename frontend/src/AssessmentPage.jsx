@@ -17,7 +17,7 @@ function AssessmentPage({ moduleName, user, onLogout, onBack, onNavigate }) {
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getTrainingModules(), getParts()])
+    Promise.all([getTrainingModules('forklift'), getParts()])
       .then(([moduleRows, partRows]) => {
         if (cancelled) return
         setModules(moduleRows)

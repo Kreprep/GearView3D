@@ -13,7 +13,6 @@ import {
   emptyCourseGeometry,
   validateCoursePayload,
 } from '../lib/courses.js'
-import { courseModuleSlugs } from '../../../frontend/src/data/courseDefaults.js'
 import {
   adminHotspot,
   defaultHotspotFor,
@@ -35,6 +34,20 @@ function pick(source, keys) {
     }
   }
   return result
+}
+
+// Walk-Around Check is deliberately excluded: it is still a fully hardcoded
+// page with no Course-backed steps, unlike every other module (Forklift's
+// other 3, and every new equipment's modules from here on).
+const HARDCODED_PAGE_MODULE_SLUGS = ['walk-around-check']
+
+// Which module slugs can own Course rows - any real Module except the
+// hardcoded-page exception above. DB-driven (rather than a static whitelist)
+// so a module created for a new equipment is immediately usable.
+async function isCourseCapableModuleSlug(moduleSlug) {
+  if (!moduleSlug || HARDCODED_PAGE_MODULE_SLUGS.includes(moduleSlug)) return false
+  const module = await prisma.module.findUnique({ where: { slug: moduleSlug } })
+  return Boolean(module)
 }
 
 const partFields = ['label', 'category', 'position', 'functionText', 'inspectionReminder', 'safetyNote', 'relatedModule', 'checklist', 'sortOrder']
@@ -434,7 +447,7 @@ router.post('/courses', async (req, res) => {
   const moduleSlug = payload.moduleSlug
   const kind = payload.kind || 'driving'
 
-  if (!courseModuleSlugs.includes(moduleSlug)) {
+  if (!(await isCourseCapableModuleSlug(moduleSlug))) {
     return res.status(400).json({ error: 'Unknown module' })
   }
   if (!CREATABLE_KINDS.includes(kind)) {
@@ -550,7 +563,7 @@ router.post('/courses/:id/reset', async (req, res) => {
 // Whole-list reorder for one module; ids not in the list are left alone.
 router.post('/courses/reorder', async (req, res) => {
   const { moduleSlug, ids } = req.body || {}
-  if (!courseModuleSlugs.includes(moduleSlug) || !Array.isArray(ids)) {
+  if (!(await isCourseCapableModuleSlug(moduleSlug)) || !Array.isArray(ids)) {
     return res.status(400).json({ error: 'moduleSlug and ids are required' })
   }
 

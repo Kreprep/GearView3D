@@ -18,8 +18,13 @@ router.get('/equipment', async (req, res) => {
   res.json(equipment)
 })
 
+// `?equipment=` scopes to one equipment's modules (used by a hub page that
+// lists only its own modules); omitted returns every module unfiltered, since
+// slug is globally unique and callers that just look up one known module by
+// slug (useModuleRecord, the assessment page) never needed a filter.
 router.get('/modules', async (req, res) => {
-  const modules = await prisma.module.findMany({ orderBy: { sortOrder: 'asc' } })
+  const where = req.query.equipment ? { equipmentId: req.query.equipment } : {}
+  const modules = await prisma.module.findMany({ where, orderBy: { sortOrder: 'asc' } })
   res.json(modules)
 })
 
