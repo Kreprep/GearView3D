@@ -132,6 +132,45 @@
   color: #0e7490;
 }
 
+.admin-equipment-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 32px 10px 52px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.admin-equipment-picker button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 7px 14px;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.admin-equipment-picker button:hover {
+  border-color: #0891b2;
+}
+
+.admin-equipment-picker button.active {
+  border-color: #0891b2;
+  background: #0891b2;
+  color: #ffffff;
+}
+
+/* The Module Editor takes the full width of the grid rather than sitting in a
+   column beside other panels. */
+.admin-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .admin-alert {
   width: min(1680px, 100%);
   margin: 18px auto 0;

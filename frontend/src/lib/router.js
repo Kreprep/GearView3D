@@ -18,14 +18,18 @@ export const routes = {
   parts: '/training/forklift/parts',
   assessment: '/training/forklift/assessment',
   admin: '/admin',
+  // Training Content: one equipment picker over three sections. Steps,
+  // checklist items and quiz questions have no paths of their own - they are
+  // edited inside a module at /admin/modules/:slug.
   adminModules: '/admin/modules',
   adminParts: '/admin/parts',
-  adminCourses: '/admin/courses',
-  adminHotspots: '/admin/hotspots',
-  adminChecklists: '/admin/checklists',
-  adminQuizzes: '/admin/quizzes',
+  adminSettings: '/admin/settings',
   adminUsers: '/admin/users',
   adminReports: '/admin/reports',
+}
+
+export function adminModuleRoute(moduleSlug) {
+  return `${routes.adminModules}/${moduleSlug}`
 }
 
 export function normalizePath(pathname) {

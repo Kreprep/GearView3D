@@ -3,6 +3,30 @@
   gap: 14px;
 }
 
+.module-editor-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.module-editor-bar h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.module-editor-fields {
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+/* The quiz editor nests inside a step panel, so its two halves stack instead
+   of using the dashboard's own grid. */
+.quiz-admin {
+  display: grid;
+  gap: 14px;
+}
+
 .course-module-tabs {
   display: flex;
   flex-wrap: wrap;

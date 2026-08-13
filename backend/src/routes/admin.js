@@ -269,6 +269,86 @@ router.patch('/equipment/:id', async (req, res) => {
   res.json({ equipment })
 })
 
+// A module created here starts with one briefing step, so the Module Editor
+// (and the learner page) has something to show instead of an empty shell -
+// the same shape prisma/seed.js gives a new equipment's starter module.
+router.post('/modules', async (req, res) => {
+  const payload = req.body || {}
+  const title = String(payload.title || '').trim()
+  const equipmentId = payload.equipmentId
+
+  if (!title) return res.status(400).json({ error: 'Module title is required' })
+  if (!equipmentId) return res.status(400).json({ error: 'equipmentId is required' })
+  if (!(await prisma.equipment.findUnique({ where: { id: equipmentId } }))) {
+    return res.status(400).json({ error: 'Unknown equipment' })
+  }
+
+  const slugBase = `${equipmentId}-${title}`
+    .trim()
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  let slug = slugBase || `${equipmentId}-module`
+  let suffix = 2
+  while (await prisma.module.findUnique({ where: { slug } })) {
+    slug = `${slugBase}-${suffix++}`
+  }
+
+  // Module.id is a plain Int (it mirrors the seeded module numbering rather
+  // than being generated), so a new row takes the next one.
+  const [lastId, lastOrder] = await Promise.all([
+    prisma.module.findFirst({ orderBy: { id: 'desc' }, select: { id: true } }),
+    prisma.module.findFirst({ where: { equipmentId }, orderBy: { sortOrder: 'desc' }, select: { sortOrder: true } }),
+  ])
+
+  const module = await prisma.module.create({
+    data: {
+      id: (lastId?.id || 0) + 1,
+      slug,
+      equipmentId,
+      title,
+      fullTitle: payload.fullTitle || title,
+      subtitle: payload.subtitle || '',
+      description: payload.description || '',
+      imageUrl: payload.imageUrl || '',
+      sortOrder: (lastOrder?.sortOrder || 0) + 1,
+    },
+  })
+
+  await prisma.course.create({
+    data: {
+      id: `${slug}-briefing`,
+      moduleSlug: slug,
+      sortOrder: 1,
+      kind: 'briefing',
+      title: 'Briefing',
+      content: emptyCourseContent('briefing'),
+      published: true,
+      builtIn: false,
+    },
+  })
+
+  res.json({ module })
+})
+
+// Whole-list reorder for one equipment's modules; ids not in the list are
+// left alone. Mirrors /courses/reorder.
+router.post('/modules/reorder', async (req, res) => {
+  const { equipmentId, ids } = req.body || {}
+  if (!equipmentId || !Array.isArray(ids)) {
+    return res.status(400).json({ error: 'equipmentId and ids are required' })
+  }
+
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.module.update({ where: { id: Number(id) }, data: { sortOrder: index + 1 } }),
+    ),
+  )
+
+  const modules = await prisma.module.findMany({ where: { equipmentId }, orderBy: { sortOrder: 'asc' } })
+  res.json({ modules })
+})
+
 router.patch('/modules/:id', async (req, res) => {
   const module = await prisma.module.update({
     where: { id: Number(req.params.id) },
@@ -277,8 +357,14 @@ router.patch('/modules/:id', async (req, res) => {
   res.json({ module })
 })
 
+// ChecklistItem and QuizQuestion cascade with the FK; Course rows reference the
+// module by slug rather than by relation, so they are removed here.
 router.delete('/modules/:id', async (req, res) => {
-  await prisma.module.delete({ where: { id: Number(req.params.id) } })
+  const module = await prisma.module.findUnique({ where: { id: Number(req.params.id) } })
+  if (!module) return res.status(404).json({ error: 'Record not found' })
+
+  await prisma.course.deleteMany({ where: { moduleSlug: module.slug } })
+  await prisma.module.delete({ where: { id: module.id } })
   res.json({ deleted: true })
 })
 
@@ -357,6 +443,31 @@ router.delete('/users/:id', async (req, res) => {
 
   await prisma.user.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
+})
+
+router.post('/checklist-items', async (req, res) => {
+  const payload = req.body || {}
+  const module = payload.moduleId
+    ? await prisma.module.findUnique({ where: { id: Number(payload.moduleId) } })
+    : null
+
+  if (!module) return res.status(400).json({ error: 'Unknown module' })
+  if (!payload.text?.trim()) return res.status(400).json({ error: 'Checklist item text is required' })
+
+  const last = await prisma.checklistItem.findFirst({
+    where: { moduleId: module.id },
+    orderBy: { sortOrder: 'desc' },
+  })
+
+  const item = await prisma.checklistItem.create({
+    data: {
+      id: `${module.slug}-check-${Date.now()}`,
+      moduleId: module.id,
+      text: payload.text.trim(),
+      sortOrder: (last?.sortOrder || 0) + 1,
+    },
+  })
+  res.json({ item })
 })
 
 router.patch('/checklist-items/:id', async (req, res) => {
