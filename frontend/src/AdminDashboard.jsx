@@ -40,11 +40,11 @@ import {
 import { routes } from './lib/router'
 import './AdminDashboard.css'
 
-// Every one of these is Forklift-only content today (the schema has no
-// per-equipment scoping yet - Backhoe/Crane are still non-clickable catalog
-// cards), but grouping them under "Forklift" now previews the structure a
-// second equipment type would need later, rather than a flat tab row.
-const forkliftContentTabs = [
+// The seven sub-tabs every equipment section gets. Paths stay equipment-
+// agnostic (no router change needed - same precedent as CourseAdmin's own
+// in-page module tabs); which equipment's data fills them is tracked by
+// `activeEquipmentId` state instead.
+const equipmentContentTabs = [
   [routes.adminModules, 'Modules', Layers],
   [routes.adminParts, 'Parts', Wrench],
   [routes.adminPractice, 'Practice Quiz', HelpCircle],
@@ -53,6 +53,11 @@ const forkliftContentTabs = [
   [routes.adminChecklists, 'Checklists', ListChecks],
   [routes.adminQuizzes, 'Quizzes', FileQuestion],
 ]
+
+// Walk-Around Check is a fully hardcoded page with no Course-backed steps,
+// unlike every other module - kept out of the Courses tab's module-tab list.
+// Mirrors HARDCODED_PAGE_MODULE_SLUGS in backend/src/routes/admin.js.
+const HARDCODED_PAGE_MODULE_SLUGS = ['walk-around-check']
 
 const trailingTabs = [
   [routes.adminUsers, 'Users', UsersIcon],
@@ -113,6 +118,10 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [editingModule, setEditingModule] = useState(null)
   const [editingEquipment, setEditingEquipment] = useState(null)
+  // Which equipment's section is expanded in the nav - the seven sub-tab
+  // paths are shared by every equipment, so this (not the URL) decides whose
+  // modules/parts/courses/etc. the tab bodies below show.
+  const [activeEquipmentId, setActiveEquipmentId] = useState('forklift')
   const [editingChecklist, setEditingChecklist] = useState(null)
   const [editingQuiz, setEditingQuiz] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
@@ -123,13 +132,46 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [loadedAt] = useState(() => Date.now())
 
   const activePath = path || routes.admin
-  const isForkliftSection = forkliftContentTabs.some(([tabPath]) => tabPath === activePath)
+  const isEquipmentSection = equipmentContentTabs.some(([tabPath]) => tabPath === activePath)
   const modulesById = useMemo(() => {
     return content.modules.reduce((map, module) => ({ ...map, [module.id]: module }), {})
   }, [content.modules])
   const moduleTitleBySlug = useMemo(() => {
     return content.modules.reduce((map, module) => ({ ...map, [module.slug]: module.title || module.fullTitle }), {})
   }, [content.modules])
+  // Every equipment shares the same seven tab paths - these are the slices
+  // of `content` scoped to whichever equipment section is currently open.
+  const activeEquipmentModules = useMemo(
+    () => content.modules.filter((module) => module.equipmentId === activeEquipmentId),
+    [content.modules, activeEquipmentId],
+  )
+  const courseCapableModules = useMemo(
+    () =>
+      activeEquipmentModules
+        .filter((module) => !HARDCODED_PAGE_MODULE_SLUGS.includes(module.slug))
+        .map((module) => ({ slug: module.slug, title: module.fullTitle || module.title })),
+    [activeEquipmentModules],
+  )
+  const activeEquipmentChecklists = useMemo(
+    () => content.checklists.filter((item) => modulesById[item.moduleId]?.equipmentId === activeEquipmentId),
+    [content.checklists, modulesById, activeEquipmentId],
+  )
+  const activeEquipmentQuizQuestions = useMemo(
+    () => content.quizQuestions.filter((question) => modulesById[question.moduleId]?.equipmentId === activeEquipmentId),
+    [content.quizQuestions, modulesById, activeEquipmentId],
+  )
+  const hasModelForActiveEquipment = activeEquipmentId === 'forklift'
+
+  // Switching sections clears whatever was selected under the old one, so a
+  // Backhoe screen never shows a stale Forklift module/checklist/quiz mid-edit.
+  const openEquipmentSection = (equipmentId) => {
+    setActiveEquipmentId(equipmentId)
+    setEditingModule(null)
+    setEditingChecklist(null)
+    setEditingQuiz(null)
+    setEditingEquipment(content.equipment.find((item) => item.id === equipmentId) || null)
+    onNavigate(routes.adminModules)
+  }
 
   // The Overview tab is built entirely from data adminListContent() already
   // fetched (content.progress / content.activityLogs) - no extra API calls.
@@ -412,13 +454,16 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           <LayoutGrid size={16} />
           Overview
         </button>
-        <button
-          className={isForkliftSection ? 'active' : ''}
-          onClick={() => onNavigate(routes.adminModules)}
-        >
-          <Truck size={16} />
-          Forklift
-        </button>
+        {content.equipment.map((equipment) => (
+          <button
+            key={equipment.id}
+            className={isEquipmentSection && activeEquipmentId === equipment.id ? 'active' : ''}
+            onClick={() => openEquipmentSection(equipment.id)}
+          >
+            <Truck size={16} />
+            {equipment.title}
+          </button>
+        ))}
         {trailingTabs.map(([tabPath, label, Icon]) => (
           <button
             key={tabPath}
@@ -431,9 +476,9 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         ))}
       </nav>
 
-      {isForkliftSection && (
-        <nav className="admin-subtabs" aria-label="Forklift content sections">
-          {forkliftContentTabs.map(([tabPath, label, Icon]) => (
+      {isEquipmentSection && (
+        <nav className="admin-subtabs" aria-label={`${content.equipment.find((item) => item.id === activeEquipmentId)?.title || ''} content sections`}>
+          {equipmentContentTabs.map(([tabPath, label, Icon]) => (
             <button
               key={tabPath}
               className={activePath === tabPath ? 'active' : ''}
@@ -541,7 +586,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           </section>
           <section className="admin-panel">
             <h2>Training Modules</h2>
-            {content.modules.map((module) => (
+            {activeEquipmentModules.map((module) => (
               <article key={module.id} className={`admin-list-item ${editingModule?.id === module.id ? 'is-editing' : ''}`}>
                 <h3>{module.title}</h3>
                 <p>{module.description}</p>
@@ -569,7 +614,16 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         </main>
       )}
 
-      {activePath === routes.adminParts && (
+      {activePath === routes.adminParts && !hasModelForActiveEquipment && (
+        <main className="admin-grid">
+          <section className="admin-panel wide-panel">
+            <h2>Parts Identification</h2>
+            <p className="admin-panel-note">This equipment has no 3D model configured yet, so there is nothing to place part hotspots on.</p>
+          </section>
+        </main>
+      )}
+
+      {activePath === routes.adminParts && hasModelForActiveEquipment && (
         <main className="admin-grid">
           <section className="admin-panel admin-parts-list">
             <h2>Forklift Parts</h2>
@@ -642,7 +696,16 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         </main>
       )}
 
-      {activePath === routes.adminPractice && (
+      {activePath === routes.adminPractice && !hasModelForActiveEquipment && (
+        <main className="admin-grid">
+          <section className="admin-panel wide-panel">
+            <h2>Practice Quiz</h2>
+            <p className="admin-panel-note">This equipment has no 3D model or parts configured yet, so there is nothing to quiz on.</p>
+          </section>
+        </main>
+      )}
+
+      {activePath === routes.adminPractice && hasModelForActiveEquipment && (
         <main className="admin-grid">
           <PracticeQuizAdmin
             questions={content.practiceQuestions || []}
@@ -662,12 +725,21 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               Place cones, walls, pallets, checkpoints and parking bays on a top-down map of each simulation step.
               Edits are saved as a draft; learners keep the published version until you press Publish.
             </p>
-            <CourseAdmin onMessage={refreshMessage} />
+            <CourseAdmin modules={courseCapableModules} onMessage={refreshMessage} />
           </section>
         </main>
       )}
 
-      {activePath === routes.adminHotspots && (
+      {activePath === routes.adminHotspots && !hasModelForActiveEquipment && (
+        <main className="admin-grid">
+          <section className="admin-panel wide-panel">
+            <h2>Walk-Around Hotspots</h2>
+            <p className="admin-panel-note">This equipment has no 3D model configured yet, so there is nothing to place hotspots on.</p>
+          </section>
+        </main>
+      )}
+
+      {activePath === routes.adminHotspots && hasModelForActiveEquipment && (
         <main className="admin-grid">
           <section className="admin-panel wide-panel">
             <h2>Walk-Around Hotspot Editor</h2>
@@ -684,7 +756,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         <main className="admin-grid">
           <section className="admin-panel">
             <h2>Checklist Items</h2>
-            {content.checklists.map((item) => (
+            {activeEquipmentChecklists.map((item) => (
               <article key={item.id} className={`admin-list-item ${editingChecklist?.id === item.id ? 'is-editing' : ''}`}>
                 <h3>{modulesById[item.moduleId]?.title || item.module?.title || `Module ${item.moduleId}`}</h3>
                 <p>{item.text}</p>
@@ -711,7 +783,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         <main className="admin-grid">
           <section className="admin-panel">
             <h2>Quiz Questions</h2>
-            {content.quizQuestions.map((question) => (
+            {activeEquipmentQuizQuestions.map((question) => (
               <article key={question.id} className={`admin-list-item ${editingQuiz?.id === question.id ? 'is-editing' : ''}`}>
                 <h3>{modulesById[question.moduleId]?.title || question.module?.title}</h3>
                 <p>{question.prompt}</p>

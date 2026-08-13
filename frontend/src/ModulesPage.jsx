@@ -15,6 +15,9 @@ import './ModulesPage.css'
 // training page is actually built.
 const EQUIPMENT_TRAINING_ROUTES = {
   forklift: routes.forklift,
+  // Every other equipment routes into the generic, data-driven training hub
+  // (App.jsx's /training/:equipmentId branch) rather than a static route key.
+  backhoe: '/training/backhoe',
 }
 
 function ModulesPage({ user, onLogout, onNavigate }) {

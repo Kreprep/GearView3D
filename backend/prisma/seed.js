@@ -15,7 +15,7 @@ import { buildDefaultPartCategories, partsHotspots } from '../../frontend/src/da
 import { buildDefaultPracticeQuestions } from '../../frontend/src/data/practiceQuestions.js'
 import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
 import { buildDefaultPartDetails } from '../../frontend/src/data/partDetails.js'
-import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
+import { buildDefaultCourses, emptyCourseContent } from '../../frontend/src/data/courseDefaults.js'
 import { walkAroundViewerHotspots } from '../../frontend/src/data/viewerHotspots.js'
 
 const prisma = new PrismaClient()
@@ -83,6 +83,7 @@ async function seedModules() {
           description: module.description || '',
           imageUrl: module.imageUrl || '',
           sortOrder: index + 1,
+          equipmentId: 'forklift',
         },
       })
       continue
@@ -97,6 +98,48 @@ async function seedModules() {
         data: { fullTitle: module.fullTitle || module.title },
       })
     }
+  }
+}
+
+// The one starter module every newly-added equipment type gets: a single
+// blank module with a single blank briefing step, so the catalog card has
+// somewhere to route to and the admin has something to open in the Module
+// Editor / Course editor rather than an empty list. Create-if-missing, same
+// as the rest of this file, so admin edits are never overwritten.
+const equipmentStarterModules = [
+  { equipmentId: 'backhoe', id: 5, slug: 'backhoe-getting-started', title: 'New Module' },
+]
+
+async function seedEquipmentStarterModules() {
+  for (const starter of equipmentStarterModules) {
+    await prisma.module.upsert({
+      where: { id: starter.id },
+      update: {},
+      create: {
+        id: starter.id,
+        slug: starter.slug,
+        title: starter.title,
+        equipmentId: starter.equipmentId,
+        sortOrder: 1,
+      },
+    })
+
+    const briefingId = `${starter.slug}-briefing`
+    const existing = await prisma.course.findUnique({ where: { id: briefingId } })
+    if (existing) continue
+
+    await prisma.course.create({
+      data: {
+        id: briefingId,
+        moduleSlug: starter.slug,
+        sortOrder: 1,
+        kind: 'briefing',
+        title: 'Briefing',
+        content: emptyCourseContent('briefing'),
+        published: true,
+        builtIn: false,
+      },
+    })
   }
 }
 
@@ -256,6 +299,7 @@ async function main() {
   await seedUsers()
   await seedEquipment()
   await seedModules()
+  await seedEquipmentStarterModules()
   await seedParts()
   await seedPartDetails()
   await seedPartCategories()

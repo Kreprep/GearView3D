@@ -19,7 +19,7 @@ function EquipmentUsagePage({ moduleName, user, onLogout, onBack, onNavigate }) 
   const { summary } = useProgress()
 
   useEffect(() => {
-    getTrainingModules().then(setModules).finally(() => setLoading(false))
+    getTrainingModules('forklift').then(setModules).finally(() => setLoading(false))
   }, [])
 
   return (

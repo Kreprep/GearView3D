@@ -3,14 +3,6 @@ import { adminCreateCourse, adminListCourses, adminReorderCourses } from '../../
 import CourseEditor from './CourseEditor'
 import './CourseAdmin.css'
 
-const MODULE_LABELS = {
-  'load-handling': 'Module 2 - Load Handling',
-  'post-operation': 'Module 3 - Post-Operation',
-  'pallet-testing': 'Module 4 - Pallet Assessment',
-}
-
-const MODULE_ORDER = ['load-handling', 'post-operation', 'pallet-testing']
-
 const KIND_LABELS = {
   briefing: 'Briefing',
   driving: 'Driving course',
@@ -18,14 +10,26 @@ const KIND_LABELS = {
   summary: 'Completion summary',
 }
 
-function CourseAdmin({ onMessage }) {
+// `modules` is the current equipment's course-capable modules, as
+// { slug, title } pairs in display order (Walk-Around Check and any other
+// hardcoded-page module already filtered out by the caller - see
+// AdminDashboard's HARDCODED_PAGE_MODULE_SLUGS).
+function CourseAdmin({ modules, onMessage }) {
   const [courses, setCourses] = useState([])
   const [creatableKinds, setCreatableKinds] = useState(['driving'])
-  const [moduleSlug, setModuleSlug] = useState(MODULE_ORDER[0])
+  const [selectedModuleSlug, setSelectedModuleSlug] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [newTitle, setNewTitle] = useState('')
   const [newKind, setNewKind] = useState('driving')
   const [loadState, setLoadState] = useState({ loading: true, error: null })
+
+  // Switching equipment sections swaps `modules` for a different equipment's
+  // list entirely, so a slug left over from the previous equipment (or the
+  // initial null) falls back to that equipment's first module - derived
+  // rather than synced via effect, since it is just "clamp to what's valid".
+  const moduleSlug = modules.some((module) => module.slug === selectedModuleSlug)
+    ? selectedModuleSlug
+    : modules[0]?.slug || null
 
   useEffect(() => {
     let cancelled = false
@@ -96,21 +100,24 @@ function CourseAdmin({ onMessage }) {
 
   if (loadState.loading) return <p className="admin-panel-note">Loading courses...</p>
   if (loadState.error) return <p className="admin-panel-note">Courses could not be loaded: {loadState.error}</p>
+  if (!modules.length) return <p className="admin-panel-note">This equipment has no course-capable modules yet.</p>
+
+  const activeModuleTitle = modules.find((module) => module.slug === moduleSlug)?.title || moduleSlug
 
   return (
     <div className="course-admin">
       <nav className="course-module-tabs">
-        {MODULE_ORDER.map((slug) => (
+        {modules.map(({ slug, title }) => (
           <button
             key={slug}
             type="button"
             className={slug === moduleSlug ? 'is-active' : ''}
             onClick={() => {
-              setModuleSlug(slug)
+              setSelectedModuleSlug(slug)
               setSelectedId(null)
             }}
           >
-            {MODULE_LABELS[slug]}
+            {title}
           </button>
         ))}
       </nav>
@@ -119,7 +126,7 @@ function CourseAdmin({ onMessage }) {
         <section className="admin-panel course-list-panel">
           <h2>Steps</h2>
           <p className="admin-panel-note">
-            Every step of {MODULE_LABELS[moduleSlug]}, in the order learners see it. Built-in activities keep their
+            Every step of {activeModuleTitle}, in the order learners see it. Built-in activities keep their
             hardcoded screens but can still be reordered or removed.
           </p>
 
