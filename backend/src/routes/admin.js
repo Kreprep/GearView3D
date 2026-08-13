@@ -19,6 +19,11 @@ import {
   editableHotspot,
   hotspotDraftFields,
 } from '../lib/walkAroundHotspots.js'
+import {
+  adminEquipmentHotspot,
+  editableEquipmentHotspot,
+  hotspotDraftFields as equipmentHotspotDraftFields,
+} from '../lib/equipmentHotspots.js'
 
 const router = Router()
 
@@ -714,6 +719,114 @@ router.post('/walkaround-hotspots/reorder', async (req, res) => {
 
 router.delete('/walkaround-hotspots/:id', async (req, res) => {
   await prisma.walkAroundHotspot.delete({ where: { id: req.params.id } })
+  res.json({ deleted: true })
+})
+
+// --- Equipment hotspot editor -----------------------------------------------
+// The generic per-equipment hotspot system (Hotspot Identification page) that
+// any equipment other than Forklift uses instead of the Parts/PartDetail and
+// WalkAroundHotspot tables above. `?equipment=` scopes list/reorder to one
+// equipment; creation requires it in the body so a new row always belongs to
+// exactly one equipment.
+
+router.get('/equipment-hotspots', async (req, res) => {
+  const where = req.query.equipment ? { equipmentId: req.query.equipment } : {}
+  const rows = await prisma.equipmentHotspot.findMany({ where, orderBy: { sortOrder: 'asc' } })
+  res.json({ hotspots: rows.map(adminEquipmentHotspot) })
+})
+
+router.post('/equipment-hotspots', async (req, res) => {
+  const payload = req.body || {}
+  if (!payload.equipmentId) {
+    return res.status(400).json({ error: 'equipmentId is required' })
+  }
+  if (!payload.label?.trim()) {
+    return res.status(400).json({ error: 'Hotspot label is required' })
+  }
+
+  const id = `${payload.equipmentId}-${(payload.id || payload.label).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+  if (await prisma.equipmentHotspot.findUnique({ where: { id } })) {
+    return res.status(409).json({ error: `A hotspot with id "${id}" already exists` })
+  }
+
+  const last = await prisma.equipmentHotspot.findFirst({
+    where: { equipmentId: payload.equipmentId },
+    orderBy: { sortOrder: 'desc' },
+  })
+
+  // Created unpublished: a new hotspot has no position worth showing a learner
+  // until the admin places it, so it must not reach them before first publish.
+  const hotspot = await prisma.equipmentHotspot.create({
+    data: {
+      id,
+      equipmentId: payload.equipmentId,
+      label: payload.label.trim(),
+      position: payload.position || [0, 0.3, 0],
+      category: payload.category || '',
+      description: payload.description || '',
+      sortOrder: (last?.sortOrder || 0) + 1,
+      published: false,
+    },
+  })
+  res.json({ hotspot: adminEquipmentHotspot(hotspot) })
+})
+
+// Saves an edit as a draft; learners keep seeing the published position/text
+// until Publish.
+router.put('/equipment-hotspots/:id', async (req, res) => {
+  const row = await prisma.equipmentHotspot.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
+
+  const draft = { ...editableEquipmentHotspot(row), ...pick(req.body, equipmentHotspotDraftFields) }
+  const hotspot = await prisma.equipmentHotspot.update({
+    where: { id: row.id },
+    data: {
+      draft,
+      ...(typeof req.body?.sortOrder === 'number' ? { sortOrder: req.body.sortOrder } : {}),
+    },
+  })
+  res.json({ hotspot: adminEquipmentHotspot(hotspot) })
+})
+
+router.post('/equipment-hotspots/:id/publish', async (req, res) => {
+  const row = await prisma.equipmentHotspot.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
+  if (!row.draft) return res.status(400).json({ error: 'There is no draft to publish' })
+
+  const hotspot = await prisma.equipmentHotspot.update({
+    where: { id: row.id },
+    data: { ...pick(row.draft, equipmentHotspotDraftFields), draft: null, published: true },
+  })
+  res.json({ hotspot: adminEquipmentHotspot(hotspot) })
+})
+
+router.post('/equipment-hotspots/:id/revert', async (req, res) => {
+  const hotspot = await prisma.equipmentHotspot.update({
+    where: { id: req.params.id },
+    data: { draft: null },
+  })
+  res.json({ hotspot: adminEquipmentHotspot(hotspot) })
+})
+
+// Whole-list reorder for one equipment; ids not in the list are left alone.
+router.post('/equipment-hotspots/reorder', async (req, res) => {
+  const { equipmentId, ids } = req.body || {}
+  if (!equipmentId || !Array.isArray(ids)) {
+    return res.status(400).json({ error: 'equipmentId and ids are required' })
+  }
+
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.equipmentHotspot.update({ where: { id }, data: { sortOrder: index + 1 } }),
+    ),
+  )
+
+  const rows = await prisma.equipmentHotspot.findMany({ where: { equipmentId }, orderBy: { sortOrder: 'asc' } })
+  res.json({ hotspots: rows.map(adminEquipmentHotspot) })
+})
+
+router.delete('/equipment-hotspots/:id', async (req, res) => {
+  await prisma.equipmentHotspot.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })
 

@@ -11,6 +11,7 @@ import PartsIdentificationPage from './PartsIdentificationPage'
 import AssessmentPage from './AssessmentPage'
 import EquipmentTrainingPage from './EquipmentTrainingPage'
 import GenericModulePage from './GenericModulePage'
+import HotspotIdentificationPage from './HotspotIdentificationPage'
 import AdminDashboard from './AdminDashboard'
 import NotFoundPage from './NotFoundPage'
 import { getCurrentUser, loginUser, setAuthToken } from './lib/api'
@@ -196,6 +197,16 @@ function App() {
           user={user}
           onBack={() => navigate(`/training/${equipmentId}`)}
           onNavigate={navigate}
+        />
+      )
+    }
+
+    if (modulesSegment === 'parts') {
+      return (
+        <HotspotIdentificationPage
+          equipmentId={equipmentId}
+          user={user}
+          onBack={() => navigate(`/training/${equipmentId}`)}
         />
       )
     }

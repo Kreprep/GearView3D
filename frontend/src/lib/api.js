@@ -127,6 +127,12 @@ export async function getWalkAroundHotspots() {
   return request('/content/walkaround-hotspots')
 }
 
+// The generic Hotspot Identification page's published hotspots for one
+// equipment (any equipment other than Forklift).
+export async function getEquipmentHotspots(equipmentId) {
+  return request(`/content/equipment-hotspots?equipment=${encodeURIComponent(equipmentId)}`)
+}
+
 // --- Progress (per signed-in user) ---
 
 export async function getProgress() {
@@ -323,4 +329,36 @@ export async function adminReorderWalkAroundHotspots(ids) {
 
 export async function adminDeleteWalkAroundHotspot(hotspotId) {
   return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}`, { method: 'DELETE' })
+}
+
+// --- Admin: equipment hotspot editor (any equipment other than Forklift) ---
+
+export async function adminListEquipmentHotspots(equipmentId) {
+  return request(`/admin/equipment-hotspots?equipment=${encodeURIComponent(equipmentId)}`)
+}
+
+export async function adminCreateEquipmentHotspot(payload) {
+  return request('/admin/equipment-hotspots', { method: 'POST', body: payload })
+}
+
+// Saves an edit as an unpublished draft; learners keep seeing the published
+// version until adminPublishEquipmentHotspot().
+export async function adminSaveEquipmentHotspotDraft(hotspotId, payload) {
+  return request(`/admin/equipment-hotspots/${encodeURIComponent(hotspotId)}`, { method: 'PUT', body: payload })
+}
+
+export async function adminPublishEquipmentHotspot(hotspotId) {
+  return request(`/admin/equipment-hotspots/${encodeURIComponent(hotspotId)}/publish`, { method: 'POST' })
+}
+
+export async function adminRevertEquipmentHotspot(hotspotId) {
+  return request(`/admin/equipment-hotspots/${encodeURIComponent(hotspotId)}/revert`, { method: 'POST' })
+}
+
+export async function adminReorderEquipmentHotspots(equipmentId, ids) {
+  return request('/admin/equipment-hotspots/reorder', { method: 'POST', body: { equipmentId, ids } })
+}
+
+export async function adminDeleteEquipmentHotspot(hotspotId) {
+  return request(`/admin/equipment-hotspots/${encodeURIComponent(hotspotId)}`, { method: 'DELETE' })
 }
