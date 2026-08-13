@@ -1,6 +1,11 @@
 .course-canvas-scroll {
+  /* Full width of its column with the map centred inside: the SVG keeps its
+     own pixel size (the drag maths depends on it), so stretching the box is
+     the part that is safe to do. */
+  display: grid;
+  justify-content: center;
   overflow: auto;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   max-height: 70vh;
   border: 1px solid #cbd5e1;

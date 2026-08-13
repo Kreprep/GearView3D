@@ -104,7 +104,16 @@ function ModuleEditor({
 
   const renderStepPanel = () => {
     if (!selected) {
-      return <p className="admin-panel-note">Select a step to edit it, or add a new one.</p>
+      return (
+        <div className="admin-panel module-step-empty">
+          <h3>No step selected</h3>
+          <p className="admin-panel-note">
+            Pick a step on the left to edit it, or add one at the bottom of the list. A step&apos;s panel changes
+            with its type - a driving course gets the 3D map, a walk-around its inspection checks, a quiz its
+            questions.
+          </p>
+        </div>
+      )
     }
 
     // Checklist and quiz steps render the module's own rows, so their panel is
@@ -165,54 +174,76 @@ function ModuleEditor({
   }
 
   return (
-    <div className="course-admin">
-      <div className="module-editor-bar">
-        <button type="button" onClick={onBack}>Back to modules</button>
-        <h2>{module.fullTitle || module.title}</h2>
-      </div>
+    <div className="module-editor">
+      <header className="module-editor-bar">
+        <button type="button" className="module-editor-back" onClick={onBack}>Back to modules</button>
+        <div className="module-editor-heading">
+          <p className="admin-kicker">Module Editor</p>
+          <h2>{module.fullTitle || module.title}</h2>
+        </div>
+        <span className="module-editor-count">
+          {steps.length} step{steps.length === 1 ? '' : 's'}
+        </span>
+      </header>
 
-      <div className="course-admin-body">
-        <section className="admin-panel course-list-panel">
+      <section className="admin-panel module-details-panel">
+        <div className="admin-panel-heading">
           <h2>Module Details</h2>
-          <div className="admin-editor module-editor-fields">
-            <label>Title<input value={fields.title || ''} onChange={(event) => setFields({ ...fields, title: event.target.value })} /></label>
-            <label>Subtitle<input value={fields.subtitle || ''} onChange={(event) => setFields({ ...fields, subtitle: event.target.value })} /></label>
-            <label>Description<textarea value={fields.description || ''} onChange={(event) => setFields({ ...fields, description: event.target.value })} /></label>
-            <label>Full title<input value={fields.fullTitle || ''} placeholder={fields.title} onChange={(event) => setFields({ ...fields, fullTitle: event.target.value })} /></label>
-            <p className="admin-panel-note">The long heading on the module page itself. Blank falls back to the title.</p>
-            <label>Image URL<input value={fields.imageUrl || ''} onChange={(event) => setFields({ ...fields, imageUrl: event.target.value })} /></label>
-            <button className="admin-save" onClick={saveModule}>Save module</button>
-          </div>
+          <button className="admin-save" onClick={saveModule}>Save module</button>
+        </div>
+        <div className="admin-editor module-details-grid">
+          <label>Title<input value={fields.title || ''} onChange={(event) => setFields({ ...fields, title: event.target.value })} /></label>
+          <label>Subtitle<input value={fields.subtitle || ''} onChange={(event) => setFields({ ...fields, subtitle: event.target.value })} /></label>
+          <label>
+            Full title
+            <input value={fields.fullTitle || ''} placeholder={fields.title} onChange={(event) => setFields({ ...fields, fullTitle: event.target.value })} />
+            <small className="admin-field-note">The long heading on the module page itself. Blank falls back to the title.</small>
+          </label>
+          <label>Image URL<input value={fields.imageUrl || ''} onChange={(event) => setFields({ ...fields, imageUrl: event.target.value })} /></label>
+          <label className="module-details-wide">
+            Description
+            <textarea rows={3} value={fields.description || ''} onChange={(event) => setFields({ ...fields, description: event.target.value })} />
+            <small className="admin-field-note">Shown on the module card in the learner’s module list.</small>
+          </label>
+        </div>
+      </section>
 
-          <h2>Steps</h2>
-          {loadState.loading && <p className="admin-panel-note">Loading steps...</p>}
-          {loadState.error && <p className="admin-panel-note">Steps could not be loaded: {loadState.error}</p>}
+      <div className="module-editor-body">
+        <section className="admin-panel module-steps-panel">
+          <div className="admin-panel-heading">
+            <h2>Steps</h2>
+          </div>
           <p className="admin-panel-note">
             Every step of this module, in the order learners see it. Built-in activities keep their hardcoded
             screens but can still be reordered or removed.
           </p>
+          {loadState.loading && <p className="admin-panel-note">Loading steps...</p>}
+          {loadState.error && <p className="admin-panel-note">Steps could not be loaded: {loadState.error}</p>}
 
           <ol className="course-list">
             {steps.map((course, index) => (
               <li key={course.id} className={course.id === selectedId ? 'is-selected' : ''}>
                 <button type="button" className="course-list-name" onClick={() => setSelectedId(course.id)}>
-                  <strong>{course.title}</strong>
-                  <small>
-                    {KIND_LABELS[course.kind] || course.kind}
-                    {course.draft && ' - draft'}
-                    {!course.published && ' - unpublished'}
-                    {!course.builtIn && ' - custom'}
-                  </small>
+                  <span className="course-list-index">{index + 1}</span>
+                  <span className="course-list-text">
+                    <strong>{course.title}</strong>
+                    <small>
+                      {KIND_LABELS[course.kind] || course.kind}
+                      {course.draft && ' - draft'}
+                      {!course.published && ' - unpublished'}
+                      {!course.builtIn && ' - custom'}
+                    </small>
+                  </span>
                 </button>
                 <span className="course-list-actions">
-                  <button type="button" onClick={() => moveStep(index, -1)} disabled={index === 0}>Up</button>
-                  <button type="button" onClick={() => moveStep(index, 1)} disabled={index === steps.length - 1}>Down</button>
+                  <button type="button" title="Move up" onClick={() => moveStep(index, -1)} disabled={index === 0}>Up</button>
+                  <button type="button" title="Move down" onClick={() => moveStep(index, 1)} disabled={index === steps.length - 1}>Down</button>
                 </span>
               </li>
             ))}
           </ol>
 
-          {!loadState.loading && steps.length === 0 && <p>No steps in this module yet.</p>}
+          {!loadState.loading && steps.length === 0 && <p className="admin-panel-note">No steps in this module yet.</p>}
 
           <div className="course-create">
             <label>
@@ -233,7 +264,7 @@ function ModuleEditor({
           </div>
         </section>
 
-        <section className="course-editor-panel">{renderStepPanel()}</section>
+        <section className="module-step-panel">{renderStepPanel()}</section>
       </div>
     </div>
   )
