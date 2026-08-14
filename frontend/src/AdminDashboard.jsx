@@ -496,6 +496,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               equipmentId={editingModuleEquipment.id}
               modelUrl={editingModuleEquipment.modelUrl}
               modelScale={editingModuleEquipment.modelScale}
+              modelOffsetY={editingModuleEquipment.modelOffsetY}
               equipmentModules={editingModuleEquipment.modules}
               checklists={content.checklists}
               hotspotCategories={editingModuleEquipment.categories}
@@ -540,6 +541,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               equipmentId={activeEquipmentId}
               modelUrl={activeEquipment?.modelUrl}
               modelScale={activeEquipment?.modelScale}
+              modelOffsetY={activeEquipment?.modelOffsetY}
               categories={activeEquipmentCategories}
               surface="parts"
               onMessage={refreshMessage}
@@ -634,12 +636,32 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                   scale. Leave blank for 1x. Changing this after hotspots are placed moves the model without moving
                   their markers, so set the scale first, then place or re-check markers.
                 </p>
+                <label>
+                  Model height offset
+                  <input
+                    type="number"
+                    step="0.005"
+                    value={editingEquipment.modelOffsetY ?? ''}
+                    placeholder="0"
+                    onChange={(event) => setEditingEquipment({
+                      ...editingEquipment,
+                      modelOffsetY: event.target.value === '' ? null : Number(event.target.value),
+                    })}
+                  />
+                </label>
+                <p className="admin-panel-note">
+                  Nudges the model up (positive) or down (negative) after the viewer stands it on the floor. Only needed
+                  when the model&apos;s lowest point is not its wheels - backhoe.glb&apos;s buckets hang below its tyres, so
+                  grounding it leaves the tyres in the air. Measured in the same units as the scene, after the scale
+                  above, so set the scale first. Leave blank for none, and nudge in small steps against the preview.
+                </p>
                 {editingEquipment.modelUrl && (
                   <div className="equipment-scale-preview">
                     <HotspotViewer
                       key={editingEquipment.id}
                       modelUrl={editingEquipment.modelUrl}
                       modelScale={editingEquipment.modelScale}
+                      modelOffsetY={editingEquipment.modelOffsetY}
                       isAdmin
                     />
                   </div>

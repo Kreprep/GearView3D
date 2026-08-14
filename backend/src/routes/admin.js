@@ -50,7 +50,7 @@ const moduleFields = ['title', 'fullTitle', 'subtitle', 'description', 'imageUrl
 // `content` is the hub/module-list copy overrides (frontend
 // data/hubContent.js); it is stored whole, so the client sends the full object
 // and blank keys mean "fall back to the coded default".
-const equipmentFields = ['title', 'description', 'modelUrl', 'modelScale', 'imageUrl', 'sortOrder', 'available', 'content', 'simConfig']
+const equipmentFields = ['title', 'description', 'modelUrl', 'modelScale', 'modelOffsetY', 'imageUrl', 'sortOrder', 'available', 'content', 'simConfig']
 const checklistFields = ['text', 'sortOrder']
 const quizFields = ['prompt', 'options', 'answer', 'sortOrder']
 const hotspotCategoryFields = ['label', 'sortOrder']
@@ -367,6 +367,14 @@ router.patch('/equipment/:id', async (req, res) => {
   if ('modelScale' in data) {
     const value = Number(data.modelScale)
     data.modelScale = Number.isFinite(value) && value > 0 && value !== 1 ? value : null
+  }
+
+  // Same rule for the height nudge, except that negative values are the useful
+  // ones (a model grounded on something lower than its wheels needs lowering),
+  // so only a blank, non-numeric or exactly-zero value clears it.
+  if ('modelOffsetY' in data) {
+    const value = Number(data.modelOffsetY)
+    data.modelOffsetY = Number.isFinite(value) && value !== 0 ? value : null
   }
 
   // Only overrides are stored: a key an admin cleared is dropped so the coded

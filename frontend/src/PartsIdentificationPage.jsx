@@ -115,6 +115,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
       <PartsViewport
         modelUrl={equipment?.modelUrl}
         modelScale={equipment?.modelScale}
+        modelOffsetY={equipment?.modelOffsetY}
         hotspots={hotspots}
         selectedHotspotId={selectedPartId}
         onHotspotSelect={selectPart}
