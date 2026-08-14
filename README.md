@@ -186,8 +186,8 @@ Notes:
 
 ### Live instance
 
-A copy of this stack runs on a homelab LXC container, reachable at `https://gearview3d.lindenwood53.vip` (public, behind a Caddy reverse proxy with CrowdSec + AppSec) and `http://192.168.50.110:8080` (LAN only). It follows the Docker deployment above: pull, then `docker compose up -d --build`.
+A copy of this stack runs on a homelab LXC container, reachable at `https://gearview3d.lindenwood53.vip` (public, behind a Caddy reverse proxy with CrowdSec + AppSec) and `http://192.168.50.110:8080` (LAN only). It follows the Docker deployment above: pull, then `docker compose up -d --build`, run **as the `eugene` user** (`ssh thesis-eugene` from an admin workstation with the alias set up), not root — the deploy key and passwordless `docker` group access are only wired up for that user.
 
-- The container clones the repo over a **read-only GitHub deploy key** (not a personal token or SSH-agent forwarding), since the container has no access to anyone's personal credentials.
+- The container clones the repo over a **read-only GitHub deploy key** (not a personal token or SSH-agent forwarding), since the container has no access to anyone's personal credentials. The repo's `core.sshCommand` git config points at that key, so plain `git pull` works — if that config is ever missing (e.g. after a fresh clone) `git pull` fails with `Permission denied (publickey)`.
 - `docker compose logs -f backend` / `-f web`, `docker compose ps`, and `docker compose restart <service>` are the usual ways to check on it.
 - Full LXC specs, credentials, and setup steps live in the private homelab documentation (`E:\Documents\Homelab`), not in this repo — secrets like the root password, `POSTGRES_PASSWORD`, and `JWT_SECRET` never get committed.
