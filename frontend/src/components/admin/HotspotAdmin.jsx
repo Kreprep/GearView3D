@@ -66,7 +66,7 @@ function onSurface(hotspot, surface) {
   return true
 }
 
-function HotspotAdmin({ equipmentId, modelUrl, categories = [], surface = null, onMessage }) {
+function HotspotAdmin({ equipmentId, modelUrl, modelScale, categories = [], surface = null, onMessage }) {
   const [hotspots, setHotspots] = useState([])
   const [loadState, setLoadState] = useState({ loading: true, error: null })
   const [selectedId, setSelectedId] = useState(null)
@@ -335,6 +335,7 @@ function HotspotAdmin({ equipmentId, modelUrl, categories = [], surface = null, 
                     <div className="hotspot-editor-stage">
                       <HotspotViewer
                         modelUrl={modelUrl}
+                        modelScale={modelScale}
                         isAdmin
                         adminEditMode
                         placingActive={placing}
