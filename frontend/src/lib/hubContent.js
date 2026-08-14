@@ -17,7 +17,7 @@ export function hubContentDefault(key, context) {
 
 // `context` fills both the token placeholders and the defaults that depend on
 // the page's own data:
-//   { equipmentTitle, learnerName, isForklift, hasPartsPage, moduleTitles }
+//   { equipmentTitle, learnerName, hasPartsPage, moduleTitles }
 export function resolveHubContent(equipment, context) {
   const overrides = equipment?.content || {}
 
@@ -33,9 +33,8 @@ export function resolveHubContent(equipment, context) {
 export function hubContentContext({
   equipmentTitle = 'Equipment',
   learnerName = 'learner',
-  isForklift = false,
   hasPartsPage = false,
   moduleTitles = [],
 } = {}) {
-  return { equipmentTitle, learnerName, isForklift, hasPartsPage, moduleTitles }
+  return { equipmentTitle, learnerName, hasPartsPage, moduleTitles }
 }

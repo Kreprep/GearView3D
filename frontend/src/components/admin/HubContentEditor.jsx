@@ -18,7 +18,6 @@ function HubContentEditor({ equipment, moduleTitles = [], hasPartsPage = false, 
   const context = useMemo(
     () => hubContentContext({
       equipmentTitle: equipment?.title || 'Equipment',
-      isForklift: equipment?.id === 'forklift',
       hasPartsPage,
       moduleTitles,
     }),

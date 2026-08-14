@@ -16,12 +16,24 @@ export function courseGoalType(course) {
 
 // Default learner-facing instruction for a course whose step has no bespoke
 // copy - notably any step an admin adds in the course editor.
-export function courseTaskCopy(course) {
+//
+// `profile` is the equipment's vehicle profile (lib/vehicleProfile.js). Fork
+// steps are only described when the vehicle has forks, because `hasForks:
+// false` also hides the R/F keys from the HUD - telling a learner to press a
+// key that is not on screen is worse than saying nothing. A pallet course on a
+// forkless vehicle still completes the same way; only the wording changes.
+export function courseTaskCopy(course, profile) {
+  const hasForks = profile?.hasForks !== false
+
   switch (courseGoalType(course)) {
     case 'parking':
-      return 'Drive to the marked bay, straighten up between the lines, stop completely, lower the forks with F, then switch the engine off with E.'
+      return hasForks
+        ? 'Drive to the marked bay, straighten up between the lines, stop completely, lower the forks with F, then switch the engine off with E.'
+        : 'Drive to the marked bay, straighten up between the lines, stop completely, then switch the engine off with E.'
     case 'pallet':
-      return 'Slide the lowered forks under the pallet, raise it with R, carry it to the drop zone, lower with F, then reverse away to release it.'
+      return hasForks
+        ? 'Slide the lowered forks under the pallet, raise it with R, carry it to the drop zone, lower with F, then reverse away to release it.'
+        : 'Line up with the load, lift it with R, carry it to the drop zone, lower it with F, then reverse away to release it.'
     case 'checkpoints': {
       const count = course.checkpoints?.length || 0
       return `Drive through ${count} checkpoint${count === 1 ? '' : 's'} in order to finish this step.`

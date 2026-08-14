@@ -18,7 +18,6 @@ import './TrainingHubPage.css'
 // carries a forklift-specific sentence: every equipment's modules, hotspots
 // and percentages come from its own rows.
 function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
-  const isForklift = equipmentId === 'forklift'
   const [equipment, setEquipment] = useState(null)
   const [modules, setModules] = useState([])
   const [hotspots, setHotspots] = useState([])
@@ -70,7 +69,6 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
   const copy = resolveHubContent(equipment, hubContentContext({
     equipmentTitle,
     learnerName: user?.fullName || 'learner',
-    isForklift,
     hasPartsPage,
     moduleTitles: modules.map((module) => module.subtitle || module.title),
   }))
