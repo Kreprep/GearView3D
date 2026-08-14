@@ -233,11 +233,15 @@ function EquipmentModel({ modelUrl, modelScale, deviceEffect, adminEditMode, onS
  * or mixed units) is obvious at a glance rather than guessed at. Forklift.glb
  * is the scale baseline every equipment model is judged against - it renders
  * at its native size, no scale applied. The human figure is a plain capsule
- * mannequin (no GLB asset exists for one) built to an average adult standing
- * height so it doubles as a 1.7 m tape measure. The box reuses cardboard-box's
- * driving-course scale (0.25), already calibrated to real-world metres there.
+ * mannequin (no GLB asset exists for one), sized to read as a bit shorter
+ * than the forklift baseline rather than to a literal real-world metre
+ * figure - forklift.glb's own native scale is not true-to-life (its actual
+ * modeled height comes out under 1.7m), so a true 1.7m figure would render
+ * taller than the forklift and read as backwards. The box reuses
+ * cardboard-box's driving-course scale (0.25), already calibrated to
+ * real-world metres there.
  */
-const REFERENCE_HUMAN_HEIGHT = 1.7
+const REFERENCE_HUMAN_HEIGHT = 0.40
 const REFERENCE_BOX_SCALE = 0.25
 const REFERENCE_BOX_URL = '/models/cardboard-box.glb'
 
@@ -290,7 +294,11 @@ function ReferenceForklift({ x }) {
   const { scene } = useGLTF(DEFAULT_MODEL_URL)
   const clone = useMemo(() => cloneSkeleton(scene), [scene])
 
-  useEffect(() => {
+  // A passive effect runs after paint, which is too late: <Center> measures
+  // in its own layout effect, and child layout effects fire first (see
+  // EquipmentModel above), so buildVehicleRig has to be a layout effect too
+  // or Center measures the still-skinned clone and grounds it wildly wrong.
+  React.useLayoutEffect(() => {
     buildVehicleRig(clone)
   }, [clone])
 
@@ -312,15 +320,17 @@ function ReferenceForklift({ x }) {
 
   return (
     <group position={[x, 0, 0]}>
-      <primitive object={clone} />
+      <Center top cacheKey={DEFAULT_MODEL_URL}>
+        <primitive object={clone} />
+      </Center>
       <ReferenceLabel height={1}>Forklift (baseline)</ReferenceLabel>
     </group>
   )
 }
 
 function ReferenceHuman({ x }) {
-  const headRadius = 0.11
-  const bodyRadius = 0.16
+  const headRadius = 0.075
+  const bodyRadius = 0.1
   const bodyLength = REFERENCE_HUMAN_HEIGHT - headRadius * 2 - bodyRadius * 2
   return (
     <group position={[x, 0, 0]}>
@@ -332,7 +342,7 @@ function ReferenceHuman({ x }) {
         <sphereGeometry args={[headRadius, 16, 16]} />
         <meshStandardMaterial color="#f59e0b" transparent opacity={0.55} roughness={0.6} />
       </mesh>
-      <ReferenceLabel height={REFERENCE_HUMAN_HEIGHT}>Average adult (1.7 m)</ReferenceLabel>
+      <ReferenceLabel height={REFERENCE_HUMAN_HEIGHT}>Average adult</ReferenceLabel>
     </group>
   )
 }
@@ -342,9 +352,9 @@ function ReferenceHuman({ x }) {
 function ScaleReference() {
   return (
     <group>
-      <ReferenceForklift x={-1.3} />
-      <ReferenceHuman x={0.9} />
-      <ReferenceBox x={1.5} />
+      <ReferenceForklift x={-0.9} />
+      <ReferenceHuman x={0.5} />
+      <ReferenceBox x={0.9} />
     </group>
   )
 }
