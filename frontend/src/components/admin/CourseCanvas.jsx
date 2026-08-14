@@ -57,7 +57,7 @@ function ItemShape({ item, pxPerUnit, selected }) {
       )
     }
 
-    case 'forklift':
+    case 'vehicle':
       return (
         <rect
           className={className}

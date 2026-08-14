@@ -1,4 +1,4 @@
-import InteractiveForkliftViewer from './InteractiveForkliftViewer'
+import HotspotViewer from './HotspotViewer'
 import MarkdownContent from './MarkdownContent'
 import { gaugeScore, isPhaseComplete, scenarioScore, visibleHotspotIds } from '../lib/walkAroundStep'
 import './WalkAroundStep.css'
@@ -47,7 +47,7 @@ export function WalkAroundScene({
 
   return (
     <div className="walkaround-scene-wrap">
-      <InteractiveForkliftViewer
+      <HotspotViewer
         mode={isDefectStep ? 'defect-test' : 'inspection'}
         scenario={scenario}
         activeHotspots={visibleHotspotIds(data, hotspots, { engineOffComplete, engineStarted })}

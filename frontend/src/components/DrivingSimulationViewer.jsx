@@ -4,7 +4,8 @@ import { Grid, Html, OrbitControls, useGLTF } from '@react-three/drei'
 import { DoubleSide, Quaternion, Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Compass, RotateCcw } from 'lucide-react'
-import { buildForkliftRig, REAR_WHEEL_KEYS } from '../lib/forkliftRig'
+import { buildVehicleRig, REAR_WHEEL_KEYS } from '../lib/vehicleRig'
+import { decorationType } from '../lib/courseEdit'
 import { DEFAULT_VEHICLE_MODEL_URL } from '../data/vehicleProfile'
 import { resolveVehicleProfile } from '../lib/vehicleProfile'
 import './DrivingSimulationViewer.css'
@@ -26,7 +27,7 @@ const PALLET_HEAVY_MIN_KG = 1000
 
 // Source assets come from mismatched free-asset scales/origins - each entry
 // normalizes one to real-world size at this scene's world-units-are-metres/4
-// convention (see forkliftRig.js) and re-centers it over its own group origin
+// convention (see vehicleRig.js) and re-centers it over its own group origin
 // (measured via a throwaway inspect-glb.mjs bounding-box script).
 const MODEL_TRANSFORM = {
   [CONE_MODEL_URL]: { scale: 0.00594, position: [0, 0, 0] }, // 0.7m cone
@@ -345,7 +346,7 @@ function CourseDecorations({ decorations, parkedModelUrl }) {
           )
         }
 
-        if (item.type === 'forklift') {
+        if (decorationType(item) === 'vehicle') {
           return (
             <ParkedVehicle
               key={index}
@@ -509,12 +510,12 @@ function DrivingScene({
     [course],
   )
   const liveWalls = useMemo(
-    () => (course.decorations || []).filter((item) => item.type === 'wall' || item.type === 'forklift'),
+    () => (course.decorations || []).filter((item) => item.type === 'wall' || decorationType(item) === 'vehicle'),
     [course],
   )
 
   useEffect(() => {
-    rigRef.current = buildForkliftRig(forklift, profile.rig)
+    rigRef.current = buildVehicleRig(forklift, profile.rig)
   }, [forklift, profile.rig])
 
   useEffect(() => {
@@ -715,24 +716,24 @@ function DrivingScene({
       })
     }
 
-    // Wall/forklift collision: sample the same body points against every
+    // Wall/vehicle collision: sample the same body points against every
     // decoration's oriented rectangle (thickness x length, or a parked
-    // forklift's footprint). Immovable, so a hit just fails the attempt.
+    // vehicle's footprint). Immovable, so a hit just fails the attempt.
     if (liveWalls.length && !failedRef.current && Math.abs(speedRef.current) > CONE_MIN_HIT_SPEED) {
       wallLoop: for (const wall of liveWalls) {
-        const isForklift = wall.type === 'forklift'
+        const isVehicle = decorationType(wall) === 'vehicle'
         const rot = wall.rotation || 0
         const cosRot = Math.cos(rot)
         const sinRot = Math.sin(rot)
-        const halfThickness = isForklift ? halfWidth : WALL_HALF_THICKNESS
-        const halfLen = isForklift ? halfLength : (wall.length || 3) / 2
+        const halfThickness = isVehicle ? halfWidth : WALL_HALF_THICKNESS
+        const halfLen = isVehicle ? halfLength : (wall.length || 3) / 2
         for (const offset of BODY_SAMPLE_OFFSETS) {
           const dx = posRef.current.x + forwardX * offset - wall.position[0]
           const dz = posRef.current.z + forwardZ * offset - wall.position[2]
           const localX = dx * cosRot - dz * sinRot
           const localZ = dx * sinRot + dz * cosRot
           if (Math.abs(localX) <= halfThickness + WALL_HIT_MARGIN && Math.abs(localZ) <= halfLen + WALL_HIT_MARGIN) {
-            triggerFail(isForklift ? 'forklift' : 'wall')
+            triggerFail(isVehicle ? 'vehicle' : 'wall')
             break wallLoop
           }
         }

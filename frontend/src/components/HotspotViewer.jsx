@@ -14,11 +14,11 @@ import {
   useBounds,
   useGLTF,
 } from '@react-three/drei'
-import { Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { BadgeInfo, Compass, Eye, Maximize, RotateCcw } from 'lucide-react'
-import { buildForkliftRig, REAR_WHEEL_KEYS } from '../lib/forkliftRig'
-import './InteractiveForkliftViewer.css'
+import { Compass, Eye, Maximize, RotateCcw } from 'lucide-react'
+import { buildVehicleRig, REAR_WHEEL_KEYS } from '../lib/vehicleRig'
+import { CameraFocus, ViewerErrorBoundary, ViewerLoadingPanel } from './viewer/ViewerShared'
+import './HotspotViewer.css'
 
 const DEFAULT_MODEL_URL = '/models/forklift.glb'
 
@@ -63,31 +63,6 @@ function getScenarioResult(hotspot, scenario) {
   }
 }
 
-class InteractiveViewerErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false }
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="interactive-viewer-error">
-          <BadgeInfo />
-          <h3>Forklift model could not be loaded</h3>
-      <p>Confirm the configured GLB model path resolves correctly.</p>
-        </div>
-      )
-    }
-
-    return this.props.children
-  }
-}
-
 /**
  * Frames the model on mount. On reset it first restores the configured camera
  * position and target, because `fit()` alone keeps whatever direction the user
@@ -117,70 +92,6 @@ function ViewReset({ cameraPreset, controlsRef, resetToken }) {
   return null
 }
 
-function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken, cameraPreset }) {
-  const { camera } = useThree()
-  const desiredCamPos = useRef(new Vector3())
-  const desiredTarget = useRef(new Vector3())
-  const framesRemaining = useRef(0)
-  const activeId = useRef(null)
-  // Camera pose captured right before the first hotspot in a focus chain, so
-  // clearing the selection can fly back to it instead of freezing in place.
-  const preFocusCamPos = useRef(new Vector3())
-  const preFocusTarget = useRef(new Vector3())
-  const hasPreFocus = useRef(false)
-
-  // A camera-preset change means the step/scenario framing changed underneath
-  // us (e.g. engine-off wide view <-> engine-on cockpit view). Any pre-focus
-  // pose captured under the old preset is stale, so drop it - otherwise
-  // clearing the selection flies back to a pose from the wrong preset and the
-  // camera gets stuck fighting ViewReset's snap-to-preset.
-  React.useEffect(() => {
-    activeId.current = null
-    hasPreFocus.current = false
-  }, [resetToken, cameraPreset])
-
-  useFrame(() => {
-    const controls = controlsRef.current
-
-    // Clearing the selection must reset this, otherwise re-picking the same
-    // hotspot later is treated as "already focused" and the camera won't move.
-    if (!targetId) {
-      if (activeId.current && hasPreFocus.current && controls) {
-        desiredTarget.current.copy(preFocusTarget.current)
-        desiredCamPos.current.copy(preFocusCamPos.current)
-        framesRemaining.current = 40
-        hasPreFocus.current = false
-      }
-      activeId.current = null
-    }
-
-    if (controls && targetId && targetId !== activeId.current) {
-      const object = hotspotRefs.current.get(targetId)
-      if (object) {
-        if (!hasPreFocus.current) {
-          preFocusCamPos.current.copy(camera.position)
-          preFocusTarget.current.copy(controls.target)
-          hasPreFocus.current = true
-        }
-        activeId.current = targetId
-        object.getWorldPosition(desiredTarget.current)
-        const direction = camera.position.clone().sub(controls.target).normalize()
-        desiredCamPos.current.copy(desiredTarget.current).add(direction.multiplyScalar(0.5))
-        framesRemaining.current = 40
-      }
-    }
-
-    if (framesRemaining.current > 0 && controls) {
-      controls.target.lerp(desiredTarget.current, 0.15)
-      camera.position.lerp(desiredCamPos.current, 0.15)
-      controls.update()
-      framesRemaining.current -= 1
-    }
-  })
-
-  return null
-}
-
 // Control-demo animation tuning (model units - forklift is < 1 unit tall).
 const ANIM_DAMP = 8
 const STEER_SWING = 0.5
@@ -197,7 +108,7 @@ function smoothstep(x) {
   return clamped * clamped * (3 - 2 * clamped)
 }
 
-function ForkliftModel({ modelUrl, deviceEffect, adminEditMode, onSurfaceDown, onSurfaceMove, onSurfaceUp }) {
+function EquipmentModel({ modelUrl, deviceEffect, adminEditMode, onSurfaceDown, onSurfaceMove, onSurfaceUp }) {
   const { scene } = useGLTF(modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const rigRef = useRef(null)
@@ -207,7 +118,7 @@ function ForkliftModel({ modelUrl, deviceEffect, adminEditMode, onSurfaceDown, o
   // De-skin + pivot rig must run before the material pass so the replacement
   // meshes get the shadow/material treatment too.
   React.useEffect(() => {
-    rigRef.current = buildForkliftRig(forklift)
+    rigRef.current = buildVehicleRig(forklift)
   }, [forklift])
 
   React.useEffect(() => {
@@ -490,7 +401,7 @@ function InteractiveScene({
         <ViewReset cameraPreset={cameraPreset} controlsRef={controlsRef} resetToken={resetToken} />
         <Center top>
           <group ref={rigGroupRef} rotation={[0, -0.18, 0]}>
-            <ForkliftModel
+            <EquipmentModel
               modelUrl={modelUrl}
               deviceEffect={deviceEffect}
               adminEditMode={adminEditMode}
@@ -588,17 +499,6 @@ function WarehouseFloor() {
   )
 }
 
-function LoadingPanel() {
-  return (
-    <Html center>
-      <div className="interactive-loading-panel">
-        <div />
-        <p>Loading forklift training view</p>
-      </div>
-    </Html>
-  )
-}
-
 function filterHotspots(hotspots, activeHotspots) {
   if (!activeHotspots) {
     return hotspots
@@ -608,7 +508,7 @@ function filterHotspots(hotspots, activeHotspots) {
   return hotspots.filter((hotspot) => active.has(hotspot.id))
 }
 
-export default function InteractiveForkliftViewer({
+export default function HotspotViewer({
   scenario = 'good-forklift',
   activeHotspots,
   hotspots: configuredHotspots = [],
@@ -690,9 +590,9 @@ export default function InteractiveForkliftViewer({
           )}
         </div>
 
-        <InteractiveViewerErrorBoundary>
+        <ViewerErrorBoundary modelUrl={modelUrl}>
           <Canvas shadows dpr={[1, 1.35]} camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}>
-            <Suspense fallback={<LoadingPanel />}>
+            <Suspense fallback={<ViewerLoadingPanel label="Loading training view" />}>
               <InteractiveScene
                 modelUrl={modelUrl}
                 scenario={scenario}
@@ -713,7 +613,7 @@ export default function InteractiveForkliftViewer({
               />
             </Suspense>
           </Canvas>
-        </InteractiveViewerErrorBoundary>
+        </ViewerErrorBoundary>
         <Loader />
 
         <div className="interactive-viewer-help">

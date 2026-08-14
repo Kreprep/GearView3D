@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import ForkliftViewport from './gear_view_3_d_forklift_viewport'
+import PartsViewport from './components/PartsViewport'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import SimulationPageLayout from './components/SimulationPageLayout'
 import ScopeNotice from './components/ScopeNotice'
@@ -112,7 +112,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
 
   const renderScene = () => (
     <div className="parts-scene-wrap">
-      <ForkliftViewport
+      <PartsViewport
         modelUrl={equipment?.modelUrl}
         hotspots={hotspots}
         selectedHotspotId={selectedPartId}

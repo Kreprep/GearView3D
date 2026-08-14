@@ -301,7 +301,7 @@ export const engineOnDeviceEffects = {
     radius: 0.045,
   },
   // Operational controls play a 3D model animation (see ForkliftModel in
-  // InteractiveForkliftViewer) instead of a lamp. `animation` names the demo;
+  // HotspotViewer) instead of a lamp. `animation` names the demo;
   // `duration` must cover the animation envelope before the effect clears.
   'steering-response': {
     duration: 3000,

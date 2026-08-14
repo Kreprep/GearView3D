@@ -1,0 +1,77 @@
+/* Chrome shared by both 3D viewers: the in-canvas loading panel and the
+   load-failure card. Both viewers render these, so the styling lives here
+   rather than in either one's stylesheet. */
+
+.viewer-loading-panel {
+  width: 14rem;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(2, 6, 23, 0.9);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+}
+
+.viewer-loading-spinner {
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0 auto 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #67e8f9;
+  animation: viewer-spin 1s linear infinite;
+}
+
+@keyframes viewer-spin {
+  to { transform: rotate(360deg); }
+}
+
+.viewer-loading-panel p {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.viewer-loading-panel small {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.viewer-error {
+  display: flex;
+  min-height: 520px;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 32px;
+  border-radius: 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  background: #020617;
+  color: #f1f5f9;
+  text-align: center;
+}
+
+.viewer-error h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.viewer-error p {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.875rem;
+  color: #cbd5e1;
+}
+
+.viewer-error code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+}

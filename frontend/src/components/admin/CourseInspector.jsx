@@ -63,7 +63,7 @@ function CourseInspector({ item, onChange, onMove, onDelete }) {
         </>
       )}
 
-      {kind === 'forklift' && (
+      {kind === 'vehicle' && (
         <AngleField label="Rotation" value={entry.rotation} onChange={(rotation) => set({ rotation })} />
       )}
 

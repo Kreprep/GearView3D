@@ -1,5 +1,5 @@
-import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { Canvas } from '@react-three/fiber'
 import {
   Bounds,
   Center,
@@ -12,45 +12,14 @@ import {
   OrbitControls,
   PerspectiveCamera,
   useBounds,
-  useGLTF,
 } from '@react-three/drei'
-import { Vector3 } from 'three'
-import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { BadgeInfo, Compass, Eye, Maximize, RotateCcw, Wrench } from 'lucide-react'
+import { Compass, Eye, Maximize, RotateCcw, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { partsHotspots } from './lib/trainingData'
+import { partsHotspots } from '../lib/trainingData'
+import { CameraFocus, ViewerErrorBoundary, ViewerLoadingPanel } from './viewer/ViewerShared'
+import { useClonedScene } from './viewer/useClonedScene'
 
 const DEFAULT_MODEL_URL = '/models/forklift.glb'
-
-class ViewportErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false }
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex h-full min-h-[520px] items-center justify-center rounded-2xl border border-dashed bg-slate-950 p-8 text-center text-slate-100">
-          <div className="max-w-md space-y-3">
-            <BadgeInfo className="mx-auto h-8 w-8" />
-            <h3 className="text-xl font-semibold">3D model could not be loaded</h3>
-            <p className="text-sm text-slate-300">
-              Confirm the GLB is available at{' '}
-              <code className="rounded bg-white/10 px-1.5 py-0.5">{this.props.modelUrl || DEFAULT_MODEL_URL}</code>.
-            </p>
-          </div>
-        </div>
-      )
-    }
-
-    return this.props.children
-  }
-}
 
 function AutoFit({ resetToken }) {
   const bounds = useBounds()
@@ -62,52 +31,12 @@ function AutoFit({ resetToken }) {
   return null
 }
 
-function CameraFocus({ targetId, hotspotRefs, controlsRef, resetToken }) {
-  const { camera } = useThree()
-  const desiredCamPos = useRef(new Vector3())
-  const desiredTarget = useRef(new Vector3())
-  const framesRemaining = useRef(0)
-  const activeId = useRef(null)
+function EquipmentModel({ modelUrl, wireframe }) {
+  const model = useClonedScene(modelUrl)
 
   useEffect(() => {
-    activeId.current = null
-  }, [resetToken])
-
-  useFrame(() => {
-    const controls = controlsRef.current
-
-    if (controls && targetId && targetId !== activeId.current) {
-      const object = hotspotRefs.current.get(targetId)
-      if (object) {
-        activeId.current = targetId
-        object.getWorldPosition(desiredTarget.current)
-        const direction = camera.position.clone().sub(controls.target).normalize()
-        desiredCamPos.current.copy(desiredTarget.current).add(direction.multiplyScalar(0.5))
-        framesRemaining.current = 40
-      }
-    }
-
-    if (framesRemaining.current > 0 && controls) {
-      controls.target.lerp(desiredTarget.current, 0.15)
-      camera.position.lerp(desiredCamPos.current, 0.15)
-      controls.update()
-      framesRemaining.current -= 1
-    }
-  })
-
-  return null
-}
-
-function ForkliftModel({ modelUrl, wireframe }) {
-  const { scene } = useGLTF(modelUrl)
-  const forklift = useMemo(() => cloneSkeleton(scene), [scene])
-
-  useEffect(() => {
-    forklift.traverse((object) => {
+    model.traverse((object) => {
       if (!object.isMesh) return
-
-      object.castShadow = true
-      object.receiveShadow = true
 
       const materials = Array.isArray(object.material) ? object.material : [object.material]
       const cloned = materials.map((material) => {
@@ -119,9 +48,9 @@ function ForkliftModel({ modelUrl, wireframe }) {
 
       object.material = Array.isArray(object.material) ? cloned : cloned[0]
     })
-  }, [forklift, wireframe])
+  }, [model, wireframe])
 
-  return <primitive object={forklift} />
+  return <primitive object={model} />
 }
 
 function HotspotPin({ hotspot, selected, onSelect, hotspotRefs }) {
@@ -225,7 +154,7 @@ function ForkliftScene({
         <AutoFit resetToken={resetToken} />
         <Center position={[0, 0, 0]} top>
           <group rotation={[0, -0.18, 0]}>
-            <ForkliftModel modelUrl={modelUrl} wireframe={wireframe} />
+            <EquipmentModel modelUrl={modelUrl} wireframe={wireframe} />
             {overlaysEnabled &&
               hotspots.map((hotspot) => (
                 <HotspotPin
@@ -267,25 +196,13 @@ function ForkliftScene({
   )
 }
 
-function LoadingPanel() {
-  return (
-    <Html center>
-      <div className="w-56 rounded-2xl border border-white/10 bg-slate-950/90 p-4 text-center text-white shadow-2xl backdrop-blur">
-        <div className="mx-auto mb-3 h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-cyan-300" />
-        <p className="text-sm font-medium">Loading 3D model</p>
-        <p className="mt-1 text-xs text-slate-400">Preparing GearView3D viewport...</p>
-      </div>
-    </Html>
-  )
-}
-
 /**
  * Bare 3D scene - toolbar, canvas and hotspot markers only. Selection is
- * controlled by the parent (mirrors InteractiveForkliftViewer's contract)
+ * controlled by the parent (mirrors HotspotViewer's contract)
  * so it can sit inside ModuleSimulationShell's scene slot, which supplies
  * the surrounding chrome (objectives/steps/current-task overlays).
  */
-export default function ForkliftViewport({
+export default function PartsViewport({
   modelUrl = DEFAULT_MODEL_URL,
   hotspots = partsHotspots,
   selectedHotspotId,
@@ -376,11 +293,11 @@ export default function ForkliftViewport({
         Drag to rotate - Scroll to zoom - Right-drag to pan
       </div>
 
-      <ViewportErrorBoundary modelUrl={modelUrl}>
+      <ViewerErrorBoundary modelUrl={modelUrl}>
         <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
-          <Suspense fallback={<LoadingPanel />}>{Scene}</Suspense>
+          <Suspense fallback={<ViewerLoadingPanel />}>{Scene}</Suspense>
         </Canvas>
-      </ViewportErrorBoundary>
+      </ViewerErrorBoundary>
       <Loader />
     </div>
   )
