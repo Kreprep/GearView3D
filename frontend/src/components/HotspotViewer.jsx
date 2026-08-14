@@ -26,14 +26,15 @@ const DEFAULT_MODEL_URL = '/models/forklift.glb'
 // ---------------------------------------------------------------------------
 // Floor tuning - safe to edit by hand.
 //
-// The model is placed with its bottom at y = 0, so these are all relative to
-// the forklift's wheels/forks touching the ground.
+// `<Center top>` grounds the model at y = 0, and the scale-reference objects
+// are built to stand at y = 0 too, so these are all relative to the wheels
+// touching the floor.
 // ---------------------------------------------------------------------------
 
-/** Height of the floor. LOWER (more negative) = forklift sits higher above the
- *  floor. HIGHER (toward 0) = floor rises toward the wheels. Go above 0 and the
- *  floor starts covering the bottom of the model. Try steps of 0.005. */
-const FLOOR_Y = -0.11
+/** Height of the floor. Keep at 0: anything lower and every model visibly
+ *  hovers, anything higher buries the wheels. The floor mesh uses polygonOffset
+ *  rather than a gap to stay out of the model's depth range. */
+const FLOOR_Y = 0
 
 /** How far the floor extends. Larger = edge sits further away at the horizon.
  *  Too small and the far edge cuts across the middle of the forklift. */
