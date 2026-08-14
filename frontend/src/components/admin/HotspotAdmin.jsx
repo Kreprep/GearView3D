@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import InteractiveForkliftViewer from '../InteractiveForkliftViewer'
+import HotspotViewer from '../HotspotViewer'
 import {
   adminCreateHotspot,
   adminDeleteHotspot,
@@ -11,7 +11,7 @@ import {
   adminSaveHotspotDraft,
 } from '../../lib/api'
 import { walkAroundDefectOverlays } from '../../data/viewerHotspots'
-import './WalkAroundHotspotAdmin.css'
+import './HotspotAdmin.css'
 
 // The one editor for every marker on every equipment's model. A hotspot is one
 // physical component, and `inParts` / `inWalkAround` say which surfaces show
@@ -333,7 +333,7 @@ function HotspotAdmin({ equipmentId, modelUrl, categories = [], surface = null, 
                       {placing ? 'Cancel placement' : 'Place hotspot'}
                     </button>
                     <div className="hotspot-editor-stage">
-                      <InteractiveForkliftViewer
+                      <HotspotViewer
                         modelUrl={modelUrl}
                         isAdmin
                         adminEditMode

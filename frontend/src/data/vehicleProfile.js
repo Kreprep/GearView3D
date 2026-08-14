@@ -45,7 +45,7 @@ export const DEFAULT_FAIL_MESSAGES = {
     title: 'Wall Struck',
     message: 'You hit a wall or racking upright. Keep clear of structures while driving - reset the attempt and watch your clearance.',
   },
-  forklift: {
+  vehicle: {
     title: 'Vehicle Struck',
     message: 'You clipped a parked vehicle. Ease in slowly and keep clearance on both sides - reset the attempt and try again.',
   },

@@ -86,10 +86,12 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     localOnly: true,
   })
   const [editingEquipment, setEditingEquipment] = useState(null)
-  // Which equipment's section is expanded in the nav - the seven sub-tab
-  // paths are shared by every equipment, so this (not the URL) decides whose
-  // modules/parts/courses/etc. the tab bodies below show.
-  const [activeEquipmentId, setActiveEquipmentId] = useState('forklift')
+  // Which equipment's section is expanded in the nav - the sub-tab paths are
+  // shared by every equipment, so this (not the URL) decides whose
+  // modules/parts/settings the tab bodies below show. Null until the first
+  // fetch picks the first equipment row: naming one here would make the
+  // dashboard wrong for a deployment that has no forklift.
+  const [activeEquipmentId, setActiveEquipmentId] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
   const [newCategory, setNewCategory] = useState('')
   const [newEquipmentTitle, setNewEquipmentTitle] = useState('')
@@ -195,6 +197,9 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         ...data,
       })
       setEditingEquipment((current) => current || data.equipment?.[0] || null)
+      // First row in sortOrder, whatever it is - the dashboard should open on
+      // real content rather than on a named equipment that may not exist.
+      setActiveEquipmentId((current) => current || data.equipment?.[0]?.id || null)
     })
   }, [])
 
@@ -462,7 +467,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         </main>
       )}
 
-      {activePath === routes.adminModules && (
+      {activePath === routes.adminModules && activeEquipmentId && (
         <main className="admin-grid">
           <ModuleListAdmin
             key={activeEquipmentId}

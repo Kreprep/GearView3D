@@ -22,8 +22,8 @@ function clamp(value, min, max) {
 // the same geometry/material and its true on-screen pose baked in (bind pose
 // equals rest pose, so output is identical), then wrap the moving parts in
 // pivot groups that can be driven from a frame loop.
-export function buildForkliftRig(root, rigConfig = DEFAULT_RIG) {
-  if (root.userData.__forkliftRig) return root.userData.__forkliftRig
+export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
+  if (root.userData.__vehicleRig) return root.userData.__vehicleRig
 
   const wheelNames = rigConfig?.wheels || DEFAULT_RIG.wheels
   const mastName = rigConfig?.mast || DEFAULT_RIG.mast
@@ -138,7 +138,7 @@ export function buildForkliftRig(root, rigConfig = DEFAULT_RIG) {
   }
 
   const rig = { wheels, mastLift, carriageLift, tiltPivot, forkTipOffset }
-  root.userData.__forkliftRig = rig
-  if (typeof window !== 'undefined') window.__forkliftRig = rig
+  root.userData.__vehicleRig = rig
+  if (typeof window !== 'undefined') window.__vehicleRig = rig
   return rig
 }

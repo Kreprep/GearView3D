@@ -11,7 +11,7 @@ export const OBJECT_LABELS = {
   checkpoint: 'Checkpoint',
   cone: 'Cone',
   wall: 'Wall',
-  forklift: 'Parked forklift',
+  vehicle: 'Parked vehicle',
   pallet: 'Pallet',
   dropZone: 'Drop zone',
   parkingBay: 'Parking bay',
@@ -19,7 +19,16 @@ export const OBJECT_LABELS = {
 
 // Kinds an admin can drop onto the canvas. Singletons are filtered out of the
 // palette once the course already has one.
-export const PLACEABLE_KINDS = ['cone', 'wall', 'forklift', 'checkpoint', 'pallet', 'dropZone', 'parkingBay']
+export const PLACEABLE_KINDS = ['cone', 'wall', 'vehicle', 'checkpoint', 'pallet', 'dropZone', 'parkingBay']
+
+// The parked-obstacle kind was called 'forklift' until migration
+// 20260814110000, even though its model comes from the equipment's
+// `simConfig.parkedModelUrl` - so a Backhoe course dropped in a backhoe
+// labelled "forklift". Read stored decorations through this so a row the
+// migration missed still renders and still collides.
+export function decorationType(item) {
+  return item?.type === 'forklift' ? 'vehicle' : item?.type
+}
 
 function parseKey(key) {
   if (SINGLETON_KEYS.includes(key)) return { list: null, name: key, index: -1 }
@@ -43,7 +52,7 @@ export function listCourseItems(data) {
   }
 
   for (const [index, entry] of (data.decorations || []).entries()) {
-    items.push({ key: `decorations:${index}`, kind: entry.type, entry, ...positionOf(entry) })
+    items.push({ key: `decorations:${index}`, kind: decorationType(entry), entry, ...positionOf(entry) })
   }
 
   for (const [index, entry] of (data.pallets || []).entries()) {
@@ -131,8 +140,8 @@ export function addItem(data, kind, x, z) {
       return { ...data, decorations: [...data.decorations, { type: 'cone', position }] }
     case 'wall':
       return { ...data, decorations: [...data.decorations, { type: 'wall', position, rotation: 0, length: 3 }] }
-    case 'forklift':
-      return { ...data, decorations: [...data.decorations, { type: 'forklift', position, rotation: 0 }] }
+    case 'vehicle':
+      return { ...data, decorations: [...data.decorations, { type: 'vehicle', position, rotation: 0 }] }
     case 'checkpoint': {
       const id = nextId(data.checkpoints, 'checkpoint')
       const label = `Checkpoint ${data.checkpoints.length + 1}`

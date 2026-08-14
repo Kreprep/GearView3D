@@ -199,8 +199,8 @@ export const drivingCourses = {
     checkpoints: [],
     parkingBay: { position: [0, 0, 16], width: 0.35, depth: 1, heading: 0, label: 'Forklift Gap' },
     decorations: [
-      { type: 'forklift', position: [-0.45, 0, 16], rotation: 0 },
-      { type: 'forklift', position: [0.45, 0, 16], rotation: 0 },
+      { type: 'vehicle', position: [-0.45, 0, 16], rotation: 0 },
+      { type: 'vehicle', position: [0.45, 0, 16], rotation: 0 },
       ...coneLine(-2.6, 2, 11, 2.4),
       ...coneLine(2.6, 2, 11, 2.4),
     ],
