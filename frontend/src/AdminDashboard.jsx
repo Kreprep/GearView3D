@@ -583,7 +583,31 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               <>
                 <label>Title<input value={editingEquipment.title} onChange={(event) => setEditingEquipment({ ...editingEquipment, title: event.target.value })} /></label>
                 <label>Description<textarea value={editingEquipment.description} onChange={(event) => setEditingEquipment({ ...editingEquipment, description: event.target.value })} /></label>
-                <label>Image URL<input value={editingEquipment.imageUrl || ''} onChange={(event) => setEditingEquipment({ ...editingEquipment, imageUrl: event.target.value })} /></label>
+                <label>
+                  Catalog image URL
+                  <input
+                    value={editingEquipment.imageUrl || ''}
+                    placeholder="/images/backhoe-card.png"
+                    onChange={(event) => setEditingEquipment({ ...editingEquipment, imageUrl: event.target.value })}
+                  />
+                  <small className="admin-field-note">
+                    The picture on this equipment&apos;s catalogue card. Drop the file in
+                    {' '}<code>frontend/public/images/</code> and point at it as <code>/images/your-file.png</code>, or paste
+                    any image URL. Left blank, the card shows a plain panel - there is no default picture.
+                  </small>
+                </label>
+                <div className="equipment-image-preview">
+                  {editingEquipment.imageUrl ? (
+                    <img
+                      src={editingEquipment.imageUrl}
+                      alt=""
+                      onError={(event) => { event.currentTarget.dataset.broken = 'true' }}
+                      onLoad={(event) => { delete event.currentTarget.dataset.broken }}
+                    />
+                  ) : (
+                    <span>No image set</span>
+                  )}
+                </div>
                 <label>Model URL<input value={editingEquipment.modelUrl || ''} placeholder="/models/backhoe.glb" onChange={(event) => setEditingEquipment({ ...editingEquipment, modelUrl: event.target.value })} /></label>
                 <p className="admin-panel-note">Turns on the Parts Identification hotspot editor and the learner-facing identification page for this equipment.</p>
                 <label className="admin-checkbox">
