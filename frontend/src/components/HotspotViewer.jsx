@@ -323,7 +323,7 @@ function ReferenceForklift({ x }) {
       <Center top cacheKey={DEFAULT_MODEL_URL}>
         <primitive object={clone} />
       </Center>
-      <ReferenceLabel height={1}>Forklift (baseline)</ReferenceLabel>
+      <ReferenceLabel height={0.6}>Forklift (baseline)</ReferenceLabel>
     </group>
   )
 }
