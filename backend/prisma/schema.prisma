@@ -33,6 +33,12 @@ model Equipment {
   // matching forklift.glb, which is the scale baseline every other model is
   // sized against.
   modelScale  Float?
+  // Vertical nudge applied after the viewer grounds the model, in scene units
+  // (so it is read against the already-scaled model). Null means no nudge.
+  // Viewers ground a model by its bounding box, which is only the wheels if
+  // nothing else hangs lower - backhoe.glb's buckets do, leaving its tyres
+  // above the floor. This is the admin's correction for that.
+  modelOffsetY Float?
   imageUrl    String  @default("")
   sortOrder   Int     @default(0)
   // false renders the catalogue card as a non-interactive "Coming Soon"

@@ -461,6 +461,7 @@ function MarkerOverlay({ id, position, label, feedback, onScenarioAction }) {
 function InteractiveScene({
   modelUrl,
   modelScale,
+  modelOffsetY,
   scenario,
   hotspots,
   defectOverlays,
@@ -530,11 +531,16 @@ function InteractiveScene({
       <Bounds fit clip margin={1.25}>
         <ViewReset cameraPreset={cameraPreset} controlsRef={controlsRef} resetToken={resetToken} />
         {showScaleReference && <ScaleReference />}
-        {/* Center measures only when cacheKey changes, never on child updates —
+        {/* Center measures only when cacheKey changes, never on child updates -
             without the key it keeps the offset computed for the model/scale it
             mounted with (often the forklift default while the equipment row is
-            still loading), leaving the swapped-in model floating or buried. */}
-        <Center top cacheKey={`${modelUrl}:${modelScale || 1}`}>
+            still loading), leaving the swapped-in model floating or buried.
+
+            `position` lands on Center's outermost group, above the centering
+            transform it computes, so the height nudge shifts the grounded model
+            instead of being cancelled by the next measurement. It deliberately
+            does not move the scale references, which stand on the floor. */}
+        <Center top cacheKey={`${modelUrl}:${modelScale || 1}`} position={[0, modelOffsetY || 0, 0]}>
           <group ref={rigGroupRef} rotation={[0, -0.18, 0]}>
             <EquipmentModel
               modelUrl={modelUrl}
@@ -657,6 +663,7 @@ export default function HotspotViewer({
   deviceEffect,
   modelUrl = DEFAULT_MODEL_URL,
   modelScale = 1,
+  modelOffsetY = 0,
   className = '',
   isAdmin = false,
   adminEditMode = false,
@@ -750,6 +757,7 @@ export default function HotspotViewer({
               <InteractiveScene
                 modelUrl={modelUrl}
                 modelScale={modelScale}
+                modelOffsetY={modelOffsetY}
                 scenario={scenario}
                 hotspots={hotspots}
                 defectOverlays={defectOverlays}
