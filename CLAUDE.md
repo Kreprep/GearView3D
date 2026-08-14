@@ -10,6 +10,8 @@ GearView3D is a thesis prototype for browser-based forklift familiarization trai
 
 **Deployment** is `docker-compose.yml` at the repo root — postgres + backend + an nginx container serving the built frontend. Both images build from the **repo root**, not their own folder, because `prisma/seed.js` imports `frontend/src/data/*.js` directly. In production nginx does what the Vite proxy does in development (`frontend/nginx.conf`: `/api` to the backend, everything else falling back to `index.html` for the pushState router), so a reverse proxy in front only needs one upstream. `backend/docker-entrypoint.sh` runs `prisma migrate deploy` (never `migrate dev`) then the seed on every boot.
 
+A live instance of this stack runs on a homelab LXC container (`gearview3d.lindenwood53.vip`, behind a Caddy reverse proxy), redeployed via `git pull && docker compose up -d --build` using a read-only GitHub deploy key on the box — see README's **Live instance** section for the non-secret summary. Full LXC specs and credentials live in the private homelab doc (private documentation), never in this repo.
+
 ## Commands
 
 Frontend (from `frontend/`):
@@ -143,6 +145,10 @@ Three.js is used via `@react-three/fiber`/`@react-three/drei`, with `.glb` model
 - `components/PartsViewport.jsx` — the parts explore viewport `PartsIdentificationPage.jsx` uses for every equipment (takes any `modelUrl`).
 
   The two share `components/viewer/ViewerShared.jsx` (`CameraFocus`, `ViewerLoadingPanel`, `ViewerErrorBoundary`) and `viewer/useClonedScene.js`. They are deliberately **not** one component: their scenes, material passes and interaction genuinely differ, and `HotspotViewer` builds its rig before the material pass, so only what was identical is shared.
+
+**Both stand the model on the floor with drei's `<Center top>`, and both need three things right to keep it there.** The floor is at y = 0 — don't reintroduce a negative floor constant to "fix" a float, because that lifts the scale references and markers too. `<Center>` re-measures **only** when its `cacheKey` changes, so it is keyed on `modelUrl` and `modelScale`; without that it keeps the offset it computed at mount, when the equipment row usually has not loaded and the default forklift is still showing. And `HotspotViewer` builds its rig in a **layout** effect so the measurement runs against the de-skinned meshes — forklift.glb's parts are rigidly bound `SkinnedMesh`es whose node transforms carry an offset that skinning cancels at render time, so a raw bbox reads ~0.65 units high.
+
+What is left after that is the model's own geometry: `<Center top>` grounds the bounding box, which is the wheels only if nothing hangs lower — backhoe.glb's buckets do. `Equipment.modelOffsetY` is the admin's correction, a nudge in scene units applied on `<Center>`'s outermost group (**above** its centering transform, or the next measurement would cancel it) and deliberately not to the scale references, which stand on the floor. It rides the same prop chain as `Equipment.modelScale`, from the page down through `WalkAroundStep` / `HotspotAdmin` / `ModuleEditor`; both are edited on the catalog card in Equipment Settings, next to a live `HotspotViewer` preview.
 
 ### Admin dashboard
 `AdminDashboard.jsx` reads/writes content through the same `lib/api.js` admin functions (`adminSaveHotspotDraft`, `adminUpdateModule`, `adminUpdateChecklistItem`, `adminUpdateQuizQuestion`, and their delete counterparts) and reports on progress via `adminListContent()`.

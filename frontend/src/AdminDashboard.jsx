@@ -12,6 +12,7 @@ import {
 import HubContentEditor from './components/admin/HubContentEditor'
 import ModuleEditor from './components/admin/ModuleEditor'
 import HotspotAdmin from './components/admin/HotspotAdmin'
+import HotspotViewer from './components/HotspotViewer'
 import ModuleListAdmin from './components/admin/ModuleListAdmin'
 import QuizAdmin from './components/admin/QuizAdmin'
 import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
@@ -494,6 +495,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               module={moduleBySlug[editingModuleSlug]}
               equipmentId={editingModuleEquipment.id}
               modelUrl={editingModuleEquipment.modelUrl}
+              modelScale={editingModuleEquipment.modelScale}
+              modelOffsetY={editingModuleEquipment.modelOffsetY}
               equipmentModules={editingModuleEquipment.modules}
               checklists={content.checklists}
               hotspotCategories={editingModuleEquipment.categories}
@@ -537,6 +540,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               key={activeEquipmentId}
               equipmentId={activeEquipmentId}
               modelUrl={activeEquipment?.modelUrl}
+              modelScale={activeEquipment?.modelScale}
+              modelOffsetY={activeEquipment?.modelOffsetY}
               categories={activeEquipmentCategories}
               surface="parts"
               onMessage={refreshMessage}
@@ -610,6 +615,57 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 </div>
                 <label>Model URL<input value={editingEquipment.modelUrl || ''} placeholder="/models/backhoe.glb" onChange={(event) => setEditingEquipment({ ...editingEquipment, modelUrl: event.target.value })} /></label>
                 <p className="admin-panel-note">Turns on the Parts Identification hotspot editor and the learner-facing identification page for this equipment.</p>
+                <label>
+                  Model scale
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editingEquipment.modelScale ?? ''}
+                    placeholder="1"
+                    onChange={(event) => setEditingEquipment({
+                      ...editingEquipment,
+                      modelScale: event.target.value === '' ? null : Number(event.target.value),
+                    })}
+                  />
+                </label>
+                <p className="admin-panel-note">
+                  Multiplier applied to this model everywhere it renders (Parts Identification, Walk-Around markers,
+                  the placement stage below). Forklift.glb is the scale baseline - use &quot;Show scale reference&quot; below
+                  to compare this model against it, an average adult (1.7 m) and a cardboard box, live as you edit the
+                  scale. Leave blank for 1x. Changing this after hotspots are placed moves the model without moving
+                  their markers, so set the scale first, then place or re-check markers.
+                </p>
+                <label>
+                  Model height offset
+                  <input
+                    type="number"
+                    step="0.005"
+                    value={editingEquipment.modelOffsetY ?? ''}
+                    placeholder="0"
+                    onChange={(event) => setEditingEquipment({
+                      ...editingEquipment,
+                      modelOffsetY: event.target.value === '' ? null : Number(event.target.value),
+                    })}
+                  />
+                </label>
+                <p className="admin-panel-note">
+                  Nudges the model up (positive) or down (negative) after the viewer stands it on the floor. Only needed
+                  when the model&apos;s lowest point is not its wheels - backhoe.glb&apos;s buckets hang below its tyres, so
+                  grounding it leaves the tyres in the air. Measured in the same units as the scene, after the scale
+                  above, so set the scale first. Leave blank for none, and nudge in small steps against the preview.
+                </p>
+                {editingEquipment.modelUrl && (
+                  <div className="equipment-scale-preview">
+                    <HotspotViewer
+                      key={editingEquipment.id}
+                      modelUrl={editingEquipment.modelUrl}
+                      modelScale={editingEquipment.modelScale}
+                      modelOffsetY={editingEquipment.modelOffsetY}
+                      isAdmin
+                    />
+                  </div>
+                )}
                 <label className="admin-checkbox">
                   <input
                     type="checkbox"

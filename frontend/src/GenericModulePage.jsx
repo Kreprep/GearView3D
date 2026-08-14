@@ -456,6 +456,8 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
           data={step.walkAround}
           hotspots={hotspots}
           modelUrl={equipmentRecord?.modelUrl || undefined}
+          modelScale={equipmentRecord?.modelScale}
+          modelOffsetY={equipmentRecord?.modelOffsetY}
           state={phaseStateFor(simulation, step.id)}
           engineStarted={simulation.engineStarted}
           activeScenarioId={scenarioIdFor(step)}
