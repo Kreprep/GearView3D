@@ -10,6 +10,8 @@ GearView3D is a thesis prototype for browser-based forklift familiarization trai
 
 **Deployment** is `docker-compose.yml` at the repo root — postgres + backend + an nginx container serving the built frontend. Both images build from the **repo root**, not their own folder, because `prisma/seed.js` imports `frontend/src/data/*.js` directly. In production nginx does what the Vite proxy does in development (`frontend/nginx.conf`: `/api` to the backend, everything else falling back to `index.html` for the pushState router), so a reverse proxy in front only needs one upstream. `backend/docker-entrypoint.sh` runs `prisma migrate deploy` (never `migrate dev`) then the seed on every boot.
 
+A live instance of this stack runs on a homelab LXC container (`gearview3d.lindenwood53.vip`, behind a Caddy reverse proxy), redeployed via `git pull && docker compose up -d --build` using a read-only GitHub deploy key on the box — see README's **Live instance** section for the non-secret summary. Full LXC specs and credentials live in the private homelab doc (private documentation), never in this repo.
+
 ## Commands
 
 Frontend (from `frontend/`):
