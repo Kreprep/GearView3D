@@ -114,6 +114,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
     <div className="parts-scene-wrap">
       <PartsViewport
         modelUrl={equipment?.modelUrl}
+        modelScale={equipment?.modelScale}
         hotspots={hotspots}
         selectedHotspotId={selectedPartId}
         onHotspotSelect={selectPart}

@@ -717,3 +717,9 @@ label.admin-checkbox input {
   font-size: 0.8rem;
   color: #94a3b8;
 }
+
+.equipment-scale-preview {
+  width: 100%;
+  min-height: 420px;
+  margin-bottom: 12px;
+}

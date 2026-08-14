@@ -27,6 +27,12 @@ model Equipment {
   title       String
   description String  @default("")
   modelUrl    String  @default("")
+  // Uniform scale multiplier applied wherever this equipment's model renders
+  // (Parts Identification, Walk-Around markers, the admin placement stage).
+  // Null means 1x - most GLBs are already authored close to real-world metres,
+  // matching forklift.glb, which is the scale baseline every other model is
+  // sized against.
+  modelScale  Float?
   imageUrl    String  @default("")
   sortOrder   Int     @default(0)
   // false renders the catalogue card as a non-interactive "Coming Soon"

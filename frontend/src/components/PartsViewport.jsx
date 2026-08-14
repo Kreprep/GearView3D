@@ -31,7 +31,7 @@ function AutoFit({ resetToken }) {
   return null
 }
 
-function EquipmentModel({ modelUrl, wireframe }) {
+function EquipmentModel({ modelUrl, modelScale, wireframe }) {
   const model = useClonedScene(modelUrl)
 
   useEffect(() => {
@@ -50,7 +50,7 @@ function EquipmentModel({ modelUrl, wireframe }) {
     })
   }, [model, wireframe])
 
-  return <primitive object={model} />
+  return <primitive object={model} scale={modelScale || 1} />
 }
 
 function HotspotPin({ hotspot, selected, onSelect, hotspotRefs }) {
@@ -131,6 +131,7 @@ function FallbackForkliftScene({ freeCam }) {
 
 function ForkliftScene({
   modelUrl,
+  modelScale,
   hotspots,
   overlaysEnabled,
   selectedId,
@@ -152,9 +153,12 @@ function ForkliftScene({
 
       <Bounds fit clip margin={1.25}>
         <AutoFit resetToken={resetToken} />
-        <Center position={[0, 0, 0]} top>
+        {/* Center measures only when cacheKey changes, never on child updates —
+            without the key a model or scale that arrives after mount (equipment
+            row loads async) keeps the previous model's grounding offset. */}
+        <Center position={[0, 0, 0]} top cacheKey={`${modelUrl}:${modelScale || 1}`}>
           <group rotation={[0, -0.18, 0]}>
-            <EquipmentModel modelUrl={modelUrl} wireframe={wireframe} />
+            <EquipmentModel modelUrl={modelUrl} modelScale={modelScale} wireframe={wireframe} />
             {overlaysEnabled &&
               hotspots.map((hotspot) => (
                 <HotspotPin
@@ -204,6 +208,7 @@ function ForkliftScene({
  */
 export default function PartsViewport({
   modelUrl = DEFAULT_MODEL_URL,
+  modelScale = 1,
   hotspots = partsHotspots,
   selectedHotspotId,
   onHotspotSelect,
@@ -250,6 +255,7 @@ export default function PartsViewport({
   const Scene = modelReady ? (
     <ForkliftScene
       modelUrl={modelUrl}
+      modelScale={modelScale}
       hotspots={hotspots}
       overlaysEnabled={overlaysEnabled}
       selectedId={selectedHotspotId}

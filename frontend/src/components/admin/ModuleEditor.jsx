@@ -26,6 +26,7 @@ function ModuleEditor({
   module,
   equipmentId,
   modelUrl,
+  modelScale,
   equipmentModules,
   checklists,
   hotspotCategories,
@@ -167,6 +168,7 @@ function ModuleEditor({
               key={equipmentId}
               equipmentId={equipmentId}
               modelUrl={modelUrl}
+              modelScale={modelScale}
               categories={hotspotCategories}
               surface="walk-around"
               onMessage={onMessage}
