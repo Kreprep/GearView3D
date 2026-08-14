@@ -96,10 +96,7 @@ export const HUB_CONTENT_FIELDS = [
     label: 'Parts card description',
     section: 'Parts identification card',
     multiline: true,
-    default: ({ isForklift }) =>
-      isForklift
-        ? 'Review major forklift components, functions, and safety reminders.'
-        : 'Tap hotspots on the 3D model to learn what each part is.',
+    default: () => 'Review major {equipment} components, functions, and safety reminders.',
   },
   {
     key: 'partsCta',

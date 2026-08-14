@@ -46,7 +46,7 @@ const GOAL_LABELS = {
 
 const GOAL_HINTS = {
   checkpoints: 'Completes when every checkpoint has been cleared in list order.',
-  parking: 'Completes when the forklift is inside the bay, aligned, stopped, forks lowered and the engine off.',
+  parking: 'Completes when the vehicle is inside the bay, aligned, stopped, any forks lowered and the engine off.',
   pallet: 'Completes when a pallet is lifted and set down inside the drop zone.',
   free: 'No goal - the step is completed by the module page (for example pressing every control key).',
 }
@@ -494,8 +494,8 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
             <h3>Walk-around content</h3>
             <p className="admin-panel-note">
               What this inspection step asks the learner to do. Markers on the 3D model are this equipment&apos;s
-              hotspots, matched to the ids below - Forklift uses its walk-around hotspots, every other equipment
-              the ones edited under Parts Identification.
+              hotspots ticked for walk-around, matched to the ids below - the same rows Parts Identification
+              edits, so a marker that is also a part is one hotspot, not a copy.
             </p>
 
             <label>
@@ -568,7 +568,7 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
           </div>
 
           <p className="admin-panel-note">
-            Seen from the driver's seat: forward (+Z) is up the map and the forklift's right is the right of the map.
+            Seen from the driver's seat: forward (+Z) is up the map and the vehicle's right is the right of the map.
             Drag to move, Shift-click to multi-select, Delete to remove.
           </p>
 
@@ -657,7 +657,7 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
               />
               Fail on braking hard while carrying
             </label>
-            <p className="admin-panel-note">Cones, walls and parked forklifts are always live colliders - striking one always fails the attempt.</p>
+            <p className="admin-panel-note">Cones, walls and parked vehicles are always live colliders - striking one always fails the attempt.</p>
           </section>
           )}
 

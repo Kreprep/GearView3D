@@ -78,7 +78,7 @@ function CourseInspector({ item, onChange, onMove, onDelete }) {
             onChange={(weightKg) => set({ weightKg })}
           />
           <p className="admin-panel-note">
-            Weight is shown on the pallet and checked against the course capacity. Over capacity tips the forklift.
+            Weight is shown on the pallet and checked against the course capacity. Over capacity tips the vehicle.
           </p>
         </>
       )}
@@ -154,7 +154,7 @@ function CourseInspector({ item, onChange, onMove, onDelete }) {
           </div>
           <AngleField label="Heading" value={entry.heading} onChange={(heading) => set({ heading })} />
           <p className="admin-panel-note">
-            The bay must be wider than the forklift or it can never be parked in. Completion also needs the forklift
+            The bay must be wider than the vehicle or it can never be parked in. Completion also needs the vehicle
             stopped, aligned to this heading, forks lowered and the engine off.
           </p>
         </>

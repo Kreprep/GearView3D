@@ -12,7 +12,6 @@ import './ModuleListPage.css'
 // from the Module rows, so an admin adding a module adds a card here with no
 // code change.
 function ModuleListPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
-  const isForklift = equipmentId === 'forklift'
   const [equipment, setEquipment] = useState(null)
   const [modules, setModules] = useState([])
   const [loading, setLoading] = useState(true)
@@ -39,7 +38,6 @@ function ModuleListPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
   const copy = resolveHubContent(equipment, hubContentContext({
     equipmentTitle,
     learnerName: user?.fullName || 'learner',
-    isForklift,
     moduleTitles: modules.map((module) => module.subtitle || module.title),
   }))
 

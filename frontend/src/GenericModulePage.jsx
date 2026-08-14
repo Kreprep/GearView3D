@@ -552,7 +552,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
           </p>
         )}
         <p className={done ? 'completion-ready' : 'task-note'}>
-          {done ? 'Step complete. Use Next to continue.' : courseTaskCopy(course)}
+          {done ? 'Step complete. Use Next to continue.' : courseTaskCopy(course, vehicleProfile)}
         </p>
       </div>
     )
