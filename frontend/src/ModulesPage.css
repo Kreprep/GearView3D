@@ -59,15 +59,13 @@
   color: #94a3b8;
 }
 
+/* Card artwork comes from the equipment's own `imageUrl`, applied inline by
+   ModulesPage. There is no default picture on purpose - this used to hardcode
+   forklift-card.png, so every equipment without an image of its own showed a
+   forklift on its catalogue card. */
 .catalog-module-image {
   height: 300px;
   background: #0f172a;
-}
-
-.catalog-module-image-forklift {
-  background-image:
-    linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78)),
-    url('/images/forklift-card.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

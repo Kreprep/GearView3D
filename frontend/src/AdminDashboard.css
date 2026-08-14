@@ -687,3 +687,33 @@ label.admin-checkbox input {
   color: #92400e;
   font-weight: 600;
 }
+
+/* Live preview under the Equipment Card's image field, so an admin can see
+   the artwork (or a broken path) without leaving the dashboard. */
+.equipment-image-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 150px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  background: #0f172a;
+  overflow: hidden;
+}
+
+.equipment-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.equipment-image-preview img[data-broken='true'] {
+  object-fit: contain;
+  opacity: 0.4;
+}
+
+.equipment-image-preview span {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}

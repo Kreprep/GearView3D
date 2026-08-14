@@ -17,6 +17,18 @@ function trainingRouteFor(equipment) {
   return `/training/${equipment.id}`
 }
 
+// The card artwork is whatever the admin set as this equipment's Catalog image.
+// There is deliberately no default picture: the card used to fall back to
+// forklift-card.png, so every equipment without an image of its own showed a
+// forklift. An equipment with no image gets a plain tinted panel instead.
+function cardImageStyle(equipment) {
+  if (!equipment.imageUrl) return undefined
+
+  return {
+    backgroundImage: `linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78)), url('${equipment.imageUrl}')`,
+  }
+}
+
 function ModulesPage({ user, onLogout, onNavigate }) {
   const [equipment, setEquipment] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,10 +68,8 @@ function ModulesPage({ user, onLogout, onNavigate }) {
               }}
             >
               <div
-                className="catalog-module-image catalog-module-image-forklift"
-                style={module.imageUrl ? {
-                  backgroundImage: `linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78)), url('${module.imageUrl}')`,
-                } : undefined}
+                className={`catalog-module-image${module.imageUrl ? '' : ' module-image-placeholder'}`}
+                style={cardImageStyle(module)}
               />
               <div className="catalog-card-body">
                 <div className="catalog-card-heading">
@@ -81,7 +91,10 @@ function ModulesPage({ user, onLogout, onNavigate }) {
           ))}
           {comingSoonEquipment.map((equipment) => (
             <article key={equipment.id} className="module-card module-card-disabled">
-              <div className="catalog-module-image module-image-placeholder" />
+              <div
+                className={`catalog-module-image${equipment.imageUrl ? '' : ' module-image-placeholder'}`}
+                style={cardImageStyle(equipment)}
+              />
               <div className="catalog-card-body">
                 <div className="catalog-card-heading">
                   <h2>{equipment.title}</h2>
