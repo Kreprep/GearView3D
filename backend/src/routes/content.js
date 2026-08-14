@@ -2,8 +2,7 @@ import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../lib/auth.js'
 import { publishedCourse } from '../lib/courses.js'
-import { publishedHotspot } from '../lib/walkAroundHotspots.js'
-import { publishedEquipmentHotspot } from '../lib/equipmentHotspots.js'
+import { hotspotDetail, publishedHotspot } from '../lib/hotspots.js'
 import {
   appendAttempt,
   buildAttempt,
@@ -40,39 +39,41 @@ router.get('/modules', async (req, res) => {
   res.json(modules)
 })
 
-// Every reader below selects columns explicitly so a pending `draft` cannot
-// reach a learner - these tables hold the published row plus the admin's
-// unpublished edit side by side.
-router.get('/parts', async (req, res) => {
-  const parts = await prisma.part.findMany({
-    orderBy: { sortOrder: 'asc' },
-    select: {
-      id: true,
-      label: true,
-      category: true,
-      position: true,
-      functionText: true,
-      inspectionReminder: true,
-      safetyNote: true,
-      relatedModule: true,
-      checklist: true,
-      sortOrder: true,
-    },
-  })
-  res.json(parts)
+// One equipment's published hotspots, optionally narrowed to the surface that
+// is asking:
+//
+//   GET /hotspots?equipment=forklift                 every marker it has
+//   GET /hotspots?equipment=forklift&surface=parts   its Parts Identification markers
+//   GET /hotspots?equipment=forklift&surface=walk-around   its inspection markers
+//
+// Unplaced rows (created but never published) are held back from learners the
+// same way an unpublished course step is. `publishedHotspot` picks columns
+// explicitly, so a pending `draft` cannot ride along.
+router.get('/hotspots', async (req, res) => {
+  const where = { published: true }
+  if (req.query.equipment) where.equipmentId = req.query.equipment
+  if (req.query.surface === 'parts') where.inParts = true
+  if (req.query.surface === 'walk-around') where.inWalkAround = true
+
+  const rows = await prisma.hotspot.findMany({ where, orderBy: { sortOrder: 'asc' } })
+  res.json(rows.map(publishedHotspot))
 })
 
-router.get('/part-categories', async (req, res) => {
-  const categories = await prisma.partCategory.findMany({ orderBy: { sortOrder: 'asc' } })
+// The detail cards, as an object keyed by hotspot id - the shape the frontend
+// has always consumed. Detail-only rows (a card with no marker) are included,
+// which is the whole reason this is a separate call from /hotspots.
+router.get('/hotspot-details', async (req, res) => {
+  const where = { published: true }
+  if (req.query.equipment) where.equipmentId = req.query.equipment
+
+  const rows = await prisma.hotspot.findMany({ where })
+  res.json(Object.fromEntries(rows.map((row) => [row.id, hotspotDetail(row)])))
+})
+
+router.get('/hotspot-categories', async (req, res) => {
+  const where = req.query.equipment ? { equipmentId: req.query.equipment } : {}
+  const categories = await prisma.hotspotCategory.findMany({ where, orderBy: { sortOrder: 'asc' } })
   res.json(categories)
-})
-
-// Returned as an object keyed by id, matching the shape the frontend uses.
-router.get('/part-details', async (req, res) => {
-  const details = await prisma.partDetail.findMany({
-    select: { id: true, title: true, subtitle: true, image: true, description: true },
-  })
-  res.json(Object.fromEntries(details.map((detail) => [detail.id, detail])))
 })
 
 // Returns the checklist texts for one module, in order.
@@ -167,26 +168,6 @@ router.get('/courses/:moduleSlug', async (req, res) => {
     orderBy: { sortOrder: 'asc' },
   })
   res.json(rows.map(publishedCourse))
-})
-
-// Module 1's 3D inspection hotspots. Unpublished ones (still being placed in
-// the admin editor) are withheld the same way unpublished courses are.
-router.get('/walkaround-hotspots', async (req, res) => {
-  const rows = await prisma.walkAroundHotspot.findMany({
-    where: { published: true },
-    orderBy: { sortOrder: 'asc' },
-  })
-  res.json(rows.map(publishedHotspot))
-})
-
-// The generic per-equipment Hotspot Identification page's data - every
-// equipment other than Forklift uses this instead of /parts.
-router.get('/equipment-hotspots', async (req, res) => {
-  const rows = await prisma.equipmentHotspot.findMany({
-    where: { published: true, ...(req.query.equipment ? { equipmentId: req.query.equipment } : {}) },
-    orderBy: { sortOrder: 'asc' },
-  })
-  res.json(rows.map(publishedEquipmentHotspot))
 })
 
 export default router

@@ -16,11 +16,17 @@ export const contentTables = [
   // nothing to omit here.
   { model: 'equipment', label: 'Equipment', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
   { model: 'module', label: 'Module', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
-  { model: 'partCategory', label: 'PartCategory', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
-  // `draft` is one admin's unfinished work, so it never travels - the same rule
-  // as Course below.
-  { model: 'part', label: 'Part', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }], omit: ['draft'], prunable: true },
-  { model: 'partDetail', label: 'PartDetail', orderBy: [{ id: 'asc' }], omit: ['draft'] },
+  { model: 'hotspotCategory', label: 'HotspotCategory', orderBy: [{ equipmentId: 'asc' }, { sortOrder: 'asc' }] },
+  // Every marker on every model, whichever surface shows it. `draft` is one
+  // admin's unfinished work and `updatedAt` is database-managed, so neither
+  // travels - the same rule as Course below.
+  {
+    model: 'hotspot',
+    label: 'Hotspot',
+    orderBy: [{ equipmentId: 'asc' }, { sortOrder: 'asc' }],
+    omit: ['draft', 'updatedAt'],
+    prunable: true,
+  },
   {
     model: 'course',
     label: 'Course',

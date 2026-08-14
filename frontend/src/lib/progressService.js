@@ -1,13 +1,11 @@
-import { moduleChecklists, partsHotspots } from './trainingData'
+import { moduleChecklists } from './trainingData'
 import {
   getChecklistCounts as fetchChecklistCounts,
-  getParts as fetchParts,
   getProgress as fetchServerProgress,
   saveProgress as pushServerProgress,
 } from './api'
 
 const STORAGE_KEY = 'gearview_progress_v1'
-const PARTS_COUNT_KEY = 'gearview_parts_count_v1'
 const CHECKLIST_COUNTS_KEY = 'gearview_checklist_counts_v1'
 const CHANGE_EVENT = 'gearview-progress-change'
 const SERVER_PUSH_DELAY_MS = 800
@@ -47,35 +45,14 @@ export async function hydrateProgressFromServer() {
   notify()
 }
 
-// How many parts "all parts viewed" means. The parts themselves live in the
-// database and an admin can add or remove them, but every progress reader here
-// is synchronous, so the count is cached the same way progress itself is:
-// localStorage is the synchronous source, refreshed from the API on login.
-// The seeded default is only the fallback before the first successful fetch.
-let partsCount = readCachedPartsCount()
-
-function readCachedPartsCount() {
-  const cached = Number(localStorage.getItem(PARTS_COUNT_KEY))
-  return Number.isInteger(cached) && cached > 0 ? cached : partsHotspots.length
-}
-
-// Called alongside hydrateProgressFromServer(). A failure leaves the previous
-// count in place rather than resetting to the seeded default.
-export async function hydratePartsCount() {
-  const parts = await fetchParts()
-  if (!Array.isArray(parts) || parts.length === 0) return
-
-  partsCount = parts.length
-  localStorage.setItem(PARTS_COUNT_KEY, String(parts.length))
-  notify()
-}
-
-export function getPartsCount() {
-  return partsCount
-}
-
-// How many checklist items each module has, keyed by slug. Cached for the same
-// reason as partsCount: getChecklistCompletion is synchronous.
+// How many checklist items each module has, keyed by slug. Cached because
+// getChecklistCompletion is synchronous: localStorage is the synchronous
+// source, refreshed from the API on login.
+//
+// There is no equivalent cache for hotspots. Every page that shows a parts
+// percentage has already fetched that equipment's hotspots to render them, so
+// it passes the ids in - which also means the denominator is that equipment's,
+// not a single global count.
 let checklistCounts = readCachedChecklistCounts()
 
 function readCachedChecklistCounts() {
@@ -272,32 +249,19 @@ export function getEquipmentProgress(progress) {
   )
 }
 
-export function getPartsProgress(progress) {
-  // Clamped because a part an admin deleted can still be in viewedPartIds,
-  // which would otherwise push this over 100%.
-  const viewedCount = Math.min(progress.parts.viewedPartIds.length, partsCount)
-  const viewedPercentage = partsCount ? (viewedCount / partsCount) * 100 : 0
-  const latestPractice = progress.parts.practiceAttempts[0]
-  const practicePercentage = latestPractice ? latestPractice.percentage : 0
-
-  return Math.round(viewedPercentage * 0.5 + practicePercentage * 0.5)
-}
-
-export function getOverallProgress(progress) {
-  return Math.round((getEquipmentProgress(progress) + getPartsProgress(progress)) / 2)
-}
-
-// Equivalent of getEquipmentProgress/getPartsProgress/getOverallProgress for
-// any equipment other than Forklift, where the module list and hotspot ids
-// are data-driven rather than the fixed equipmentModuleSlugs/partsHotspots.
-export function getGenericModuleProgress(progress, moduleSlugs) {
+// Module, hotspot and overall percentages for any equipment. The caller passes
+// the module slugs and hotspot ids because both are data-driven - which is also
+// what makes these correct per equipment rather than per learner.
+export function getModulesProgress(progress, moduleSlugs) {
   if (!moduleSlugs.length) return 0
   return Math.round(
     moduleSlugs.reduce((sum, slug) => sum + getModuleProgress(progress, slug), 0) / moduleSlugs.length,
   )
 }
 
-export function getGenericHotspotProgress(progress, hotspotIds) {
+// Counted against the ids passed in, so a hotspot an admin deleted stays in the
+// learner's saved list without pushing this over 100%.
+export function getHotspotProgress(progress, hotspotIds) {
   if (!hotspotIds.length) return 0
   const viewed = new Set(progress.parts.viewedPartIds)
   const viewedCount = hotspotIds.filter((id) => viewed.has(id)).length
@@ -320,31 +284,33 @@ export function getLatestQuizAttempt(progress, scope) {
   return progress.quizzes?.[scope?.module]?.[0]
 }
 
-// The parts/hotspot percentage for any equipment other than Forklift: hotspots
-// viewed, averaged with the latest parts-quiz score once that equipment has a
-// quiz. Forklift's equivalent is getPartsProgress().
-export function getGenericPartsProgress(progress, hotspotIds, equipmentId, hasQuiz = false) {
-  const viewed = getGenericHotspotProgress(progress, hotspotIds)
+// An equipment's Parts Identification percentage: hotspots viewed, averaged
+// with the latest parts-quiz score once that equipment has a quiz.
+export function getPartsProgress(progress, hotspotIds, equipmentId, hasQuiz = false) {
+  const viewed = getHotspotProgress(progress, hotspotIds)
   if (!hasQuiz) return viewed
 
   const latest = getPartsQuizAttempts(progress, equipmentId)[0]
   return Math.round(viewed * 0.5 + (latest ? latest.percentage : 0) * 0.5)
 }
 
-// `partsPercentage` is what getGenericPartsProgress() returned for the same
+// `partsPercentage` is what getPartsProgress() returned for the same
 // equipment, or null when it has no parts page to average in.
-export function getGenericOverallProgress(progress, moduleSlugs, partsPercentage) {
-  const moduleProgress = getGenericModuleProgress(progress, moduleSlugs)
+export function getOverallProgress(progress, moduleSlugs, partsPercentage) {
+  const moduleProgress = getModulesProgress(progress, moduleSlugs)
   if (partsPercentage === null || partsPercentage === undefined) return moduleProgress
   return Math.round((moduleProgress + partsPercentage) / 2)
 }
 
+// The synchronous snapshot the UI reads. `parts` and the overall figure are
+// deliberately absent: both need the equipment's hotspot ids, which only the
+// page rendering them has, so those call getPartsProgress/getOverallProgress
+// directly. `equipment` is the average across Forklift's own modules.
 export function getProgressSummary(progress = getStoredProgress()) {
   return {
     raw: progress,
     equipment: getEquipmentProgress(progress),
-    parts: getPartsProgress(progress),
-    overall: getOverallProgress(progress),
+    overall: getEquipmentProgress(progress),
     modules: equipmentModuleSlugs.reduce((summary, slug) => {
       summary[slug] = getModuleProgress(progress, slug)
       return summary
@@ -354,7 +320,6 @@ export function getProgressSummary(progress = getStoredProgress()) {
       return summary
     }, {}),
     viewedParts: progress.parts.viewedPartIds,
-    partsCount,
     quizAttempts: progress.quizzes,
     partsPracticeAttempts: progress.parts.practiceAttempts,
     simulations: progress.simulations,

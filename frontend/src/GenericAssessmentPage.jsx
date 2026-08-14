@@ -2,28 +2,24 @@ import { useEffect, useMemo, useState } from 'react'
 import { useProgress } from './hooks/useProgress'
 import PageLayout from './components/PageLayout'
 import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
-import { getEquipment, getEquipmentHotspots, getParts, getQuizQuestions, getTrainingModules } from './lib/api'
+import { getEquipment, getHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
 import {
-  getGenericModuleProgress,
-  getGenericOverallProgress,
-  getGenericPartsProgress,
+  getModulesProgress,
+  getOverallProgress,
+  getPartsProgress,
   getPartsQuizAttempts,
 } from './lib/progressService'
-import { routes } from './lib/router'
 import './AssessmentPage.css'
 
-// The final-assessment page for every equipment. The layout is shared; what
-// varies per equipment is where the "parts" numbers come from: Forklift's
-// parts progress is the Part-table-based summary.parts, while other equipment
-// reads its EquipmentHotspot rows. Both average in that equipment's parts quiz
-// when it has one.
+// The final-assessment page for every equipment. Nothing forks on which
+// equipment it is: the modules, the parts markers and the parts quiz are all
+// that equipment's own rows.
 function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
   const isForklift = equipmentId === 'forklift'
   const { summary } = useProgress()
   const [equipment, setEquipment] = useState(null)
   const [modules, setModules] = useState([])
   const [hotspots, setHotspots] = useState([])
-  const [parts, setParts] = useState([])
   const [hasPartsQuiz, setHasPartsQuiz] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -33,19 +29,15 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
     Promise.all([
       getEquipment(),
       getTrainingModules(equipmentId),
-      isForklift ? getParts() : getEquipmentHotspots(equipmentId),
+      getHotspots(equipmentId, 'parts'),
       getQuizQuestions({ equipment: equipmentId, context: 'parts' }).catch(() => []),
     ])
-      .then(([equipmentRows, moduleRows, partOrHotspotRows, partsQuestions]) => {
+      .then(([equipmentRows, moduleRows, hotspotRows, partsQuestions]) => {
         if (cancelled) return
         setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
         setModules(moduleRows)
+        setHotspots(hotspotRows)
         setHasPartsQuiz(partsQuestions.length > 0)
-        if (isForklift) {
-          setParts(partOrHotspotRows)
-        } else {
-          setHotspots(partOrHotspotRows)
-        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -54,19 +46,15 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
     return () => {
       cancelled = true
     }
-  }, [equipmentId, isForklift])
+  }, [equipmentId])
 
   const moduleSlugs = useMemo(() => modules.map((module) => module.slug), [modules])
   const hotspotIds = useMemo(() => hotspots.map((hotspot) => hotspot.id), [hotspots])
-  const hasPartsSection = isForklift || hotspotIds.length > 0
+  const hasPartsSection = hotspotIds.length > 0
 
-  const moduleProgress = isForklift ? summary.equipment : getGenericModuleProgress(summary.raw, moduleSlugs)
-  const partsProgress = isForklift
-    ? summary.parts
-    : getGenericPartsProgress(summary.raw, hotspotIds, equipmentId, hasPartsQuiz)
-  const overall = isForklift
-    ? summary.overall
-    : getGenericOverallProgress(summary.raw, moduleSlugs, hasPartsSection ? partsProgress : null)
+  const moduleProgress = getModulesProgress(summary.raw, moduleSlugs)
+  const partsProgress = getPartsProgress(summary.raw, hotspotIds, equipmentId, hasPartsQuiz)
+  const overall = getOverallProgress(summary.raw, moduleSlugs, hasPartsSection ? partsProgress : null)
 
   const moduleLabels = useMemo(
     () => Object.fromEntries(modules.map((module) => [module.slug, module.title])),
@@ -147,18 +135,9 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
               <h3>Parts Review</h3>
               {loading ? (
                 <p>Loading parts...</p>
-              ) : isForklift ? (
-                <>
-                  <p>{summary.viewedParts.length} of {parts.length} parts viewed.</p>
-                  <ul>
-                    {parts.map((part) => (
-                      <li key={part.id}>{part.label}: {viewedPartSet.has(part.id) ? 'viewed' : 'not viewed'}</li>
-                    ))}
-                  </ul>
-                </>
               ) : (
                 <>
-                  <p>{hotspots.filter((hotspot) => viewedPartSet.has(hotspot.id)).length} of {hotspots.length} hotspots viewed.</p>
+                  <p>{hotspots.filter((hotspot) => viewedPartSet.has(hotspot.id)).length} of {hotspots.length} parts viewed.</p>
                   <ul>
                     {hotspots.map((hotspot) => (
                       <li key={hotspot.id}>{hotspot.label}: {viewedPartSet.has(hotspot.id) ? 'viewed' : 'not viewed'}</li>
@@ -187,7 +166,7 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
           <article>
             <h3>Recommended Next Action</h3>
             <p>{recommendedAction}</p>
-            {(isForklift || hasPartsQuiz) && (
+            {hasPartsQuiz && (
               <p>
                 Parts quiz: {latestPartsQuiz ? `${latestPartsQuiz.score}/${latestPartsQuiz.total} (${latestPartsQuiz.percentage}%)` : 'not attempted'}.
               </p>
@@ -202,7 +181,7 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
         <div className="assessment-actions">
           <button onClick={() => onNavigate(`/training/${equipmentId}/modules`)}>Review training modules</button>
           {hasPartsSection && (
-            <button onClick={() => onNavigate(isForklift ? routes.parts : `/training/${equipmentId}/parts`)}>
+            <button onClick={() => onNavigate(`/training/${equipmentId}/parts`)}>
               Review parts identification
             </button>
           )}

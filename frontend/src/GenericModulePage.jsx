@@ -12,7 +12,7 @@ import { ChecklistScene, ModuleRowsTask, QuizScene } from './components/ModuleCh
 import { WalkAroundScene, WalkAroundTask } from './components/WalkAroundStep'
 import { engineOnDeviceEffects, resolveEffectLamps, walkAroundDefectOverlays } from './data/viewerHotspots'
 import { playDeviceSound, stopDeviceSound } from './lib/deviceAudio'
-import { getEquipment, getPartDetails } from './lib/api'
+import { getEquipment, getHotspotDetails } from './lib/api'
 import {
   isPhaseComplete,
   phaseStateFor,
@@ -99,7 +99,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     getEquipment()
       .then((rows) => setEquipmentRecord(rows.find((row) => row.id === equipmentId) || null))
       .catch(() => {})
-    if (hasWalkAround) getPartDetails().then(setPartDetails).catch(() => {})
+    if (hasWalkAround) getHotspotDetails(equipmentId).then(setPartDetails).catch(() => {})
 
     return undefined
   }, [hasWalkAround, hasDriving, equipmentId])

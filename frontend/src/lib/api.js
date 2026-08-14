@@ -72,16 +72,23 @@ export async function getTrainingModules(equipmentId) {
   return request(equipmentId ? `/content/modules?equipment=${encodeURIComponent(equipmentId)}` : '/content/modules')
 }
 
-export async function getParts() {
-  return request('/content/parts')
+// One equipment's published markers, in sortOrder. `surface` narrows them to
+// the page asking - 'parts' for Parts Identification, 'walk-around' for an
+// inspection step - since one row can appear on both.
+export async function getHotspots(equipmentId, surface) {
+  const query = new URLSearchParams({ equipment: equipmentId })
+  if (surface) query.set('surface', surface)
+  return request(`/content/hotspots?${query}`)
 }
 
-export async function getPartDetails() {
-  return request('/content/part-details')
+// The detail cards, keyed by hotspot id. Separate from getHotspots because it
+// also carries cards for ids with no marker of their own.
+export async function getHotspotDetails(equipmentId) {
+  return request(`/content/hotspot-details?equipment=${encodeURIComponent(equipmentId)}`)
 }
 
-export async function getPartCategories() {
-  return request('/content/part-categories')
+export async function getHotspotCategories(equipmentId) {
+  return request(`/content/hotspot-categories?equipment=${encodeURIComponent(equipmentId)}`)
 }
 
 // Every quiz - a module's quiz step and an equipment's parts quiz - comes from
@@ -123,17 +130,6 @@ export async function getModuleCourses(moduleSlug) {
   return request(`/content/courses/${encodeURIComponent(moduleSlug)}`)
 }
 
-// Module 1's published 3D inspection hotspots, in sortOrder.
-export async function getWalkAroundHotspots() {
-  return request('/content/walkaround-hotspots')
-}
-
-// The generic Hotspot Identification page's published hotspots for one
-// equipment (any equipment other than Forklift).
-export async function getEquipmentHotspots(equipmentId) {
-  return request(`/content/equipment-hotspots?equipment=${encodeURIComponent(equipmentId)}`)
-}
-
 // --- Progress (per signed-in user) ---
 
 export async function getProgress() {
@@ -150,50 +146,16 @@ export async function adminListContent() {
   return request('/admin/content')
 }
 
-export async function adminUpdatePart(partId, payload) {
-  return request(`/admin/parts/${encodeURIComponent(partId)}`, { method: 'PATCH', body: payload })
+export async function adminCreateHotspotCategory(payload) {
+  return request('/admin/hotspot-categories', { method: 'POST', body: payload })
 }
 
-export async function adminCreatePart(payload) {
-  return request('/admin/parts', { method: 'POST', body: payload })
+export async function adminUpdateHotspotCategory(categoryId, payload) {
+  return request(`/admin/hotspot-categories/${encodeURIComponent(categoryId)}`, { method: 'PATCH', body: payload })
 }
 
-export async function adminDeletePart(partId) {
-  return request(`/admin/parts/${encodeURIComponent(partId)}`, { method: 'DELETE' })
-}
-
-// Parts and part details save a draft; the published row a learner sees only
-// changes on publish.
-export async function adminPublishPart(partId) {
-  return request(`/admin/parts/${encodeURIComponent(partId)}/publish`, { method: 'POST' })
-}
-
-export async function adminRevertPart(partId) {
-  return request(`/admin/parts/${encodeURIComponent(partId)}/revert`, { method: 'POST' })
-}
-
-export async function adminUpdatePartDetail(detailId, payload) {
-  return request(`/admin/part-details/${encodeURIComponent(detailId)}`, { method: 'PATCH', body: payload })
-}
-
-export async function adminPublishPartDetail(detailId) {
-  return request(`/admin/part-details/${encodeURIComponent(detailId)}/publish`, { method: 'POST' })
-}
-
-export async function adminRevertPartDetail(detailId) {
-  return request(`/admin/part-details/${encodeURIComponent(detailId)}/revert`, { method: 'POST' })
-}
-
-export async function adminCreatePartCategory(payload) {
-  return request('/admin/part-categories', { method: 'POST', body: payload })
-}
-
-export async function adminUpdatePartCategory(categoryId, payload) {
-  return request(`/admin/part-categories/${encodeURIComponent(categoryId)}`, { method: 'PATCH', body: payload })
-}
-
-export async function adminDeletePartCategory(categoryId) {
-  return request(`/admin/part-categories/${encodeURIComponent(categoryId)}`, { method: 'DELETE' })
+export async function adminDeleteHotspotCategory(categoryId) {
+  return request(`/admin/hotspot-categories/${encodeURIComponent(categoryId)}`, { method: 'DELETE' })
 }
 
 export async function adminCreateEquipment(payload) {
@@ -303,70 +265,39 @@ export async function adminDeleteCourse(courseId) {
   return request(`/admin/courses/${encodeURIComponent(courseId)}`, { method: 'DELETE' })
 }
 
-// --- Admin: walk-around hotspot editor ---
+// --- Admin: hotspot editor ---
+// One set of calls for every marker on every equipment, whichever surface it
+// appears on. Edits save as a draft; learners keep seeing the published
+// position and text until adminPublishHotspot().
 
-export async function adminListWalkAroundHotspots() {
-  return request('/admin/walkaround-hotspots')
+export async function adminListHotspots(equipmentId) {
+  return request(`/admin/hotspots?equipment=${encodeURIComponent(equipmentId)}`)
 }
 
-export async function adminCreateWalkAroundHotspot(payload) {
-  return request('/admin/walkaround-hotspots', { method: 'POST', body: payload })
+export async function adminCreateHotspot(payload) {
+  return request('/admin/hotspots', { method: 'POST', body: payload })
 }
 
-// Saves an edit as an unpublished draft; learners keep seeing the published
-// version until adminPublishWalkAroundHotspot().
-export async function adminSaveWalkAroundHotspotDraft(hotspotId, payload) {
-  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}`, { method: 'PUT', body: payload })
+export async function adminSaveHotspotDraft(hotspotId, payload) {
+  return request(`/admin/hotspots/${encodeURIComponent(hotspotId)}`, { method: 'PUT', body: payload })
 }
 
-export async function adminPublishWalkAroundHotspot(hotspotId) {
-  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}/publish`, { method: 'POST' })
+export async function adminPublishHotspot(hotspotId) {
+  return request(`/admin/hotspots/${encodeURIComponent(hotspotId)}/publish`, { method: 'POST' })
 }
 
-export async function adminRevertWalkAroundHotspot(hotspotId) {
-  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}/revert`, { method: 'POST' })
+export async function adminRevertHotspot(hotspotId) {
+  return request(`/admin/hotspots/${encodeURIComponent(hotspotId)}/revert`, { method: 'POST' })
 }
 
-export async function adminResetWalkAroundHotspot(hotspotId) {
-  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}/reset`, { method: 'POST' })
+export async function adminResetHotspot(hotspotId) {
+  return request(`/admin/hotspots/${encodeURIComponent(hotspotId)}/reset`, { method: 'POST' })
 }
 
-export async function adminReorderWalkAroundHotspots(ids) {
-  return request('/admin/walkaround-hotspots/reorder', { method: 'POST', body: { ids } })
+export async function adminReorderHotspots(equipmentId, ids) {
+  return request('/admin/hotspots/reorder', { method: 'POST', body: { equipmentId, ids } })
 }
 
-export async function adminDeleteWalkAroundHotspot(hotspotId) {
-  return request(`/admin/walkaround-hotspots/${encodeURIComponent(hotspotId)}`, { method: 'DELETE' })
-}
-
-// --- Admin: equipment hotspot editor (any equipment other than Forklift) ---
-
-export async function adminListEquipmentHotspots(equipmentId) {
-  return request(`/admin/equipment-hotspots?equipment=${encodeURIComponent(equipmentId)}`)
-}
-
-export async function adminCreateEquipmentHotspot(payload) {
-  return request('/admin/equipment-hotspots', { method: 'POST', body: payload })
-}
-
-// Saves an edit as an unpublished draft; learners keep seeing the published
-// version until adminPublishEquipmentHotspot().
-export async function adminSaveEquipmentHotspotDraft(hotspotId, payload) {
-  return request(`/admin/equipment-hotspots/${encodeURIComponent(hotspotId)}`, { method: 'PUT', body: payload })
-}
-
-export async function adminPublishEquipmentHotspot(hotspotId) {
-  return request(`/admin/equipment-hotspots/${encodeURIComponent(hotspotId)}/publish`, { method: 'POST' })
-}
-
-export async function adminRevertEquipmentHotspot(hotspotId) {
-  return request(`/admin/equipment-hotspots/${encodeURIComponent(hotspotId)}/revert`, { method: 'POST' })
-}
-
-export async function adminReorderEquipmentHotspots(equipmentId, ids) {
-  return request('/admin/equipment-hotspots/reorder', { method: 'POST', body: { equipmentId, ids } })
-}
-
-export async function adminDeleteEquipmentHotspot(hotspotId) {
-  return request(`/admin/equipment-hotspots/${encodeURIComponent(hotspotId)}`, { method: 'DELETE' })
+export async function adminDeleteHotspot(hotspotId) {
+  return request(`/admin/hotspots/${encodeURIComponent(hotspotId)}`, { method: 'DELETE' })
 }
