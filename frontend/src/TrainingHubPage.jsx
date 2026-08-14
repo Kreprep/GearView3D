@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, CircleGauge, ClipboardList, Layers, PackageSearch, RotateCcw } from 'lucide-react'
-import { getEquipment, getEquipmentHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
-import { getGenericModuleProgress, getGenericOverallProgress, getGenericPartsProgress } from './lib/progressService'
+import { getEquipment, getHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
+import { getModulesProgress, getOverallProgress, getPartsProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
 import PageLayout from './components/PageLayout'
 import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
-import { routes } from './lib/router'
 import './TrainingHubPage.css'
 
 // Single hub shell (PageLayout Pattern A: hero + overall-progress +
@@ -15,12 +14,9 @@ import './TrainingHubPage.css'
 // /training/:equipmentId/modules (ModuleListPage), which is where the
 // per-module cards live for every equipment.
 //
-// What still tells Forklift apart: its Parts Identification card points at
-// the richer part-practice page (categories + practice quiz, backed by the
-// Part table) instead of the generic hotspot page, its overall percentage is
-// the Part-table-aware summary.overall, and its scope notice carries the
-// forklift-specific sentence. All three converge once parts practice becomes
-// per-equipment.
+// Nothing here forks on the equipment any more except the scope notice, which
+// carries a forklift-specific sentence: every equipment's modules, hotspots
+// and percentages come from its own rows.
 function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
   const isForklift = equipmentId === 'forklift'
   const [equipment, setEquipment] = useState(null)
@@ -36,7 +32,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
     Promise.all([
       getEquipment(),
       getTrainingModules(equipmentId),
-      getEquipmentHotspots(equipmentId),
+      getHotspots(equipmentId, 'parts'),
       getQuizQuestions({ equipment: equipmentId, context: 'parts' }).catch(() => []),
     ]).then(([equipmentRows, moduleRows, hotspotRows, partsQuestions]) => {
       if (cancelled) return
@@ -53,19 +49,19 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
   }, [equipmentId])
 
   const equipmentTitle = equipment?.title || 'Equipment'
-  // Forklift's parts page is the richer Part-table one and always exists; any
-  // other equipment gets the hotspot page once it has a model configured.
-  const hasPartsPage = isForklift || Boolean(equipment?.modelUrl)
-  const partsRoute = isForklift ? routes.parts : `/training/${equipmentId}/parts`
-  const partsProgress = isForklift
-    ? summary.parts
-    : getGenericPartsProgress(summary.raw, hotspots.map((hotspot) => hotspot.id), equipmentId, hasPartsQuiz)
+  // The parts page exists once the equipment has a model to show markers on.
+  const hasPartsPage = Boolean(equipment?.modelUrl)
+  const partsRoute = `/training/${equipmentId}/parts`
+  const partsProgress = getPartsProgress(
+    summary.raw,
+    hotspots.map((hotspot) => hotspot.id),
+    equipmentId,
+    hasPartsQuiz,
+  )
   const moduleSlugs = modules.map((module) => module.slug)
-  const moduleProgress = isForklift ? summary.equipment : getGenericModuleProgress(summary.raw, moduleSlugs)
+  const moduleProgress = getModulesProgress(summary.raw, moduleSlugs)
 
-  const overall = isForklift
-    ? summary.overall
-    : getGenericOverallProgress(summary.raw, moduleSlugs, hasPartsPage ? partsProgress : null)
+  const overall = getOverallProgress(summary.raw, moduleSlugs, hasPartsPage ? partsProgress : null)
   const modulesRoute = `/training/${equipmentId}/modules`
   const assessmentRoute = `/training/${equipmentId}/assessment`
 

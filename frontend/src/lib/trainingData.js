@@ -22,4 +22,3 @@ export {
   shutdownDisplayOrder,
   shutdownSequenceActions,
 } from '../data/postOperationScenarios'
-export { buildDefaultPartDetails } from '../data/partDetails'

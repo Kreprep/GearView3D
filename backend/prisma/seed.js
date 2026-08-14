@@ -9,14 +9,13 @@ import {
   moduleChecklists,
   trainingModules,
 } from '../../frontend/src/data/trainingModules.js'
-import { buildDefaultPartCategories, partsHotspots } from '../../frontend/src/data/partsData.js'
+import { buildDefaultHotspotCategories } from '../../frontend/src/data/partsData.js'
 // Quiz answers live in their own files so the frontend bundle never imports
 // them; the seed is the only consumer.
 import { buildDefaultPartsQuizQuestions } from '../../frontend/src/data/partsQuizzes.js'
 import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
-import { buildDefaultPartDetails } from '../../frontend/src/data/partDetails.js'
 import { buildDefaultCourses, emptyCourseContent } from '../../frontend/src/data/courseDefaults.js'
-import { walkAroundViewerHotspots } from '../../frontend/src/data/viewerHotspots.js'
+import { buildDefaultHotspots } from '../../frontend/src/data/hotspotDefaults.js'
 
 const prisma = new PrismaClient()
 
@@ -164,46 +163,22 @@ async function seedEquipmentStarterModules() {
   }
 }
 
-async function seedParts() {
-  for (const [index, part] of partsHotspots.entries()) {
-    await prisma.part.upsert({
-      where: { id: part.id },
+// Forklift's stock markers - its parts, its inspection hotspots, and the
+// detail cards for both, which are one row each now. Every other equipment
+// starts with none; an admin places them in the dashboard.
+async function seedHotspots() {
+  for (const hotspot of buildDefaultHotspots('forklift')) {
+    await prisma.hotspot.upsert({
+      where: { id: hotspot.id },
       update: {},
-      create: {
-        id: part.id,
-        label: part.label,
-        category: part.category || 'General',
-        position: part.position,
-        functionText: part.functionText || '',
-        inspectionReminder: part.inspectionReminder || '',
-        safetyNote: part.safetyNote || '',
-        relatedModule: part.relatedModule || '',
-        checklist: part.checklist || [],
-        sortOrder: index + 1,
-      },
+      create: { ...hotspot, published: true, builtIn: true },
     })
   }
 }
 
-async function seedPartDetails() {
-  for (const detail of Object.values(buildDefaultPartDetails())) {
-    await prisma.partDetail.upsert({
-      where: { id: detail.id },
-      update: {},
-      create: {
-        id: detail.id,
-        title: detail.title,
-        subtitle: detail.subtitle || '',
-        image: detail.image || '',
-        description: detail.description || '',
-      },
-    })
-  }
-}
-
-async function seedPartCategories() {
-  for (const category of buildDefaultPartCategories()) {
-    await prisma.partCategory.upsert({
+async function seedHotspotCategories() {
+  for (const category of buildDefaultHotspotCategories('forklift')) {
+    await prisma.hotspotCategory.upsert({
       where: { id: category.id },
       update: {},
       create: category,
@@ -293,54 +268,27 @@ async function seedCourses() {
   }
 }
 
-async function seedWalkAroundHotspots() {
-  for (const [index, hotspot] of walkAroundViewerHotspots.entries()) {
-    await prisma.walkAroundHotspot.upsert({
-      where: { id: hotspot.id },
-      update: {},
-      create: {
-        id: hotspot.id,
-        label: hotspot.label,
-        position: hotspot.position,
-        state: hotspot.state || 'engine-off',
-        category: hotspot.category || '',
-        inspect: hotspot.inspect || '',
-        safeFeedback: hotspot.safeFeedback || '',
-        unsafeFeedback: hotspot.unsafeFeedback || '',
-        unsafeScenarios: hotspot.unsafeScenarios || [],
-        sortOrder: index + 1,
-        published: true,
-        builtIn: true,
-      },
-    })
-  }
-}
-
 async function main() {
   await seedUsers()
   await seedEquipment()
   await seedModules()
   await seedEquipmentStarterModules()
-  await seedParts()
-  await seedPartDetails()
-  await seedPartCategories()
+  await seedHotspots()
+  await seedHotspotCategories()
   await seedPartsQuizQuestions()
   await seedChecklists()
   await seedQuizQuestions()
   await seedCourses()
-  await seedWalkAroundHotspots()
 
   const counts = {
     users: await prisma.user.count(),
     equipment: await prisma.equipment.count(),
     modules: await prisma.module.count(),
-    parts: await prisma.part.count(),
-    partDetails: await prisma.partDetail.count(),
-    partCategories: await prisma.partCategory.count(),
+    hotspots: await prisma.hotspot.count(),
+    hotspotCategories: await prisma.hotspotCategory.count(),
     checklistItems: await prisma.checklistItem.count(),
     quizQuestions: await prisma.quizQuestion.count(),
     courses: await prisma.course.count(),
-    walkAroundHotspots: await prisma.walkAroundHotspot.count(),
   }
   console.log('Seed complete:', counts)
 }

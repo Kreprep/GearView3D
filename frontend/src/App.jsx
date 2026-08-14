@@ -6,13 +6,11 @@ import PartsIdentificationPage from './PartsIdentificationPage'
 import GenericModulePage from './GenericModulePage'
 import ModuleListPage from './ModuleListPage'
 import GenericAssessmentPage from './GenericAssessmentPage'
-import HotspotIdentificationPage from './HotspotIdentificationPage'
 import AdminDashboard from './AdminDashboard'
 import NotFoundPage from './NotFoundPage'
 import { getCurrentUser, loginUser, setAuthToken } from './lib/api'
 import {
   hydrateChecklistCounts,
-  hydratePartsCount,
   hydrateProgressFromServer,
   resetStoredProgress,
 } from './lib/progressService'
@@ -39,7 +37,6 @@ function App() {
   // session-restore effect below is skipped whenever localStorage already holds
   // the user.
   useEffect(() => {
-    hydratePartsCount().catch(() => {})
     hydrateChecklistCounts().catch(() => {})
   }, [])
 
@@ -171,18 +168,8 @@ function App() {
     }
 
     if (section === 'parts') {
-      if (equipmentId === 'forklift') {
-        return (
-          <PartsIdentificationPage
-            moduleName="Forklift"
-            user={user}
-            onBack={() => navigate(routes.forklift)}
-          />
-        )
-      }
-
       return (
-        <HotspotIdentificationPage
+        <PartsIdentificationPage
           equipmentId={equipmentId}
           user={user}
           onBack={() => navigate(`/training/${equipmentId}`)}

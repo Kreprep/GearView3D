@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
-import { getEquipmentHotspots, getWalkAroundHotspots } from '../lib/api'
+import { getHotspots } from '../lib/api'
 
 const NO_HOTSPOTS = []
 const IDLE = { hotspots: NO_HOTSPOTS, loading: false, error: null }
 
-// The 3D markers a `walk-around` step shows. Forklift has its own
-// WalkAroundHotspot rows, which carry the engine state each marker belongs to;
-// every other equipment reuses the EquipmentHotspot rows already edited under
-// Parts Identification, which have no state - so they show in every phase.
+// The 3D markers a `walk-around` step shows: the equipment's hotspots that are
+// on the walk-around surface. A marker carries the engine `state` it belongs
+// to, or an empty one - which means it shows in every phase, and is what
+// equipment that does not model engine states uses.
 //
 // Pages must hold off rendering the simulation shell until `loading` is false,
 // the same rule useModuleCourses documents. `enabled` is false for a module
@@ -19,9 +19,8 @@ export function useInspectionHotspots(equipmentId, enabled = true) {
     if (!enabled) return undefined
 
     let cancelled = false
-    const request = equipmentId === 'forklift' ? getWalkAroundHotspots() : getEquipmentHotspots(equipmentId)
 
-    request
+    getHotspots(equipmentId, 'walk-around')
       .then((hotspots) => {
         if (!cancelled) setLoaded({ hotspots, loading: false, error: null })
       })

@@ -67,45 +67,88 @@ model Module {
   @@index([equipmentId])
 }
 
-// 3D hotspot + instructional text for a forklift part. `position` is the
-// [x, y, z] marker position in the viewer; `checklist` is an array of strings.
-// Like Course, the columns are the *published* row learners see and `draft`
-// holds the admin's pending edit as a whole payload, null when nothing is
-// pending.
-model Part {
-  id                 String @id
-  label              String
-  category           String @default("General")
-  position           Json
+// Every 3D marker on every equipment's model - one row per physical component,
+// whichever surfaces it appears on. This replaced four tables (Part,
+// PartDetail, WalkAroundHotspot, EquipmentHotspot) that each held their own
+// copy of the same components: the forklift's mast, forks, tires and three
+// others existed as both a Part row and a WalkAroundHotspot row, so moving a
+// marker meant moving it twice.
+//
+// `inParts` / `inWalkAround` say which surfaces a row appears on, not which
+// table it came from. A row can be on both (the forklift's mast is a part to
+// identify *and* something to inspect), on one, or on neither - a row with no
+// surface and a null `position` is a detail card with no marker, which is how
+// the walk-around-only ids (tilt-cylinder) are stored.
+//
+// Fields group by the surface that reads them:
+//   always       - label, position, sortOrder, and the detail card every
+//                  surface renders (title/subtitle/image/description, markdown)
+//   parts        - category (the filter chip), functionText,
+//                  inspectionReminder, safetyNote, relatedModule, checklist
+//   walk-around  - inspectCategory (inspection grouping, deliberately separate
+//                  from the parts chip: the mast is "Load Handling Parts" to
+//                  identify but "Exterior condition" to inspect), state,
+//                  inspect, safeFeedback, unsafeFeedback, unsafeScenarios
+//
+// `state` is the engine phase a walk-around marker belongs to; empty means it
+// shows in every phase, which is what equipment with no engine-state modelling
+// uses. `unsafeScenarios` is an array of scenario ids matching
+// `walkAroundDefectOverlays[].scenario` in frontend/src/data/viewerHotspots.js.
+//
+// Same published-columns + `draft` pattern as Course: the columns are what
+// learners see, `draft` is the admin's pending edit as a whole payload, and
+// `builtIn` rows have a baseline in frontend/src/data/hotspotDefaults.js they
+// can be reset to. Ids are globally unique rather than scoped per equipment,
+// because learner progress (`parts.viewedPartIds`) and walk-around step data
+// (`data.checks[].hotspot`) reference them bare; new rows are prefixed with
+// their equipment id to keep that true.
+model Hotspot {
+  id          String @id
+  equipmentId String
+  label       String
+  position    Json?
+  sortOrder   Int    @default(0)
+
+  inParts      Boolean @default(false)
+  inWalkAround Boolean @default(false)
+
+  title       String @default("")
+  subtitle    String @default("")
+  image       String @default("")
+  description String @default("")
+
+  category           String @default("")
   functionText       String @default("")
   inspectionReminder String @default("")
   safetyNote         String @default("")
   relatedModule      String @default("")
-  checklist          Json
-  sortOrder          Int    @default(0)
-  draft              Json?
+  checklist          Json   @default("[]")
+
+  inspectCategory String @default("")
+  state           String @default("")
+  inspect         String @default("")
+  safeFeedback    String @default("")
+  unsafeFeedback  String @default("")
+  unsafeScenarios Json   @default("[]")
+
+  draft     Json?
+  published Boolean  @default(false)
+  builtIn   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@index([equipmentId, sortOrder])
 }
 
-// The category filter chips on the Parts Identification page. `id` is the
-// value stored on Part.category, so renaming a category means editing its
-// label, not its id.
-model PartCategory {
-  id        String @id
-  label     String
-  sortOrder Int    @default(0)
-}
-
-// Detail card shown when a part/hotspot is clicked. `description` is markdown.
-// Ids overlap Part ids but also include walk-around-only hotspots
-// (hydraulic-hoses, ignition, horn, ...), so this is intentionally not a
-// relation to Part.
-model PartDetail {
+// The category filter chips on an equipment's Parts Identification page. `id`
+// is the value stored on Hotspot.category, so renaming a category means
+// editing its label, not its id.
+model HotspotCategory {
   id          String @id
-  title       String
-  subtitle    String @default("")
-  image       String @default("")
-  description String @default("")
-  draft       Json?
+  equipmentId String @default("forklift")
+  label       String
+  sortOrder   Int    @default(0)
+
+  @@index([equipmentId, sortOrder])
 }
 
 // One step of an equipment module (Modules 2-4), in `sortOrder`. Every step is
@@ -156,54 +199,6 @@ model Course {
   updatedAt    DateTime @updatedAt
 
   @@index([moduleSlug, sortOrder])
-}
-
-// One of Module 1's 3D inspection hotspots, placed/dragged directly on the
-// forklift model by an admin. `position` is [x, y, z] in the same local frame
-// as the model's group in InteractiveForkliftViewer.jsx. `unsafeScenarios` is
-// an array of scenario ids matching `walkAroundDefectOverlays[].scenario` in
-// frontend/src/data/viewerHotspots.js. Follows the same published-columns +
-// `draft` pattern as Course; `builtIn` rows have a baseline there and can be
-// reset to it.
-model WalkAroundHotspot {
-  id              String   @id
-  label           String
-  position        Json
-  state           String   @default("engine-off")
-  category        String   @default("")
-  inspect         String   @default("")
-  safeFeedback    String   @default("")
-  unsafeFeedback  String   @default("")
-  unsafeScenarios Json     @default("[]")
-  sortOrder       Int      @default(0)
-  draft           Json?
-  published       Boolean  @default(false)
-  builtIn         Boolean  @default(false)
-  updatedAt       DateTime @updatedAt
-}
-
-// Generic 3D hotspot for any equipment other than Forklift's own Parts /
-// WalkAroundHotspot systems (which stay as-is - this table is deliberately
-// simpler, with no engine-state gating or defect-scenario linkage, because
-// there's no equivalent hardcoded simulation flow for other equipment to hook
-// into). One hotspot = a labelled point on `Equipment.modelUrl` with a
-// markdown description, covering what a learner sees on the generic Hotspot
-// Identification page. Same published-columns + `draft` pattern as Course;
-// no `builtIn`/reset, since there's no static default source for admin-
-// created equipment content.
-model EquipmentHotspot {
-  id          String   @id
-  equipmentId String
-  label       String
-  position    Json
-  category    String   @default("")
-  description String   @default("")
-  sortOrder   Int      @default(0)
-  draft       Json?
-  published   Boolean  @default(false)
-  updatedAt   DateTime @updatedAt
-
-  @@index([equipmentId])
 }
 
 model ChecklistItem {

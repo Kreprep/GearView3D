@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { adminCreateCourse, adminListCourses, adminReorderCourses, adminUpdateModule } from '../../lib/api'
 import ChecklistAdmin from './ChecklistAdmin'
 import CourseEditor from './CourseEditor'
-import EquipmentHotspotAdmin from './EquipmentHotspotAdmin'
+import HotspotAdmin from './HotspotAdmin'
 import QuizAdmin from './QuizAdmin'
-import WalkAroundHotspotAdmin from './WalkAroundHotspotAdmin'
 import './CourseAdmin.css'
 
 // Learner-facing names for the step kinds. The DB values stay as they are;
@@ -29,6 +28,7 @@ function ModuleEditor({
   modelUrl,
   isForklift,
   checklists,
+  hotspotCategories,
   quizQuestions,
   onModuleChanged,
   onChecklistsChanged,
@@ -148,38 +148,29 @@ function ModuleEditor({
       )
     }
 
-    // A walk-around step's markers are the equipment's inspection hotspots, so
-    // they are placed here, beside the checks that reference them - Forklift's
-    // own WalkAroundHotspot rows, or (for any other equipment) the shared
-    // EquipmentHotspot rows, which are edited under Parts Identification.
+    // A walk-around step's markers are the equipment's hotspots, so they are
+    // placed here, beside the checks that reference them. It is the same
+    // editor Parts Identification uses, scoped to the walk-around surface - a
+    // hotspot ticked for both surfaces is one row, edited in either place.
     if (selected.kind === 'walk-around') {
       return (
         <>
           {stepEditor()}
           <section className="admin-panel">
             <h2>Inspection Hotspots</h2>
-            {isForklift ? (
-              <>
-                <p className="admin-panel-note">
-                  The markers this step shows on the model. Click the model to place one, or drag a marker to move
-                  it; each has its own draft and publish.
-                </p>
-                <WalkAroundHotspotAdmin onMessage={onMessage} />
-              </>
-            ) : (
-              <>
-                <p className="admin-panel-note">
-                  This equipment&apos;s walk-around steps use the hotspots edited under Parts Identification, so a
-                  marker placed there shows up here too.
-                </p>
-                <EquipmentHotspotAdmin
-                  key={equipmentId}
-                  equipmentId={equipmentId}
-                  modelUrl={modelUrl}
-                  onMessage={onMessage}
-                />
-              </>
-            )}
+            <p className="admin-panel-note">
+              The markers this step shows on the model. Click the model to place one, or drag a marker to move it;
+              each has its own draft and publish. A marker that is also a part shows up under Parts Identification -
+              it is the same hotspot, not a copy.
+            </p>
+            <HotspotAdmin
+              key={equipmentId}
+              equipmentId={equipmentId}
+              modelUrl={modelUrl}
+              categories={hotspotCategories}
+              surface="walk-around"
+              onMessage={onMessage}
+            />
           </section>
         </>
       )

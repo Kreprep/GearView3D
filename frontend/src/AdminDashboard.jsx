@@ -9,23 +9,22 @@ import {
   Users as UsersIcon,
   Wrench,
 } from 'lucide-react'
-import EquipmentHotspotAdmin from './components/admin/EquipmentHotspotAdmin'
 import HubContentEditor from './components/admin/HubContentEditor'
 import ModuleEditor from './components/admin/ModuleEditor'
+import HotspotAdmin from './components/admin/HotspotAdmin'
 import ModuleListAdmin from './components/admin/ModuleListAdmin'
-import PartHotspotAdmin from './components/admin/PartHotspotAdmin'
 import QuizAdmin from './components/admin/QuizAdmin'
 import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
 import {
   adminCreateEquipment,
-  adminCreatePartCategory,
+  adminCreateHotspotCategory,
   adminCreateUser,
   adminDeleteEquipment,
-  adminDeletePartCategory,
+  adminDeleteHotspotCategory,
   adminDeleteUser,
   adminListContent,
   adminUpdateEquipment,
-  adminUpdatePartCategory,
+  adminUpdateHotspotCategory,
   adminUpdateUser,
 } from './lib/api'
 import { adminModuleRoute, routes } from './lib/router'
@@ -78,9 +77,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [content, setContent] = useState({
     equipment: [],
     modules: [],
-    parts: [],
-    partDetails: {},
-    partCategories: [],
+    hotspotCategories: [],
     checklists: [],
     quizQuestions: [],
     users: [],
@@ -124,12 +121,14 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     [content.modules],
   )
   const activeEquipment = content.equipment.find((item) => item.id === activeEquipmentId) || null
-  // Forklift keeps its own dedicated Parts/PartDetail + WalkAroundHotspot
-  // systems regardless of this flag. For any other equipment, a configured
-  // Model URL is what turns the Parts tab from a disabled note into the
-  // generic EquipmentHotspotAdmin editor.
+  const activeEquipmentCategories = useMemo(
+    () => content.hotspotCategories.filter((category) => category.equipmentId === activeEquipmentId),
+    [content.hotspotCategories, activeEquipmentId],
+  )
+  // A configured Model URL is what turns the Parts tab from a disabled note
+  // into the hotspot editor - there is nothing to place markers on without one.
   const isForklift = activeEquipmentId === 'forklift'
-  const hasModelForActiveEquipment = isForklift || Boolean(activeEquipment?.modelUrl)
+  const hasModelForActiveEquipment = Boolean(activeEquipment?.modelUrl)
 
   // Switching sections clears whatever was selected under the old one, so a
   // Backhoe screen never shows a stale Forklift module/checklist/quiz mid-edit.
@@ -173,9 +172,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
       setContent({
         equipment: [],
         modules: [],
-        parts: [],
-        partDetails: {},
-        partCategories: [],
+        hotspotCategories: [],
         checklists: [],
         quizQuestions: [],
         users: [],
@@ -198,8 +195,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const handleAddCategory = async () => {
     if (!newCategory.trim()) return
     try {
-      const result = await adminCreatePartCategory({ label: newCategory.trim() })
-      setContent((current) => ({ ...current, partCategories: [...current.partCategories, result.category] }))
+      const result = await adminCreateHotspotCategory({ equipmentId: activeEquipmentId, label: newCategory.trim() })
+      setContent((current) => ({ ...current, hotspotCategories: [...current.hotspotCategories, result.category] }))
       setNewCategory('')
       refreshMessage('Category added.')
     } catch (error) {
@@ -208,19 +205,19 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   }
 
   const handleRenameCategory = async (category, label) => {
-    const result = await adminUpdatePartCategory(category.id, { label })
+    const result = await adminUpdateHotspotCategory(category.id, { label })
     setContent((current) => ({
       ...current,
-      partCategories: current.partCategories.map((entry) => (entry.id === category.id ? result.category : entry)),
+      hotspotCategories: current.hotspotCategories.map((entry) => (entry.id === category.id ? result.category : entry)),
     }))
   }
 
   const handleDeleteCategory = async (category) => {
     try {
-      await adminDeletePartCategory(category.id)
+      await adminDeleteHotspotCategory(category.id)
       setContent((current) => ({
         ...current,
-        partCategories: current.partCategories.filter((entry) => entry.id !== category.id),
+        hotspotCategories: current.hotspotCategories.filter((entry) => entry.id !== category.id),
       }))
       refreshMessage('Category deleted.')
     } catch (error) {
@@ -481,6 +478,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               modelUrl={activeEquipment?.modelUrl}
               isForklift={isForklift}
               checklists={content.checklists}
+              hotspotCategories={activeEquipmentCategories}
               quizQuestions={content.quizQuestions}
               onModuleChanged={(module) => setContent((current) => ({
                 ...current,
@@ -509,31 +507,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         </main>
       )}
 
-      {activePath === routes.adminParts && hasModelForActiveEquipment && !isForklift && (
-        <main className="admin-grid">
-          <section className="admin-panel wide-panel">
-            <h2>Hotspot Identification</h2>
-            <p className="admin-panel-note">
-              Click a point on the 3D model to place a hotspot, or drag an existing marker to reposition it.
-              Edits are saved as a draft; learners keep the published position and text until you press Publish.
-            </p>
-            <EquipmentHotspotAdmin key={activeEquipmentId} equipmentId={activeEquipmentId} modelUrl={activeEquipment?.modelUrl} onMessage={refreshMessage} />
-          </section>
-          <section className="admin-panel wide-panel">
-            <h2>Parts Quiz</h2>
-            <QuizAdmin
-              key={activeEquipmentId}
-              scope={{ context: 'parts', equipmentId: activeEquipmentId }}
-              questions={content.quizQuestions}
-              onQuestionsChanged={(quizQuestions) => setContent((current) => ({ ...current, quizQuestions }))}
-              onMessage={refreshMessage}
-              note="The quiz step of this equipment's identification page. Scores feed its parts percentage; the step only appears once there is at least one question."
-            />
-          </section>
-        </main>
-      )}
-
-      {activePath === routes.adminParts && hasModelForActiveEquipment && isForklift && (
+      {activePath === routes.adminParts && hasModelForActiveEquipment && (
         <main className="admin-grid">
           <section className="admin-panel wide-panel">
             <h2>Parts Identification</h2>
@@ -541,13 +515,12 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               Click a point on the 3D model to place a part&apos;s marker, or drag an existing marker to move it.
               Edits are saved as a draft; learners keep the published position and text until you press Publish.
             </p>
-            <PartHotspotAdmin
-              parts={content.parts}
-              partDetails={content.partDetails}
-              categories={content.partCategories}
+            <HotspotAdmin
+              key={activeEquipmentId}
+              equipmentId={activeEquipmentId}
               modelUrl={activeEquipment?.modelUrl}
-              onPartsChanged={(parts) => setContent((current) => ({ ...current, parts }))}
-              onPartDetailsChanged={(partDetails) => setContent((current) => ({ ...current, partDetails }))}
+              categories={activeEquipmentCategories}
+              surface="parts"
               onMessage={refreshMessage}
             />
           </section>
@@ -555,7 +528,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           <section className="admin-panel">
             <h2>Part Categories</h2>
             <p className="admin-panel-note">The filter chips above the parts list on the learner page. A category still used by a part cannot be deleted.</p>
-            {content.partCategories.map((category) => (
+            {activeEquipmentCategories.map((category) => (
               <div key={category.id} className="admin-row-actions">
                 <input value={category.label} onChange={(event) => handleRenameCategory(category, event.target.value)} />
                 <button onClick={() => handleDeleteCategory(category)}>Delete</button>

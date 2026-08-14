@@ -19,12 +19,7 @@ import {
   defaultHotspotFor,
   editableHotspot,
   hotspotDraftFields,
-} from '../lib/walkAroundHotspots.js'
-import {
-  adminEquipmentHotspot,
-  editableEquipmentHotspot,
-  hotspotDraftFields as equipmentHotspotDraftFields,
-} from '../lib/equipmentHotspots.js'
+} from '../lib/hotspots.js'
 
 const router = Router()
 
@@ -51,8 +46,6 @@ async function isCourseCapableModuleSlug(moduleSlug) {
   return Boolean(module)
 }
 
-const partFields = ['label', 'category', 'position', 'functionText', 'inspectionReminder', 'safetyNote', 'relatedModule', 'checklist', 'sortOrder']
-const partDetailFields = ['title', 'subtitle', 'image', 'description']
 const moduleFields = ['title', 'fullTitle', 'subtitle', 'description', 'imageUrl', 'sortOrder']
 // `content` is the hub/module-list copy overrides (frontend
 // data/hubContent.js); it is stored whole, so the client sends the full object
@@ -60,20 +53,7 @@ const moduleFields = ['title', 'fullTitle', 'subtitle', 'description', 'imageUrl
 const equipmentFields = ['title', 'description', 'modelUrl', 'imageUrl', 'sortOrder', 'available', 'content', 'simConfig']
 const checklistFields = ['text', 'sortOrder']
 const quizFields = ['prompt', 'options', 'answer', 'sortOrder']
-const partCategoryFields = ['label', 'sortOrder']
-
-// Parts and part details follow the same rule as courses:
-// the columns are what learners see and `draft` is the admin's pending edit as
-// a whole payload. A draft merges over whatever is already pending, so editing
-// one field twice never discards the other.
-function mergedDraft(row, payload, fields) {
-  return { ...(row.draft || pick(row, fields)), ...pick(payload, fields) }
-}
-
-function publishedFrom(row, fields) {
-  if (!row?.draft) return null
-  return { ...pick(row.draft, fields), draft: null }
-}
+const hotspotCategoryFields = ['label', 'sortOrder']
 
 // Options are stored as plain strings (`answer` is one of them). Rows written
 // before the practice/quiz merge held { id, text, sortOrder } objects, so an
@@ -88,9 +68,7 @@ router.get('/content', async (req, res) => {
   const [
     equipment,
     modules,
-    parts,
-    partDetails,
-    partCategories,
+    hotspotCategories,
     checklists,
     quizQuestions,
     users,
@@ -98,9 +76,7 @@ router.get('/content', async (req, res) => {
   ] = await Promise.all([
     prisma.equipment.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.module.findMany({ orderBy: { sortOrder: 'asc' } }),
-    prisma.part.findMany({ orderBy: { sortOrder: 'asc' } }),
-    prisma.partDetail.findMany(),
-    prisma.partCategory.findMany({ orderBy: { sortOrder: 'asc' } }),
+    prisma.hotspotCategory.findMany({ orderBy: [{ equipmentId: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.checklistItem.findMany({ orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.quizQuestion.findMany({ orderBy: [{ equipmentId: 'asc' }, { context: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.user.findMany({ orderBy: { createdAt: 'asc' } }),
@@ -121,9 +97,10 @@ router.get('/content', async (req, res) => {
     localOnly: false,
     equipment,
     modules,
-    parts,
-    partDetails: Object.fromEntries(partDetails.map((detail) => [detail.id, detail])),
-    partCategories,
+    // Hotspots are not here: they carry position blobs and per-surface text
+    // that only the hotspot editor needs, so it lists them itself the way the
+    // Module Editor lists course rows.
+    hotspotCategories,
     checklists,
     quizQuestions,
     users: users.map(publicUser),
@@ -132,97 +109,177 @@ router.get('/content', async (req, res) => {
   })
 })
 
-router.post('/parts', async (req, res) => {
+// --- Hotspots ---------------------------------------------------------------
+// One set of endpoints for every marker on every equipment's model, whichever
+// surface shows it. `?equipment=` scopes list and reorder; creation requires it
+// in the body so a new row always belongs to exactly one equipment.
+//
+// Same draft/publish/builtIn shape as courses: an edit is a draft, learners
+// keep seeing the published columns until Publish, and a `builtIn` row can be
+// reset to its baseline in frontend/src/data/hotspotDefaults.js.
+
+router.get('/hotspots', async (req, res) => {
+  const where = req.query.equipment ? { equipmentId: req.query.equipment } : {}
+  const rows = await prisma.hotspot.findMany({ where, orderBy: { sortOrder: 'asc' } })
+  res.json({ hotspots: rows.map(adminHotspot) })
+})
+
+router.post('/hotspots', async (req, res) => {
   const payload = req.body || {}
-  if (!payload.label) {
-    return res.status(400).json({ error: 'Part label is required' })
+  if (!payload.equipmentId) {
+    return res.status(400).json({ error: 'equipmentId is required' })
+  }
+  if (!payload.label?.trim()) {
+    return res.status(400).json({ error: 'Hotspot label is required' })
   }
 
-  const part = await prisma.part.create({
+  const slug = (payload.id || payload.label).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  if (!slug) {
+    return res.status(400).json({ error: 'Hotspot id could not be derived from the label' })
+  }
+
+  // Ids are global, because learner progress and walk-around step data
+  // reference them bare. Forklift's seeded ids are unprefixed for that reason,
+  // so only new rows get the equipment prefix that keeps them unique.
+  const id = payload.equipmentId === 'forklift' ? slug : `${payload.equipmentId}-${slug}`
+  if (await prisma.hotspot.findUnique({ where: { id } })) {
+    return res.status(409).json({ error: `A hotspot with id "${id}" already exists` })
+  }
+
+  const last = await prisma.hotspot.findFirst({
+    where: { equipmentId: payload.equipmentId },
+    orderBy: { sortOrder: 'desc' },
+  })
+
+  // Created unpublished: a new hotspot has no position worth showing a learner
+  // until the admin places it, so it must not reach them before first publish.
+  const hotspot = await prisma.hotspot.create({
     data: {
-      id: payload.id || payload.label.toLowerCase().replaceAll(' ', '-'),
-      position: payload.position || [0, 0, 0],
+      id,
+      equipmentId: payload.equipmentId,
+      label: payload.label.trim(),
+      position: payload.position === null ? null : payload.position || [0, 0.3, 0],
+      inParts: payload.inParts !== false,
+      inWalkAround: Boolean(payload.inWalkAround),
+      title: payload.title || payload.label.trim(),
+      subtitle: payload.subtitle || '',
+      image: payload.image || '',
+      description: payload.description || '',
+      category: payload.category || '',
+      functionText: payload.functionText || '',
+      inspectionReminder: payload.inspectionReminder || '',
+      safetyNote: payload.safetyNote || '',
+      relatedModule: payload.relatedModule || '',
       checklist: payload.checklist || [],
-      ...pick(payload, partFields),
-      label: payload.label,
+      inspectCategory: payload.inspectCategory || '',
+      state: payload.state || '',
+      inspect: payload.inspect || '',
+      safeFeedback: payload.safeFeedback || '',
+      unsafeFeedback: payload.unsafeFeedback || '',
+      unsafeScenarios: payload.unsafeScenarios || [],
+      sortOrder: (last?.sortOrder || 0) + 1,
+      published: false,
+      builtIn: false,
     },
   })
-  res.json({ part })
+  res.json({ hotspot: adminHotspot(hotspot) })
 })
 
-// Saves a draft rather than writing the published columns; learners keep
-// seeing the current part until Publish.
-router.patch('/parts/:id', async (req, res) => {
-  const current = await prisma.part.findUnique({ where: { id: req.params.id } })
-  if (!current) return res.status(404).json({ error: 'Record not found' })
+// Saves an edit as a draft; learners keep seeing the published position/text
+// until Publish.
+router.put('/hotspots/:id', async (req, res) => {
+  const row = await prisma.hotspot.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
 
-  const part = await prisma.part.update({
-    where: { id: req.params.id },
-    data: { draft: mergedDraft(current, req.body, partFields) },
+  const draft = { ...editableHotspot(row), ...pick(req.body, hotspotDraftFields) }
+  const hotspot = await prisma.hotspot.update({
+    where: { id: row.id },
+    data: {
+      draft,
+      ...(typeof req.body?.sortOrder === 'number' ? { sortOrder: req.body.sortOrder } : {}),
+    },
   })
-  res.json({ part })
+  res.json({ hotspot: adminHotspot(hotspot) })
 })
 
-router.post('/parts/:id/publish', async (req, res) => {
-  const current = await prisma.part.findUnique({ where: { id: req.params.id } })
-  const data = publishedFrom(current, partFields)
-  if (!data) return res.status(400).json({ error: 'There is no draft to publish' })
+router.post('/hotspots/:id/publish', async (req, res) => {
+  const row = await prisma.hotspot.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
+  if (!row.draft) return res.status(400).json({ error: 'There is no draft to publish' })
 
-  const part = await prisma.part.update({ where: { id: req.params.id }, data })
-  res.json({ part })
+  const hotspot = await prisma.hotspot.update({
+    where: { id: row.id },
+    data: { ...pick(row.draft, hotspotDraftFields), draft: null, published: true },
+  })
+  res.json({ hotspot: adminHotspot(hotspot) })
 })
 
-router.post('/parts/:id/revert', async (req, res) => {
-  const part = await prisma.part.update({ where: { id: req.params.id }, data: { draft: null } })
-  res.json({ part })
+router.post('/hotspots/:id/revert', async (req, res) => {
+  const hotspot = await prisma.hotspot.update({
+    where: { id: req.params.id },
+    data: { draft: null },
+  })
+  res.json({ hotspot: adminHotspot(hotspot) })
 })
 
-router.delete('/parts/:id', async (req, res) => {
-  await prisma.part.delete({ where: { id: req.params.id } })
+// Built-in hotspots only: restores the seeded content and clears any draft.
+router.post('/hotspots/:id/reset', async (req, res) => {
+  const row = await prisma.hotspot.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
+
+  const defaults = defaultHotspotFor(row.id)
+  if (!row.builtIn || !defaults) {
+    return res.status(400).json({ error: 'This hotspot has no built-in default to reset to' })
+  }
+
+  const hotspot = await prisma.hotspot.update({
+    where: { id: row.id },
+    data: { ...pick(defaults, hotspotDraftFields), draft: null, published: true },
+  })
+  res.json({ hotspot: adminHotspot(hotspot) })
+})
+
+// Whole-list reorder for one equipment; ids not in the list are left alone.
+router.post('/hotspots/reorder', async (req, res) => {
+  const { equipmentId, ids } = req.body || {}
+  if (!equipmentId || !Array.isArray(ids)) {
+    return res.status(400).json({ error: 'equipmentId and ids are required' })
+  }
+
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.hotspot.update({ where: { id }, data: { sortOrder: index + 1 } }),
+    ),
+  )
+
+  const rows = await prisma.hotspot.findMany({ where: { equipmentId }, orderBy: { sortOrder: 'asc' } })
+  res.json({ hotspots: rows.map(adminHotspot) })
+})
+
+router.delete('/hotspots/:id', async (req, res) => {
+  await prisma.hotspot.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
-})
-
-// Upsert, because detail entries can be edited for hotspots that were never
-// seeded (for example a part the admin just created). A row created here starts
-// with its draft already filled in, so nothing reaches learners until Publish.
-router.patch('/part-details/:id', async (req, res) => {
-  const current = await prisma.partDetail.findUnique({ where: { id: req.params.id } })
-  const draft = mergedDraft(current || {}, req.body, partDetailFields)
-
-  const detail = await prisma.partDetail.upsert({
-    where: { id: req.params.id },
-    update: { draft },
-    create: { id: req.params.id, title: '', draft },
-  })
-  res.json({ detail })
-})
-
-router.post('/part-details/:id/publish', async (req, res) => {
-  const current = await prisma.partDetail.findUnique({ where: { id: req.params.id } })
-  const data = publishedFrom(current, partDetailFields)
-  if (!data) return res.status(400).json({ error: 'There is no draft to publish' })
-
-  const detail = await prisma.partDetail.update({ where: { id: req.params.id }, data })
-  res.json({ detail })
-})
-
-router.post('/part-details/:id/revert', async (req, res) => {
-  const detail = await prisma.partDetail.update({ where: { id: req.params.id }, data: { draft: null } })
-  res.json({ detail })
 })
 
 // Category rows are a short list of labels with no learner-visible body text,
 // so they save immediately rather than through a draft.
-router.post('/part-categories', async (req, res) => {
+router.post('/hotspot-categories', async (req, res) => {
   const payload = req.body || {}
   if (!payload.label) {
     return res.status(400).json({ error: 'Category label is required' })
   }
+  if (!payload.equipmentId) {
+    return res.status(400).json({ error: 'equipmentId is required' })
+  }
 
-  const last = await prisma.partCategory.findFirst({ orderBy: { sortOrder: 'desc' } })
-  const category = await prisma.partCategory.create({
+  const last = await prisma.hotspotCategory.findFirst({
+    where: { equipmentId: payload.equipmentId },
+    orderBy: { sortOrder: 'desc' },
+  })
+  const category = await prisma.hotspotCategory.create({
     data: {
       id: payload.id || payload.label,
+      equipmentId: payload.equipmentId,
       label: payload.label,
       sortOrder: (last?.sortOrder || 0) + 1,
     },
@@ -230,21 +287,21 @@ router.post('/part-categories', async (req, res) => {
   res.json({ category })
 })
 
-router.patch('/part-categories/:id', async (req, res) => {
-  const category = await prisma.partCategory.update({
+router.patch('/hotspot-categories/:id', async (req, res) => {
+  const category = await prisma.hotspotCategory.update({
     where: { id: req.params.id },
-    data: pick(req.body, partCategoryFields),
+    data: pick(req.body, hotspotCategoryFields),
   })
   res.json({ category })
 })
 
-router.delete('/part-categories/:id', async (req, res) => {
-  const inUse = await prisma.part.count({ where: { category: req.params.id } })
+router.delete('/hotspot-categories/:id', async (req, res) => {
+  const inUse = await prisma.hotspot.count({ where: { category: req.params.id } })
   if (inUse) {
-    return res.status(400).json({ error: `${inUse} part(s) still use this category` })
+    return res.status(400).json({ error: `${inUse} hotspot(s) still use this category` })
   }
 
-  await prisma.partCategory.delete({ where: { id: req.params.id } })
+  await prisma.hotspotCategory.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })
 
@@ -288,7 +345,7 @@ router.post('/equipment', async (req, res) => {
 router.delete('/equipment/:id', async (req, res) => {
   const [modules, hotspots, quizQuestions] = await Promise.all([
     prisma.module.count({ where: { equipmentId: req.params.id } }),
-    prisma.equipmentHotspot.count({ where: { equipmentId: req.params.id } }),
+    prisma.hotspot.count({ where: { equipmentId: req.params.id } }),
     prisma.quizQuestion.count({ where: { equipmentId: req.params.id } }),
   ])
 
@@ -759,247 +816,6 @@ router.post('/courses/reorder', async (req, res) => {
 // re-adding the course restores completion (see lib/simulationProgress.js).
 router.delete('/courses/:id', async (req, res) => {
   await prisma.course.delete({ where: { id: req.params.id } })
-  res.json({ deleted: true })
-})
-
-// --- Walk-around hotspot editor --------------------------------------------
-// Module 1's 3D inspection hotspots, placed/dragged on the model in the admin
-// dashboard. Same draft/publish/builtIn shape as courses, above.
-
-router.get('/walkaround-hotspots', async (req, res) => {
-  const rows = await prisma.walkAroundHotspot.findMany({ orderBy: { sortOrder: 'asc' } })
-  res.json({ hotspots: rows.map(adminHotspot) })
-})
-
-router.post('/walkaround-hotspots', async (req, res) => {
-  const payload = req.body || {}
-  if (!payload.label?.trim()) {
-    return res.status(400).json({ error: 'Hotspot label is required' })
-  }
-
-  const id = (payload.id || payload.label).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  if (!id) {
-    return res.status(400).json({ error: 'Hotspot id could not be derived from the label' })
-  }
-  if (await prisma.walkAroundHotspot.findUnique({ where: { id } })) {
-    return res.status(409).json({ error: `A hotspot with id "${id}" already exists` })
-  }
-
-  const last = await prisma.walkAroundHotspot.findFirst({ orderBy: { sortOrder: 'desc' } })
-
-  // Created unpublished: a new hotspot has no position worth showing a learner
-  // until the admin places it, so it must not reach them before first publish.
-  const hotspot = await prisma.walkAroundHotspot.create({
-    data: {
-      id,
-      label: payload.label.trim(),
-      position: payload.position || [0, 0.3, 0],
-      state: payload.state || 'engine-off',
-      category: payload.category || '',
-      inspect: payload.inspect || '',
-      safeFeedback: payload.safeFeedback || '',
-      unsafeFeedback: payload.unsafeFeedback || '',
-      unsafeScenarios: payload.unsafeScenarios || [],
-      sortOrder: (last?.sortOrder || 0) + 1,
-      published: false,
-      builtIn: false,
-    },
-  })
-  res.json({ hotspot: adminHotspot(hotspot) })
-})
-
-// Saves an edit as a draft; learners keep seeing the published position/text
-// until Publish.
-router.put('/walkaround-hotspots/:id', async (req, res) => {
-  const row = await prisma.walkAroundHotspot.findUnique({ where: { id: req.params.id } })
-  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
-
-  const draft = { ...editableHotspot(row), ...pick(req.body, hotspotDraftFields) }
-  const hotspot = await prisma.walkAroundHotspot.update({
-    where: { id: row.id },
-    data: {
-      draft,
-      ...(typeof req.body?.sortOrder === 'number' ? { sortOrder: req.body.sortOrder } : {}),
-    },
-  })
-  res.json({ hotspot: adminHotspot(hotspot) })
-})
-
-router.post('/walkaround-hotspots/:id/publish', async (req, res) => {
-  const row = await prisma.walkAroundHotspot.findUnique({ where: { id: req.params.id } })
-  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
-  if (!row.draft) return res.status(400).json({ error: 'There is no draft to publish' })
-
-  const hotspot = await prisma.walkAroundHotspot.update({
-    where: { id: row.id },
-    data: { ...pick(row.draft, hotspotDraftFields), draft: null, published: true },
-  })
-  res.json({ hotspot: adminHotspot(hotspot) })
-})
-
-router.post('/walkaround-hotspots/:id/revert', async (req, res) => {
-  const hotspot = await prisma.walkAroundHotspot.update({
-    where: { id: req.params.id },
-    data: { draft: null },
-  })
-  res.json({ hotspot: adminHotspot(hotspot) })
-})
-
-// Built-in hotspots only: restores the seeded position/text and clears any draft.
-router.post('/walkaround-hotspots/:id/reset', async (req, res) => {
-  const row = await prisma.walkAroundHotspot.findUnique({ where: { id: req.params.id } })
-  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
-
-  const defaults = defaultHotspotFor(row.id)
-  if (!row.builtIn || !defaults) {
-    return res.status(400).json({ error: 'This hotspot has no built-in default to reset to' })
-  }
-
-  const hotspot = await prisma.walkAroundHotspot.update({
-    where: { id: row.id },
-    data: {
-      label: defaults.label,
-      position: defaults.position,
-      state: defaults.state,
-      category: defaults.category,
-      inspect: defaults.inspect,
-      safeFeedback: defaults.safeFeedback,
-      unsafeFeedback: defaults.unsafeFeedback,
-      unsafeScenarios: defaults.unsafeScenarios || [],
-      draft: null,
-      published: true,
-    },
-  })
-  res.json({ hotspot: adminHotspot(hotspot) })
-})
-
-// Whole-list reorder; ids not in the list are left alone.
-router.post('/walkaround-hotspots/reorder', async (req, res) => {
-  const { ids } = req.body || {}
-  if (!Array.isArray(ids)) {
-    return res.status(400).json({ error: 'ids is required' })
-  }
-
-  await prisma.$transaction(
-    ids.map((id, index) =>
-      prisma.walkAroundHotspot.update({ where: { id }, data: { sortOrder: index + 1 } }),
-    ),
-  )
-
-  const rows = await prisma.walkAroundHotspot.findMany({ orderBy: { sortOrder: 'asc' } })
-  res.json({ hotspots: rows.map(adminHotspot) })
-})
-
-router.delete('/walkaround-hotspots/:id', async (req, res) => {
-  await prisma.walkAroundHotspot.delete({ where: { id: req.params.id } })
-  res.json({ deleted: true })
-})
-
-// --- Equipment hotspot editor -----------------------------------------------
-// The generic per-equipment hotspot system (Hotspot Identification page) that
-// any equipment other than Forklift uses instead of the Parts/PartDetail and
-// WalkAroundHotspot tables above. `?equipment=` scopes list/reorder to one
-// equipment; creation requires it in the body so a new row always belongs to
-// exactly one equipment.
-
-router.get('/equipment-hotspots', async (req, res) => {
-  const where = req.query.equipment ? { equipmentId: req.query.equipment } : {}
-  const rows = await prisma.equipmentHotspot.findMany({ where, orderBy: { sortOrder: 'asc' } })
-  res.json({ hotspots: rows.map(adminEquipmentHotspot) })
-})
-
-router.post('/equipment-hotspots', async (req, res) => {
-  const payload = req.body || {}
-  if (!payload.equipmentId) {
-    return res.status(400).json({ error: 'equipmentId is required' })
-  }
-  if (!payload.label?.trim()) {
-    return res.status(400).json({ error: 'Hotspot label is required' })
-  }
-
-  const id = `${payload.equipmentId}-${(payload.id || payload.label).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
-  if (await prisma.equipmentHotspot.findUnique({ where: { id } })) {
-    return res.status(409).json({ error: `A hotspot with id "${id}" already exists` })
-  }
-
-  const last = await prisma.equipmentHotspot.findFirst({
-    where: { equipmentId: payload.equipmentId },
-    orderBy: { sortOrder: 'desc' },
-  })
-
-  // Created unpublished: a new hotspot has no position worth showing a learner
-  // until the admin places it, so it must not reach them before first publish.
-  const hotspot = await prisma.equipmentHotspot.create({
-    data: {
-      id,
-      equipmentId: payload.equipmentId,
-      label: payload.label.trim(),
-      position: payload.position || [0, 0.3, 0],
-      category: payload.category || '',
-      description: payload.description || '',
-      sortOrder: (last?.sortOrder || 0) + 1,
-      published: false,
-    },
-  })
-  res.json({ hotspot: adminEquipmentHotspot(hotspot) })
-})
-
-// Saves an edit as a draft; learners keep seeing the published position/text
-// until Publish.
-router.put('/equipment-hotspots/:id', async (req, res) => {
-  const row = await prisma.equipmentHotspot.findUnique({ where: { id: req.params.id } })
-  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
-
-  const draft = { ...editableEquipmentHotspot(row), ...pick(req.body, equipmentHotspotDraftFields) }
-  const hotspot = await prisma.equipmentHotspot.update({
-    where: { id: row.id },
-    data: {
-      draft,
-      ...(typeof req.body?.sortOrder === 'number' ? { sortOrder: req.body.sortOrder } : {}),
-    },
-  })
-  res.json({ hotspot: adminEquipmentHotspot(hotspot) })
-})
-
-router.post('/equipment-hotspots/:id/publish', async (req, res) => {
-  const row = await prisma.equipmentHotspot.findUnique({ where: { id: req.params.id } })
-  if (!row) return res.status(404).json({ error: 'Hotspot not found' })
-  if (!row.draft) return res.status(400).json({ error: 'There is no draft to publish' })
-
-  const hotspot = await prisma.equipmentHotspot.update({
-    where: { id: row.id },
-    data: { ...pick(row.draft, equipmentHotspotDraftFields), draft: null, published: true },
-  })
-  res.json({ hotspot: adminEquipmentHotspot(hotspot) })
-})
-
-router.post('/equipment-hotspots/:id/revert', async (req, res) => {
-  const hotspot = await prisma.equipmentHotspot.update({
-    where: { id: req.params.id },
-    data: { draft: null },
-  })
-  res.json({ hotspot: adminEquipmentHotspot(hotspot) })
-})
-
-// Whole-list reorder for one equipment; ids not in the list are left alone.
-router.post('/equipment-hotspots/reorder', async (req, res) => {
-  const { equipmentId, ids } = req.body || {}
-  if (!equipmentId || !Array.isArray(ids)) {
-    return res.status(400).json({ error: 'equipmentId and ids are required' })
-  }
-
-  await prisma.$transaction(
-    ids.map((id, index) =>
-      prisma.equipmentHotspot.update({ where: { id }, data: { sortOrder: index + 1 } }),
-    ),
-  )
-
-  const rows = await prisma.equipmentHotspot.findMany({ where: { equipmentId }, orderBy: { sortOrder: 'asc' } })
-  res.json({ hotspots: rows.map(adminEquipmentHotspot) })
-})
-
-router.delete('/equipment-hotspots/:id', async (req, res) => {
-  await prisma.equipmentHotspot.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })
 

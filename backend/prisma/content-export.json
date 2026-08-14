@@ -1,12 +1,11 @@
 {
-  "exportedAt": "2026-08-13T20:26:49.559Z",
+  "exportedAt": "2026-08-14T08:25:44.332Z",
   "counts": {
     "Equipment": 3,
-    "Module": 5,
-    "PartCategory": 4,
-    "Part": 10,
-    "PartDetail": 26,
-    "Course": 25,
+    "Module": 6,
+    "HotspotCategory": 4,
+    "Hotspot": 28,
+    "Course": 29,
     "ChecklistItem": 22,
     "QuizQuestion": 19
   },
@@ -101,40 +100,94 @@
         "imageUrl": "/images/modules/pallet-testing.png",
         "sortOrder": 4,
         "equipmentId": "forklift"
+      },
+      {
+        "id": 6,
+        "slug": "forklift-test",
+        "title": "test",
+        "fullTitle": "test",
+        "subtitle": "",
+        "description": "",
+        "imageUrl": "",
+        "sortOrder": 5,
+        "equipmentId": "forklift"
       }
     ],
-    "PartCategory": [
+    "HotspotCategory": [
       {
         "id": "Load Handling Parts",
+        "equipmentId": "forklift",
         "label": "Load Handling Parts",
         "sortOrder": 1
       },
       {
         "id": "Stability and Structure",
+        "equipmentId": "forklift",
         "label": "Stability and Structure",
         "sortOrder": 2
       },
       {
         "id": "Operator and Controls",
+        "equipmentId": "forklift",
         "label": "Operator and Controls",
         "sortOrder": 3
       },
       {
         "id": "Safety and Identification",
+        "equipmentId": "forklift",
         "label": "Safety and Identification",
         "sortOrder": 4
       }
     ],
-    "Part": [
+    "Hotspot": [
+      {
+        "id": "backhoe-awa",
+        "equipmentId": "backhoe",
+        "label": "awa",
+        "position": [
+          0,
+          0.3,
+          0
+        ],
+        "sortOrder": 1,
+        "inParts": true,
+        "inWalkAround": true,
+        "title": "",
+        "subtitle": "",
+        "image": "",
+        "description": "",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "",
+        "state": "",
+        "inspect": "",
+        "safeFeedback": "",
+        "unsafeFeedback": "",
+        "unsafeScenarios": [],
+        "published": false,
+        "builtIn": false
+      },
       {
         "id": "forks",
+        "equipmentId": "forklift",
         "label": "Forks",
-        "category": "Load Handling Parts",
         "position": [
           0,
           0.03,
           0.58
         ],
+        "sortOrder": 1,
+        "inParts": true,
+        "inWalkAround": true,
+        "title": "Forks",
+        "subtitle": "Load Handling Parts",
+        "image": "",
+        "description": "Support and lift pallets or loads when correctly inserted and spaced.\n\n**What to inspect**\n\nCheck fork tips, heel area, visible cracks, and locking pins before use.\n\n**Safety**\n\nNever stand under raised forks, and keep the load centered before lifting.\n\n**Quick checklist**\n\n- Check fork tips\n- Confirm locking pins\n- Keep load centered\n\n*Related training: Load Handling and Operational Controls*",
+        "category": "Load Handling Parts",
         "functionText": "Support and lift pallets or loads when correctly inserted and spaced.",
         "inspectionReminder": "Check fork tips, heel area, visible cracks, and locking pins before use.",
         "safetyNote": "Never stand under raised forks, and keep the load centered before lifting.",
@@ -144,17 +197,32 @@
           "Confirm locking pins",
           "Keep load centered"
         ],
-        "sortOrder": 1
+        "inspectCategory": "Exterior condition",
+        "state": "engine-off",
+        "inspect": "Check fork tips, heel area, and mounting pins for cracks, bending, or wear.",
+        "safeFeedback": "Forks show no visible cracks, bending, or wear in this state.",
+        "unsafeFeedback": "Damaged or bent forks can fail under load and must be reported before use.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "mast",
+        "equipmentId": "forklift",
         "label": "Mast",
-        "category": "Load Handling Parts",
         "position": [
           0,
           0.44,
           0.25
         ],
+        "sortOrder": 2,
+        "inParts": true,
+        "inWalkAround": true,
+        "title": "Mast",
+        "subtitle": "Load Handling Parts",
+        "image": "",
+        "description": "Guides the vertical movement of the carriage and forks.\n\n**What to inspect**\n\nLook for visible damage, obstruction, or unsafe movement in the lift path.\n\n**Safety**\n\nKeep hands, feet, and loose clothing away from the mast and lift chain path.\n\n**Quick checklist**\n\n- Look for visible damage\n- Check lift path clearance\n- Raise load smoothly\n\n*Related training: Walk-Around Check*",
+        "category": "Load Handling Parts",
         "functionText": "Guides the vertical movement of the carriage and forks.",
         "inspectionReminder": "Look for visible damage, obstruction, or unsafe movement in the lift path.",
         "safetyNote": "Keep hands, feet, and loose clothing away from the mast and lift chain path.",
@@ -164,17 +232,34 @@
           "Check lift path clearance",
           "Raise load smoothly"
         ],
-        "sortOrder": 2
+        "inspectCategory": "Exterior condition",
+        "state": "engine-off",
+        "inspect": "Inspect the mast channels and lift path for cracks, bending, or obstruction.",
+        "safeFeedback": "No mast crack or damage is visible in this state.",
+        "unsafeFeedback": "Mast crack detected. Lifting operation is unsafe.",
+        "unsafeScenarios": [
+          "mast-crack"
+        ],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "lift-chain",
+        "equipmentId": "forklift",
         "label": "Lift Chain",
-        "category": "Load Handling Parts",
         "position": [
           0.075,
           0.36,
           0.3
         ],
+        "sortOrder": 3,
+        "inParts": true,
+        "inWalkAround": true,
+        "title": "Lift Chain",
+        "subtitle": "Load Handling Parts",
+        "image": "",
+        "description": "Transfers lifting force through the mast assembly.\n\n**What to inspect**\n\nObserve for slack, uneven movement, or visible damage before operation.\n\n**Safety**\n\nDo not touch or inspect the chain while the engine is running or the forks are moving.\n\n**Quick checklist**\n\n- Look for slack\n- Check for uneven movement\n- Keep clear while lifting\n\n*Related training: Walk-Around Check*",
+        "category": "Load Handling Parts",
         "functionText": "Transfers lifting force through the mast assembly.",
         "inspectionReminder": "Observe for slack, uneven movement, or visible damage before operation.",
         "safetyNote": "Do not touch or inspect the chain while the engine is running or the forks are moving.",
@@ -184,17 +269,32 @@
           "Check for uneven movement",
           "Keep clear while lifting"
         ],
-        "sortOrder": 3
+        "inspectCategory": "Hydraulic system",
+        "state": "engine-off",
+        "inspect": "Check the lift chains for proper lubrication and any broken, stretched, or damaged links.",
+        "safeFeedback": "Lift chains appear properly lubricated with no visible damage.",
+        "unsafeFeedback": "Damaged, dry, or stretched chains must be reported before lifting operations.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "carriage",
+        "equipmentId": "forklift",
         "label": "Carriage",
-        "category": "Load Handling Parts",
         "position": [
           0,
           0.13,
           0.34
         ],
+        "sortOrder": 4,
+        "inParts": true,
+        "inWalkAround": false,
+        "title": "Carriage",
+        "subtitle": "Load Handling Parts",
+        "image": "",
+        "description": "Holds the forks and moves along the mast during lifting and lowering.\n\n**What to inspect**\n\nCheck fork attachment points and confirm there is no visible damage.\n\n**Safety**\n\nConfirm the carriage is stable before handling any load.\n\n**Quick checklist**\n\n- Check fork attachment\n- Check visible cracks\n- Confirm smooth travel\n\n*Related training: Load Handling and Operational Controls*",
+        "category": "Load Handling Parts",
         "functionText": "Holds the forks and moves along the mast during lifting and lowering.",
         "inspectionReminder": "Check fork attachment points and confirm there is no visible damage.",
         "safetyNote": "Confirm the carriage is stable before handling any load.",
@@ -204,17 +304,32 @@
           "Check visible cracks",
           "Confirm smooth travel"
         ],
-        "sortOrder": 4
+        "inspectCategory": "",
+        "state": "",
+        "inspect": "",
+        "safeFeedback": "",
+        "unsafeFeedback": "",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "operator-area",
+        "equipmentId": "forklift",
         "label": "Operator Area",
-        "category": "Operator and Controls",
         "position": [
           0,
           0.34,
           -0.04
         ],
+        "sortOrder": 5,
+        "inParts": true,
+        "inWalkAround": false,
+        "title": "Operator Area",
+        "subtitle": "Operator and Controls",
+        "image": "",
+        "description": "Contains the seat, steering, pedals, levers, and dashboard controls used by the operator.\n\n**What to inspect**\n\nConfirm controls are understood, accessible, and checked before operation.\n\n**Safety**\n\nFasten the seat belt and confirm controls are understood before operation.\n\n**Quick checklist**\n\n- Fasten seat belt\n- Check mirrors\n- Test horn and brakes\n\n*Related training: Walk-Around Check*",
+        "category": "Operator and Controls",
         "functionText": "Contains the seat, steering, pedals, levers, and dashboard controls used by the operator.",
         "inspectionReminder": "Confirm controls are understood, accessible, and checked before operation.",
         "safetyNote": "Fasten the seat belt and confirm controls are understood before operation.",
@@ -224,17 +339,32 @@
           "Check mirrors",
           "Test horn and brakes"
         ],
-        "sortOrder": 5
+        "inspectCategory": "",
+        "state": "",
+        "inspect": "",
+        "safeFeedback": "",
+        "unsafeFeedback": "",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "overhead-guard",
+        "equipmentId": "forklift",
         "label": "Overhead Guard",
-        "category": "Stability and Structure",
         "position": [
           0,
           0.5,
           -0.02
         ],
+        "sortOrder": 6,
+        "inParts": true,
+        "inWalkAround": true,
+        "title": "Overhead Guard",
+        "subtitle": "Stability and Structure",
+        "image": "",
+        "description": "Helps protect the operator from falling objects within the forklift safety limits.\n\n**What to inspect**\n\nCheck for visible bending, cracks, or missing sections.\n\n**Safety**\n\nDo not operate if the overhead guard is visibly damaged.\n\n**Quick checklist**\n\n- Check structural damage\n- Keep guard unobstructed\n- Never remove the guard\n\n*Related training: Walk-Around Check*",
+        "category": "Stability and Structure",
         "functionText": "Helps protect the operator from falling objects within the forklift safety limits.",
         "inspectionReminder": "Check for visible bending, cracks, or missing sections.",
         "safetyNote": "Do not operate if the overhead guard is visibly damaged.",
@@ -244,17 +374,34 @@
           "Keep guard unobstructed",
           "Never remove the guard"
         ],
-        "sortOrder": 6
+        "inspectCategory": "Exterior condition",
+        "state": "engine-off",
+        "inspect": "Check the overhead guard for bending, cracks, or missing sections.",
+        "safeFeedback": "The overhead guard shows no visible structural damage in this state.",
+        "unsafeFeedback": "Loose or missing bolt detected on the overhead guard. Report before operation.",
+        "unsafeScenarios": [
+          "loose-bolt"
+        ],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "counterweight",
+        "equipmentId": "forklift",
         "label": "Counterweight",
-        "category": "Stability and Structure",
         "position": [
           0,
           0.18,
           -0.26
         ],
+        "sortOrder": 7,
+        "inParts": true,
+        "inWalkAround": true,
+        "title": "Counterweight",
+        "subtitle": "Stability and Structure",
+        "image": "",
+        "description": "Balances the forklift against the weight of the load.\n\n**What to inspect**\n\nConfirm rear clearance and observe rear swing when maneuvering.\n\n**Safety**\n\nWatch rear swing and never exceed the rated load capacity.\n\n**Quick checklist**\n\n- Avoid overloading\n- Watch rear swing\n- Respect capacity plate\n\n*Related training: Load Handling and Operational Controls*",
+        "category": "Stability and Structure",
         "functionText": "Balances the forklift against the weight of the load.",
         "inspectionReminder": "Confirm rear clearance and observe rear swing when maneuvering.",
         "safetyNote": "Watch rear swing and never exceed the rated load capacity.",
@@ -264,17 +411,32 @@
           "Watch rear swing",
           "Respect capacity plate"
         ],
-        "sortOrder": 7
+        "inspectCategory": "Exterior condition",
+        "state": "engine-off",
+        "inspect": "Check the counterweight mounting and rear clearance for visible damage.",
+        "safeFeedback": "Counterweight mounting appears secure in this state.",
+        "unsafeFeedback": "A loose or damaged counterweight affects forklift balance.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "tires",
+        "equipmentId": "forklift",
         "label": "Tires",
-        "category": "Stability and Structure",
         "position": [
           0.12,
           0.08,
           0.19
         ],
+        "sortOrder": 8,
+        "inParts": true,
+        "inWalkAround": true,
+        "title": "Tires",
+        "subtitle": "Stability and Structure",
+        "image": "",
+        "description": "Support forklift movement and stability across the work surface.\n\n**What to inspect**\n\nCheck for visible wear, damage, or unsafe tire condition.\n\n**Safety**\n\nDamaged or underinflated tires can affect stability and steering.\n\n**Quick checklist**\n\n- Check visible wear\n- Check inflation or damage\n- Report unsafe tire condition\n\n*Related training: Walk-Around Check*",
+        "category": "Stability and Structure",
         "functionText": "Support forklift movement and stability across the work surface.",
         "inspectionReminder": "Check for visible wear, damage, or unsafe tire condition.",
         "safetyNote": "Damaged or underinflated tires can affect stability and steering.",
@@ -284,17 +446,34 @@
           "Check inflation or damage",
           "Report unsafe tire condition"
         ],
-        "sortOrder": 8
+        "inspectCategory": "Tires and wheels",
+        "state": "engine-off",
+        "inspect": "Check tire condition, wheel nuts, and tire pressure (for pneumatic tires).",
+        "safeFeedback": "Tires and wheel nuts appear acceptable in this state.",
+        "unsafeFeedback": "Unsafe tire condition affects steering and stability.",
+        "unsafeScenarios": [
+          "flat-tire"
+        ],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "capacity-plate",
+        "equipmentId": "forklift",
         "label": "Capacity Plate",
-        "category": "Safety and Identification",
         "position": [
           0.1,
           0.32,
           0.03
         ],
+        "sortOrder": 9,
+        "inParts": true,
+        "inWalkAround": false,
+        "title": "Capacity Plate",
+        "subtitle": "Safety and Identification",
+        "image": "",
+        "description": "Shows rated load capacity and important forklift specifications.\n\n**What to inspect**\n\nRead the rated capacity and load center before handling loads.\n\n**Safety**\n\nDo not lift a load beyond the capacity shown on the plate.\n\n**Quick checklist**\n\n- Read rated capacity\n- Confirm load center\n- Follow plate limits\n\n*Related training: Load Handling and Operational Controls*",
+        "category": "Safety and Identification",
         "functionText": "Shows rated load capacity and important forklift specifications.",
         "inspectionReminder": "Read the rated capacity and load center before handling loads.",
         "safetyNote": "Do not lift a load beyond the capacity shown on the plate.",
@@ -304,17 +483,32 @@
           "Confirm load center",
           "Follow plate limits"
         ],
-        "sortOrder": 9
+        "inspectCategory": "",
+        "state": "",
+        "inspect": "",
+        "safeFeedback": "",
+        "unsafeFeedback": "",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "warning-devices",
+        "equipmentId": "forklift",
         "label": "Warning Devices",
-        "category": "Safety and Identification",
         "position": [
           0,
           0.48,
           -0.15
         ],
+        "sortOrder": 10,
+        "inParts": true,
+        "inWalkAround": false,
+        "title": "Warning Devices",
+        "subtitle": "Safety and Identification",
+        "image": "",
+        "description": "Includes lights, horn, and backup alarm used to alert nearby workers.\n\n**What to inspect**\n\nTest horn, lights, beacon, and backup alarm during pre-operation checks.\n\n**Safety**\n\nDo not operate if required warning devices are not working.\n\n**Quick checklist**\n\n- Test horn\n- Check lights\n- Check backup alarm\n\n*Related training: Walk-Around Check*",
+        "category": "Safety and Identification",
         "functionText": "Includes lights, horn, and backup alarm used to alert nearby workers.",
         "inspectionReminder": "Test horn, lights, beacon, and backup alarm during pre-operation checks.",
         "safetyNote": "Do not operate if required warning devices are not working.",
@@ -324,191 +518,543 @@
           "Check lights",
           "Check backup alarm"
         ],
-        "sortOrder": 10
-      }
-    ],
-    "PartDetail": [
-      {
-        "id": "backup-alarm",
-        "title": "Backup Alarm",
-        "subtitle": "Safety devices",
-        "image": "",
-        "description": "Select reverse and confirm the backup alarm sounds.\n\n**Why it matters**\n\nA silent backup alarm must be reported."
-      },
-      {
-        "id": "brakes",
-        "title": "Brakes",
-        "subtitle": "Operational controls",
-        "image": "",
-        "description": "Test the service brake and the parking brake for correct response.\n\n**Why it matters**\n\nA brake that does not hold must be reported immediately."
-      },
-      {
-        "id": "capacity-plate",
-        "title": "Capacity Plate",
-        "subtitle": "Safety and Identification",
-        "image": "",
-        "description": "Shows rated load capacity and important forklift specifications.\n\n**What to inspect**\n\nRead the rated capacity and load center before handling loads.\n\n**Safety**\n\nDo not lift a load beyond the capacity shown on the plate.\n\n**Quick checklist**\n\n- Read rated capacity\n- Confirm load center\n- Follow plate limits\n\n*Related training: Load Handling and Operational Controls*"
-      },
-      {
-        "id": "carriage",
-        "title": "Carriage",
-        "subtitle": "Load Handling Parts",
-        "image": "",
-        "description": "Holds the forks and moves along the mast during lifting and lowering.\n\n**What to inspect**\n\nCheck fork attachment points and confirm there is no visible damage.\n\n**Safety**\n\nConfirm the carriage is stable before handling any load.\n\n**Quick checklist**\n\n- Check fork attachment\n- Check visible cracks\n- Confirm smooth travel\n\n*Related training: Load Handling and Operational Controls*"
-      },
-      {
-        "id": "counterweight",
-        "title": "Counterweight",
-        "subtitle": "Stability and Structure",
-        "image": "",
-        "description": "Balances the forklift against the weight of the load.\n\n**What to inspect**\n\nConfirm rear clearance and observe rear swing when maneuvering.\n\n**Safety**\n\nWatch rear swing and never exceed the rated load capacity.\n\n**Quick checklist**\n\n- Avoid overloading\n- Watch rear swing\n- Respect capacity plate\n\n*Related training: Load Handling and Operational Controls*"
-      },
-      {
-        "id": "dashboard",
-        "title": "Dashboard",
-        "subtitle": "Dashboard indicators",
-        "image": "",
-        "description": "Read the dashboard gauges and decide whether each reading is normal.\n\n**Why it matters**\n\nA dashboard warning must be reported before operation."
-      },
-      {
-        "id": "forks",
-        "title": "Forks",
-        "subtitle": "Load Handling Parts",
-        "image": "",
-        "description": "Support and lift pallets or loads when correctly inserted and spaced.\n\n**What to inspect**\n\nCheck fork tips, heel area, visible cracks, and locking pins before use.\n\n**Safety**\n\nNever stand under raised forks, and keep the load centered before lifting.\n\n**Quick checklist**\n\n- Check fork tips\n- Confirm locking pins\n- Keep load centered\n\n*Related training: Load Handling and Operational Controls*"
-      },
-      {
-        "id": "forward-reverse-travel",
-        "title": "Forward/Reverse Travel",
-        "subtitle": "Operational controls",
-        "image": "",
-        "description": "Select forward and reverse and confirm the forklift responds to the accelerator.\n\n**Why it matters**\n\nA travel control that does not respond must be reported."
-      },
-      {
-        "id": "ground-leaks",
-        "title": "Ground Leaks",
-        "subtitle": "Ground beneath the forklift",
-        "image": "",
-        "description": "Check the ground beneath the forklift for oil, fuel, hydraulic fluid, or coolant leaks.\n\n**Why it matters**\n\nAny fluid leak on the ground must be reported before operation."
-      },
-      {
-        "id": "headlights",
-        "title": "Headlights",
-        "subtitle": "Safety devices",
-        "image": "",
-        "description": "Switch on the headlights and confirm both lamps light up.\n\n**Why it matters**\n\nA headlight that does not light must be reported."
-      },
-      {
-        "id": "horn",
-        "title": "Horn",
-        "subtitle": "Safety devices",
-        "image": "",
-        "description": "Press the horn and confirm an audible warning sounds.\n\n**Why it matters**\n\nA horn that does not sound must be reported."
+        "inspectCategory": "",
+        "state": "",
+        "inspect": "",
+        "safeFeedback": "",
+        "unsafeFeedback": "",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "hydraulic-hoses",
+        "equipmentId": "forklift",
+        "label": "Hydraulic Hoses",
+        "position": [
+          0.05,
+          0.25,
+          0.25
+        ],
+        "sortOrder": 104,
+        "inParts": false,
+        "inWalkAround": true,
         "title": "Hydraulic Hoses",
         "subtitle": "Hydraulic hoses and cylinders",
         "image": "",
-        "description": "Check hydraulic hoses and cylinders for visible leaks, cracks, or wear.\n\n**Why it matters**\n\nHydraulic leaks can affect lifting safety and must be reported before operation."
-      },
-      {
-        "id": "ignition",
-        "title": "Ignition Switch",
-        "subtitle": "Engine start",
-        "image": "",
-        "description": "Turn the key to start the engine before beginning the operational checks.\n\n**Why it matters**\n\nThe engine must be running before operational checks can be made."
-      },
-      {
-        "id": "lift-chain",
-        "title": "Lift Chain",
-        "subtitle": "Load Handling Parts",
-        "image": "",
-        "description": "Transfers lifting force through the mast assembly.\n\n**What to inspect**\n\nObserve for slack, uneven movement, or visible damage before operation.\n\n**Safety**\n\nDo not touch or inspect the chain while the engine is running or the forks are moving.\n\n**Quick checklist**\n\n- Look for slack\n- Check for uneven movement\n- Keep clear while lifting\n\n*Related training: Walk-Around Check*"
-      },
-      {
-        "id": "lift-tilt-functions",
-        "title": "Lift and Tilt Functions",
-        "subtitle": "Operational controls",
-        "image": "",
-        "description": "Raise, lower, and tilt the mast and listen for unusual noise.\n\n**Why it matters**\n\nJerky mast movement or unusual noise must be reported."
+        "description": "Check hydraulic hoses and cylinders for visible leaks, cracks, or wear.\n\n**Why it matters**\n\nHydraulic leaks can affect lifting safety and must be reported before operation.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Hydraulic system",
+        "state": "engine-off",
+        "inspect": "Check hydraulic hoses and cylinders for visible leaks, cracks, or wear.",
+        "safeFeedback": "No hydraulic leak is visible in this state.",
+        "unsafeFeedback": "Hydraulic leak detected. Forklift should not be used.",
+        "unsafeScenarios": [
+          "oil-leak"
+        ],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "lpg-tank",
+        "equipmentId": "forklift",
+        "label": "LPG Tank and Battery",
+        "position": [
+          0,
+          0.17,
+          -0.04
+        ],
+        "sortOrder": 107,
+        "inParts": false,
+        "inWalkAround": true,
         "title": "LPG Tank and Battery",
         "subtitle": "LPG tank, mounting bracket, and battery area",
         "image": "",
-        "description": "Check the propane tank, mounting bracket, hose fittings, and battery area for leaks, damage, or corrosion.\n\n**Why it matters**\n\nA propane leak or unsafe battery condition is hazardous and must be reported before operation."
-      },
-      {
-        "id": "mast",
-        "title": "Mast",
-        "subtitle": "Load Handling Parts",
-        "image": "",
-        "description": "Guides the vertical movement of the carriage and forks.\n\n**What to inspect**\n\nLook for visible damage, obstruction, or unsafe movement in the lift path.\n\n**Safety**\n\nKeep hands, feet, and loose clothing away from the mast and lift chain path.\n\n**Quick checklist**\n\n- Look for visible damage\n- Check lift path clearance\n- Raise load smoothly\n\n*Related training: Walk-Around Check*"
-      },
-      {
-        "id": "operator-area",
-        "title": "Operator Area",
-        "subtitle": "Operator and Controls",
-        "image": "",
-        "description": "Contains the seat, steering, pedals, levers, and dashboard controls used by the operator.\n\n**What to inspect**\n\nConfirm controls are understood, accessible, and checked before operation.\n\n**Safety**\n\nFasten the seat belt and confirm controls are understood before operation.\n\n**Quick checklist**\n\n- Fasten seat belt\n- Check mirrors\n- Test horn and brakes\n\n*Related training: Walk-Around Check*"
-      },
-      {
-        "id": "overhead-guard",
-        "title": "Overhead Guard",
-        "subtitle": "Stability and Structure",
-        "image": "",
-        "description": "Helps protect the operator from falling objects within the forklift safety limits.\n\n**What to inspect**\n\nCheck for visible bending, cracks, or missing sections.\n\n**Safety**\n\nDo not operate if the overhead guard is visibly damaged.\n\n**Quick checklist**\n\n- Check structural damage\n- Keep guard unobstructed\n- Never remove the guard\n\n*Related training: Walk-Around Check*"
+        "description": "Check the propane tank, mounting bracket, hose fittings, and battery area for leaks, damage, or corrosion.\n\n**Why it matters**\n\nA propane leak or unsafe battery condition is hazardous and must be reported before operation.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Power source",
+        "state": "engine-off",
+        "inspect": "Check the propane tank, mounting bracket, hose fittings, and battery area for leaks, damage, or corrosion.",
+        "safeFeedback": "No LPG leak, damaged mounting, or battery concern is visible in this state.",
+        "unsafeFeedback": "A propane leak or unsafe battery condition is hazardous. Report before operation.",
+        "unsafeScenarios": [
+          "oil-leak"
+        ],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "seat-belt",
+        "equipmentId": "forklift",
+        "label": "Seat Belt",
+        "position": [
+          0,
+          0.3,
+          -0.05
+        ],
+        "sortOrder": 108,
+        "inParts": false,
+        "inWalkAround": true,
         "title": "Seat Belt",
         "subtitle": "Operator seat and restraint",
         "image": "",
-        "description": "Check the seat condition and confirm the seat belt latches and retracts properly.\n\n**Why it matters**\n\nA damaged or non-functioning seat belt must be reported before operation."
+        "description": "Check the seat condition and confirm the seat belt latches and retracts properly.\n\n**Why it matters**\n\nA damaged or non-functioning seat belt must be reported before operation.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Operator compartment",
+        "state": "engine-off",
+        "inspect": "Check the seat condition and confirm the seat belt latches and retracts properly.",
+        "safeFeedback": "Seat and seat belt appear in working condition in this state.",
+        "unsafeFeedback": "A damaged or non-functioning seat belt must be reported before operation.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
-        "id": "steering-response",
-        "title": "Steering Response",
-        "subtitle": "Operational controls",
+        "id": "ground-leaks",
+        "equipmentId": "forklift",
+        "label": "Ground Leaks",
+        "position": [
+          0,
+          0.02,
+          -0.05
+        ],
+        "sortOrder": 110,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Ground Leaks",
+        "subtitle": "Ground beneath the forklift",
         "image": "",
-        "description": "Turn the steering wheel and check for smooth response with no excessive play.\n\n**Why it matters**\n\nExcessive steering play must be reported before operation."
+        "description": "Check the ground beneath the forklift for oil, fuel, hydraulic fluid, or coolant leaks.\n\n**Why it matters**\n\nAny fluid leak on the ground must be reported before operation.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Ground inspection",
+        "state": "engine-off",
+        "inspect": "Check the ground beneath the forklift for oil, fuel, hydraulic fluid, or coolant leaks.",
+        "safeFeedback": "No fluid leak is visible on the ground in this state.",
+        "unsafeFeedback": "Fluid leak detected on the ground. Forklift is unsafe for operation.",
+        "unsafeScenarios": [
+          "oil-leak"
+        ],
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "ignition",
+        "equipmentId": "forklift",
+        "label": "Ignition Switch",
+        "position": [
+          -0.07,
+          0.34,
+          0.04
+        ],
+        "sortOrder": 111,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Ignition Switch",
+        "subtitle": "Engine start",
+        "image": "",
+        "description": "Turn the key to start the engine before beginning the operational checks.\n\n**Why it matters**\n\nThe engine must be running before operational checks can be made.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Engine start",
+        "state": "ignition",
+        "inspect": "Turn the key to start the engine before beginning the operational checks.",
+        "safeFeedback": "Engine started. Continue with the engine-on checks.",
+        "unsafeFeedback": "The engine must be running before operational checks can be made.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "dashboard",
+        "equipmentId": "forklift",
+        "label": "Dashboard",
+        "position": [
+          0,
+          0.28,
+          0.12
+        ],
+        "sortOrder": 112,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Dashboard",
+        "subtitle": "Dashboard indicators",
+        "image": "",
+        "description": "Read the dashboard gauges and decide whether each reading is normal.\n\n**Why it matters**\n\nA dashboard warning must be reported before operation.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Dashboard indicators",
+        "state": "engine-on",
+        "inspect": "Read the dashboard gauges and decide whether each reading is normal.",
+        "safeFeedback": "Dashboard gauges are ready to be read.",
+        "unsafeFeedback": "A dashboard warning must be reported before operation.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "horn",
+        "equipmentId": "forklift",
+        "label": "Horn",
+        "position": [
+          0,
+          0.32,
+          0.08
+        ],
+        "sortOrder": 113,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Horn",
+        "subtitle": "Safety devices",
+        "image": "",
+        "description": "Press the horn and confirm an audible warning sounds.\n\n**Why it matters**\n\nA horn that does not sound must be reported.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Safety devices",
+        "state": "engine-on",
+        "inspect": "Press the horn and confirm an audible warning sounds.",
+        "safeFeedback": "Horn responds. Audible warning device is working.",
+        "unsafeFeedback": "A horn that does not sound must be reported.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "headlights",
+        "equipmentId": "forklift",
+        "label": "Headlights",
+        "position": [
+          0.117,
+          0.388,
+          0.168
+        ],
+        "sortOrder": 114,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Headlights",
+        "subtitle": "Safety devices",
+        "image": "",
+        "description": "Switch on the headlights and confirm both lamps light up.\n\n**Why it matters**\n\nA headlight that does not light must be reported.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Safety devices",
+        "state": "engine-on",
+        "inspect": "Switch on the headlights and confirm both lamps light up.",
+        "safeFeedback": "Headlights respond. Lighting check passes.",
+        "unsafeFeedback": "A headlight that does not light must be reported.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "tail-lights",
+        "equipmentId": "forklift",
+        "label": "Tail Lights",
+        "position": [
+          0,
+          0.48,
+          -0.15
+        ],
+        "sortOrder": 115,
+        "inParts": false,
+        "inWalkAround": true,
         "title": "Tail Lights",
         "subtitle": "Safety devices",
         "image": "",
-        "description": "Confirm the tail lights light up at the rear of the forklift.\n\n**Why it matters**\n\nA tail light that does not light must be reported."
-      },
-      {
-        "id": "tires",
-        "title": "Tires",
-        "subtitle": "Stability and Structure",
-        "image": "",
-        "description": "Support forklift movement and stability across the work surface.\n\n**What to inspect**\n\nCheck for visible wear, damage, or unsafe tire condition.\n\n**Safety**\n\nDamaged or underinflated tires can affect stability and steering.\n\n**Quick checklist**\n\n- Check visible wear\n- Check inflation or damage\n- Report unsafe tire condition\n\n*Related training: Walk-Around Check*"
+        "description": "Confirm the tail lights light up at the rear of the forklift.\n\n**Why it matters**\n\nA tail light that does not light must be reported.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Safety devices",
+        "state": "engine-on",
+        "inspect": "Confirm the tail lights light up at the rear of the forklift.",
+        "safeFeedback": "Tail lights respond. Lighting check passes.",
+        "unsafeFeedback": "A tail light that does not light must be reported.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "turn-signals",
+        "equipmentId": "forklift",
+        "label": "Turn Signals",
+        "position": [
+          -0.039,
+          0.306,
+          0.09
+        ],
+        "sortOrder": 116,
+        "inParts": false,
+        "inWalkAround": true,
         "title": "Turn Signals",
         "subtitle": "Safety devices",
         "image": "",
-        "description": "Operate the turn signals and confirm they flash on both sides.\n\n**Why it matters**\n\nA turn signal that does not flash must be reported."
+        "description": "Operate the turn signals and confirm they flash on both sides.\n\n**Why it matters**\n\nA turn signal that does not flash must be reported.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Safety devices",
+        "state": "engine-on",
+        "inspect": "Operate the turn signals and confirm they flash on both sides.",
+        "safeFeedback": "Turn signals respond. Signal check passes.",
+        "unsafeFeedback": "A turn signal that does not flash must be reported.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
         "id": "warning-beacon",
+        "equipmentId": "forklift",
+        "label": "Warning Beacon",
+        "position": [
+          0,
+          0.52,
+          -0.08
+        ],
+        "sortOrder": 117,
+        "inParts": false,
+        "inWalkAround": true,
         "title": "Warning Beacon",
         "subtitle": "Safety devices",
         "image": "",
-        "description": "Confirm the warning beacon flashes so nearby workers can see the forklift.\n\n**Why it matters**\n\nA beacon that does not flash must be reported."
+        "description": "Confirm the warning beacon flashes so nearby workers can see the forklift.\n\n**Why it matters**\n\nA beacon that does not flash must be reported.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Safety devices",
+        "state": "engine-on",
+        "inspect": "Confirm the warning beacon flashes so nearby workers can see the forklift.",
+        "safeFeedback": "Warning beacon responds. Visual warning check passes.",
+        "unsafeFeedback": "A beacon that does not flash must be reported.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       },
       {
-        "id": "warning-devices",
-        "title": "Warning Devices",
-        "subtitle": "Safety and Identification",
+        "id": "backup-alarm",
+        "equipmentId": "forklift",
+        "label": "Backup Alarm",
+        "position": [
+          0,
+          0.24,
+          -0.3
+        ],
+        "sortOrder": 118,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Backup Alarm",
+        "subtitle": "Safety devices",
         "image": "",
-        "description": "Includes lights, horn, and backup alarm used to alert nearby workers.\n\n**What to inspect**\n\nTest horn, lights, beacon, and backup alarm during pre-operation checks.\n\n**Safety**\n\nDo not operate if required warning devices are not working.\n\n**Quick checklist**\n\n- Test horn\n- Check lights\n- Check backup alarm\n\n*Related training: Walk-Around Check*"
+        "description": "Select reverse and confirm the backup alarm sounds.\n\n**Why it matters**\n\nA silent backup alarm must be reported.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Safety devices",
+        "state": "engine-on",
+        "inspect": "Select reverse and confirm the backup alarm sounds.",
+        "safeFeedback": "Backup alarm responds. Reverse warning check passes.",
+        "unsafeFeedback": "A silent backup alarm must be reported.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "steering-response",
+        "equipmentId": "forklift",
+        "label": "Steering Response",
+        "position": [
+          0,
+          0.34,
+          0.11
+        ],
+        "sortOrder": 119,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Steering Response",
+        "subtitle": "Operational controls",
+        "image": "",
+        "description": "Turn the steering wheel and check for smooth response with no excessive play.\n\n**Why it matters**\n\nExcessive steering play must be reported before operation.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Operational controls",
+        "state": "engine-on",
+        "inspect": "Turn the steering wheel and check for smooth response with no excessive play.",
+        "safeFeedback": "Steering responds smoothly with no excessive play.",
+        "unsafeFeedback": "Excessive steering play must be reported before operation.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "brakes",
+        "equipmentId": "forklift",
+        "label": "Brakes",
+        "position": [
+          0.01,
+          0.18,
+          0.13
+        ],
+        "sortOrder": 120,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Brakes",
+        "subtitle": "Operational controls",
+        "image": "",
+        "description": "Test the service brake and the parking brake for correct response.\n\n**Why it matters**\n\nA brake that does not hold must be reported immediately.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Operational controls",
+        "state": "engine-on",
+        "inspect": "Test the service brake and the parking brake for correct response.",
+        "safeFeedback": "Service brake and parking brake respond correctly.",
+        "unsafeFeedback": "A brake that does not hold must be reported immediately.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "lift-tilt-functions",
+        "equipmentId": "forklift",
+        "label": "Lift and Tilt Functions",
+        "position": [
+          -0.07,
+          0.3,
+          0.1
+        ],
+        "sortOrder": 121,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Lift and Tilt Functions",
+        "subtitle": "Operational controls",
+        "image": "",
+        "description": "Raise, lower, and tilt the mast and listen for unusual noise.\n\n**Why it matters**\n\nJerky mast movement or unusual noise must be reported.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Operational controls",
+        "state": "engine-on",
+        "inspect": "Raise, lower, and tilt the mast and listen for unusual noise.",
+        "safeFeedback": "Mast raises, lowers, and tilts smoothly with no unusual noise.",
+        "unsafeFeedback": "Jerky mast movement or unusual noise must be reported.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "forward-reverse-travel",
+        "equipmentId": "forklift",
+        "label": "Forward/Reverse Travel",
+        "position": [
+          -0.02,
+          0.26,
+          -0.02
+        ],
+        "sortOrder": 122,
+        "inParts": false,
+        "inWalkAround": true,
+        "title": "Forward/Reverse Travel",
+        "subtitle": "Operational controls",
+        "image": "",
+        "description": "Select forward and reverse and confirm the forklift responds to the accelerator.\n\n**Why it matters**\n\nA travel control that does not respond must be reported.",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "Operational controls",
+        "state": "engine-on",
+        "inspect": "Select forward and reverse and confirm the forklift responds to the accelerator.",
+        "safeFeedback": "Forward/reverse selector and accelerator respond correctly.",
+        "unsafeFeedback": "A travel control that does not respond must be reported.",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "tilt-cylinder",
+        "equipmentId": "forklift",
+        "label": "Tilt Cylinder",
+        "position": null,
+        "sortOrder": 900,
+        "inParts": false,
+        "inWalkAround": false,
+        "title": "Tilt Cylinder",
+        "subtitle": "General",
+        "image": "",
+        "description": "",
+        "category": "",
+        "functionText": "",
+        "inspectionReminder": "",
+        "safetyNote": "",
+        "relatedModule": "",
+        "checklist": [],
+        "inspectCategory": "",
+        "state": "",
+        "inspect": "",
+        "safeFeedback": "",
+        "unsafeFeedback": "",
+        "unsafeScenarios": [],
+        "published": true,
+        "builtIn": true
       }
     ],
     "Course": [
@@ -535,6 +1081,116 @@
           "sceneBody": "",
           "objectives": [],
           "showSyllabus": true
+        },
+        "published": true,
+        "builtIn": false
+      },
+      {
+        "id": "trytry",
+        "moduleSlug": "backhoe-getting-started",
+        "sortOrder": 2,
+        "kind": "driving",
+        "title": "TryTry",
+        "objective": "",
+        "instructions": "",
+        "hint": "",
+        "goalType": "checkpoints",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [],
+          "decorations": [],
+          "failConditions": null
+        },
+        "content": null,
+        "published": false,
+        "builtIn": false
+      },
+      {
+        "id": "forklift-test-briefing",
+        "moduleSlug": "forklift-test",
+        "sortOrder": 1,
+        "kind": "briefing",
+        "title": "Briefing",
+        "objective": "",
+        "instructions": "",
+        "hint": "",
+        "goalType": "checkpoints",
+        "data": null,
+        "content": {
+          "body": "",
+          "image": "",
+          "syllabus": {
+            "element": "",
+            "location": "",
+            "unitCode": "",
+            "pageReferences": ""
+          },
+          "sceneBody": "",
+          "objectives": [],
+          "showSyllabus": true
+        },
+        "published": true,
+        "builtIn": false
+      },
+      {
+        "id": "tester-test",
+        "moduleSlug": "forklift-test",
+        "sortOrder": 2,
+        "kind": "driving",
+        "title": "tester test",
+        "objective": "",
+        "instructions": "",
+        "hint": "",
+        "goalType": "checkpoints",
+        "data": {
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [],
+          "decorations": [],
+          "failConditions": null
+        },
+        "content": null,
+        "published": false,
+        "builtIn": false
+      },
+      {
+        "id": "forklift-test-hi",
+        "moduleSlug": "forklift-test",
+        "sortOrder": 3,
+        "kind": "summary",
+        "title": "hi",
+        "objective": "",
+        "instructions": "",
+        "hint": "",
+        "goalType": "free",
+        "data": null,
+        "content": {
+          "body": "",
+          "counters": [],
+          "nextRoute": "equipment",
+          "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
+          "incompleteMessage": "Complete every graded step to finish this module."
         },
         "published": true,
         "builtIn": false
