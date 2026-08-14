@@ -20,6 +20,8 @@ export function WalkAroundScene({
   data,
   hotspots,
   modelUrl,
+  modelScale,
+  modelOffsetY,
   state,
   engineStarted,
   activeScenarioId,
@@ -54,6 +56,8 @@ export function WalkAroundScene({
         hotspots={hotspots}
         defectOverlays={defectOverlays}
         modelUrl={modelUrl}
+        modelScale={modelScale}
+        modelOffsetY={modelOffsetY}
         cameraPreset={cameraPreset}
         onHotspotSelect={onHotspotSelect}
         onResetView={onResetView}
