@@ -69,7 +69,7 @@ function formatRelativeTime(dateString) {
 function describeActivity(entry, moduleTitle) {
   const who = entry.user?.fullName || entry.user?.email || 'A learner'
   if (entry.action === 'quiz_attempt') return `${who} completed a quiz in ${moduleTitle || entry.detail}`
-  if (entry.action === 'parts_practice_attempt') return `${who} scored ${entry.detail} on the parts quiz`
+  if (entry.action === 'parts_quiz_attempt') return `${who} scored ${entry.detail} on the parts quiz`
   return `${who} - ${entry.action}`
 }
 
@@ -125,9 +125,22 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     () => content.hotspotCategories.filter((category) => category.equipmentId === activeEquipmentId),
     [content.hotspotCategories, activeEquipmentId],
   )
+  // The Module Editor scopes to the *module's own* equipment, not the picker's.
+  // /admin/modules/:slug is a real URL an admin can land on directly, and
+  // `activeEquipmentId` is picker state - so scoping off it showed a Backhoe
+  // module the Forklift's sibling modules, model and categories.
+  const editingModuleEquipment = useMemo(() => {
+    const equipmentId = moduleBySlug[editingModuleSlug]?.equipmentId || activeEquipmentId
+
+    return {
+      id: equipmentId,
+      modelUrl: content.equipment.find((item) => item.id === equipmentId)?.modelUrl,
+      modules: content.modules.filter((module) => module.equipmentId === equipmentId),
+      categories: content.hotspotCategories.filter((category) => category.equipmentId === equipmentId),
+    }
+  }, [moduleBySlug, editingModuleSlug, activeEquipmentId, content.equipment, content.modules, content.hotspotCategories])
   // A configured Model URL is what turns the Parts tab from a disabled note
   // into the hotspot editor - there is nothing to place markers on without one.
-  const isForklift = activeEquipmentId === 'forklift'
   const hasModelForActiveEquipment = Boolean(activeEquipment?.modelUrl)
 
   // Switching sections clears whatever was selected under the old one, so a
@@ -474,11 +487,11 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             <ModuleEditor
               key={editingModuleSlug}
               module={moduleBySlug[editingModuleSlug]}
-              equipmentId={activeEquipmentId}
-              modelUrl={activeEquipment?.modelUrl}
-              isForklift={isForklift}
+              equipmentId={editingModuleEquipment.id}
+              modelUrl={editingModuleEquipment.modelUrl}
+              equipmentModules={editingModuleEquipment.modules}
               checklists={content.checklists}
-              hotspotCategories={activeEquipmentCategories}
+              hotspotCategories={editingModuleEquipment.categories}
               quizQuestions={content.quizQuestions}
               onModuleChanged={(module) => setContent((current) => ({
                 ...current,

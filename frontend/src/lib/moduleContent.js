@@ -25,10 +25,45 @@ export function moduleObjectives(steps, module) {
   return objectives.length ? objectives : module?.learningObjectives || []
 }
 
-// `nextRoute` is a key of `routes`, not a path. An unknown key (a route that
-// was renamed, or a row seeded before this field) falls back to the module's
-// built-in destination.
-export function nextModuleRoute(steps, fallbackKey) {
-  const key = summaryContent(steps)?.nextRoute
-  return routes[key] || routes[fallbackKey]
+// `nextRoute` is a key, not a path, so a route that moves does not strand
+// saved content. Three kinds resolve, in this order:
+//
+//   'hub' | 'modules' | 'parts' | 'assessment'  - against the current equipment
+//   'module:<slug>'                             - that equipment's own module
+//   a key of `routes`                           - Forklift's named modules
+//
+// The equipment-relative names win over the `routes` map on purpose: rows
+// seeded with `equipment` or `parts` used to resolve to a hardcoded Forklift
+// path, which was wrong for every other equipment and identical for Forklift.
+const EQUIPMENT_TARGETS = {
+  hub: (equipmentId) => `/training/${equipmentId}`,
+  modules: (equipmentId) => `/training/${equipmentId}/modules`,
+  // The key Forklift's summary rows were seeded with, for the module list.
+  equipment: (equipmentId) => `/training/${equipmentId}/modules`,
+  parts: (equipmentId) => `/training/${equipmentId}/parts`,
+  assessment: (equipmentId) => `/training/${equipmentId}/assessment`,
+}
+
+export const MODULE_ROUTE_PREFIX = 'module:'
+
+export function resolveNextRoute(key, equipmentId) {
+  if (!key) return null
+
+  if (key.startsWith(MODULE_ROUTE_PREFIX)) {
+    const slug = key.slice(MODULE_ROUTE_PREFIX.length)
+    return slug && equipmentId ? `/training/${equipmentId}/modules/${slug}` : null
+  }
+
+  if (equipmentId && EQUIPMENT_TARGETS[key]) return EQUIPMENT_TARGETS[key](equipmentId)
+
+  return routes[key] || null
+}
+
+// An unknown key - a route that was renamed, or a row seeded before this field
+// existed - falls back to the module's built-in destination.
+export function nextModuleRoute(steps, equipmentId, fallbackKey) {
+  return (
+    resolveNextRoute(summaryContent(steps)?.nextRoute, equipmentId)
+    || resolveNextRoute(fallbackKey, equipmentId)
+  )
 }

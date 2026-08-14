@@ -5,7 +5,7 @@ import { getModulesProgress, getOverallProgress, getPartsProgress } from './lib/
 import { useProgress } from './hooks/useProgress'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
 import PageLayout from './components/PageLayout'
-import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
+import ScopeNotice from './components/ScopeNotice'
 import './TrainingHubPage.css'
 
 // Single hub shell (PageLayout Pattern A: hero + overall-progress +
@@ -77,7 +77,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
 
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
-      <ScopeNotice note={isForklift ? FORKLIFT_SCOPE_NOTE : undefined} />
+      <ScopeNotice equipmentId={equipmentId} />
 
       {loading ? (
         <p className="progress-grid-empty">Loading modules...</p>

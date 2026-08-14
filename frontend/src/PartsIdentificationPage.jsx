@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import ForkliftViewport from './gear_view_3_d_forklift_viewport'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import SimulationPageLayout from './components/SimulationPageLayout'
-import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
+import ScopeNotice from './components/ScopeNotice'
 import Quiz from './components/Quiz'
 import { useProgress } from './hooks/useProgress'
 import { getEquipment, getHotspotCategories, getHotspots, getQuizQuestions } from './lib/api'
@@ -45,7 +45,6 @@ function buildDetail(hotspot) {
 
 function PartsIdentificationPage({ equipmentId, user, onBack }) {
   const isAdmin = user?.role === 'ADMIN'
-  const isForklift = equipmentId === 'forklift'
   const [equipment, setEquipment] = useState(null)
   const [hotspots, setHotspots] = useState([])
   const [categories, setCategories] = useState([])
@@ -138,7 +137,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
 
   const renderExploreTask = () => (
     <div className="parts-task-stack">
-      <ScopeNotice note={isForklift ? FORKLIFT_SCOPE_NOTE : undefined} />
+      <ScopeNotice equipmentId={equipmentId} />
       <div className="category-grid">
         {categoryLabels.map((label) => {
           const inCategory = hotspots.filter((hotspot) => hotspot.category === label)

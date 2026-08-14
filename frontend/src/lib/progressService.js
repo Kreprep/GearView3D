@@ -80,19 +80,13 @@ function checklistTotal(moduleSlug) {
   return (moduleChecklists[moduleSlug] || []).length
 }
 
-const equipmentModuleSlugs = ['walk-around-check', 'load-handling', 'post-operation', 'pallet-testing']
-const partsModuleSlug = 'parts-identification'
-
 function emptyProgress() {
   return {
     version: 1,
     checklists: {},
     parts: {
       viewedPartIds: [],
-      // Forklift's parts-quiz attempts, under their original key. Every other
-      // equipment's live in `quizzes`, keyed by equipment id - see
-      // getLatestQuizAttempt().
-      practiceAttempts: [],
+      // Parts-quiz attempts keyed by equipment id, newest first.
       quizzes: {},
     },
     quizzes: {},
@@ -106,13 +100,26 @@ function normalizeProgress(progress) {
     ...emptyProgress(),
     ...progress,
     checklists: progress?.checklists || {},
-    parts: {
-      viewedPartIds: progress?.parts?.viewedPartIds || [],
-      practiceAttempts: progress?.parts?.practiceAttempts || [],
-      quizzes: progress?.parts?.quizzes || {},
-    },
+    parts: migrateParts(progress?.parts),
     quizzes: progress?.quizzes || {},
     simulations: progress?.simulations || {},
+  }
+}
+
+// Forklift's parts-quiz attempts used to live at `parts.practiceAttempts`,
+// separate from every other equipment's `parts.quizzes[equipmentId]`. Migration
+// 20260814100000 moved the stored copies; this folds in a locally cached one
+// that predates it, so the next push writes the merged shape and the old key
+// disappears on its own. Runs on every read, which is also every hydration.
+function migrateParts(parts) {
+  const legacy = Array.isArray(parts?.practiceAttempts) ? parts.practiceAttempts : []
+  const quizzes = parts?.quizzes || {}
+
+  return {
+    viewedPartIds: parts?.viewedPartIds || [],
+    quizzes: legacy.length
+      ? { ...quizzes, forklift: [...(quizzes.forklift || []), ...legacy] }
+      : quizzes,
   }
 }
 
@@ -243,12 +250,6 @@ export function getModuleProgress(progress, moduleSlug) {
   return checklistCompletion.percentage
 }
 
-export function getEquipmentProgress(progress) {
-  return Math.round(
-    equipmentModuleSlugs.reduce((sum, slug) => sum + getModuleProgress(progress, slug), 0) / equipmentModuleSlugs.length,
-  )
-}
-
 // Module, hotspot and overall percentages for any equipment. The caller passes
 // the module slugs and hotspot ids because both are data-driven - which is also
 // what makes these correct per equipment rather than per learner.
@@ -268,12 +269,8 @@ export function getHotspotProgress(progress, hotspotIds) {
   return Math.round((viewedCount / hotspotIds.length) * 100)
 }
 
-// Parts-quiz attempts for one equipment, newest first. Forklift's are the
-// original `parts.practiceAttempts` list - the key its percentage has always
-// been computed from - and every other equipment's are under
-// `parts.quizzes[equipmentId]`, which is where new per-equipment attempts go.
+// Parts-quiz attempts for one equipment, newest first.
 export function getPartsQuizAttempts(progress, equipmentId) {
-  if (equipmentId === 'forklift') return progress.parts.practiceAttempts || []
   return progress.parts.quizzes?.[equipmentId] || []
 }
 
@@ -302,28 +299,23 @@ export function getOverallProgress(progress, moduleSlugs, partsPercentage) {
   return Math.round((moduleProgress + partsPercentage) / 2)
 }
 
-// The synchronous snapshot the UI reads. `parts` and the overall figure are
-// deliberately absent: both need the equipment's hotspot ids, which only the
-// page rendering them has, so those call getPartsProgress/getOverallProgress
-// directly. `equipment` is the average across Forklift's own modules.
+// The synchronous snapshot the UI reads.
+//
+// Nothing here is keyed by module slug or equipment on purpose. Anything that
+// would be - per-module progress, per-module checklist completion, a parts or
+// overall percentage - needs the list of modules or hotspot ids that page is
+// showing, and only the page has it. Pre-building those maps here is what made
+// them Forklift-only: they were keyed off a hardcoded four-slug list, so every
+// module an admin created reported "no checklist items" no matter what it had.
+// Call getModuleProgress / getChecklistCompletion / getPartsProgress /
+// getOverallProgress with the slugs and ids you already fetched instead.
 export function getProgressSummary(progress = getStoredProgress()) {
   return {
     raw: progress,
-    equipment: getEquipmentProgress(progress),
-    overall: getEquipmentProgress(progress),
-    modules: equipmentModuleSlugs.reduce((summary, slug) => {
-      summary[slug] = getModuleProgress(progress, slug)
-      return summary
-    }, {}),
-    checklist: equipmentModuleSlugs.reduce((summary, slug) => {
-      summary[slug] = getChecklistCompletion(progress, slug)
-      return summary
-    }, {}),
     viewedParts: progress.parts.viewedPartIds,
     quizAttempts: progress.quizzes,
-    partsPracticeAttempts: progress.parts.practiceAttempts,
     simulations: progress.simulations,
   }
 }
 
-export { CHANGE_EVENT, equipmentModuleSlugs, partsModuleSlug }
+export { CHANGE_EVENT }

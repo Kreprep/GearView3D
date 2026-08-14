@@ -49,15 +49,14 @@ export const SUMMARY_COUNTER_LABELS = {
 }
 
 // Where Submit sends the learner once a module is complete, stored on the
-// summary step as a key of `routes` (lib/router.js) rather than a path, so a
-// route that moves does not strand saved content. Kept as plain strings here
-// because this file is imported by the backend seed, which has no router.
-export const NEXT_ROUTE_OPTIONS = [
-  ['equipment', 'Forklift module list'],
-  ['walkAround', 'Module 1 - Walk-Around Check'],
-  ['loadHandling', 'Module 2 - Load Handling'],
-  ['postOperation', 'Module 3 - Post-Operation'],
-  ['palletTesting', 'Module 4 - Pallet Assessment'],
+// summary step as a key rather than a path, so a route that moves does not
+// strand saved content. These four resolve against whichever equipment the
+// module belongs to (lib/moduleContent.js); the admin picker adds one
+// `module:<slug>` entry per module the equipment actually has, which is why
+// there is no fixed list of Forklift modules here any more.
+export const NEXT_ROUTE_TARGETS = [
+  ['modules', 'Module list'],
+  ['hub', 'Training hub'],
   ['parts', 'Parts Identification'],
   ['assessment', 'Final Assessment'],
 ]
@@ -142,7 +141,7 @@ export function emptyCourseContent(kind) {
         completeMessage: 'All requirements are complete. Submit the module to record completion feedback.',
         incompleteMessage: 'Complete every graded step to finish this module.',
         counters: [],
-        nextRoute: 'equipment',
+        nextRoute: 'modules',
       }
     case 'activity':
       return { activityId: '' }
@@ -225,10 +224,12 @@ const SUMMARY_COUNTERS = {
 
 // The module page navigates here after Submit. `pallet-testing` is the last
 // module, so it returns to the Equipment Usage overview.
+// Keys of the equipment-relative scheme in lib/moduleContent.js, not paths -
+// `module:<slug>` for a specific module, `modules` for that equipment's list.
 const SUMMARY_NEXT_ROUTE = {
-  'load-handling': 'postOperation',
-  'post-operation': 'palletTesting',
-  'pallet-testing': 'equipment',
+  'load-handling': 'module:post-operation',
+  'post-operation': 'module:pallet-testing',
+  'pallet-testing': 'modules',
 }
 
 export function emptySyllabus() {
@@ -330,7 +331,7 @@ function stepContent(moduleSlug, stepId, kind) {
       completeMessage: 'All requirements are complete. Submit the module to record completion feedback.',
       incompleteMessage: SUMMARY_INCOMPLETE[moduleSlug] || 'Complete every graded step to finish this module.',
       counters: SUMMARY_COUNTERS[moduleSlug] || [],
-      nextRoute: SUMMARY_NEXT_ROUTE[moduleSlug] || 'equipment',
+      nextRoute: SUMMARY_NEXT_ROUTE[moduleSlug] || 'modules',
     }
   }
 
