@@ -26,7 +26,7 @@ function ModuleEditor({
   module,
   equipmentId,
   modelUrl,
-  isForklift,
+  equipmentModules,
   checklists,
   hotspotCategories,
   quizQuestions,
@@ -127,7 +127,7 @@ function ModuleEditor({
       <CourseEditor
         key={selected.id}
         course={selected}
-        isForklift={isForklift}
+        equipmentModules={equipmentModules}
         onCourseChanged={(course) => setCourses((current) => current.map((entry) => (entry.id === course.id ? course : entry)))}
         onCourseDeleted={(courseId) => { setCourses((current) => current.filter((entry) => entry.id !== courseId)); setSelectedId(null) }}
         onMessage={onMessage}

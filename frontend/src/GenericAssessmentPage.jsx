@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useProgress } from './hooks/useProgress'
 import PageLayout from './components/PageLayout'
-import ScopeNotice, { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
+import ScopeNotice from './components/ScopeNotice'
 import { getEquipment, getHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
 import {
+  getChecklistCompletion,
   getModulesProgress,
   getOverallProgress,
   getPartsProgress,
@@ -15,7 +16,6 @@ import './AssessmentPage.css'
 // equipment it is: the modules, the parts markers and the parts quiz are all
 // that equipment's own rows.
 function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
-  const isForklift = equipmentId === 'forklift'
   const { summary } = useProgress()
   const [equipment, setEquipment] = useState(null)
   const [modules, setModules] = useState([])
@@ -82,7 +82,7 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
         <h1 className="page-heading">{equipment?.title || 'Equipment'} - Final Assessment</h1>
       </div>
 
-      <ScopeNotice note={isForklift ? FORKLIFT_SCOPE_NOTE : undefined} />
+      <ScopeNotice equipmentId={equipmentId} />
       <section className="assessment-card">
         <p className="assessment-kicker">Progress Review</p>
         <h2>{requiredComplete ? 'Prototype Module Completion' : 'Training still in progress'}</h2>
@@ -116,11 +116,14 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
             ) : (
               <ul>
                 {modules.map((module) => {
-                  const checklist = summary.checklist[module.slug]
+                  // Read per module rather than out of a prebuilt map: the map
+                  // was keyed by a fixed list of Forklift slugs, so any module
+                  // an admin added reported "no checklist items" whatever it had.
+                  const checklist = getChecklistCompletion(summary.raw, module.slug)
                   const latestQuiz = summary.quizAttempts[module.slug]?.[0]
                   return (
                     <li key={module.slug}>
-                      {module.title}: {checklist ? `${checklist.completedCount}/${checklist.totalCount}` : 'no'} checklist items,
+                      {module.title}: {checklist.totalCount ? `${checklist.completedCount}/${checklist.totalCount}` : 'no'} checklist items,
                       {' '}quiz {latestQuiz ? `${latestQuiz.score}/${latestQuiz.total}` : 'not attempted'}
                     </li>
                   )

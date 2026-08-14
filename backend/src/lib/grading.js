@@ -52,7 +52,7 @@ export function buildAttempt({ score, total, percentage }) {
 // debounced push carries the attempt instead of overwriting it.
 export async function appendAttempt(userId, attempt, place) {
   const snapshot = await prisma.progressSnapshot.findUnique({ where: { userId } })
-  const data = snapshot?.data || { version: 1, checklists: {}, parts: { viewedPartIds: [], practiceAttempts: [] }, quizzes: {}, simulations: {} }
+  const data = snapshot?.data || { version: 1, checklists: {}, parts: { viewedPartIds: [], quizzes: {} }, quizzes: {}, simulations: {} }
   const next = place(data, attempt)
 
   await prisma.progressSnapshot.upsert({
@@ -74,26 +74,34 @@ export function intoModuleQuiz(moduleSlug) {
   })
 }
 
-// Parts-quiz attempts. Forklift's keep going to `parts.practiceAttempts`,
-// the key its progress percentage and the assessment page have always read -
-// renaming it would strand every existing learner's attempts. Every other
-// equipment's go to `parts.quizzes[equipmentId]`, which is per-equipment
-// because that key never was.
+// Parts-quiz attempts, newest first, under `parts.quizzes[equipmentId]` for
+// every equipment alike. Forklift's used to live at `parts.practiceAttempts`;
+// migration 20260814100000 moved them here, and `migrateParts` below folds in
+// any that a client still holds locally.
 export function intoPartsQuiz(equipmentId) {
   return (data, attempt) => {
-    const parts = {
-      ...(data.parts || {}),
-      viewedPartIds: data.parts?.viewedPartIds || [],
-      practiceAttempts: data.parts?.practiceAttempts || [],
-      quizzes: data.parts?.quizzes || {},
-    }
+    const parts = migrateParts(data.parts)
 
-    if (equipmentId === 'forklift') {
-      parts.practiceAttempts = [attempt, ...parts.practiceAttempts]
-    } else {
-      parts.quizzes = { ...parts.quizzes, [equipmentId]: [attempt, ...(parts.quizzes[equipmentId] || [])] }
+    return {
+      ...data,
+      parts: {
+        ...parts,
+        quizzes: { ...parts.quizzes, [equipmentId]: [attempt, ...(parts.quizzes[equipmentId] || [])] },
+      },
     }
+  }
+}
 
-    return { ...data, parts }
+// A client that has not reloaded since the migration can still push a snapshot
+// carrying the old key, which would otherwise silently drop those attempts.
+export function migrateParts(parts) {
+  const legacy = Array.isArray(parts?.practiceAttempts) ? parts.practiceAttempts : []
+  const quizzes = parts?.quizzes || {}
+
+  return {
+    viewedPartIds: parts?.viewedPartIds || [],
+    quizzes: legacy.length
+      ? { ...quizzes, forklift: [...(quizzes.forklift || []), ...legacy] }
+      : quizzes,
   }
 }

@@ -19,7 +19,8 @@ import {
   removeItems,
   updateItem,
 } from '../../lib/courseEdit'
-import { emptySyllabus, NEXT_ROUTE_OPTIONS, SUMMARY_COUNTER_LABELS } from '../../data/courseDefaults'
+import { emptySyllabus, NEXT_ROUTE_TARGETS, SUMMARY_COUNTER_LABELS } from '../../data/courseDefaults'
+import { MODULE_ROUTE_PREFIX } from '../../lib/moduleContent'
 import { COURSE_GOAL_TYPES, validateCourse } from '../../lib/courseGoals'
 import { ReportingActivityFields, ShutdownActivityFields } from './ActivityContentFields'
 import WalkAroundContentFields from './WalkAroundContentFields'
@@ -69,7 +70,7 @@ function draftOf(course) {
   }
 }
 
-function CourseEditor({ course, isForklift = false, onCourseChanged, onCourseDeleted, onMessage }) {
+function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourseDeleted, onMessage }) {
   const [draft, setDraft] = useState(() => draftOf(course))
   const [selectedKeys, setSelectedKeys] = useState([])
   const [tool, setTool] = useState(null)
@@ -428,26 +429,33 @@ function CourseEditor({ course, isForklift = false, onCourseChanged, onCourseDel
               <textarea rows={2} value={content.incompleteMessage || ''} onChange={(event) => setContent({ incompleteMessage: event.target.value })} />
             </label>
 
-            {/* NEXT_ROUTE_OPTIONS are Forklift's fixed routes, and the generic
-                module page ignores nextRoute (Submit always returns to the
-                equipment's training hub) - so the picker only renders for
-                Forklift modules. */}
-            {isForklift ? (
-              <label>
-                Where Submit sends the learner
-                <select
-                  value={content.nextRoute || ''}
-                  onChange={(event) => setContent({ nextRoute: event.target.value })}
-                >
-                  <option value="">Module default</option>
-                  {NEXT_ROUTE_OPTIONS.map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
+            {/* Destinations resolve against this module's own equipment, and
+                the per-module entries are built from the modules that
+                equipment actually has - so this works the same for every
+                equipment rather than offering Forklift's fixed routes. */}
+            <label>
+              Where Submit sends the learner
+              <select
+                value={content.nextRoute || ''}
+                onChange={(event) => setContent({ nextRoute: event.target.value })}
+              >
+                <option value="">Module default</option>
+                {NEXT_ROUTE_TARGETS.map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+                {equipmentModules
+                  .filter((entry) => entry.slug !== course.moduleSlug)
+                  .map((entry) => (
+                    <option key={entry.slug} value={`${MODULE_ROUTE_PREFIX}${entry.slug}`}>
+                      Module - {entry.title || entry.slug}
+                    </option>
                   ))}
-                </select>
-              </label>
-            ) : (
-              <p className="admin-panel-note">Submit returns the learner to this equipment's training hub.</p>
-            )}
+              </select>
+              <small className="admin-field-note">
+                Blank keeps the module&apos;s built-in destination. A stored value that no longer resolves falls back
+                to it too, so deleting a module never strands another module&apos;s Submit.
+              </small>
+            </label>
 
             <p className="admin-panel-note">Extra counters to show under the grid:</p>
             {Object.entries(SUMMARY_COUNTER_LABELS).map(([key, label]) => (

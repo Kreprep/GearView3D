@@ -7,7 +7,6 @@ import SimulationPageLayout from './components/SimulationPageLayout'
 import { BriefingScene, BriefingTask } from './components/ModuleBriefing'
 import { ReportingActivity, ShutdownSequenceActivity } from './components/ModuleActivities'
 import { ACTIVITY_IDS } from './lib/activitySteps'
-import { FORKLIFT_SCOPE_NOTE } from './components/ScopeNotice'
 import { ChecklistScene, ModuleRowsTask, QuizScene } from './components/ModuleChecklistStep'
 import { WalkAroundScene, WalkAroundTask } from './components/WalkAroundStep'
 import { engineOnDeviceEffects, resolveEffectLamps, walkAroundDefectOverlays } from './data/viewerHotspots'
@@ -52,7 +51,6 @@ function unique(items) {
 // scene; one whose model has no rig nodes simply drives as a solid body.
 function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }) {
   const isAdmin = user?.role === 'ADMIN'
-  const isForklift = equipmentId === 'forklift'
   // Forklift's modules keep their static definitions as the fallback record
   // (objectives, fullTitle); admin-created modules fall back to a blank
   // fullTitle deliberately - useModuleRecord only overrides a field when the
@@ -429,7 +427,10 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
 
     // The summary step's stored nextRoute wins when it resolves; otherwise
     // return to the equipment's module list to pick the next one.
-    setTimeout(() => onNavigate?.(nextModuleRoute(steps) || `/training/${equipmentId}/modules`), NEXT_MODULE_DELAY_MS)
+    setTimeout(
+      () => onNavigate?.(nextModuleRoute(steps, equipmentId) || `/training/${equipmentId}/modules`),
+      NEXT_MODULE_DELAY_MS,
+    )
   }
 
   const getStepCanProceed = (stepId) =>
@@ -586,7 +587,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     const step = stepById[currentStep.id]
     if (step?.kind === 'briefing') {
       return (
-        <BriefingTask content={step.content} module={module} scopeNote={isForklift ? FORKLIFT_SCOPE_NOTE : undefined} />
+        <BriefingTask content={step.content} module={module} equipmentId={equipmentId} />
       )
     }
     if (step?.kind === 'walk-around') {

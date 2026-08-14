@@ -53,14 +53,18 @@ export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
       }
     }
 
-    for (const attempt of data.parts?.practiceAttempts || []) {
-      activityLogs.push({
-        id: attempt.id,
-        action: 'parts_practice_attempt',
-        detail: `${attempt.score}/${attempt.total}`,
-        createdAt: attempt.attemptedAt,
-        user,
-      })
+    // Every equipment's parts-quiz attempts, including the Forklift ones that
+    // used to sit under `parts.practiceAttempts` before migration 20260814100000.
+    for (const [equipmentId, attempts] of Object.entries(data.parts?.quizzes || {})) {
+      for (const attempt of attempts) {
+        activityLogs.push({
+          id: attempt.id,
+          action: 'parts_quiz_attempt',
+          detail: `${equipmentId} ${attempt.score}/${attempt.total}`,
+          createdAt: attempt.attemptedAt,
+          user,
+        })
+      }
     }
   }
 
