@@ -184,6 +184,12 @@ function DefectTask({ data, state, activeScenarioId, onSelectScenario, onAnswerS
   if (!active) return <p className="task-note">This step has no defect scenarios yet.</p>
 
   const savedAnswer = state.scenarios[active.id]
+  const activeIndex = scenarios.findIndex((entry) => entry.id === active.id)
+  // Prefer the next unanswered scenario so re-checking a wrong answer doesn't
+  // just loop back to the same one; fall back to the next in order once every
+  // scenario has an answer.
+  const nextScenario =
+    scenarios.slice(activeIndex + 1).find((entry) => !state.scenarios[entry.id]) || scenarios[activeIndex + 1]
 
   return (
     <>
@@ -218,6 +224,11 @@ function DefectTask({ data, state, activeScenarioId, onSelectScenario, onAnswerS
         ))}
       </div>
       {savedAnswer && <p className="task-note">{active.feedback}</p>}
+      {savedAnswer && nextScenario && (
+        <button type="button" className="scenario-next-button" onClick={() => onSelectScenario(nextScenario.id)}>
+          Next Scenario
+        </button>
+      )}
       <p className="task-note">Defect recognition score: {scenarioScore(data, state)}/{scenarios.length}</p>
     </>
   )

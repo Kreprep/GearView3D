@@ -410,6 +410,30 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     })
   }
 
+  // The item after whatever selectedDetail is currently showing, so the
+  // detail panel can offer a "Next Part" shortcut instead of forcing Back
+  // then a fresh click for engine-off checks and engine-on device tests -
+  // the two flows where the cards are meant to be worked through in order.
+  // Gauges and hotspots opened outside a check/device have no defined
+  // "next", so they only ever show Back. Returns data, not a handler, so the
+  // click callback stays a plain inline arrow at the call site.
+  const nextWalkAroundItem = (step) => {
+    const data = step.walkAround || {}
+    const state = phaseStateFor(simulation, step.id)
+
+    if (data.phase === 'engine-off') {
+      const check = (data.checks || []).find((item) => !state.checks.includes(item.id))
+      return check ? { kind: 'check', item: check } : null
+    }
+
+    if (data.phase === 'engine-on') {
+      const device = (data.devices || []).find((item) => !state.devices.includes(item.id))
+      return device ? { kind: 'device', item: device } : null
+    }
+
+    return null
+  }
+
   const walkAroundHandlers = (step) => ({
     onCheck: (check) => handleCheck(step, check),
     onStartEngine: () => startEngine(step),
@@ -624,6 +648,10 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     return null
   }
 
+  const currentStepRow = stepById[steps[stepIndex]?.id]
+  const nextDetail =
+    selectedDetail && currentStepRow?.kind === 'walk-around' ? nextWalkAroundItem(currentStepRow) : null
+
   return (
     <>
       {showScopeNotice && (
@@ -659,6 +687,13 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
             renderTask={renderTask}
             selectedDetail={selectedDetail}
             onClearDetail={() => { setSelectedDetail(null); setFocusedHotspotId(null) }}
+            onNextDetail={
+              !nextDetail
+                ? null
+                : nextDetail.kind === 'check'
+                  ? () => handleCheck(currentStepRow, nextDetail.item)
+                  : () => handleDevice(currentStepRow, nextDetail.item, hotspots.find((entry) => entry.id === nextDetail.item.id))
+            }
             completionSummary={
               <ModuleSummary
                 content={summaryStep?.content}
