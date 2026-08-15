@@ -21,6 +21,7 @@ function ModuleSimulationShell({
   completionSummary,
   selectedDetail,
   onClearDetail,
+  onNextDetail,
 }) {
   const [showHint, setShowHint] = useState(false)
   const currentTaskRef = useRef(null)
@@ -124,9 +125,16 @@ function ModuleSimulationShell({
                   status={selectedDetail.status}
                   statusType={selectedDetail.statusType}
                 />
-                <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
+                <div className="hotspot-detail-actions">
+                  {onNextDetail && (
+                    <button type="button" className="hotspot-detail-next" onClick={onNextDetail}>
+                      Next Part
+                    </button>
+                  )}
+                  <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
                     Back to Task
-                </button>
+                  </button>
+                </div>
               </>
             ) : (
               <>
@@ -153,22 +161,24 @@ function ModuleSimulationShell({
           <i style={{ width: `${progress}%` }} />
         </div>
         <div className="simulation-navigation">
-          <button type="button" onClick={onBackStep} disabled={isFirstStep}>
-            Back
-          </button>
-          {isLastStep ? (
-            <button type="button" className="primary" onClick={onComplete}>
-              Complete Module
-            </button>
-          ) : (
-            <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
-              Next
-            </button>
+          {!isLastStep && !canProceed && (
+            <p className="simulation-required-note">{requiredNote}</p>
           )}
+          <div className="simulation-navigation-buttons">
+            <button type="button" onClick={onBackStep} disabled={isFirstStep}>
+              Back
+            </button>
+            {isLastStep ? (
+              <button type="button" className="primary" onClick={onComplete}>
+                Complete Module
+              </button>
+            ) : (
+              <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
+                Next
+              </button>
+            )}
+          </div>
         </div>
-        {!isLastStep && !canProceed && (
-          <p className="simulation-required-note">{requiredNote}</p>
-        )}
       </div>
     </section>
   )

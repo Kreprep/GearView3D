@@ -15,12 +15,15 @@ function ModuleSummary({ content, steps, gradedStepIds, simulation }) {
       <MarkdownContent>{content?.body}</MarkdownContent>
 
       <div className="summary-grid">
-        {gradedStepIds.map((stepId) => (
-          <div key={stepId}>
-            <span>{steps.find((step) => step.id === stepId)?.title || stepId}</span>
-            <strong>{isStepComplete(simulation, stepId) ? 'Complete' : 'Open'}</strong>
-          </div>
-        ))}
+        {gradedStepIds.map((stepId) => {
+          const done = isStepComplete(simulation, stepId)
+          return (
+            <div key={stepId} className={done ? 'done' : ''}>
+              <span>{steps.find((step) => step.id === stepId)?.title || stepId}</span>
+              <strong>{done ? 'Complete' : 'Open'}</strong>
+            </div>
+          )
+        })}
         {counters.map((key) => (
           <div key={key}>
             <span>{SUMMARY_COUNTER_LABELS[key]}</span>
