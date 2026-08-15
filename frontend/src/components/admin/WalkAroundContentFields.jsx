@@ -1,4 +1,5 @@
 import { WALK_AROUND_PHASES } from '../../data/courseDefaults'
+import './WalkAroundContentFields.css'
 
 // The editable payload of a `walk-around` step: which phase it runs and the
 // list that phase asks the learner about. Everything here is `Course.data`, so
@@ -44,7 +45,7 @@ function ListEditor({ title, note, items, onChange, emptyItem, renderFields }) {
       ))}
       {items.length === 0 && <p className="admin-panel-note">Nothing here yet.</p>}
 
-      <button type="button" onClick={() => onChange([...items, emptyItem()])}>Add</button>
+      <button type="button" className="admin-btn" onClick={() => onChange([...items, emptyItem()])}>Add</button>
     </div>
   )
 }
@@ -69,6 +70,11 @@ function WalkAroundContentFields({ data, onChange }) {
         reading every gauge correctly and testing every device, and a defect step by answering every scenario
         correctly.
       </p>
+      <p className="admin-panel-note">
+        This panel decides what must be done to pass the step and the text shown for each item. A check/device&apos;s
+        3D marker - its position, which phase it&apos;s visible in, and its defect-recognition behaviour - is edited
+        in the Inspection Hotspots panel below, matched by the same id.
+      </p>
 
       {phase === 'engine-off' && (
         <>
@@ -92,7 +98,10 @@ function WalkAroundContentFields({ data, onChange }) {
                 <label>Label<input value={item.label || ''} onChange={(event) => patch({ label: event.target.value, id: item.id || slugify(event.target.value, 'check') })} /></label>
                 <label>Hotspot id<input value={item.id || ''} onChange={(event) => patch({ id: event.target.value })} /></label>
                 <label>Target area<input value={item.targetArea || ''} onChange={(event) => patch({ targetArea: event.target.value })} /></label>
-                <label>What to inspect<textarea rows={2} value={item.inspect || ''} onChange={(event) => patch({ inspect: event.target.value })} /></label>
+                <label>
+                  What to inspect (shown before the learner clicks this check)
+                  <textarea rows={2} value={item.inspect || ''} onChange={(event) => patch({ inspect: event.target.value })} />
+                </label>
                 <label>What the learner finds<textarea rows={2} value={item.found || ''} onChange={(event) => patch({ found: event.target.value })} /></label>
                 <label>Feedback line<textarea rows={2} value={item.feedback || ''} onChange={(event) => patch({ feedback: event.target.value })} /></label>
                 <label>

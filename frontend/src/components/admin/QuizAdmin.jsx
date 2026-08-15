@@ -99,7 +99,7 @@ function QuizAdmin({ scope, questions, onQuestionsChanged, onMessage, note }) {
 
   return (
     <div className="quiz-admin">
-      <section className="admin-panel admin-parts-list">
+      <section className="admin-panel admin-parts-list admin-editor">
         <h3>Questions</h3>
         {note && <p className="admin-panel-note">{note}</p>}
 
@@ -144,7 +144,7 @@ function QuizAdmin({ scope, questions, onQuestionsChanged, onMessage, note }) {
                 </button>
               </div>
             ))}
-            <button onClick={() => setDraft({ ...draft, options: [...(draft.options || []), 'New option'] })}>
+            <button className="admin-btn" onClick={() => setDraft({ ...draft, options: [...(draft.options || []), 'New option'] })}>
               Add option
             </button>
 

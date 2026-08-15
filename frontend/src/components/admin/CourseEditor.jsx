@@ -493,9 +493,10 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
           <section className="admin-panel course-editor-content">
             <h3>Walk-around content</h3>
             <p className="admin-panel-note">
-              What this inspection step asks the learner to do. Markers on the 3D model are this equipment&apos;s
-              hotspots ticked for walk-around, matched to the ids below - the same rows Parts Identification
-              edits, so a marker that is also a part is one hotspot, not a copy.
+              What this inspection step asks the learner to do - which checks/gauges/devices/scenarios must be
+              completed and their text. Each item&apos;s 3D marker (position, phase visibility, defect behaviour) is
+              edited in the Inspection Hotspots panel below, matched to the ids here - the same rows Parts
+              Identification edits, so a marker that is also a part is one hotspot, not a copy.
             </p>
 
             <label>
