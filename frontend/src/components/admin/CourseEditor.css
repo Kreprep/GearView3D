@@ -233,6 +233,12 @@
   gap: 8px;
 }
 
+/* Grid items stretch to fill the column by default - "Delete object" should
+   stay its natural size instead of becoming a full-width bar. */
+.course-inspector > button {
+  justify-self: start;
+}
+
 .course-inspector-kind {
   margin: 0;
   font-weight: 600;
@@ -293,6 +299,13 @@
   display: grid;
   gap: 10px;
   align-content: start;
+}
+
+/* Grid items stretch to fill the column by default - an "Add" button sitting
+   directly in this grid (ActivityContentFields' Add action/Add condition)
+   should stay its natural size instead of becoming a full-width bar. */
+.course-editor-content > button {
+  justify-self: start;
 }
 
 .course-image-preview {

@@ -222,6 +222,12 @@
   min-width: 0;
 }
 
+/* Grid items stretch to fill the column by default - the placement toggle
+   button should stay its natural size instead of becoming a full-width bar. */
+.hotspot-editor-viewer > button {
+  justify-self: start;
+}
+
 .hotspot-editor-stage {
   width: 100%;
   min-height: 480px;

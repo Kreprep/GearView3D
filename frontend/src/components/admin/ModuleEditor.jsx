@@ -161,9 +161,10 @@ function ModuleEditor({
           <section className="admin-panel">
             <h2>Inspection Hotspots</h2>
             <p className="admin-panel-note">
-              The markers this step shows on the model. Click the model to place one, or drag a marker to move it;
-              each has its own draft and publish. A marker that is also a part shows up under Parts Identification -
-              it is the same hotspot, not a copy.
+              The markers this step shows on the model - not the checks themselves (that&apos;s the Walk-around
+              content panel above). Click the model to place one, or drag a marker to move it; each has its own
+              draft and publish. A marker that is also a part shows up under Parts Identification - it is the same
+              hotspot, not a copy.
             </p>
             <HotspotAdmin
               key={equipmentId}

@@ -548,7 +548,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             />
           </section>
 
-          <section className="admin-panel">
+          <section className="admin-panel admin-editor">
             <h2>Part Categories</h2>
             <p className="admin-panel-note">The filter chips above the parts list on the learner page. A category still used by a part cannot be deleted.</p>
             {activeEquipmentCategories.map((category) => (

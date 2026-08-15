@@ -280,12 +280,12 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
         {visible.length === 0 && <p className="admin-panel-note">No hotspots yet.</p>}
 
         {hidden > 0 && (
-          <button type="button" className="hotspot-show-all" onClick={() => setShowAll(true)}>
+          <button type="button" className="admin-btn admin-btn-sm" onClick={() => setShowAll(true)}>
             Show {hidden} more not on this page
           </button>
         )}
         {showAll && surface && (
-          <button type="button" className="hotspot-show-all" onClick={() => setShowAll(false)}>
+          <button type="button" className="admin-btn admin-btn-sm" onClick={() => setShowAll(false)}>
             Show only this page&apos;s hotspots
           </button>
         )}
@@ -453,6 +453,11 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
                 {draft.inWalkAround && (
                   <>
                     <h3>Walk-around inspection</h3>
+                    <p className="admin-panel-note">
+                      This marker&apos;s position, phase visibility and defect-overlay reaction. It does
+                      <strong> not</strong> decide which checks a step grades or their pass/fail text - that&apos;s
+                      the step&apos;s own Walk-around content panel, matched to this marker by id.
+                    </p>
                     <label>
                       Inspection grouping
                       <input value={draft.inspectCategory} onChange={(event) => setField({ inspectCategory: event.target.value })} />
@@ -474,8 +479,14 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
                       </small>
                     </label>
                     <label>
-                      Inspect instructions
+                      Marker fallback text
                       <textarea rows={3} value={draft.inspect} onChange={(event) => setField({ inspect: event.target.value })} />
+                      <small className="admin-field-note">
+                        Shown when this marker is clicked outside of an engine-off check - as an engine-on device
+                        test's description, or when the marker has no matching check at all. An engine-off check's
+                        own &quot;What to inspect&quot; text (in the step&apos;s Walk-around content panel) is what
+                        the learner sees for that check.
+                      </small>
                     </label>
                     <label>
                       Safe feedback
@@ -484,6 +495,10 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
                     <label>
                       Unsafe feedback
                       <textarea rows={2} value={draft.unsafeFeedback} onChange={(event) => setField({ unsafeFeedback: event.target.value })} />
+                      <small className="admin-field-note">
+                        Safe/unsafe feedback only fire from the defect-recognition step below, when this marker&apos;s
+                        visual state matches one of the checked scenarios.
+                      </small>
                     </label>
                     <fieldset className="hotspot-scenario-fieldset">
                       <legend>Defect scenarios that make this hotspot unsafe</legend>

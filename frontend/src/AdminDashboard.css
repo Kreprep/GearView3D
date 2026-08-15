@@ -93,6 +93,61 @@
   opacity: 0.5;
 }
 
+/* --- Admin design standard: buttons -------------------------------------
+   Every button in the admin dashboard should carry one of these classes
+   directly, rather than relying on a wrapping container (`.admin-row-actions`,
+   `.course-toolbar`, ...) to supply its style - a bare unstyled <button> is
+   what happens when a new panel is added without one of these.
+
+     .admin-save         primary action, one per panel/toolbar (filled cyan)
+     .admin-btn           secondary action - the default choice
+     .admin-btn-danger    destructive action - same shape, red
+     .admin-btn-sm         compact modifier, for reorder/inline controls
+
+   Course Editor and Hotspot Admin keep their own bordered button variant
+   (CourseEditor.css / HotspotAdmin.css) for their dense in-canvas toolbars;
+   everywhere else, use these. */
+.admin-btn,
+.admin-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 9px 14px;
+  background: #eef2f7;
+  color: #0f172a;
+  transition: background 150ms ease, color 150ms ease, opacity 150ms ease;
+}
+
+.admin-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.admin-btn-danger {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.admin-btn-danger:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.admin-btn:disabled,
+.admin-btn-danger:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.admin-btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
 .admin-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -398,6 +453,15 @@
   display: grid;
   align-content: start;
   gap: 14px;
+}
+
+/* A grid item stretches to fill its column by default - right for a label
+   (its input wants the full row) but wrong for a trailing "Add"/"Save"
+   button sitting directly in the grid, which would otherwise blow up into a
+   full-width bar. Buttons inside their own .admin-row-actions row are flex
+   children instead, so they are unaffected and stay their natural size. */
+.admin-editor > button {
+  justify-self: start;
 }
 
 .admin-editor label {

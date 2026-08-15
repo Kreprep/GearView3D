@@ -60,11 +60,11 @@ export function ShutdownActivityFields({ content, onChange }) {
           <div className="activity-item-bar">
             <strong>{index + 1}.</strong>
             <span className="course-toolbar-spacer" />
-            <button type="button" onClick={() => writeActions(moveInList(actions, index, -1))} disabled={index === 0}>Up</button>
-            <button type="button" onClick={() => writeActions(moveInList(actions, index, 1))} disabled={index === actions.length - 1}>Down</button>
+            <button type="button" className="admin-btn admin-btn-sm" onClick={() => writeActions(moveInList(actions, index, -1))} disabled={index === 0}>Up</button>
+            <button type="button" className="admin-btn admin-btn-sm" onClick={() => writeActions(moveInList(actions, index, 1))} disabled={index === actions.length - 1}>Down</button>
             <button
               type="button"
-              className="course-danger"
+              className="admin-btn-danger admin-btn-sm"
               onClick={() => writeActions(actions.filter((entry, position) => position !== index))}
             >
               Remove
@@ -83,6 +83,7 @@ export function ShutdownActivityFields({ content, onChange }) {
 
       <button
         type="button"
+        className="admin-btn"
         onClick={() =>
           writeActions([
             ...actions,
@@ -142,11 +143,11 @@ export function ReportingActivityFields({ content, onChange }) {
           <div className="activity-item-bar">
             <strong>{index + 1}.</strong>
             <span className="course-toolbar-spacer" />
-            <button type="button" onClick={() => onChange({ prompts: moveInList(prompts, index, -1) })} disabled={index === 0}>Up</button>
-            <button type="button" onClick={() => onChange({ prompts: moveInList(prompts, index, 1) })} disabled={index === prompts.length - 1}>Down</button>
+            <button type="button" className="admin-btn admin-btn-sm" onClick={() => onChange({ prompts: moveInList(prompts, index, -1) })} disabled={index === 0}>Up</button>
+            <button type="button" className="admin-btn admin-btn-sm" onClick={() => onChange({ prompts: moveInList(prompts, index, 1) })} disabled={index === prompts.length - 1}>Down</button>
             <button
               type="button"
-              className="course-danger"
+              className="admin-btn-danger admin-btn-sm"
               onClick={() => onChange({ prompts: prompts.filter((entry, position) => position !== index) })}
             >
               Remove
@@ -180,6 +181,7 @@ export function ReportingActivityFields({ content, onChange }) {
 
       <button
         type="button"
+        className="admin-btn"
         onClick={() =>
           onChange({
             prompts: [
