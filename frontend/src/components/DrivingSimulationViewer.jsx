@@ -248,7 +248,7 @@ function RingCheckpointMarker({ checkpoint, status }) {
         <meshBasicMaterial color={color} side={DoubleSide} />
       </mesh>
       {status !== 'done' && (
-        <Html center position={[0, 1.75, 0]} distanceFactor={8}>
+        <Html center position={[0, 1.5, 0]} distanceFactor={8}>
           <div className={`driving-checkpoint-label ${status}`}>
             {checkpoint.type === 'stop' ? 'STOP - ' : ''}
             {checkpoint.label}
