@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../lib/auth.js'
+import { validateSimulations } from '../lib/walkAroundValidation.js'
 
 const router = Router()
 
@@ -17,6 +18,10 @@ router.put('/', async (req, res) => {
   const data = req.body
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return res.status(400).json({ error: 'Progress payload must be an object' })
+  }
+
+  if (data.simulations) {
+    data.simulations = await validateSimulations(data.simulations)
   }
 
   const snapshot = await prisma.progressSnapshot.upsert({
