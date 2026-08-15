@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PartDetailCard from './PartDetailCard'
 import './ModuleSimulationShell.css'
 
@@ -11,6 +11,8 @@ function ModuleSimulationShell({
   score,
   canProceed = true,
   requiredNote = "Complete this step's required items to continue.",
+  maxSelectableStepIndex = Infinity,
+  onSelectStep,
   onBackStep,
   onNextStep,
   onComplete,
@@ -21,9 +23,18 @@ function ModuleSimulationShell({
   onClearDetail,
 }) {
   const [showHint, setShowHint] = useState(false)
+  const currentTaskRef = useRef(null)
   const currentStep = steps[currentStepIndex] || steps[0]
   const isFirstStep = currentStepIndex === 0
   const isLastStep = currentStepIndex === steps.length - 1
+
+  // Opening or closing a part's detail card swaps the whole panel's content;
+  // without this, whatever scroll position the previous content left behind
+  // carries over, which can strand the panel showing blank space until the
+  // learner scrolls to find the next inspection card.
+  useEffect(() => {
+    currentTaskRef.current?.scrollTo({ top: 0 })
+  }, [selectedDetail])
 
   return (
     <section className="simulation-shell">
@@ -68,23 +79,37 @@ function ModuleSimulationShell({
           <section className="simulation-panel">
             <p className="simulation-panel-label">Steps</p>
             <ol className="simulation-step-list">
-              {steps.map((step, index) => (
-                <li
-                  key={step.id}
-                  className={[
-                    index === currentStepIndex ? 'active' : '',
-                    index < currentStepIndex ? 'done' : '',
-                  ].join(' ')}
-                >
-                  <span>{index + 1}</span>
-                  <p>{step.title}</p>
-                </li>
-              ))}
+              {steps.map((step, index) => {
+                const locked = index > maxSelectableStepIndex
+                return (
+                  <li
+                    key={step.id}
+                    className={[
+                      index === currentStepIndex ? 'active' : '',
+                      index < currentStepIndex ? 'done' : '',
+                      locked ? 'locked' : '',
+                    ].join(' ')}
+                    role="button"
+                    tabIndex={locked ? -1 : 0}
+                    aria-disabled={locked}
+                    aria-current={index === currentStepIndex ? 'step' : undefined}
+                    onClick={() => !locked && onSelectStep?.(index)}
+                    onKeyDown={(event) => {
+                      if (locked || (event.key !== 'Enter' && event.key !== ' ')) return
+                      event.preventDefault()
+                      onSelectStep?.(index)
+                    }}
+                  >
+                    <span>{index + 1}</span>
+                    <p>{step.title}</p>
+                  </li>
+                )
+              })}
             </ol>
           </section>
         </aside>
 
-        <aside className="simulation-overlay simulation-overlay-right">
+        <aside className="simulation-overlay simulation-overlay-right" ref={currentTaskRef}>
           <section className="simulation-panel current-task-panel">
             {selectedDetail ? (
               <>

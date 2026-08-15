@@ -5,6 +5,7 @@ import ModuleSimulationShell from './components/ModuleSimulationShell'
 import ModuleSummary from './components/ModuleSummary'
 import SimulationPageLayout from './components/SimulationPageLayout'
 import { BriefingScene, BriefingTask } from './components/ModuleBriefing'
+import ScopeNoticeModal from './components/ScopeNoticeModal'
 import { ReportingActivity, ShutdownSequenceActivity } from './components/ModuleActivities'
 import { ACTIVITY_IDS } from './lib/activitySteps'
 import { ChecklistScene, ModuleRowsTask, QuizScene } from './components/ModuleChecklistStep'
@@ -74,6 +75,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   const [activeScenarioId, setActiveScenarioId] = useState(null)
   const [partDetails, setPartDetails] = useState({})
   const [equipmentRecord, setEquipmentRecord] = useState(null)
+  const [showScopeNotice, setShowScopeNotice] = useState(true)
   const deviceEffectTimer = useRef(null)
   const engineStartTimer = useRef(null)
   const legacyStepFields = legacyStepFieldsFor(moduleSlug)
@@ -436,6 +438,15 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   const getStepCanProceed = (stepId) =>
     gradedStepIds.includes(stepId) ? isStepComplete(simulation, stepId) : true
 
+  // How far into the step list a learner may jump directly from the sidebar:
+  // up to and including the first graded step they have not finished yet, so
+  // e.g. Engine-On stays reachable once Engine-Off is done without letting
+  // them skip past an incomplete required step.
+  const maxSelectableStepIndex = (() => {
+    const frontier = steps.findIndex((step) => gradedStepIds.includes(step.id) && !isStepComplete(simulation, step.id))
+    return frontier === -1 ? steps.length - 1 : frontier
+  })()
+
   const changeStep = (nextIndex) => {
     setLastFail(null)
     setSelectedDetail(null)
@@ -589,7 +600,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     const step = stepById[currentStep.id]
     if (step?.kind === 'briefing') {
       return (
-        <BriefingTask content={step.content} module={module} equipmentId={equipmentId} />
+        <BriefingTask content={step.content} module={module} />
       )
     }
     if (step?.kind === 'walk-around') {
@@ -614,45 +625,52 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   }
 
   return (
-    <SimulationPageLayout
-      className="load-simulation-page"
-      title={module.fullTitle || module.title}
-      subtitle="Guided Simulation"
-      onBack={onBack}
-    >
-      {loading || error || hotspotsLoading || hotspotsError ? (
-        <ModuleLoadingState loading={loading || hotspotsLoading} error={error || hotspotsError} />
-      ) : !steps.length ? (
-        <div className="module-loading-state">
-          <p>This module has no steps yet. An admin can add one from the Courses tab.</p>
-        </div>
-      ) : (
-        <ModuleSimulationShell
-          module={module}
-          steps={steps}
-          currentStepIndex={stepIndex}
-          objectives={moduleObjectives(steps, module)}
-          progress={simulation.percentage}
-          score={simulation.percentage}
-          canProceed={getStepCanProceed(steps[stepIndex].id)}
-          onBackStep={() => changeStep(Math.max(stepIndex - 1, 0))}
-          onNextStep={() => changeStep(Math.min(stepIndex + 1, steps.length - 1))}
-          onComplete={completeModule}
-          renderScene={renderScene}
-          renderTask={renderTask}
-          selectedDetail={selectedDetail}
-          onClearDetail={() => { setSelectedDetail(null); setFocusedHotspotId(null) }}
-          completionSummary={
-            <ModuleSummary
-              content={summaryStep?.content}
-              steps={steps}
-              gradedStepIds={gradedStepIds}
-              simulation={simulation}
-            />
-          }
-        />
+    <>
+      {showScopeNotice && (
+        <ScopeNoticeModal equipmentId={equipmentId} onDismiss={() => setShowScopeNotice(false)} />
       )}
-    </SimulationPageLayout>
+      <SimulationPageLayout
+        className="load-simulation-page"
+        title={module.fullTitle || module.title}
+        subtitle="Guided Simulation"
+        onBack={onBack}
+      >
+        {loading || error || hotspotsLoading || hotspotsError ? (
+          <ModuleLoadingState loading={loading || hotspotsLoading} error={error || hotspotsError} />
+        ) : !steps.length ? (
+          <div className="module-loading-state">
+            <p>This module has no steps yet. An admin can add one from the Courses tab.</p>
+          </div>
+        ) : (
+          <ModuleSimulationShell
+            module={module}
+            steps={steps}
+            currentStepIndex={stepIndex}
+            objectives={moduleObjectives(steps, module)}
+            progress={simulation.percentage}
+            score={simulation.percentage}
+            canProceed={getStepCanProceed(steps[stepIndex].id)}
+            maxSelectableStepIndex={maxSelectableStepIndex}
+            onSelectStep={changeStep}
+            onBackStep={() => changeStep(Math.max(stepIndex - 1, 0))}
+            onNextStep={() => changeStep(Math.min(stepIndex + 1, steps.length - 1))}
+            onComplete={completeModule}
+            renderScene={renderScene}
+            renderTask={renderTask}
+            selectedDetail={selectedDetail}
+            onClearDetail={() => { setSelectedDetail(null); setFocusedHotspotId(null) }}
+            completionSummary={
+              <ModuleSummary
+                content={summaryStep?.content}
+                steps={steps}
+                gradedStepIds={gradedStepIds}
+                simulation={simulation}
+              />
+            }
+          />
+        )}
+      </SimulationPageLayout>
+    </>
   )
 }
 
