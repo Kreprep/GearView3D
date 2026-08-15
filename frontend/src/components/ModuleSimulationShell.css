@@ -211,6 +211,12 @@
   border-radius: 10px;
   background: #f8fafc;
   padding: 7px 8px;
+  cursor: pointer;
+}
+
+.simulation-step-list li.locked {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .simulation-step-list span {

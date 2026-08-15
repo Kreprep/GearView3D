@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import PartsViewport from './components/PartsViewport'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import SimulationPageLayout from './components/SimulationPageLayout'
-import ScopeNotice from './components/ScopeNotice'
+import ScopeNoticeModal from './components/ScopeNoticeModal'
 import Quiz from './components/Quiz'
 import { useProgress } from './hooks/useProgress'
 import { getEquipment, getHotspotCategories, getHotspots, getQuizQuestions } from './lib/api'
@@ -55,6 +55,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   // Set once the learner submits the quiz, which is what unlocks Complete.
   const [quizScored, setQuizScored] = useState(false)
+  const [showScopeNotice, setShowScopeNotice] = useState(true)
   const { progress, viewPart } = useProgress()
 
   useEffect(() => {
@@ -139,7 +140,6 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
 
   const renderExploreTask = () => (
     <div className="parts-task-stack">
-      <ScopeNotice equipmentId={equipmentId} />
       <div className="category-grid">
         {categoryLabels.map((label) => {
           const inCategory = hotspots.filter((hotspot) => hotspot.category === label)
@@ -180,36 +180,42 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
   }
 
   return (
-    <SimulationPageLayout
-      className="parts-identification-page"
-      title="Parts Identification"
-      subtitle={`${equipment?.title || 'Equipment'} Familiarization`}
-      onBack={onBack}
-    >
-      {loading ? (
-        <p className="admin-panel-note">Loading parts...</p>
-      ) : (
-        <ModuleSimulationShell
-          module={{ fullTitle: 'Parts Identification', title: 'Parts Identification' }}
-          steps={steps}
-          currentStepIndex={currentStepIndex}
-          objectives={[
-            `Explore major ${equipment?.title || 'equipment'} parts using the 3D model and the category list.`,
-            'View every part at least once to track exploration progress.',
-            ...(hasQuiz ? ['Answer the quiz questions to check part recognition.'] : []),
-          ]}
-          progress={percentage}
-          canProceed
-          onBackStep={() => goToStep(currentStepIndex - 1)}
-          onNextStep={() => (currentStepIndex + 1 < steps.length ? goToStep(currentStepIndex + 1) : onBack())}
-          onComplete={completeModule}
-          renderScene={renderScene}
-          renderTask={renderTask}
-          selectedDetail={selectedDetail}
-          onClearDetail={() => setSelectedDetail(null)}
-        />
+    <>
+      {showScopeNotice && (
+        <ScopeNoticeModal equipmentId={equipmentId} onDismiss={() => setShowScopeNotice(false)} />
       )}
-    </SimulationPageLayout>
+      <SimulationPageLayout
+        className="parts-identification-page"
+        title="Parts Identification"
+        subtitle={`${equipment?.title || 'Equipment'} Familiarization`}
+        onBack={onBack}
+      >
+        {loading ? (
+          <p className="admin-panel-note">Loading parts...</p>
+        ) : (
+          <ModuleSimulationShell
+            module={{ fullTitle: 'Parts Identification', title: 'Parts Identification' }}
+            steps={steps}
+            currentStepIndex={currentStepIndex}
+            objectives={[
+              `Explore major ${equipment?.title || 'equipment'} parts using the 3D model and the category list.`,
+              'View every part at least once to track exploration progress.',
+              ...(hasQuiz ? ['Answer the quiz questions to check part recognition.'] : []),
+            ]}
+            progress={percentage}
+            canProceed
+            onSelectStep={goToStep}
+            onBackStep={() => goToStep(currentStepIndex - 1)}
+            onNextStep={() => (currentStepIndex + 1 < steps.length ? goToStep(currentStepIndex + 1) : onBack())}
+            onComplete={completeModule}
+            renderScene={renderScene}
+            renderTask={renderTask}
+            selectedDetail={selectedDetail}
+            onClearDetail={() => setSelectedDetail(null)}
+          />
+        )}
+      </SimulationPageLayout>
+    </>
   )
 }
 

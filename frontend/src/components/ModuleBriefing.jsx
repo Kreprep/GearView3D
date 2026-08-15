@@ -1,16 +1,13 @@
 import MarkdownContent from './MarkdownContent'
-import ScopeNotice from './ScopeNotice'
 import './ModuleBriefing.css'
 
 // A briefing step is data, not code: `content` comes from the Course row an
 // admin edits ({ image, sceneBody, body, showSyllabus, syllabus, objectives }).
 // The centre panel shows a reference image and/or markdown; the task panel
-// shows the scope notice, the module's syllabus card, and the lesson markdown.
-// `objectives` is read by the page, not here - it feeds the shell's sidebar.
-//
-// ScopeNotice is deliberately not admin-editable - it is the "preparatory
-// learning only, not a certification simulator" disclaimer and must appear on
-// every briefing. It looks its own equipment sentence up from the id.
+// shows the module's syllabus card and the lesson markdown. `objectives` is
+// read by the page, not here - it feeds the shell's sidebar. The scope notice
+// used to live inline here; it is now the dismiss-to-continue modal
+// GenericModulePage shows when the module first opens (see ScopeNoticeModal).
 
 export function BriefingScene({ content }) {
   const image = content?.image
@@ -32,7 +29,7 @@ export function BriefingScene({ content }) {
   )
 }
 
-export function BriefingTask({ content, module, equipmentId }) {
+export function BriefingTask({ content, module }) {
   // Rows seeded before the syllabus became editable have no `syllabus` object,
   // so each field falls back to the static module definition.
   const syllabus = {
@@ -45,7 +42,6 @@ export function BriefingTask({ content, module, equipmentId }) {
 
   return (
     <div className="load-task-stack">
-      <ScopeNotice equipmentId={equipmentId} />
       {showSyllabus && (
         <div className="reference-card">
           {syllabus.location && <p><strong>Syllabus Location:</strong> {syllabus.location}</p>}
