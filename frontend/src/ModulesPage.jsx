@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, Clock } from 'lucide-react'
 import PageLayout from './components/PageLayout'
-import ScopeNotice from './components/ScopeNotice'
 import { getEquipment } from './lib/api'
 import './ModulesPage.css'
 
@@ -45,7 +44,6 @@ function ModulesPage({ user, onLogout, onNavigate }) {
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
       <section className="module-browser">
-        <ScopeNotice />
         <div className="catalog-toolbar">
           <span>{modules.length} available model{modules.length === 1 ? '' : 's'}</span>
         </div>

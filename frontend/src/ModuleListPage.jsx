@@ -4,7 +4,6 @@ import { getModuleProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
 import PageLayout from './components/PageLayout'
-import ScopeNotice from './components/ScopeNotice'
 import './ModuleListPage.css'
 
 // /training/:equipmentId/modules - the module picker sitting between the hub
@@ -50,7 +49,6 @@ function ModuleListPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
         <h1 className="page-heading">{copy.moduleListHeading}</h1>
       </div>
 
-      <ScopeNotice equipmentId={equipmentId} />
       <p className="module-list-intro">{copy.moduleListIntro}</p>
 
       <div className="module-list-grid">
