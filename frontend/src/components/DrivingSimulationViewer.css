@@ -151,6 +151,11 @@
   background: rgba(148, 163, 184, 0.85);
 }
 
+.driving-checkpoint-label.active {
+  color: #ffffff;
+  background: rgba(8, 145, 178, 0.92);
+}
+
 .driving-load-badge {
   border-radius: 6px;
   padding: 8px 14px;
