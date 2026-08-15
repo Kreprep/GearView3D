@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useProgress } from './hooks/useProgress'
 import PageLayout from './components/PageLayout'
-import ScopeNotice from './components/ScopeNotice'
 import { getEquipment, getHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
 import {
   getChecklistCompletion,
@@ -82,7 +81,6 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
         <h1 className="page-heading">{equipment?.title || 'Equipment'} - Final Assessment</h1>
       </div>
 
-      <ScopeNotice equipmentId={equipmentId} />
       <section className="assessment-card">
         <p className="assessment-kicker">Progress Review</p>
         <h2>{requiredComplete ? 'Prototype Module Completion' : 'Training still in progress'}</h2>
