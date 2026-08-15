@@ -4,7 +4,7 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
   width: 100%;
-  height: calc(100vh - 112px);
+  flex: 1 1 auto;
   min-height: 640px;
   margin: 0;
 }
@@ -386,8 +386,9 @@
 
 @media (max-width: 1180px) {
   .simulation-shell {
+    flex: none;
     height: auto;
-    min-height: calc(100vh - 112px);
+    min-height: 640px;
   }
 
   .simulation-workspace {

@@ -3,6 +3,8 @@
    stylesheet for every module page. */
 
 .module-page-container {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: #f4f7fb;
 }
@@ -11,6 +13,7 @@
   position: sticky;
   top: 0;
   z-index: 20;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 18px;
@@ -58,8 +61,10 @@
 }
 
 .wide-simulation-content {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
-  min-height: calc(100vh - 78px);
   padding: 24px;
 }
