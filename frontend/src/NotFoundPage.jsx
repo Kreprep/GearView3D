@@ -1,8 +1,10 @@
 import AppHeader from './components/AppHeader'
+import { usePageTitle } from './hooks/usePageTitle'
 import { routes } from './lib/router'
 import './NotFoundPage.css'
 
 function NotFoundPage({ user, onLogout, onNavigate }) {
+  usePageTitle('Page Not Found')
   return (
     <div className="not-found-page">
       <AppHeader user={user} onLogout={onLogout} onNavigate={onNavigate} />

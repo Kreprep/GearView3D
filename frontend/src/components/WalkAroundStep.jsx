@@ -1,6 +1,6 @@
 import HotspotViewer from './HotspotViewer'
 import MarkdownContent from './MarkdownContent'
-import { gaugeScore, isPhaseComplete, scenarioScore, visibleHotspotIds } from '../lib/walkAroundStep'
+import { PHASE_TITLES, gaugeScore, isPhaseComplete, scenarioScore, visibleHotspotIds } from '../lib/walkAroundStep'
 import './WalkAroundStep.css'
 
 // The `walk-around` step kind: an inspection phase driven entirely by the
@@ -9,12 +9,6 @@ import './WalkAroundStep.css'
 //
 // Presentational only - GenericModulePage owns the saved state and passes the
 // handlers, the same split the other step kinds use.
-
-const PHASE_TITLES = {
-  'engine-off': 'Engine-Off Inspection',
-  'engine-on': 'Engine-On Inspection',
-  'defect-test': 'Defect Recognition',
-}
 
 export function WalkAroundScene({
   data,

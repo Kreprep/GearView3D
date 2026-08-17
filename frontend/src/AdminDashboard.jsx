@@ -16,6 +16,7 @@ import HotspotViewer from './components/HotspotViewer'
 import ModuleListAdmin from './components/admin/ModuleListAdmin'
 import QuizAdmin from './components/admin/QuizAdmin'
 import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
+import { usePageTitle } from './hooks/usePageTitle'
 import {
   adminCreateEquipment,
   adminCreateHotspotCategory,
@@ -45,6 +46,13 @@ const trailingTabs = [
   [routes.adminUsers, 'Users', UsersIcon],
   [routes.adminReports, 'Reports', BarChart3],
 ]
+
+// Everything but the dashboard root gets its own tab label appended to
+// "Admin Panel" for the tab title; the module editor's label comes from the
+// module being edited instead, since it has no static path of its own.
+const ADMIN_SECTION_LABELS = Object.fromEntries(
+  [...equipmentContentTabs, ...trailingTabs].map(([path, label]) => [path, label]),
+)
 
 function downloadCsv(filename, rows) {
   const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(',')).join('\n')
@@ -113,6 +121,14 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const moduleTitleBySlug = useMemo(() => {
     return content.modules.reduce((map, module) => ({ ...map, [module.slug]: module.title || module.fullTitle }), {})
   }, [content.modules])
+
+  usePageTitle(
+    editingModuleSlug
+      ? `Admin Panel - ${moduleTitleBySlug[editingModuleSlug] || 'Module Editor'}`
+      : ADMIN_SECTION_LABELS[activePath]
+        ? `Admin Panel - ${ADMIN_SECTION_LABELS[activePath]}`
+        : 'Admin Panel',
+  )
   // Every equipment shares the same seven tab paths - these are the slices
   // of `content` scoped to whichever equipment section is currently open.
   const activeEquipmentModules = useMemo(

@@ -14,6 +14,7 @@ import { engineOnDeviceEffects, resolveEffectLamps, walkAroundDefectOverlays } f
 import { playDeviceSound, stopDeviceSound } from './lib/deviceAudio'
 import { getEquipment, getHotspotDetails } from './lib/api'
 import {
+  PHASE_TITLES,
   isPhaseComplete,
   phaseStateFor,
   withPhaseState,
@@ -22,6 +23,7 @@ import { resolveVehicleProfile } from './lib/vehicleProfile'
 import { useInspectionHotspots } from './hooks/useInspectionHotspots'
 import { useModuleCourses } from './hooks/useModuleCourses'
 import { useModuleRecord } from './hooks/useModuleRecord'
+import { usePageTitle } from './hooks/usePageTitle'
 import { useProgress } from './hooks/useProgress'
 import { courseTaskCopy } from './lib/courseGoals'
 import { legacyStepFieldsFor, REQUIRED_CONTROL_KEYS } from './lib/legacyStepFields'
@@ -649,6 +651,13 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   }
 
   const currentStepRow = stepById[steps[stepIndex]?.id]
+  const moduleTitle = module.fullTitle || module.title
+  const walkAroundPhaseLabel = currentStepRow?.walkAround?.phase
+    ? PHASE_TITLES[currentStepRow.walkAround.phase]
+    : null
+  // The short `module.title` avoids a doubled parenthetical for modules whose
+  // `fullTitle` already carries one, e.g. "Walk-Around Check (Visual Inspection)".
+  usePageTitle(walkAroundPhaseLabel ? `${module.title} (${walkAroundPhaseLabel})` : moduleTitle)
   const nextDetail =
     selectedDetail && currentStepRow?.kind === 'walk-around' ? nextWalkAroundItem(currentStepRow) : null
 
@@ -659,7 +668,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
       )}
       <SimulationPageLayout
         className="load-simulation-page"
-        title={module.fullTitle || module.title}
+        title={moduleTitle}
         subtitle="Guided Simulation"
         onBack={onBack}
       >

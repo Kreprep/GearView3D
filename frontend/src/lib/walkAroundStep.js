@@ -2,6 +2,12 @@
 // (Course.data) decides what the phase asks for, so adding an inspection check
 // or a gauge in the admin changes what completion means with no code change.
 
+export const PHASE_TITLES = {
+  'engine-off': 'Engine-Off Inspection',
+  'engine-on': 'Engine-On Inspection',
+  'defect-test': 'Defect Recognition',
+}
+
 export function emptyPhaseState() {
   return { checks: [], devices: [], gauges: {}, scenarios: {} }
 }
