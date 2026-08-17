@@ -8,7 +8,7 @@ import ModuleListPage from './ModuleListPage'
 import GenericAssessmentPage from './GenericAssessmentPage'
 import AdminDashboard from './AdminDashboard'
 import NotFoundPage from './NotFoundPage'
-import { getCurrentUser, loginUser, setAuthToken } from './lib/api'
+import { getCurrentUser, loginUser, signupUser, setAuthToken } from './lib/api'
 import {
   hydrateChecklistCounts,
   hydrateProgressFromServer,
@@ -84,9 +84,7 @@ function App() {
     goTo(nextPath, options)
   }
 
-  const handleLogin = async (credentials) => {
-    setLoginError('')
-    const auth = await loginUser(credentials)
+  const completeAuth = (auth) => {
     localStorage.setItem('gearview_token', auth.token)
     localStorage.setItem('gearview_user', JSON.stringify(auth.user))
     setAuthToken(auth.token)
@@ -94,6 +92,16 @@ function App() {
     setIsLoggedIn(true)
     hydrateProgressFromServer().catch(() => {})
     navigate(routes.catalog, { replace: true })
+  }
+
+  const handleLogin = async (credentials) => {
+    setLoginError('')
+    completeAuth(await loginUser(credentials))
+  }
+
+  const handleSignup = async (credentials) => {
+    setLoginError('')
+    completeAuth(await signupUser(credentials))
   }
 
   const handleLogout = () => {
@@ -107,7 +115,14 @@ function App() {
   }
 
   if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} loginError={loginError} setLoginError={setLoginError} />
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        onSignup={handleSignup}
+        loginError={loginError}
+        setLoginError={setLoginError}
+      />
+    )
   }
 
   // Blank frame while a redirect effect above is moving the path (login

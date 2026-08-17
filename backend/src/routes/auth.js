@@ -22,6 +22,58 @@ router.post('/login', async (req, res) => {
   res.json({ token: signToken(user), user: publicUser(user) })
 })
 
+// Self-service signup: email + password only. There is no email verification
+// step (infrastructure for it is out of scope for this prototype), so the
+// account is usable immediately. `fullName` is required by the schema but not
+// collected here, so it is derived from the email's local part.
+router.post('/signup', async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase()
+  const password = String(req.body?.password || '')
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' })
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Enter a valid email address' })
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' })
+  }
+  if (await prisma.user.findUnique({ where: { email } })) {
+    return res.status(409).json({ error: `An account with email "${email}" already exists` })
+  }
+
+  const fullName = email
+    .split('@')[0]
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(' ')
+
+  const user = await prisma.user.create({
+    data: {
+      email,
+      fullName: fullName || email,
+      passwordHash: await bcrypt.hash(password, 10),
+    },
+  })
+
+  res.json({ token: signToken(user), user: publicUser(user) })
+})
+
+// Used by the "Forgot password?" flow to confirm an address is registered
+// before opening the reset-request email draft, so a learner isn't left
+// guessing why the request never gets a reply.
+router.get('/check-email', async (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase()
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' })
+  }
+
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } })
+  res.json({ exists: Boolean(user) })
+})
+
 router.get('/me', requireAuth, (req, res) => {
   res.json(publicUser(req.user))
 })
