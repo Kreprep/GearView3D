@@ -44,6 +44,34 @@
   font-size: 15px;
 }
 
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px;
+  background: #f8fafc;
+}
+
+.auth-tabs button {
+  flex: 1;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 9px;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.auth-tabs button.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
 .form-group {
   margin-bottom: 20px;
 }
@@ -125,6 +153,93 @@
   justify-content: space-between;
   margin-bottom: 24px;
   font-size: 14px;
+}
+
+.password-hint {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.forgot-password-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #0891b2;
+  font-weight: 700;
+  font-size: inherit;
+  text-decoration: none;
+}
+
+.forgot-password-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.forgot-password-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.email-not-found-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.55);
+  padding: 20px;
+}
+
+.email-not-found-modal {
+  display: grid;
+  gap: 10px;
+  width: min(420px, 100%);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35);
+}
+
+.email-not-found-modal strong {
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.email-not-found-modal p {
+  margin: 0;
+  color: #475569;
+  font-size: 13.5px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.email-not-found-modal-dismiss {
+  justify-self: end;
+  margin-top: 4px;
+  border: none;
+  border-radius: 8px;
+  background: #0891b2;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 18px;
+  cursor: pointer;
+}
+
+.email-not-found-modal-dismiss:hover {
+  background: #0e7490;
+}
+
+.link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #0891b2;
+  font-weight: 700;
+  font-size: inherit;
+}
+
+.link-button:hover {
+  text-decoration: underline;
 }
 
 .checkbox-wrapper {
