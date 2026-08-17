@@ -3,6 +3,7 @@ import { ArrowRight, CircleGauge, ClipboardList, Layers, PackageSearch, RotateCc
 import { getEquipment, getHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
 import { getModulesProgress, getOverallProgress, getPartsProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
+import { usePageTitle } from './hooks/usePageTitle'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
 import PageLayout from './components/PageLayout'
 import './TrainingHubPage.css'
@@ -47,6 +48,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
   }, [equipmentId])
 
   const equipmentTitle = equipment?.title || 'Equipment'
+  usePageTitle(`${equipmentTitle} Training`)
   // The parts page exists once the equipment has a model to show markers on.
   const hasPartsPage = Boolean(equipment?.modelUrl)
   const partsRoute = `/training/${equipmentId}/parts`

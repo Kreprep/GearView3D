@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useProgress } from './hooks/useProgress'
+import { usePageTitle } from './hooks/usePageTitle'
 import PageLayout from './components/PageLayout'
 import { getEquipment, getHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
 import {
@@ -21,6 +22,7 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
   const [hotspots, setHotspots] = useState([])
   const [hasPartsQuiz, setHasPartsQuiz] = useState(false)
   const [loading, setLoading] = useState(true)
+  usePageTitle(`${equipment?.title || 'Equipment'} Assessment`)
 
   useEffect(() => {
     let cancelled = false

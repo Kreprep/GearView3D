@@ -5,6 +5,7 @@ import SimulationPageLayout from './components/SimulationPageLayout'
 import ScopeNoticeModal from './components/ScopeNoticeModal'
 import Quiz from './components/Quiz'
 import { useProgress } from './hooks/useProgress'
+import { usePageTitle } from './hooks/usePageTitle'
 import { getEquipment, getHotspotCategories, getHotspots, getQuizQuestions } from './lib/api'
 import { getPartsProgress } from './lib/progressService'
 import './PartsIdentificationPage.css'
@@ -53,6 +54,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
   const [selectedPartId, setSelectedPartId] = useState(null)
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  usePageTitle(`${equipment?.title || 'Equipment'} Parts Identification`)
   // Set once the learner submits the quiz, which is what unlocks Complete.
   const [quizScored, setQuizScored] = useState(false)
   const [showScopeNotice, setShowScopeNotice] = useState(true)

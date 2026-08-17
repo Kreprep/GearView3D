@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { checkEmailExists } from './lib/api'
+import { usePageTitle } from './hooks/usePageTitle'
 import './LoginPage.css'
 
 const RESET_RECIPIENTS = [
@@ -35,6 +36,7 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
   const [showEmailNotFound, setShowEmailNotFound] = useState(false)
 
   const isSignup = mode === 'signup'
+  usePageTitle(isSignup ? 'Create Account' : 'Sign In')
 
   const switchMode = (nextMode) => {
     setMode(nextMode)

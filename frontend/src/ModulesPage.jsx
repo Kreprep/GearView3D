@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Clock } from 'lucide-react'
 import PageLayout from './components/PageLayout'
 import { getEquipment } from './lib/api'
+import { usePageTitle } from './hooks/usePageTitle'
 import './ModulesPage.css'
 
 // Every equipment's training lives at the same data-driven route, so which
@@ -29,6 +30,7 @@ function cardImageStyle(equipment) {
 }
 
 function ModulesPage({ user, onLogout, onNavigate }) {
+  usePageTitle('Equipment Catalog')
   const [equipment, setEquipment] = useState([])
   const [loading, setLoading] = useState(true)
 

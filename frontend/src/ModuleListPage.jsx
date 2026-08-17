@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getEquipment, getTrainingModules } from './lib/api'
 import { getModuleProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
+import { usePageTitle } from './hooks/usePageTitle'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
 import PageLayout from './components/PageLayout'
 import './ModuleListPage.css'
@@ -32,6 +33,7 @@ function ModuleListPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
   }, [equipmentId])
 
   const equipmentTitle = equipment?.title || 'Equipment'
+  usePageTitle(`${equipmentTitle} Modules`)
   const openModule = (module) => onNavigate(`/training/${equipmentId}/modules/${module.slug}`)
 
   const copy = resolveHubContent(equipment, hubContentContext({
