@@ -91,6 +91,11 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
           only for prototype module completion and does not imply official TESDA certification.
         </p>
 
+        <p className="assessment-learner-identity">
+          <strong>{user?.fullName || 'Learner'}</strong>
+          <span>{user?.email || 'No email on file'}</span>
+        </p>
+
         <div className="assessment-status-grid">
           <div>
             <span>Overall</span>
