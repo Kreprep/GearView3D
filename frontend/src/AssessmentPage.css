@@ -23,6 +23,26 @@
   color: #64748b;
 }
 
+.assessment-learner-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #dbe3ef;
+}
+
+.assessment-learner-identity strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.assessment-learner-identity span {
+  color: #64748b;
+  font-size: 14px;
+}
+
 .assessment-status-grid,
 .assessment-review-grid {
   display: grid;
