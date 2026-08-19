@@ -1,9 +1,9 @@
-// The four completion modes DrivingSimulationViewer already implements. Admin
+// The five completion modes DrivingSimulationViewer already implements. Admin
 // created courses store their goal explicitly; seeded courses are classified
 // from the markers they contain, which is also the fallback when a stored
 // `goalType` is missing.
 
-export const COURSE_GOAL_TYPES = ['checkpoints', 'parking', 'pallet', 'free']
+export const COURSE_GOAL_TYPES = ['checkpoints', 'parking', 'pallet', 'racking', 'free']
 
 // The driveable box every course used to share as a hardcoded constant in
 // DrivingSimulationViewer.jsx. `course.bounds` now overrides it per course;
@@ -23,6 +23,7 @@ export function courseGoalType(course) {
   if (!course) return 'free'
   if (course.goalType && COURSE_GOAL_TYPES.includes(course.goalType)) return course.goalType
   if (course.parkingBay) return 'parking'
+  if (course.racks?.length && course.pallets?.some((pallet) => pallet.targetRack)) return 'racking'
   if ((course.pallets?.length || course.pallet) && course.dropZone) return 'pallet'
   if (course.checkpoints?.length) return 'checkpoints'
   return 'free'
@@ -48,6 +49,10 @@ export function courseTaskCopy(course, profile) {
       return hasForks
         ? 'Slide the lowered forks under the pallet, raise it with R, carry it to the drop zone, lower with F, then reverse away to release it.'
         : 'Line up with the load, lift it with R, carry it to the drop zone, lower it with F, then reverse away to release it.'
+    case 'racking':
+      return hasForks
+        ? 'Slide the lowered forks under the pallet, raise it with R to the target shelf height, then drive it into the rack and hold steady to set it in place.'
+        : 'Lift the load with R to the target shelf height, then drive it into the rack and hold steady to set it in place.'
     case 'checkpoints': {
       const count = course.checkpoints?.length || 0
       return `Drive through ${count} checkpoint${count === 1 ? '' : 's'} in order to finish this step.`
@@ -81,6 +86,7 @@ export function validateCourse(course) {
       ...(course?.decorations || []).map((item) => item.position),
       ...(course?.obstacles || []).map((item) => item.position),
       ...(course?.pallets || (course?.pallet ? [course.pallet] : [])).map((item) => item.position),
+      ...(course?.racks || []).map((item) => item.position),
       course?.dropZone?.position,
       course?.parkingBay?.position,
     ].filter(Boolean)
@@ -100,6 +106,18 @@ export function validateCourse(course) {
   if (goal === 'pallet') {
     if (!course.pallets?.length && !course.pallet) problems.push('A pallet course needs at least one pallet.')
     if (!course.dropZone) problems.push('A pallet course needs a drop zone.')
+  }
+  if (goal === 'racking') {
+    const rackPallets = course.pallets || []
+    const rackIds = new Set((course.racks || []).map((rack) => rack.id))
+    if (!course.racks?.length) problems.push('A racking course needs at least one rack.')
+    if (!rackPallets.length) problems.push('A racking course needs at least one pallet.')
+    if (rackPallets.some((pallet) => !pallet.targetRack || !pallet.targetLevel)) {
+      problems.push('Every pallet needs a target rack and shelf level.')
+    }
+    if (rackPallets.some((pallet) => pallet.targetRack && !rackIds.has(pallet.targetRack))) {
+      problems.push('A pallet targets a rack that no longer exists.')
+    }
   }
 
   const pallets = course?.pallets || (course?.pallet ? [course.pallet] : [])

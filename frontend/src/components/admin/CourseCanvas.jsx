@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { listCourseItems, snapTo } from '../../lib/courseEdit'
+import { RACK_FOOTPRINT } from '../../data/rackProfile'
 import './CourseCanvas.css'
 
 // Top-down blueprint of a driving course, drawn from the driver's point of
@@ -71,6 +72,24 @@ function ItemShape({ item, pxPerUnit, selected }) {
 
     case 'pallet':
       return <rect className={className} x={-PALLET_PX} y={-PALLET_PX} width={PALLET_PX * 2} height={PALLET_PX * 2} />
+
+    case 'rack':
+    case 'rack-empty':
+    case 'rack-loaded':
+    case 'rack-spare': {
+      const width = RACK_FOOTPRINT.halfWidth * 2 * pxPerUnit
+      const depth = RACK_FOOTPRINT.halfDepth * 2 * pxPerUnit
+      return (
+        <rect
+          className={className}
+          x={-width / 2}
+          y={-depth / 2}
+          width={width}
+          height={depth}
+          transform={`rotate(${rotationDegrees(entry.rotation)})`}
+        />
+      )
+    }
 
     case 'checkpoint':
       if (entry.shape === 'line') {

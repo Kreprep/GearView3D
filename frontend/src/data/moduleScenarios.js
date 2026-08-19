@@ -127,11 +127,27 @@ export const moduleScenarioSteps = {
       hint: 'Read the weight labels before driving in - the heaviest pallet exceeds the rated capacity.',
     },
     {
+      id: 'rack-storage',
+      title: 'Rack Storage',
+      objective: 'Raise a pallet to its assigned shelf height and store it in the correct rack level.',
+      instructions:
+        'Pick up the pallet, then raise it with R to the target shelf\'s height, drive it into the rack, and hold steady to set it in place. Racking has a bottom, middle, and top shelf - this exercise is graded on the middle shelf.',
+      hint: 'Watch the pallet through the chase camera as you raise it - line it up with the target ring floating at shelf height before driving in.',
+    },
+    {
+      id: 'rack-storage-top',
+      title: 'Top Shelf Storage',
+      objective: 'Raise a pallet to the top shelf and store it there.',
+      instructions:
+        'Pick up the pallet, then hold R to raise it to the top shelf, drive it into the rack, and hold steady to set it in place. This is a fuller lift than the middle shelf, so give the forks time to reach height before driving in.',
+      hint: 'Hold R until the carried pallet lines up with the top target ring - it takes longer to reach than the middle shelf.',
+    },
+    {
       id: 'summary',
       title: 'Completion Summary',
       objective: 'Review the assessment results.',
-      instructions: 'Confirm the precision carry and load limit exercises are complete.',
-      hint: 'Completion means you can plan a safe carry and refuse an overweight load.',
+      instructions: 'Confirm the precision carry, load limit, and rack storage exercises are complete.',
+      hint: 'Completion means you can plan a safe carry, refuse an overweight load, and shelve a pallet at any rack level.',
     },
   ],
   'post-operation': [

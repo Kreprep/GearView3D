@@ -275,4 +275,36 @@ export const drivingCourses = {
       ...coneLine(3.4, 2, 20, 2.5),
     ],
   },
+  // Module 4 rack-storage exercise: pick up the pallet, then raise it to the
+  // assigned shelf height and drive it into the rack instead of setting it
+  // down in a ground drop zone (see `racks`/`targetRack`/`targetLevel` and
+  // the goalType: 'racking' completion check in DrivingSimulationViewer).
+  'rack-storage': {
+    id: 'rack-storage',
+    start: { position: [0, 0, 0], heading: 0 },
+    checkpoints: [],
+    pallets: [{ id: 'rack-pallet', position: [0, 0, 6], rotation: 0, weightKg: 450, targetRack: 'storage-rack-1', targetLevel: 'middle' }],
+    racks: [{ id: 'storage-rack-1', position: [0, 0, 15], rotation: 0 }],
+    decorations: [
+      { type: 'cone', position: [-0.9, 0, 3] },
+      { type: 'cone', position: [0.9, 0, 3] },
+      ...coneLine(-2.6, 2, 13, 2.4),
+      ...coneLine(2.6, 2, 13, 2.4),
+    ],
+  },
+  // Same mechanic as rack-storage, targeting the top shelf instead - the
+  // fuller raise gives the learner practice judging a taller lift.
+  'rack-storage-top': {
+    id: 'rack-storage-top',
+    start: { position: [0, 0, 0], heading: 0 },
+    checkpoints: [],
+    pallets: [{ id: 'rack-pallet-top', position: [0, 0, 6], rotation: 0, weightKg: 450, targetRack: 'storage-rack-2', targetLevel: 'top' }],
+    racks: [{ id: 'storage-rack-2', position: [0, 0, 15], rotation: 0 }],
+    decorations: [
+      { type: 'cone', position: [-0.9, 0, 3] },
+      { type: 'cone', position: [0.9, 0, 3] },
+      ...coneLine(-2.6, 2, 13, 2.4),
+      ...coneLine(2.6, 2, 13, 2.4),
+    ],
+  },
 }

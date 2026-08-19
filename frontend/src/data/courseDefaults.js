@@ -83,6 +83,13 @@ export function normalizeCourseGeometry(course = {}) {
     position: [pallet.position[0], 0, pallet.position[2]],
     rotation: pallet.rotation || 0,
     ...(pallet.weightKg !== undefined ? { weightKg: pallet.weightKg } : {}),
+    ...(pallet.targetRack ? { targetRack: pallet.targetRack, targetLevel: pallet.targetLevel } : {}),
+  }))
+
+  const racks = (course.racks || []).map((rack) => ({
+    id: rack.id,
+    position: [rack.position[0], 0, rack.position[2]],
+    rotation: rack.rotation || 0,
   }))
 
   return {
@@ -90,6 +97,7 @@ export function normalizeCourseGeometry(course = {}) {
     checkpoints: course.checkpoints || [],
     decorations,
     pallets,
+    racks,
     dropZone: course.dropZone || null,
     parkingBay: course.parkingBay || null,
     capacityKg: typeof course.capacityKg === 'number' ? course.capacityKg : null,
@@ -117,6 +125,7 @@ export function emptyCourseGeometry() {
     checkpoints: [],
     decorations: [],
     pallets: [],
+    racks: [],
     dropZone: null,
     parkingBay: null,
     capacityKg: null,
