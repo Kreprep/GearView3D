@@ -205,6 +205,15 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
 
   const setCourseValue = (patch) => commitData({ ...data, ...patch })
 
+  // Course size is a deliberate "resize the arena" action, unlike dragging an
+  // object, so the map view re-fits immediately instead of waiting for the
+  // admin to notice and click Fit view.
+  const setCourseBoundsValue = (nextBounds) => {
+    const nextData = { ...data, bounds: nextBounds }
+    commitData(nextData)
+    setBounds(courseBounds(nextData, 3, resolveCourseBounds(nextData)))
+  }
+
   const setContent = (patch) => {
     setDraft((current) => ({ ...current, content: { ...current.content, ...patch } }))
     setDirty(true)
@@ -680,7 +689,7 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
                 step={0.5}
                 min={0.5}
                 value={resolveCourseBounds(data).halfWidth}
-                onChange={(event) => setCourseValue({ bounds: { ...resolveCourseBounds(data), halfWidth: Number(event.target.value) } })}
+                onChange={(event) => setCourseBoundsValue({ ...resolveCourseBounds(data), halfWidth: Number(event.target.value) })}
               />
             </label>
             <label>
@@ -689,7 +698,7 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
                 type="number"
                 step={0.5}
                 value={resolveCourseBounds(data).minZ}
-                onChange={(event) => setCourseValue({ bounds: { ...resolveCourseBounds(data), minZ: Number(event.target.value) } })}
+                onChange={(event) => setCourseBoundsValue({ ...resolveCourseBounds(data), minZ: Number(event.target.value) })}
               />
             </label>
             <label>
@@ -698,11 +707,11 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
                 type="number"
                 step={0.5}
                 value={resolveCourseBounds(data).maxZ}
-                onChange={(event) => setCourseValue({ bounds: { ...resolveCourseBounds(data), maxZ: Number(event.target.value) } })}
+                onChange={(event) => setCourseBoundsValue({ ...resolveCourseBounds(data), maxZ: Number(event.target.value) })}
               />
             </label>
             {data.bounds && (
-              <button type="button" onClick={() => setCourseValue({ bounds: null })}>
+              <button type="button" onClick={() => setCourseBoundsValue(null)}>
                 Reset to default size ({DEFAULT_COURSE_BOUNDS.halfWidth * 2} × {DEFAULT_COURSE_BOUNDS.maxZ - DEFAULT_COURSE_BOUNDS.minZ})
               </button>
             )}
