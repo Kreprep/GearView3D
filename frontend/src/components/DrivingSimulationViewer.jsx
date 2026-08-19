@@ -1392,44 +1392,46 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
       )}
 
       <div className="driving-hud-bottom">
-        <button type="button" className="driving-reset-button" onClick={onRequestReset}>
-          <RotateCcw size={14} /> Reset Attempt
-        </button>
-        <button
-          type="button"
-          className={`driving-reset-button ${firstPerson ? 'is-active' : ''}`}
-          onClick={() => {
-            setFirstPerson((value) => !value)
-            setFreeCam(false)
-            camAdjustedRef.current = false
-          }}
-        >
-          <Eye size={14} /> First-Person {firstPerson ? 'On' : 'Off'}
-        </button>
-        {!firstPerson && (
+        <div className="driving-hud-actions">
+          <button type="button" className="driving-reset-button" onClick={onRequestReset}>
+            <RotateCcw size={14} /> Reset Attempt
+          </button>
           <button
             type="button"
-            className="driving-reset-button"
+            className={`driving-reset-button ${firstPerson ? 'is-active' : ''}`}
             onClick={() => {
+              setFirstPerson((value) => !value)
+              setFreeCam(false)
               camAdjustedRef.current = false
             }}
           >
-            <Locate size={14} /> Reset Camera
+            <Eye size={14} /> First-Person {firstPerson ? 'On' : 'Off'}
           </button>
-        )}
-        {isAdmin && (
-          <button
-            type="button"
-            className={`driving-reset-button ${freeCam ? 'is-active' : ''}`}
-            onClick={() => {
-              setFreeCam((value) => !value)
-              setFirstPerson(false)
-              camAdjustedRef.current = false
-            }}
-          >
-            <Compass size={14} /> Free Cam {freeCam ? 'On' : 'Off'}
-          </button>
-        )}
+          {!firstPerson && (
+            <button
+              type="button"
+              className="driving-reset-button"
+              onClick={() => {
+                camAdjustedRef.current = false
+              }}
+            >
+              <Locate size={14} /> Reset Camera
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              type="button"
+              className={`driving-reset-button ${freeCam ? 'is-active' : ''}`}
+              onClick={() => {
+                setFreeCam((value) => !value)
+                setFirstPerson(false)
+                camAdjustedRef.current = false
+              }}
+            >
+              <Compass size={14} /> Free Cam {freeCam ? 'On' : 'Off'}
+            </button>
+          )}
+        </div>
         <div className="driving-keys">
           {profile.keyLegend.map(({ key, caption }) => (
             <div key={key} className="driving-key-wrap">

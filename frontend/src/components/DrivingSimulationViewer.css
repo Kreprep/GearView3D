@@ -66,6 +66,13 @@
   flex-wrap: wrap;
 }
 
+.driving-hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .driving-reset-button {
   display: inline-flex;
   align-items: center;
