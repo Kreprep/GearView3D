@@ -21,7 +21,7 @@ import {
 } from '../../lib/courseEdit'
 import { emptySyllabus, NEXT_ROUTE_TARGETS, SUMMARY_COUNTER_LABELS } from '../../data/courseDefaults'
 import { MODULE_ROUTE_PREFIX } from '../../lib/moduleContent'
-import { COURSE_GOAL_TYPES, validateCourse } from '../../lib/courseGoals'
+import { COURSE_GOAL_TYPES, DEFAULT_COURSE_BOUNDS, resolveCourseBounds, validateCourse } from '../../lib/courseGoals'
 import { ReportingActivityFields, ShutdownActivityFields } from './ActivityContentFields'
 import WalkAroundContentFields from './WalkAroundContentFields'
 import CourseCanvas from './CourseCanvas'
@@ -76,7 +76,10 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
   const [tool, setTool] = useState(null)
   const [snap, setSnap] = useState(0.1)
   const [pxPerUnit, setPxPerUnit] = useState(24)
-  const [bounds, setBounds] = useState(() => courseBounds(draftOf(course).data || {}))
+  const [bounds, setBounds] = useState(() => {
+    const initial = draftOf(course).data || {}
+    return courseBounds(initial, 3, resolveCourseBounds(initial))
+  })
   const [dirty, setDirty] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [previewSeed, setPreviewSeed] = useState(0)
@@ -90,7 +93,7 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
   const resyncFrom = (nextCourse) => {
     const next = draftOf(nextCourse)
     setDraft(next)
-    setBounds(courseBounds(next.data || {}))
+    setBounds(courseBounds(next.data || {}, 3, resolveCourseBounds(next.data || {})))
     setSelectedKeys([])
     setTool(null)
     setDirty(false)
@@ -564,7 +567,7 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
             </label>
             <button type="button" onClick={() => setPxPerUnit((value) => Math.max(8, value - 6))}>-</button>
             <button type="button" onClick={() => setPxPerUnit((value) => Math.min(80, value + 6))}>+</button>
-            <button type="button" onClick={() => setBounds(courseBounds(data))}>Fit view</button>
+            <button type="button" onClick={() => setBounds(courseBounds(data, 3, resolveCourseBounds(data)))}>Fit view</button>
             <button type="button" onClick={undo} disabled={!undoStack.length}>Undo</button>
           </div>
 
@@ -576,6 +579,7 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
           <CourseCanvas
             data={data}
             bounds={bounds}
+            driveBounds={resolveCourseBounds(data)}
             pxPerUnit={pxPerUnit}
             snap={snap}
             tool={tool}
@@ -659,6 +663,49 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
               Fail on braking hard while carrying
             </label>
             <p className="admin-panel-note">Cones, walls and parked vehicles are always live colliders - striking one always fails the attempt.</p>
+          </section>
+          )}
+
+          {isDriving && (
+          <section className="admin-panel">
+            <h3>Course size</h3>
+            <p className="admin-panel-note">
+              The box the vehicle can actually drive in - shown as the dashed outline on the map. Placing an object
+              outside it makes the course unwinnable, since the vehicle can never reach it.
+            </p>
+            <label>
+              Width (± units from center)
+              <input
+                type="number"
+                step={0.5}
+                min={0.5}
+                value={resolveCourseBounds(data).halfWidth}
+                onChange={(event) => setCourseValue({ bounds: { ...resolveCourseBounds(data), halfWidth: Number(event.target.value) } })}
+              />
+            </label>
+            <label>
+              Back limit (units behind start)
+              <input
+                type="number"
+                step={0.5}
+                value={resolveCourseBounds(data).minZ}
+                onChange={(event) => setCourseValue({ bounds: { ...resolveCourseBounds(data), minZ: Number(event.target.value) } })}
+              />
+            </label>
+            <label>
+              Forward limit (units ahead)
+              <input
+                type="number"
+                step={0.5}
+                value={resolveCourseBounds(data).maxZ}
+                onChange={(event) => setCourseValue({ bounds: { ...resolveCourseBounds(data), maxZ: Number(event.target.value) } })}
+              />
+            </label>
+            {data.bounds && (
+              <button type="button" onClick={() => setCourseValue({ bounds: null })}>
+                Reset to default size ({DEFAULT_COURSE_BOUNDS.halfWidth * 2} × {DEFAULT_COURSE_BOUNDS.maxZ - DEFAULT_COURSE_BOUNDS.minZ})
+              </button>
+            )}
           </section>
           )}
 

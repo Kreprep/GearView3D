@@ -32,6 +32,14 @@
   stroke-width: 1;
 }
 
+.course-drive-bounds {
+  fill: none;
+  stroke: #f59e0b;
+  stroke-width: 2;
+  stroke-dasharray: 8 6;
+  pointer-events: none;
+}
+
 .course-item {
   cursor: grab;
   vector-effect: non-scaling-stroke;

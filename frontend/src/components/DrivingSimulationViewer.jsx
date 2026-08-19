@@ -6,6 +6,7 @@ import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.j
 import { Compass, RotateCcw } from 'lucide-react'
 import { buildVehicleRig, REAR_WHEEL_KEYS } from '../lib/vehicleRig'
 import { decorationType } from '../lib/courseEdit'
+import { resolveCourseBounds } from '../lib/courseGoals'
 import { DEFAULT_VEHICLE_MODEL_URL } from '../data/vehicleProfile'
 import { resolveVehicleProfile } from '../lib/vehicleProfile'
 import './DrivingSimulationViewer.css'
@@ -49,10 +50,6 @@ function palletModelForWeight(weightKg) {
   if (weightKg > PALLET_LIGHT_MAX_KG) return PALLET_MODEL_MEDIUM_URL
   return PALLET_MODEL_LIGHT_URL
 }
-
-const GROUND_HALF_WIDTH = 6
-const COURSE_MAX_Z = 44
-const COURSE_MIN_Z = -3
 
 const MAX_SPEED = 1.5
 const MAX_REVERSE_SPEED = 0.8
@@ -501,6 +498,10 @@ function DrivingScene({
   const rigRef = useRef(null)
   const { camera } = useThree()
   const checkpoints = course.checkpoints || []
+  const { halfWidth: groundHalfWidth, minZ: courseMinZ, maxZ: courseMaxZ } = useMemo(
+    () => resolveCourseBounds(course),
+    [course],
+  )
   const pallets = useMemo(() => course.pallets || (course.pallet ? [course.pallet] : []), [course])
   // Every rendered cone is a live collider, whether authored under
   // `obstacles` or as a `decorations` lane/gate marker - a cone is a hazard
@@ -631,8 +632,8 @@ function DrivingScene({
 
     const forwardX = Math.sin(headingRef.current)
     const forwardZ = Math.cos(headingRef.current)
-    posRef.current.x = clamp(posRef.current.x + forwardX * speedRef.current * dt, -GROUND_HALF_WIDTH, GROUND_HALF_WIDTH)
-    posRef.current.z = clamp(posRef.current.z + forwardZ * speedRef.current * dt, COURSE_MIN_Z, COURSE_MAX_Z)
+    posRef.current.x = clamp(posRef.current.x + forwardX * speedRef.current * dt, -groundHalfWidth, groundHalfWidth)
+    posRef.current.z = clamp(posRef.current.z + forwardZ * speedRef.current * dt, courseMinZ, courseMaxZ)
 
     if (forkliftGroupRef.current) {
       forkliftGroupRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z)
@@ -945,8 +946,8 @@ function DrivingScene({
     }
   })
 
-  const groundLength = COURSE_MAX_Z - COURSE_MIN_Z
-  const groundCenterZ = COURSE_MIN_Z + groundLength / 2
+  const groundLength = courseMaxZ - courseMinZ
+  const groundCenterZ = courseMinZ + groundLength / 2
 
   return (
     <>
@@ -956,12 +957,12 @@ function DrivingScene({
       <directionalLight position={[-3, 3, -2]} intensity={0.9} />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, groundCenterZ]} receiveShadow>
-        <planeGeometry args={[GROUND_HALF_WIDTH * 2 + 4, groundLength + 8]} />
+        <planeGeometry args={[groundHalfWidth * 2 + 4, groundLength + 8]} />
         <meshStandardMaterial color="#334155" roughness={1} />
       </mesh>
       <Grid
         position={[0, 0, groundCenterZ]}
-        args={[GROUND_HALF_WIDTH * 2 + 4, groundLength + 8]}
+        args={[groundHalfWidth * 2 + 4, groundLength + 8]}
         cellSize={0.5}
         cellColor="#475569"
         sectionSize={2.5}

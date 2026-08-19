@@ -114,6 +114,7 @@ function ItemShape({ item, pxPerUnit, selected }) {
 function CourseCanvas({
   data,
   bounds,
+  driveBounds,
   pxPerUnit,
   snap,
   tool,
@@ -176,6 +177,20 @@ function CourseCanvas({
     dragRef.current = null
   }
 
+  // The box the vehicle is actually clamped to in the 3D scene - drawn as a
+  // reference rectangle so placing an object outside it is visible before
+  // Save, not just flagged by validateCourse() after the fact.
+  const driveBoundsRect = driveBounds && (() => {
+    const corner1 = worldToScreen(bounds, pxPerUnit, -driveBounds.halfWidth, driveBounds.maxZ)
+    const corner2 = worldToScreen(bounds, pxPerUnit, driveBounds.halfWidth, driveBounds.minZ)
+    return {
+      x: Math.min(corner1.px, corner2.px),
+      y: Math.min(corner1.py, corner2.py),
+      width: Math.abs(corner2.px - corner1.px),
+      height: Math.abs(corner2.py - corner1.py),
+    }
+  })()
+
   // One grid line per world unit, with a heavier line every 5.
   const gridLines = []
   for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
@@ -200,6 +215,7 @@ function CourseCanvas({
         onPointerCancel={handlePointerUp}
       >
         <g className="course-grid">{gridLines}</g>
+        {driveBoundsRect && <rect className="course-drive-bounds" {...driveBoundsRect} />}
 
         {items.map((item) => {
           const { px, py } = worldToScreen(bounds, pxPerUnit, item.x, item.z)

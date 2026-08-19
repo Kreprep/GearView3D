@@ -171,8 +171,10 @@ export function appendDecorations(data, decorations) {
 }
 
 // World-space bounding box of everything in the course, padded, with a floor so
-// an empty course still gets a usable canvas.
-export function courseBounds(data, padding = 3) {
+// an empty course still gets a usable canvas. `driveBounds` (resolveCourseBounds()
+// from lib/courseGoals) is folded in too, so the driveable-area rectangle stays
+// on screen even when no object has been placed near its edges yet.
+export function courseBounds(data, padding = 3, driveBounds = null) {
   const items = listCourseItems(data)
   let minX = -4
   let maxX = 4
@@ -184,6 +186,13 @@ export function courseBounds(data, padding = 3) {
     maxX = Math.max(maxX, item.x)
     minZ = Math.min(minZ, item.z)
     maxZ = Math.max(maxZ, item.z)
+  }
+
+  if (driveBounds) {
+    minX = Math.min(minX, -driveBounds.halfWidth)
+    maxX = Math.max(maxX, driveBounds.halfWidth)
+    minZ = Math.min(minZ, driveBounds.minZ)
+    maxZ = Math.max(maxZ, driveBounds.maxZ)
   }
 
   return {
