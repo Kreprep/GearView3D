@@ -125,6 +125,15 @@
   gap: 10px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* This box stretches the full overlay lane (top to bottom) so it can
+     scroll, but its cards rarely fill that height - the empty space below
+     them would otherwise sit on top of the HUD/canvas and swallow clicks
+     meant for what's underneath. Only the cards themselves opt back in. */
+  pointer-events: none;
+}
+
+.simulation-overlay > * {
+  pointer-events: auto;
 }
 
 .simulation-overlay-left,
