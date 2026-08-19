@@ -22,6 +22,10 @@ export const DEFAULT_RIG = {
   mast: 'Mast',
   carriage: 'Lift_Carriage',
   mastFoot: [0, 0.024, 0.246],
+  // Approximate operator eye point, local to the vehicle (x: side, y: up, z:
+  // forward) - what the first-person camera sits at. Tune per equipment in
+  // the Vehicle Profile editor if a model's cab sits somewhere else.
+  cabin: { seatOffset: [0, 0.40, -0.05] },
 }
 
 // The HUD key legend. `forks: true` on a row means it is only shown when the

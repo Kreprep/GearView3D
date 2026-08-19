@@ -30,6 +30,7 @@ export function resolveVehicleProfile(equipment) {
       ...defaults.rig,
       ...(overrides.rig || {}),
       wheels: { ...defaults.rig.wheels, ...(overrides.rig?.wheels || {}) },
+      cabin: { ...defaults.rig.cabin, ...(overrides.rig?.cabin || {}) },
     },
     keyLegend: legend,
     failMessages: mergeMessages(defaults.failMessages, overrides.failMessages),

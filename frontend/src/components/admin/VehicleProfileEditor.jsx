@@ -20,6 +20,12 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
   const setRig = (patch) => setField({ rig: { ...(draft.rig || {}), ...patch } })
   const setWheels = (patch) => setRig({ wheels: { ...(draft.rig?.wheels || {}), ...patch } })
   const setFootprint = (patch) => setField({ footprint: { ...(draft.footprint || {}), ...patch } })
+  const setSeatAxis = (axis, value) => {
+    const current = draft.rig?.cabin?.seatOffset ?? resolved.rig.cabin.seatOffset
+    const next = [...current]
+    next[axis] = value
+    setRig({ cabin: { ...(draft.rig?.cabin || {}), seatOffset: next } })
+  }
 
   const save = async () => {
     setSaving(true)
@@ -119,6 +125,23 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
           <input value={draft.rig?.carriage || ''} placeholder={resolved.rig.carriage} onChange={(event) => setRig({ carriage: event.target.value })} />
         </label>
         <p className="admin-panel-note">A name that does not exist in the model is skipped rather than failing the scene.</p>
+      </fieldset>
+
+      <fieldset className="admin-fieldset">
+        <legend>Cabin (first-person seat, metres, local to the vehicle)</legend>
+        {[['Side (x)', 0], ['Height (y)', 1], ['Forward (z)', 2]].map(([label, axis]) => (
+          <label key={axis}>
+            {label}
+            <input
+              type="number"
+              step="0.01"
+              value={draft.rig?.cabin?.seatOffset?.[axis] ?? ''}
+              placeholder={String(resolved.rig.cabin.seatOffset[axis])}
+              onChange={(event) => setSeatAxis(axis, event.target.value === '' ? resolved.rig.cabin.seatOffset[axis] : Number(event.target.value))}
+            />
+          </label>
+        ))}
+        <p className="admin-panel-note">Where the first-person camera sits: sideways, up, and forward from the vehicle's centre. Test it by driving the course with First-Person on.</p>
       </fieldset>
 
       <div className="admin-row-actions">

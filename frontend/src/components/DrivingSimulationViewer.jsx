@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Grid, Html, OrbitControls, useGLTF } from '@react-three/drei'
 import { DoubleSide, Quaternion, Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { Compass, RotateCcw } from 'lucide-react'
+import { Compass, Eye, RotateCcw, Locate } from 'lucide-react'
 import { buildVehicleRig, REAR_WHEEL_KEYS } from '../lib/vehicleRig'
 import { decorationType } from '../lib/courseEdit'
 import { resolveCourseBounds } from '../lib/courseGoals'
@@ -592,6 +592,8 @@ function DrivingScene({
   parked,
   onParkingUpdate,
   freeCam,
+  firstPerson,
+  camAdjustedRef,
 }) {
   const { scene } = useGLTF(profile.modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
@@ -599,6 +601,12 @@ function DrivingScene({
   const halfLength = profile.footprint.halfLength
   const rigRef = useRef(null)
   const { camera } = useThree()
+  const vehicleOrbitRef = useRef(null)
+  const seatWorldRef = useRef(new Vector3())
+  const seatLookRef = useRef(new Vector3())
+  const orbitTargetRef = useRef(new Vector3())
+  const prevOrbitTargetRef = useRef(new Vector3())
+  const orbitDeltaRef = useRef(new Vector3())
   const checkpoints = course.checkpoints || []
   const { halfWidth: groundHalfWidth, minZ: courseMinZ, maxZ: courseMaxZ } = useMemo(
     () => resolveCourseBounds(course),
@@ -1077,13 +1085,41 @@ function DrivingScene({
       }
     }
 
-    if (!freeCam) {
-      backRef.current.set(-forwardX, 0, -forwardZ)
-      desiredCamRef.current.copy(posRef.current).addScaledVector(backRef.current, 2.6)
-      desiredCamRef.current.y += 1.5
-      camera.position.lerp(desiredCamRef.current, 1 - Math.pow(0.0001, dt))
-      lookTargetRef.current.set(posRef.current.x, posRef.current.y + 0.55, posRef.current.z)
-      camera.lookAt(lookTargetRef.current)
+    if (firstPerson) {
+      const [seatX, seatY, seatZ] = profile.rig.cabin.seatOffset
+      seatWorldRef.current.set(
+        posRef.current.x + seatX * forwardZ + seatZ * forwardX,
+        posRef.current.y + seatY,
+        posRef.current.z - seatX * forwardX + seatZ * forwardZ,
+      )
+      seatLookRef.current.set(
+        seatWorldRef.current.x + forwardX * 5,
+        seatWorldRef.current.y,
+        seatWorldRef.current.z + forwardZ * 5,
+      )
+      camera.position.copy(seatWorldRef.current)
+      camera.lookAt(seatLookRef.current)
+    } else if (!freeCam) {
+      orbitTargetRef.current.set(posRef.current.x, posRef.current.y + 0.55, posRef.current.z)
+      if (camAdjustedRef.current) {
+        // The user has orbited by hand: OrbitControls only re-aims at a moved
+        // target, it does not reposition the camera - so carry the camera by
+        // the same delta the vehicle moved this frame to keep the orbit
+        // rigidly anchored to it instead of the camera staying put while the
+        // vehicle drives out from under it.
+        camera.position.add(orbitDeltaRef.current.subVectors(orbitTargetRef.current, prevOrbitTargetRef.current))
+      } else {
+        backRef.current.set(-forwardX, 0, -forwardZ)
+        desiredCamRef.current.copy(posRef.current).addScaledVector(backRef.current, 2.6)
+        desiredCamRef.current.y += 1.5
+        camera.position.lerp(desiredCamRef.current, 1 - Math.pow(0.0001, dt))
+        lookTargetRef.current.set(posRef.current.x, posRef.current.y + 0.55, posRef.current.z)
+        camera.lookAt(lookTargetRef.current)
+      }
+      prevOrbitTargetRef.current.copy(orbitTargetRef.current)
+      if (vehicleOrbitRef.current) {
+        vehicleOrbitRef.current.target.copy(orbitTargetRef.current)
+      }
     }
 
     hudAccumRef.current += dt
@@ -1197,12 +1233,27 @@ function DrivingScene({
       </group>
 
       {freeCam && <OrbitControls makeDefault enableDamping dampingFactor={0.15} minDistance={0.5} maxDistance={80} />}
+      {!freeCam && !firstPerson && (
+        <OrbitControls
+          ref={vehicleOrbitRef}
+          makeDefault
+          enableDamping
+          dampingFactor={0.15}
+          enablePan={false}
+          enableZoom={false}
+          onStart={() => {
+            camAdjustedRef.current = true
+          }}
+        />
+      )}
     </>
   )
 }
 
 function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, className, isAdmin }) {
   const [freeCam, setFreeCam] = useState(false)
+  const [firstPerson, setFirstPerson] = useState(false)
+  const camAdjustedRef = useRef(false)
   const start = course.start || { position: [0, 0, 0], heading: 0 }
   const forkliftGroupRef = useRef(null)
   const posRef = useRef(new Vector3(start.position[0], start.position[1] ?? 0, start.position[2]))
@@ -1322,6 +1373,8 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
               }
             }}
             freeCam={freeCam}
+            firstPerson={firstPerson}
+            camAdjustedRef={camAdjustedRef}
           />
         </Suspense>
       </Canvas>
@@ -1342,11 +1395,37 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
         <button type="button" className="driving-reset-button" onClick={onRequestReset}>
           <RotateCcw size={14} /> Reset Attempt
         </button>
+        <button
+          type="button"
+          className={`driving-reset-button ${firstPerson ? 'is-active' : ''}`}
+          onClick={() => {
+            setFirstPerson((value) => !value)
+            setFreeCam(false)
+            camAdjustedRef.current = false
+          }}
+        >
+          <Eye size={14} /> First-Person {firstPerson ? 'On' : 'Off'}
+        </button>
+        {!firstPerson && (
+          <button
+            type="button"
+            className="driving-reset-button"
+            onClick={() => {
+              camAdjustedRef.current = false
+            }}
+          >
+            <Locate size={14} /> Reset Camera
+          </button>
+        )}
         {isAdmin && (
           <button
             type="button"
             className={`driving-reset-button ${freeCam ? 'is-active' : ''}`}
-            onClick={() => setFreeCam((value) => !value)}
+            onClick={() => {
+              setFreeCam((value) => !value)
+              setFirstPerson(false)
+              camAdjustedRef.current = false
+            }}
           >
             <Compass size={14} /> Free Cam {freeCam ? 'On' : 'Off'}
           </button>
