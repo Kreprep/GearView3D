@@ -1,4 +1,5 @@
 import { OBJECT_LABELS } from '../../lib/courseEdit'
+import { RACK_LEVEL_LABELS, RACK_LEVELS } from '../../data/rackProfile'
 
 const RAD_PER_DEG = Math.PI / 180
 
@@ -37,7 +38,7 @@ function AngleField({ label, value, onChange }) {
   )
 }
 
-function CourseInspector({ item, onChange, onMove, onDelete }) {
+function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
   if (!item) {
     return <p className="admin-panel-note">Select an object on the map, or pick a tool and click to place one.</p>
   }
@@ -79,6 +80,58 @@ function CourseInspector({ item, onChange, onMove, onDelete }) {
           />
           <p className="admin-panel-note">
             Weight is shown on the pallet and checked against the course capacity. Over capacity tips the vehicle.
+          </p>
+          <label>
+            Target rack
+            <select
+              value={entry.targetRack || ''}
+              onChange={(event) =>
+                set({ targetRack: event.target.value || undefined, targetLevel: event.target.value ? entry.targetLevel : undefined })
+              }
+            >
+              <option value="">None - deliver to a drop zone instead</option>
+              {racks.map((rack) => (
+                <option key={rack.id} value={rack.id}>{rack.id}</option>
+              ))}
+            </select>
+          </label>
+          {entry.targetRack && (
+            <label>
+              Target shelf level
+              <select value={entry.targetLevel || ''} onChange={(event) => set({ targetLevel: event.target.value || undefined })}>
+                <option value="">Choose a level</option>
+                {RACK_LEVELS.map((level) => (
+                  <option key={level} value={level}>{RACK_LEVEL_LABELS[level]}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {entry.targetRack && (
+            <p className="admin-panel-note">
+              Raise this pallet to the target level's height, drive it into that rack, and hold steady to set it down.
+              Set the goal type to Rack storage below so the step reads this instead of a drop zone.
+            </p>
+          )}
+        </>
+      )}
+
+      {kind === 'rack' && (
+        <>
+          <TextField label="Id" value={entry.id} onChange={(id) => set({ id })} />
+          <AngleField label="Rotation" value={entry.rotation} onChange={(rotation) => set({ rotation })} />
+          <p className="admin-panel-note">
+            Assign a pallet to this rack from that pallet's own panel (Target rack / Target shelf level). The rack
+            itself is not a collider - the vehicle has to reach inside its footprint to place a load.
+          </p>
+        </>
+      )}
+
+      {(kind === 'rack-empty' || kind === 'rack-loaded' || kind === 'rack-spare') && (
+        <>
+          <AngleField label="Rotation" value={entry.rotation} onChange={(rotation) => set({ rotation })} />
+          <p className="admin-panel-note">
+            Background dressing only - no id, no target, not graded, not a collider. Switch which one this is by
+            deleting it and placing the other kind from the palette.
           </p>
         </>
       )}

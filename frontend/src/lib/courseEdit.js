@@ -4,6 +4,8 @@
 // selectable items, so items are addressed by a `key` of the form
 // "<list>:<index>" or the singleton's own name.
 
+import { DECOR_RACK_KINDS, DECOR_RACK_LABELS } from '../data/rackProfile'
+
 const SINGLETON_KEYS = ['start', 'dropZone', 'parkingBay']
 
 export const OBJECT_LABELS = {
@@ -13,13 +15,25 @@ export const OBJECT_LABELS = {
   wall: 'Wall',
   vehicle: 'Parked vehicle',
   pallet: 'Pallet',
+  rack: 'Pallet rack',
   dropZone: 'Drop zone',
   parkingBay: 'Parking bay',
+  ...DECOR_RACK_LABELS,
 }
 
 // Kinds an admin can drop onto the canvas. Singletons are filtered out of the
 // palette once the course already has one.
-export const PLACEABLE_KINDS = ['cone', 'wall', 'vehicle', 'checkpoint', 'pallet', 'dropZone', 'parkingBay']
+export const PLACEABLE_KINDS = [
+  'cone',
+  'wall',
+  'vehicle',
+  'checkpoint',
+  'pallet',
+  'rack',
+  ...DECOR_RACK_KINDS,
+  'dropZone',
+  'parkingBay',
+]
 
 // The parked-obstacle kind was called 'forklift' until migration
 // 20260814110000, even though its model comes from the equipment's
@@ -59,6 +73,10 @@ export function listCourseItems(data) {
     items.push({ key: `pallets:${index}`, kind: 'pallet', entry, ...positionOf(entry) })
   }
 
+  for (const [index, entry] of (data.racks || []).entries()) {
+    items.push({ key: `racks:${index}`, kind: 'rack', entry, ...positionOf(entry) })
+  }
+
   if (data.dropZone) {
     items.push({ key: 'dropZone', kind: 'dropZone', entry: data.dropZone, ...positionOf(data.dropZone) })
   }
@@ -93,6 +111,21 @@ export function moveItem(data, key, x, z) {
   return updateItem(data, key, { position: [x, item.entry.position?.[1] ?? 0, z] })
 }
 
+// A pallet's targetRack/targetLevel point at a rack by id, not by list index
+// (ids survive reordering, indices don't), so deleting a rack has to clear
+// any pallet still pointing at it or the reference would silently dangle.
+function clearPalletsTargeting(data, removedIds) {
+  if (!removedIds.size || !data.pallets?.length) return data
+  return {
+    ...data,
+    pallets: data.pallets.map((pallet) =>
+      pallet.targetRack && removedIds.has(pallet.targetRack)
+        ? { ...pallet, targetRack: undefined, targetLevel: undefined }
+        : pallet,
+    ),
+  }
+}
+
 export function removeItem(data, key) {
   const { list, name, index } = parseKey(key)
 
@@ -101,13 +134,19 @@ export function removeItem(data, key) {
   if (name === 'start') return data
   if (name) return { ...data, [name]: null }
 
+  if (list === 'racks') {
+    const removedId = data.racks[index]?.id
+    const next = { ...data, racks: data.racks.filter((_, i) => i !== index) }
+    return removedId ? clearPalletsTargeting(next, new Set([removedId])) : next
+  }
+
   return { ...data, [list]: data[list].filter((_, i) => i !== index) }
 }
 
 // Removes several items at once. Indices are resolved against the original
 // lists first so earlier deletions cannot shift later ones.
 export function removeItems(data, keys) {
-  const byList = { checkpoints: new Set(), decorations: new Set(), pallets: new Set() }
+  const byList = { checkpoints: new Set(), decorations: new Set(), pallets: new Set(), racks: new Set() }
   let next = data
 
   for (const key of keys) {
@@ -117,12 +156,16 @@ export function removeItems(data, keys) {
     else byList[list]?.add(index)
   }
 
+  const removedRackIds = new Set(
+    [...byList.racks].map((index) => data.racks[index]?.id).filter(Boolean),
+  )
+
   for (const [list, indices] of Object.entries(byList)) {
     if (!indices.size) continue
     next = { ...next, [list]: next[list].filter((_, i) => !indices.has(i)) }
   }
 
-  return next
+  return clearPalletsTargeting(next, removedRackIds)
 }
 
 function nextId(entries, prefix) {
@@ -157,6 +200,14 @@ export function addItem(data, kind, x, z) {
       const id = nextId(data.pallets, 'pallet')
       return { ...data, pallets: [...data.pallets, { id, position, rotation: 0, weightKg: 500 }] }
     }
+    case 'rack': {
+      const id = nextId(data.racks || [], 'rack')
+      return { ...data, racks: [...(data.racks || []), { id, position, rotation: 0 }] }
+    }
+    case 'rack-empty':
+    case 'rack-loaded':
+    case 'rack-spare':
+      return { ...data, decorations: [...data.decorations, { type: kind, position, rotation: 0 }] }
     case 'dropZone':
       return { ...data, dropZone: { position, radius: 0.9, label: 'Drop Zone' } }
     case 'parkingBay':

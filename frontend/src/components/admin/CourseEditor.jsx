@@ -41,6 +41,7 @@ const GOAL_LABELS = {
   checkpoints: 'Checkpoint run',
   parking: 'Park in bay',
   pallet: 'Pallet delivery',
+  racking: 'Rack storage',
   free: 'Free practice',
 }
 
@@ -48,6 +49,7 @@ const GOAL_HINTS = {
   checkpoints: 'Completes when every checkpoint has been cleared in list order.',
   parking: 'Completes when the vehicle is inside the bay, aligned, stopped, any forks lowered and the engine off.',
   pallet: 'Completes when a pallet is lifted and set down inside the drop zone.',
+  racking: 'Completes when a pallet is raised to its assigned shelf height and set down inside its target rack.',
   free: 'No goal - the step is completed by the module page (for example pressing every control key).',
 }
 
@@ -723,6 +725,7 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
             <h3>Selected object</h3>
             <CourseInspector
               item={selectedItem}
+              racks={data?.racks || []}
               onChange={(patch) => commitData(updateItem(data, selectedItem.key, patch))}
               onMove={(x, z) => commitData(moveItem(data, selectedItem.key, x, z))}
               onDelete={deleteSelected}

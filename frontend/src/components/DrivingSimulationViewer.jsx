@@ -9,6 +9,17 @@ import { decorationType } from '../lib/courseEdit'
 import { resolveCourseBounds } from '../lib/courseGoals'
 import { DEFAULT_VEHICLE_MODEL_URL } from '../data/vehicleProfile'
 import { resolveVehicleProfile } from '../lib/vehicleProfile'
+import {
+  RACK_LEVEL_HEIGHTS,
+  RACK_LEVEL_LABELS,
+  RACK_LEVEL_TOLERANCE,
+  RACK_MODEL_SCALE,
+  RACK_MODEL_URL,
+  RACK_PLACE_MAX_SPEED,
+  RACK_SLOT_RADIUS,
+  RACK_SLOTS_BY_KIND,
+  rackSlotOffset,
+} from '../data/rackProfile'
 import './DrivingSimulationViewer.css'
 
 const DEFAULT_MODEL_URL = DEFAULT_VEHICLE_MODEL_URL
@@ -21,6 +32,7 @@ const PALLET_MODEL_LIGHT_URL = '/models/wooden-pallet.glb'
 const PALLET_MODEL_MEDIUM_URL = '/models/plastic-pallet.glb'
 const PALLET_MODEL_HEAVY_URL = '/models/cement-bag-pallet.glb'
 const CARGO_BOX_MODEL_URL = '/models/cardboard-box.glb'
+const CARGO_BOX_STACK_MODEL_URL = '/models/cardboard-box-stack.glb'
 
 // Weight bands that pick which pallet prop renders for a course pallet.
 const PALLET_LIGHT_MAX_KG = 500
@@ -36,6 +48,8 @@ const MODEL_TRANSFORM = {
   [PALLET_MODEL_MEDIUM_URL]: { scale: 0.00245, position: [0, 0, 0] },
   [PALLET_MODEL_HEAVY_URL]: { scale: 0.25, position: [0, 0, 0] },
   [CARGO_BOX_MODEL_URL]: { scale: 0.25, position: [0, 0.0486, 0] },
+  [CARGO_BOX_STACK_MODEL_URL]: { scale: 0.25, position: [0, 0, 0] },
+  [RACK_MODEL_URL]: { scale: RACK_MODEL_SCALE, position: [0, 0, 0] },
 }
 
 // Deck height (world units) each pallet model's cargo box rests on top of.
@@ -64,8 +78,14 @@ const STOP_SPEED_EPSILON = 0.04
 const MAX_STEER_ANGLE = 0.45
 const STEER_SIGN = -1 // rear-steer vehicle: rear wheels point away from the turn
 const STEER_DAMP = 8
-const FORK_MAX_HEIGHT = 0.3
-const FORK_SPEED = 0.25
+// Raised from the original 0.3 so the carriage can clear the overhead guard
+// and reach the rack's upper shelves - the rig has no baked ceiling of its
+// own (mastLift/carriageLift are plain Group.position.y offsets, not morph
+// or skeletal animation, see buildVehicleRig in lib/vehicleRig.js), so this
+// is a gameplay/visual choice, not a model limit. FORK_SPEED is scaled up to
+// match so a full raise still takes about the same time.
+const FORK_MAX_HEIGHT = 0.8
+const FORK_SPEED = 0.6
 const MAST_LIFT_RATIO = 0.5
 const FORK_TIP_OFFSET_FALLBACK = 0.45
 
@@ -321,6 +341,31 @@ function ParkedVehicle({ position, rotation, modelUrl }) {
   return <primitive object={cloned} position={position} rotation={[0, rotation || 0, 0]} />
 }
 
+// Background-dressing rack: same model/scale as the functional rack (see
+// data/rackProfile.js), plus a pallet+box on whichever slots RACK_SLOTS_BY_KIND
+// gives its type - 'rack-empty' gets none. Purely a `decorations` entry: no
+// id, no target, not graded, not a collider, same as a cone or wall's
+// non-colliding cousins.
+function DecorRack({ type, position, rotation }) {
+  const boxUrl = type === 'rack-loaded' ? CARGO_BOX_STACK_MODEL_URL : CARGO_BOX_MODEL_URL
+  return (
+    <group position={[position[0], position[1] ?? 0, position[2]]} rotation={[0, rotation || 0, 0]}>
+      <ModelProp url={RACK_MODEL_URL} />
+      {(RACK_SLOTS_BY_KIND[type] || []).map((slot, index) => {
+        const [x, y, z] = rackSlotOffset(slot)
+        return (
+          <group key={index} position={[x, y, z]}>
+            <ModelProp url={PALLET_MODEL_LIGHT_URL} />
+            <group position={[0, PALLET_DECK_Y[PALLET_MODEL_LIGHT_URL], 0]}>
+              <ModelProp url={boxUrl} />
+            </group>
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
 // Renders decorative course furniture. Cones are not handled here - they're
 // unified with course.obstacles into `liveCones` so every rendered cone is a
 // live collider (see DrivingScene), rendered once via <ObstacleCones>.
@@ -352,6 +397,10 @@ function CourseDecorations({ decorations, parkedModelUrl }) {
               rotation={item.rotation}
             />
           )
+        }
+
+        if (RACK_SLOTS_BY_KIND[item.type]) {
+          return <DecorRack key={index} type={item.type} position={item.position} rotation={item.rotation} />
         }
 
         return null
@@ -423,6 +472,59 @@ function DropZoneMarker({ zone, delivered }) {
       {!delivered && (
         <Html center position={[0, 1.1, 0]} distanceFactor={8}>
           <div className="driving-checkpoint-label active">{zone.label || 'Drop Zone'}</div>
+        </Html>
+      )}
+    </group>
+  )
+}
+
+// Static racking props. Deliberately not colliders - the learner has to
+// drive the fork tip inside a rack's footprint to place a pallet on it, so
+// treating the rack like a wall would make delivery impossible.
+function CourseRacks({ racks }) {
+  return (
+    <group>
+      {racks.map((rack, index) => (
+        <group
+          key={rack.id || index}
+          position={[rack.position[0], rack.position[1] ?? 0, rack.position[2]]}
+          rotation={[0, rack.rotation || 0, 0]}
+        >
+          <ModelProp url={RACK_MODEL_URL} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+// One target ring per pallet assigned to a rack level - the racking
+// equivalent of DropZoneMarker, just floating at the shelf's height instead
+// of sitting on the ground.
+function RackLevelMarker({ rack, level, delivered }) {
+  const ringMaterialRef = useRef(null)
+  const height = RACK_LEVEL_HEIGHTS[level] ?? 0
+
+  useFrame(({ clock }) => {
+    if (ringMaterialRef.current && !delivered) {
+      ringMaterialRef.current.opacity = 0.45 + Math.sin(clock.elapsedTime * 3) * 0.25
+    }
+  })
+
+  return (
+    <group position={[rack.position[0], height, rack.position[2]]} rotation={[0, rack.rotation || 0, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
+        <ringGeometry args={[Math.max(RACK_SLOT_RADIUS - 0.08, 0.05), RACK_SLOT_RADIUS, 40]} />
+        <meshBasicMaterial
+          ref={ringMaterialRef}
+          color={delivered ? '#22c55e' : '#a855f7'}
+          transparent
+          opacity={delivered ? 0.85 : 0.55}
+          side={DoubleSide}
+        />
+      </mesh>
+      {!delivered && (
+        <Html center position={[0, 0.16, 0]} distanceFactor={6}>
+          <div className="driving-checkpoint-label active">{RACK_LEVEL_LABELS[level] || level}</div>
         </Html>
       )}
     </group>
@@ -503,6 +605,7 @@ function DrivingScene({
     [course],
   )
   const pallets = useMemo(() => course.pallets || (course.pallet ? [course.pallet] : []), [course])
+  const racks = useMemo(() => course.racks || [], [course])
   // Every rendered cone is a live collider, whether authored under
   // `obstacles` or as a `decorations` lane/gate marker - a cone is a hazard
   // regardless of which list placed it.
@@ -812,7 +915,51 @@ function DrivingScene({
             }
           }
         } else if (sim.state === 'carried') {
+          // Rack-targeted pallets place directly from the carried state: the
+          // learner holds the pallet at the target shelf's height and drives
+          // it into the rack's footprint, rather than lowering to the ground
+          // like a dropZone delivery - a shelf is elevated, so there is no
+          // "lower to release" step.
+          const targetRack = palletDef.targetRack ? racks.find((rack) => rack.id === palletDef.targetRack) : null
+          const targetHeight = targetRack && palletDef.targetLevel ? RACK_LEVEL_HEIGHTS[palletDef.targetLevel] : null
+          let placedOnRack = false
+
           if (
+            targetRack &&
+            targetHeight != null &&
+            !failedRef.current &&
+            Math.abs(speedRef.current) <= RACK_PLACE_MAX_SPEED
+          ) {
+            const rackRot = targetRack.rotation || 0
+            const dxr = tipX - targetRack.position[0]
+            const dzr = tipZ - targetRack.position[2]
+            const localX = dxr * Math.cos(rackRot) - dzr * Math.sin(rackRot)
+            const localZ = dxr * Math.sin(rackRot) + dzr * Math.cos(rackRot)
+            const withinSlot = Math.hypot(localX, localZ) <= RACK_SLOT_RADIUS
+            const atHeight = Math.abs(forkHeightRef.current - targetHeight) <= RACK_LEVEL_TOLERANCE
+
+            if (withinSlot && atHeight) {
+              placedOnRack = true
+              sim.state = 'delivered'
+              carriedIndexRef.current = -1
+              pallet.position.set(targetRack.position[0], targetHeight, targetRack.position[2])
+              pallet.rotation.y = rackRot
+              deliveredCountRef.current += 1
+              onPalletEvent(
+                {
+                  type: 'pallet-delivered',
+                  palletId: palletDef.id,
+                  weightKg: palletDef.weightKg,
+                  deliveredCount: deliveredCountRef.current,
+                },
+                'delivered',
+              )
+            }
+          }
+
+          if (placedOnRack) {
+            // Handled above - nothing left to do this frame.
+          } else if (
             course.failConditions?.suddenStop &&
             !failedRef.current &&
             prevSpeed > SUDDEN_STOP_MIN_SPEED &&
@@ -986,6 +1133,16 @@ function DrivingScene({
         <PathBreadcrumbs points={[course.start?.position || [0, 0, 0], pallets[0].position, course.dropZone.position]} />
       )}
 
+      {checkpoints.length === 0 && !course.dropZone && pallets.length === 1 && pallets[0].targetRack && (
+        <PathBreadcrumbs
+          points={[
+            course.start?.position || [0, 0, 0],
+            pallets[0].position,
+            racks.find((rack) => rack.id === pallets[0].targetRack)?.position,
+          ].filter(Boolean)}
+        />
+      )}
+
       {checkpoints.length === 0 && course.parkingBay && (
         <PathBreadcrumbs points={[course.start?.position || [0, 0, 0], course.parkingBay.position]} />
       )}
@@ -1002,6 +1159,21 @@ function DrivingScene({
         <CourseDecorations decorations={course.decorations} parkedModelUrl={profile.parkedModelUrl} />
       )}
       {liveCones.length > 0 && <ObstacleCones obstacles={liveCones} coneRefs={coneRefs} />}
+      {racks.length > 0 && <CourseRacks racks={racks} />}
+      {pallets
+        .filter((palletDef) => palletDef.targetRack && palletDef.targetLevel)
+        .map((palletDef) => {
+          const targetRack = racks.find((rack) => rack.id === palletDef.targetRack)
+          if (!targetRack) return null
+          return (
+            <RackLevelMarker
+              key={`${palletDef.id}-target`}
+              rack={targetRack}
+              level={palletDef.targetLevel}
+              delivered={palletState === 'delivered'}
+            />
+          )
+        })}
 
       {pallets.map((palletDef, index) => (
         <Pallet
@@ -1223,3 +1395,5 @@ useGLTF.preload(PALLET_MODEL_LIGHT_URL)
 useGLTF.preload(PALLET_MODEL_MEDIUM_URL)
 useGLTF.preload(PALLET_MODEL_HEAVY_URL)
 useGLTF.preload(CARGO_BOX_MODEL_URL)
+useGLTF.preload(CARGO_BOX_STACK_MODEL_URL)
+useGLTF.preload(RACK_MODEL_URL)
