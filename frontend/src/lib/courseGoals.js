@@ -5,6 +5,20 @@
 
 export const COURSE_GOAL_TYPES = ['checkpoints', 'parking', 'pallet', 'free']
 
+// The driveable box every course used to share as a hardcoded constant in
+// DrivingSimulationViewer.jsx. `course.bounds` now overrides it per course;
+// an admin who never touches the field gets exactly the old fixed size.
+export const DEFAULT_COURSE_BOUNDS = { halfWidth: 6, minZ: -3, maxZ: 44 }
+
+export function resolveCourseBounds(course) {
+  const bounds = course?.bounds || {}
+  return {
+    halfWidth: typeof bounds.halfWidth === 'number' ? bounds.halfWidth : DEFAULT_COURSE_BOUNDS.halfWidth,
+    minZ: typeof bounds.minZ === 'number' ? bounds.minZ : DEFAULT_COURSE_BOUNDS.minZ,
+    maxZ: typeof bounds.maxZ === 'number' ? bounds.maxZ : DEFAULT_COURSE_BOUNDS.maxZ,
+  }
+}
+
 export function courseGoalType(course) {
   if (!course) return 'free'
   if (course.goalType && COURSE_GOAL_TYPES.includes(course.goalType)) return course.goalType
@@ -48,8 +62,34 @@ export function courseTaskCopy(course, profile) {
 export function validateCourse(course) {
   const problems = []
   const goal = courseGoalType(course)
+  const bounds = resolveCourseBounds(course)
+  const boundsSane = bounds.halfWidth > 0 && bounds.maxZ > bounds.minZ
 
   if (!course?.start?.position) problems.push('Course needs a start position.')
+
+  if (course?.bounds && !boundsSane) {
+    problems.push('Course size must have a positive width, and the forward limit must exceed the back limit.')
+  }
+
+  // Every placed object has to sit inside the box the vehicle is actually
+  // clamped to, or it is permanently unreachable - most easily hit by
+  // shrinking the size after objects were already placed.
+  if (boundsSane) {
+    const positions = [
+      course?.start?.position,
+      ...(course?.checkpoints || []).map((item) => item.position),
+      ...(course?.decorations || []).map((item) => item.position),
+      ...(course?.obstacles || []).map((item) => item.position),
+      ...(course?.pallets || (course?.pallet ? [course.pallet] : [])).map((item) => item.position),
+      course?.dropZone?.position,
+      course?.parkingBay?.position,
+    ].filter(Boolean)
+
+    const outOfBounds = positions.some(
+      ([x, , z]) => x < -bounds.halfWidth || x > bounds.halfWidth || z < bounds.minZ || z > bounds.maxZ,
+    )
+    if (outOfBounds) problems.push('One or more objects are placed outside the course boundary.')
+  }
 
   if (goal === 'checkpoints' && !course.checkpoints?.length) {
     problems.push('A checkpoint run needs at least one checkpoint.')
