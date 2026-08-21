@@ -19,6 +19,16 @@ function joinBlocks(blocks) {
   return blocks.filter(Boolean).join('\n\n')
 }
 
+// partsData.js / viewerHotspots.js / inspectionScenarios.js entries only need
+// a filename (e.g. 'forks.jpg') - every reference image lives in this one
+// folder, so there's no reason to type the path each time. A value that's
+// already a path (starts with '/') or an external URL is left as-is.
+function partsImage(image) {
+  if (!image) return ''
+  if (image.startsWith('/') || image.startsWith('http')) return image
+  return `/images/parts/${image}`
+}
+
 // The detail card body an admin sees before editing it. Markdown - bullet
 // points, bold, and inline images are all allowed anywhere in it.
 function partDescription(part) {
@@ -97,7 +107,7 @@ export function buildDefaultHotspots(equipmentId = 'forklift') {
       checklist: part.checklist || [],
       title: part.label,
       subtitle: part.category,
-      image: part.image || '',
+      image: partsImage(part.image),
       description: partDescription(part),
     })
   }
@@ -127,7 +137,7 @@ export function buildDefaultHotspots(equipmentId = 'forklift') {
         sortOrder: 100 + index + 1,
         title: hotspot.label,
         subtitle: hotspot.category || '',
-        image: hotspot.image || '',
+        image: partsImage(hotspot.image),
         description: hotspotDescription(hotspot),
       })
     }
@@ -143,7 +153,7 @@ export function buildDefaultHotspots(equipmentId = 'forklift') {
       sortOrder: 900 + index + 1,
       title: check.label,
       subtitle: check.targetArea || '',
-      image: check.image || '',
+      image: partsImage(check.image),
       description: inspectionDescription(check),
     })
   }

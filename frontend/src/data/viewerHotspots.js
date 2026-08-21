@@ -42,7 +42,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: ['oil-leak'],
     state: 'engine-off',
     category: 'Hydraulic system',
-    image: '/images/parts/hydraulic-hoses.png',
+    image: 'hydraulic-hoses.png',
   },
   {
     id: 'tires',
@@ -76,7 +76,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: ['oil-leak'],
     state: 'engine-off',
     category: 'Power source',
-    image: '/images/parts/lpg-tank.avif',
+    image: 'lpg-tank.avif',
   },
   {
     id: 'seat-belt',
@@ -88,7 +88,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-off',
     category: 'Operator compartment',
-    image: '/images/parts/seat-belt.jpg',
+    image: 'seat-belt.jpg',
   },
   {
     id: 'overhead-guard',
@@ -111,7 +111,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: ['oil-leak'],
     state: 'engine-off',
     category: 'Ground inspection',
-    image: '/images/parts/ground-leaks.jpg',
+    image: 'ground-leaks.jpg',
   },
   {
     id: 'ignition',
@@ -145,7 +145,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Safety devices',
-    image: '/images/parts/horn.jpg',
+    image: 'horn.jpg',
   },
   {
     id: 'headlights',
@@ -157,7 +157,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Safety devices',
-    image: '/images/parts/headlights.jpg',
+    image: 'headlights.jpg',
   },
   {
     id: 'tail-lights',
@@ -169,7 +169,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Safety devices',
-    image: '/images/parts/tail-lights.png',
+    image: 'tail-lights.png',
   },
   {
     id: 'turn-signals',
@@ -181,7 +181,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Safety devices',
-    image: '/images/parts/turn-signals.jpg',
+    image: 'turn-signals.jpg',
   },
   {
     id: 'warning-beacon',
@@ -193,7 +193,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Safety devices',
-    image: '/images/parts/warning-beacon.jpg',
+    image: 'warning-beacon.jpg',
   },
   {
     id: 'backup-alarm',
@@ -205,7 +205,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Safety devices',
-    image: '/images/parts/backup-alarm.jpg',
+    image: 'backup-alarm.jpg',
   },
   {
     id: 'steering-response',
@@ -217,7 +217,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Operational controls',
-    image: '/images/parts/steering-response.jpg',
+    image: 'steering-response.jpg',
   },
   {
     id: 'brakes',
@@ -229,7 +229,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Operational controls',
-    image: '/images/parts/brakes.webp',
+    image: 'brakes.webp',
   },
   {
     id: 'lift-tilt-functions',
@@ -241,7 +241,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Operational controls',
-    image: '/images/parts/lift-and-tilt.jpg',
+    image: 'lift-and-tilt.jpg',
   },
   {
     id: 'forward-reverse-travel',
@@ -253,7 +253,7 @@ export const walkAroundViewerHotspots = [
     unsafeScenarios: [],
     state: 'engine-on',
     category: 'Operational controls',
-    image: '/images/parts/forward-reverse.webp',
+    image: 'forward-reverse.webp',
   },
 ]
 

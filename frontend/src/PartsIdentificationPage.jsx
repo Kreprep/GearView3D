@@ -8,6 +8,7 @@ import { useProgress } from './hooks/useProgress'
 import { usePageTitle } from './hooks/usePageTitle'
 import { getEquipment, getHotspotCategories, getHotspots, getQuizQuestions } from './lib/api'
 import { getPartsProgress } from './lib/progressService'
+import { preloadImages } from './lib/imagePreload'
 import './PartsIdentificationPage.css'
 
 // Parts Identification for every equipment. It renders that equipment's
@@ -72,6 +73,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
       if (cancelled) return
       setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
       setHotspots(hotspotRows)
+      preloadImages(hotspotRows.map((hotspot) => hotspot.image))
       setCategories(categoryRows)
       setHasQuiz(questions.length > 0)
       setLoading(false)
