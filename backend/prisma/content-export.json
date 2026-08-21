@@ -1,11 +1,11 @@
 {
-  "exportedAt": "2026-08-14T08:25:44.332Z",
+  "exportedAt": "2026-08-21T18:54:30.134Z",
   "counts": {
     "Equipment": 3,
-    "Module": 6,
+    "Module": 5,
     "HotspotCategory": 4,
     "Hotspot": 28,
-    "Course": 29,
+    "Course": 28,
     "ChecklistItem": 22,
     "QuizQuestion": 19
   },
@@ -16,6 +16,8 @@
         "title": "Forklift",
         "description": "Learn safe forklift familiarization through guided lessons and a labeled 3D model.",
         "modelUrl": "/models/forklift.glb",
+        "modelScale": null,
+        "modelOffsetY": null,
         "imageUrl": "/images/forklift-card.png",
         "sortOrder": 1,
         "available": true,
@@ -27,17 +29,23 @@
         "title": "Backhoe Loader",
         "description": "Heavy equipment training model. Coming soon.",
         "modelUrl": "/models/backhoe.glb",
+        "modelScale": 8,
+        "modelOffsetY": -0.025,
         "imageUrl": "",
         "sortOrder": 2,
-        "available": true,
+        "available": false,
         "content": null,
-        "simConfig": null
+        "simConfig": {
+          "hasForks": false
+        }
       },
       {
         "id": "crane",
         "title": "Mobile Crane",
         "description": "Heavy equipment training model. Coming soon.",
         "modelUrl": "",
+        "modelScale": null,
+        "modelOffsetY": null,
         "imageUrl": "",
         "sortOrder": 3,
         "available": false,
@@ -100,17 +108,6 @@
         "imageUrl": "/images/modules/pallet-testing.png",
         "sortOrder": 4,
         "equipmentId": "forklift"
-      },
-      {
-        "id": 6,
-        "slug": "forklift-test",
-        "title": "test",
-        "fullTitle": "test",
-        "subtitle": "",
-        "description": "",
-        "imageUrl": "",
-        "sortOrder": 5,
-        "equipmentId": "forklift"
       }
     ],
     "HotspotCategory": [
@@ -141,18 +138,18 @@
     ],
     "Hotspot": [
       {
-        "id": "backhoe-awa",
+        "id": "backhoe-tires",
         "equipmentId": "backhoe",
-        "label": "awa",
+        "label": "Tires",
         "position": [
-          0,
-          0.3,
-          0
+          0.1591498625468493,
+          -0.1966057131538883,
+          0.2482567199715691
         ],
         "sortOrder": 1,
         "inParts": true,
-        "inWalkAround": true,
-        "title": "",
+        "inWalkAround": false,
+        "title": "Tires",
         "subtitle": "",
         "image": "",
         "description": "",
@@ -168,7 +165,7 @@
         "safeFeedback": "",
         "unsafeFeedback": "",
         "unsafeScenarios": [],
-        "published": false,
+        "published": true,
         "builtIn": false
       },
       {
@@ -1108,90 +1105,24 @@
           "dropZone": null,
           "capacityKg": null,
           "parkingBay": null,
-          "checkpoints": [],
+          "checkpoints": [
+            {
+              "id": "checkpoint-1",
+              "type": "pass",
+              "label": "Checkpoint 1",
+              "radius": 0.9,
+              "position": [
+                0,
+                0,
+                2.5
+              ],
+              "completeMessage": "Checkpoint 1 clear."
+            }
+          ],
           "decorations": [],
           "failConditions": null
         },
         "content": null,
-        "published": false,
-        "builtIn": false
-      },
-      {
-        "id": "forklift-test-briefing",
-        "moduleSlug": "forklift-test",
-        "sortOrder": 1,
-        "kind": "briefing",
-        "title": "Briefing",
-        "objective": "",
-        "instructions": "",
-        "hint": "",
-        "goalType": "checkpoints",
-        "data": null,
-        "content": {
-          "body": "",
-          "image": "",
-          "syllabus": {
-            "element": "",
-            "location": "",
-            "unitCode": "",
-            "pageReferences": ""
-          },
-          "sceneBody": "",
-          "objectives": [],
-          "showSyllabus": true
-        },
-        "published": true,
-        "builtIn": false
-      },
-      {
-        "id": "tester-test",
-        "moduleSlug": "forklift-test",
-        "sortOrder": 2,
-        "kind": "driving",
-        "title": "tester test",
-        "objective": "",
-        "instructions": "",
-        "hint": "",
-        "goalType": "checkpoints",
-        "data": {
-          "start": {
-            "heading": 0,
-            "position": [
-              0,
-              0,
-              0
-            ]
-          },
-          "pallets": [],
-          "dropZone": null,
-          "capacityKg": null,
-          "parkingBay": null,
-          "checkpoints": [],
-          "decorations": [],
-          "failConditions": null
-        },
-        "content": null,
-        "published": false,
-        "builtIn": false
-      },
-      {
-        "id": "forklift-test-hi",
-        "moduleSlug": "forklift-test",
-        "sortOrder": 3,
-        "kind": "summary",
-        "title": "hi",
-        "objective": "",
-        "instructions": "",
-        "hint": "",
-        "goalType": "free",
-        "data": null,
-        "content": {
-          "body": "",
-          "counters": [],
-          "nextRoute": "equipment",
-          "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
-          "incompleteMessage": "Complete every graded step to finish this module."
-        },
         "published": true,
         "builtIn": false
       },
@@ -1251,7 +1182,80 @@
           "capacityKg": null,
           "parkingBay": null,
           "checkpoints": [],
-          "decorations": [],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                0
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2,
+                0,
+                0
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2,
+                0,
+                1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1,
+                0,
+                -1
+              ]
+            }
+          ],
           "failConditions": null
         },
         "content": null,
@@ -1277,6 +1281,11 @@
               0
             ]
           },
+          "bounds": {
+            "maxZ": 18,
+            "minZ": -2,
+            "halfWidth": 4
+          },
           "pallets": [],
           "dropZone": null,
           "capacityKg": null,
@@ -1290,14 +1299,463 @@
               "position": [
                 0,
                 0,
-                14
+                13
               ],
               "halfWidth": 3,
               "lineDepth": 1.4,
               "completeMessage": "You accelerated forward and crossed the finish line."
             }
           ],
-          "decorations": [],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                2,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                -1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                -0.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                0.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                2.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                3.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                4.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                5.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                6.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                7.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                8.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                9.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                11.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                12.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                13.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                14.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                15.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                16.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -4,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                -1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                -0.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                0.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                2.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                3.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                4.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                5.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                6.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                7.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                8.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                9.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                11.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                12.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                13.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                14.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                15.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                16.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                4,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                3,
+                0,
+                -1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2,
+                0,
+                -1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1,
+                0,
+                -1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                -1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1,
+                0,
+                -1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                -1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -3,
+                0,
+                -1.5
+              ]
+            }
+          ],
           "failConditions": null
         },
         "content": null,
@@ -1322,6 +1780,11 @@
               0,
               0
             ]
+          },
+          "bounds": {
+            "maxZ": 15,
+            "minZ": -2,
+            "halfWidth": 6
           },
           "pallets": [],
           "dropZone": null,
@@ -1360,7 +1823,6 @@
         "hint": "Steering only responds while the forklift is moving.",
         "goalType": "checkpoints",
         "data": {
-          "id": "turning-practice",
           "start": {
             "heading": 0,
             "position": [
@@ -1369,9 +1831,13 @@
               0
             ]
           },
+          "bounds": {
+            "maxZ": 28,
+            "minZ": -3,
+            "halfWidth": 6
+          },
           "pallets": [],
           "dropZone": null,
-          "goalType": "checkpoints",
           "capacityKg": null,
           "parkingBay": null,
           "checkpoints": [
@@ -1455,9 +1921,21 @@
               "position": [
                 0.5,
                 0,
-                17.5
+                18
               ],
               "completeMessage": "Slalom Gate 7 clear - keep weaving through the cones."
+            },
+            {
+              "id": "slalom-8",
+              "type": "pass",
+              "label": "Slalom Gate 8",
+              "radius": 0.6,
+              "position": [
+                -0.5,
+                0,
+                20.5
+              ],
+              "completeMessage": "Slalom Gate 8 clear - keep weaving through the cones."
             },
             {
               "id": "turning-finish",
@@ -1467,7 +1945,7 @@
               "position": [
                 0,
                 0,
-                21
+                23.5
               ],
               "completeMessage": "Serpentine complete - smooth, controlled weaving keeps loads and pedestrians safe."
             }
@@ -1526,6 +2004,118 @@
               "position": [
                 0,
                 0,
+                18
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                20.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                5.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                6.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                7.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                8.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                9.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                11.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                12.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                13.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                14.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                15.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
+                16.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.5,
+                0,
                 17.5
               ]
             },
@@ -1534,7 +2124,7 @@
               "position": [
                 -2.5,
                 0,
-                1
+                18.5
               ]
             },
             {
@@ -1542,7 +2132,7 @@
               "position": [
                 -2.5,
                 0,
-                2
+                19.5
               ]
             },
             {
@@ -1550,7 +2140,7 @@
               "position": [
                 -2.5,
                 0,
-                3
+                20.5
               ]
             },
             {
@@ -1558,7 +2148,151 @@
               "position": [
                 -2.5,
                 0,
-                4
+                21.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                2.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                3.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                4.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                5.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                6.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                7.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                8.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                13.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                14.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                15.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                16.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                17.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                18.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                19.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                20.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                21.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                22.5
               ]
             },
             {
@@ -1566,7 +2300,7 @@
               "position": [
                 -2.5,
                 0,
-                5
+                4.5
               ]
             },
             {
@@ -1574,7 +2308,7 @@
               "position": [
                 -2.5,
                 0,
-                6
+                3.5
               ]
             },
             {
@@ -1582,7 +2316,7 @@
               "position": [
                 -2.5,
                 0,
-                7
+                2.5
               ]
             },
             {
@@ -1590,7 +2324,39 @@
               "position": [
                 -2.5,
                 0,
-                8
+                1.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                9.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                10.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                11.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                12.5
               ]
             },
             {
@@ -1598,7 +2364,15 @@
               "position": [
                 -2.5,
                 0,
-                9
+                22.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                23.5
               ]
             },
             {
@@ -1606,7 +2380,15 @@
               "position": [
                 -2.5,
                 0,
-                10
+                23.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                24.5
               ]
             },
             {
@@ -1614,7 +2396,47 @@
               "position": [
                 -2.5,
                 0,
-                11
+                24.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                25.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.5,
+                0,
+                25.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.5,
+                0,
+                25.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.5,
+                0,
+                25.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.5,
+                0,
+                25.5
               ]
             },
             {
@@ -1622,7 +2444,55 @@
               "position": [
                 -2.5,
                 0,
-                12
+                25.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                0.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -0.5,
+                0,
+                -0.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.5,
+                0,
+                -0.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1.5,
+                0,
+                -0.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.5,
+                0,
+                -0.5
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1.5,
+                0,
+                -0.5
               ]
             },
             {
@@ -1630,7 +2500,7 @@
               "position": [
                 -2.5,
                 0,
-                13
+                -0.5
               ]
             },
             {
@@ -1638,119 +2508,7 @@
               "position": [
                 -2.5,
                 0,
-                14
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                1
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                2
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                3
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                4
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                5
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                6
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                7
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                8
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                9
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                10
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                11
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                12
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                13
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                2.5,
-                0,
-                14
+                0.5
               ]
             }
           ],
@@ -2653,7 +3411,7 @@
         "content": {
           "body": "",
           "counters": [],
-          "nextRoute": "postOperation",
+          "nextRoute": "module:post-operation",
           "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
           "incompleteMessage": "Complete all guided driving tasks to finish this module."
         },
@@ -3197,9 +3955,313 @@
         "builtIn": true
       },
       {
-        "id": "pallet-testing-summary",
+        "id": "rack-storage",
         "moduleSlug": "pallet-testing",
         "sortOrder": 4,
+        "kind": "driving",
+        "title": "Rack Storage",
+        "objective": "Raise a pallet to its assigned shelf height and store it in the correct rack level.",
+        "instructions": "Pick up the pallet, then raise it with R to the target shelf's height, drive it into the rack, and hold steady to set it in place. Racking has a bottom, middle, and top shelf - this exercise is graded on the middle shelf.",
+        "hint": "Watch the pallet through the chase camera as you raise it - line it up with the target ring floating at shelf height before driving in.",
+        "goalType": "racking",
+        "data": {
+          "racks": [
+            {
+              "id": "storage-rack-1",
+              "position": [
+                0,
+                0,
+                15
+              ],
+              "rotation": 0
+            }
+          ],
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [
+            {
+              "id": "rack-pallet",
+              "position": [
+                0,
+                0,
+                6
+              ],
+              "rotation": 0,
+              "weightKg": 450,
+              "targetRack": "storage-rack-1",
+              "targetLevel": "middle"
+            }
+          ],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                -0.9,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.9,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                4.4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                6.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                9.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                11.6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                4.4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                6.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                9.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                11.6
+              ]
+            }
+          ],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "rack-storage-top",
+        "moduleSlug": "pallet-testing",
+        "sortOrder": 5,
+        "kind": "driving",
+        "title": "Top Shelf Storage",
+        "objective": "Raise a pallet to the top shelf and store it there.",
+        "instructions": "Pick up the pallet, then hold R to raise it to the top shelf, drive it into the rack, and hold steady to set it in place. This is a fuller lift than the middle shelf, so give the forks time to reach height before driving in.",
+        "hint": "Hold R until the carried pallet lines up with the top target ring - it takes longer to reach than the middle shelf.",
+        "goalType": "racking",
+        "data": {
+          "racks": [
+            {
+              "id": "storage-rack-2",
+              "position": [
+                0,
+                0,
+                15
+              ],
+              "rotation": 0
+            }
+          ],
+          "start": {
+            "heading": 0,
+            "position": [
+              0,
+              0,
+              0
+            ]
+          },
+          "pallets": [
+            {
+              "id": "rack-pallet-top",
+              "position": [
+                0,
+                0,
+                6
+              ],
+              "rotation": 0,
+              "weightKg": 450,
+              "targetRack": "storage-rack-2",
+              "targetLevel": "top"
+            }
+          ],
+          "dropZone": null,
+          "capacityKg": null,
+          "parkingBay": null,
+          "checkpoints": [],
+          "decorations": [
+            {
+              "type": "cone",
+              "position": [
+                -0.9,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0.9,
+                0,
+                3
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                4.4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                6.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                9.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2.6,
+                0,
+                11.6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                4.4
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                6.8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                9.2
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2.6,
+                0,
+                11.6
+              ]
+            }
+          ],
+          "failConditions": null
+        },
+        "content": null,
+        "published": true,
+        "builtIn": true
+      },
+      {
+        "id": "pallet-testing-summary",
+        "moduleSlug": "pallet-testing",
+        "sortOrder": 6,
         "kind": "summary",
         "title": "Completion Summary",
         "objective": "Review the assessment results.",
@@ -3212,7 +4274,7 @@
           "counters": [
             "failedAttempts"
           ],
-          "nextRoute": "equipment",
+          "nextRoute": "modules",
           "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
           "incompleteMessage": "Complete every assessment exercise to finish this module."
         },
@@ -3581,101 +4643,13 @@
             "width": 0.42,
             "heading": 0,
             "position": [
-              -2.3,
+              -2.5,
               0,
               8
             ]
           },
           "checkpoints": [],
           "decorations": [
-            {
-              "type": "cone",
-              "position": [
-                -3,
-                0,
-                9
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.5,
-                0,
-                7
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -3,
-                0,
-                8
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2,
-                0,
-                4
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2,
-                0,
-                5
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2,
-                0,
-                6
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2,
-                0,
-                7
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -3,
-                0,
-                7
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2,
-                0,
-                9
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2,
-                0,
-                10
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2.5,
-                0,
-                9
-              ]
-            },
             {
               "type": "cone",
               "position": [
@@ -3703,38 +4677,6 @@
             {
               "type": "cone",
               "position": [
-                -3,
-                0,
-                7.5
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -3,
-                0,
-                8.5
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2,
-                0,
-                3
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                -2,
-                0,
-                2
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
                 2,
                 0,
                 4
@@ -3799,25 +4741,9 @@
             {
               "type": "cone",
               "position": [
+                2,
                 0,
-                0,
-                10
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                0,
-                0,
-                9
-              ]
-            },
-            {
-              "type": "cone",
-              "position": [
-                0,
-                0,
-                8
+                0
               ]
             },
             {
@@ -3853,12 +4779,165 @@
               ]
             },
             {
+              "type": "vehicle",
+              "position": [
+                -2.5,
+                0,
+                6.600000000000001
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                -2.5,
+                0,
+                9.3
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                -2.5,
+                0,
+                5.600000000000001
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                -2.5,
+                0,
+                4.600000000000001
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "wall",
+              "length": 3,
+              "position": [
+                -3,
+                0,
+                6.5
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "wall",
+              "length": 3,
+              "position": [
+                -3,
+                0,
+                3.5
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "wall",
+              "length": 3,
+              "position": [
+                -3,
+                0,
+                9.5
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "wall",
+              "length": 3,
+              "position": [
+                -3,
+                0,
+                0.5
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "cone",
+              "position": [
+                2,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1,
+                0,
+                -1
+              ]
+            },
+            {
               "type": "cone",
               "position": [
                 -2,
                 0,
-                1
+                -1
               ]
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                -2.5,
+                0,
+                3.6
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                -2.5,
+                0,
+                2.6
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                -2.5,
+                0,
+                1.6
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                -2.5,
+                0,
+                0.6000000000000001
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                -2.5,
+                0,
+                -0.4
+              ],
+              "rotation": 0
             }
           ],
           "failConditions": null
@@ -3893,37 +4972,37 @@
             "depth": 1,
             "label": "Forklift Gap",
             "width": 0.35,
-            "heading": 0,
+            "heading": 1.570796326794897,
             "position": [
+              3,
               0,
-              0,
-              16
+              8.5
             ]
           },
           "checkpoints": [],
           "decorations": [
             {
-              "type": "forklift",
+              "type": "vehicle",
               "position": [
-                -0.45,
+                3,
                 0,
-                16
+                9
               ],
-              "rotation": 0
+              "rotation": 1.570796326794897
             },
             {
-              "type": "forklift",
+              "type": "vehicle",
               "position": [
-                0.45,
+                3,
                 0,
-                16
+                8
               ],
-              "rotation": 0
+              "rotation": 1.570796326794897
             },
             {
               "type": "cone",
               "position": [
-                -2.6,
+                -2,
                 0,
                 2
               ]
@@ -3931,58 +5010,254 @@
             {
               "type": "cone",
               "position": [
-                -2.6,
+                -2,
                 0,
-                4.4
+                5
               ]
             },
             {
               "type": "cone",
               "position": [
-                -2.6,
+                -2,
                 0,
-                6.8
+                7
               ]
             },
             {
               "type": "cone",
               "position": [
-                -2.6,
+                -2,
                 0,
-                9.2
+                10
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.6,
+                3,
                 0,
-                2
+                -1
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.6,
+                3,
                 0,
-                4.4
+                11
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.6,
+                -2,
                 0,
-                6.8
+                3
               ]
             },
             {
               "type": "cone",
               "position": [
-                2.6,
+                -2,
                 0,
-                9.2
+                4
               ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                6
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                8
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                9
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1,
+                0,
+                11
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                0
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                2,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                1,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                0,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -1,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "cone",
+              "position": [
+                -2,
+                0,
+                -1
+              ]
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                3,
+                0,
+                7.5
+              ],
+              "rotation": 1.570796326794897
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                3,
+                0,
+                9.5
+              ],
+              "rotation": 1.570796326794897
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                3,
+                0,
+                7
+              ],
+              "rotation": 1.570796326794897
+            },
+            {
+              "type": "vehicle",
+              "position": [
+                3,
+                0,
+                10
+              ],
+              "rotation": 1.570796326794897
+            },
+            {
+              "type": "wall",
+              "length": 3,
+              "position": [
+                4,
+                0,
+                3.5
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "wall",
+              "length": 3,
+              "position": [
+                4,
+                0,
+                6.5
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "wall",
+              "length": 3,
+              "position": [
+                4,
+                0,
+                9.5
+              ],
+              "rotation": 0
+            },
+            {
+              "type": "wall",
+              "length": 3,
+              "position": [
+                4,
+                0,
+                0.5
+              ],
+              "rotation": 0
             }
           ],
           "failConditions": null
@@ -4125,7 +5400,7 @@
             "failedAttempts",
             "shutdownMistakes"
           ],
-          "nextRoute": "palletTesting",
+          "nextRoute": "module:pallet-testing",
           "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
           "incompleteMessage": "Complete every parking drive, the shutdown ordering, and the reporting decisions to finish this module."
         },
@@ -4481,8 +5756,11 @@
         "data": null,
         "content": {
           "body": "",
-          "counters": [],
-          "nextRoute": "equipment",
+          "counters": [
+            "failedAttempts",
+            "shutdownMistakes"
+          ],
+          "nextRoute": "modules",
           "completeMessage": "All requirements are complete. Submit the module to record completion feedback.",
           "incompleteMessage": "Complete every graded step to finish this module."
         },
@@ -4626,21 +5904,6 @@
     ],
     "QuizQuestion": [
       {
-        "id": "walk-fluid-leaks",
-        "equipmentId": "forklift",
-        "context": "module",
-        "moduleId": 1,
-        "prompt": "What should be checked during a walk-around inspection?",
-        "answer": "Fluid leaks",
-        "options": [
-          "Fluid leaks",
-          "Lunch schedule",
-          "Paint color",
-          "Radio volume"
-        ],
-        "sortOrder": 1
-      },
-      {
         "id": "engine-start-key",
         "equipmentId": "forklift",
         "context": "module",
@@ -4684,6 +5947,36 @@
           "The horn sounds"
         ],
         "sortOrder": 1
+      },
+      {
+        "id": "walk-fluid-leaks",
+        "equipmentId": "forklift",
+        "context": "module",
+        "moduleId": 1,
+        "prompt": "What should be checked during a walk-around inspection?",
+        "answer": "Fluid leaks",
+        "options": [
+          "Fluid leaks",
+          "Lunch schedule",
+          "Paint color",
+          "Radio volume"
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "post-controls",
+        "equipmentId": "forklift",
+        "context": "module",
+        "moduleId": 3,
+        "prompt": "Where should controls be placed during shutdown?",
+        "answer": "Neutral",
+        "options": [
+          "Neutral",
+          "Reverse",
+          "Lift position",
+          "Tilt position"
+        ],
+        "sortOrder": 2
       },
       {
         "id": "walk-warning-devices",
@@ -4731,19 +6024,19 @@
         "sortOrder": 2
       },
       {
-        "id": "post-controls",
+        "id": "walk-tires",
         "equipmentId": "forklift",
         "context": "module",
-        "moduleId": 3,
-        "prompt": "Where should controls be placed during shutdown?",
-        "answer": "Neutral",
+        "moduleId": 1,
+        "prompt": "Why inspect tires before operation?",
+        "answer": "They affect stability and steering",
         "options": [
-          "Neutral",
-          "Reverse",
-          "Lift position",
-          "Tilt position"
+          "They affect stability and steering",
+          "They change the training score",
+          "They control the horn",
+          "They identify the operator"
         ],
-        "sortOrder": 2
+        "sortOrder": 3
       },
       {
         "id": "pallet-cones",
@@ -4787,21 +6080,6 @@
           "Only the weather",
           "Only the operator name",
           "Nothing ever"
-        ],
-        "sortOrder": 3
-      },
-      {
-        "id": "walk-tires",
-        "equipmentId": "forklift",
-        "context": "module",
-        "moduleId": 1,
-        "prompt": "Why inspect tires before operation?",
-        "answer": "They affect stability and steering",
-        "options": [
-          "They affect stability and steering",
-          "They change the training score",
-          "They control the horn",
-          "They identify the operator"
         ],
         "sortOrder": 3
       },
