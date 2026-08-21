@@ -7,7 +7,6 @@
 // before it is allowed to mark that step complete.
 import { prisma } from './prisma.js'
 import { ACTIVITY_IDS } from '../../../frontend/src/lib/activitySteps.js'
-import { legacyStepFieldsFor } from '../../../frontend/src/lib/legacyStepFields.js'
 import { buildSimulationState } from '../../../frontend/src/lib/simulationProgress.js'
 import { emptyPhaseState, isPhaseComplete } from '../../../frontend/src/lib/walkAroundStep.js'
 
@@ -48,11 +47,7 @@ export async function validateSimulations(simulations) {
 
     const gradedStepIds = moduleRows.filter(isGraded).map((row) => row.id)
 
-    validated[moduleSlug] = buildSimulationState(
-      { ...submitted, stepsComplete },
-      gradedStepIds,
-      legacyStepFieldsFor(moduleSlug),
-    )
+    validated[moduleSlug] = buildSimulationState({ ...submitted, stepsComplete }, gradedStepIds)
   }
 
   return validated

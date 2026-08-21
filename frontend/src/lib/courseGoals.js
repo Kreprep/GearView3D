@@ -126,5 +126,22 @@ export function validateCourse(course) {
     if (!liftable) problems.push('Every pallet is over the rated capacity - the course cannot be completed.')
   }
 
+  if (goal === 'free') {
+    if (!course?.completionCode) {
+      problems.push('A free-practice course needs custom completion code.')
+    } else {
+      try {
+        // The Function constructor compiles the body without running it, so
+        // this is safe even though this file also runs inside the backend
+        // process (backend/src/lib/courses.js imports it directly to validate
+        // on publish). The result must never be called outside the
+        // learner-side sandboxed Worker - see frontend/src/lib/customCompletion.js.
+        new Function('context', course.completionCode)
+      } catch (err) {
+        problems.push(`Custom completion code has a syntax error: ${err.message}`)
+      }
+    }
+  }
+
   return problems
 }

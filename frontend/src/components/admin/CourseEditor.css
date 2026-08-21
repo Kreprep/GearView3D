@@ -36,6 +36,11 @@
   resize: vertical;
 }
 
+.course-editor textarea.course-code-field {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
 .course-editor-actions button,
 .course-toolbar button,
 .course-preview button,

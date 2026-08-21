@@ -10,26 +10,8 @@ export function isStepComplete(simulation, stepId) {
   return Boolean(simulation?.stepsComplete?.[stepId])
 }
 
-// `legacyFields` maps a step id to the old boolean field name, or to a
-// predicate over the stored snapshot when the old shape needs more than one
-// field to answer the question. Used to read snapshots written before
-// `stepsComplete` existed; a stored `stepsComplete` entry always wins.
-function migrateLegacySteps(saved, legacyFields) {
-  const migrated = {}
-
-  for (const [stepId, source] of Object.entries(legacyFields)) {
-    const done = typeof source === 'function' ? source(saved) : saved?.[source]
-    if (done) migrated[stepId] = true
-  }
-
-  return migrated
-}
-
-export function buildSimulationState(saved = {}, gradedStepIds = [], legacyFields = {}) {
-  const stepsComplete = {
-    ...migrateLegacySteps(saved, legacyFields),
-    ...(saved.stepsComplete || {}),
-  }
+export function buildSimulationState(saved = {}, gradedStepIds = []) {
+  const stepsComplete = { ...(saved.stepsComplete || {}) }
   const completedCount = gradedStepIds.filter((stepId) => stepsComplete[stepId]).length
   const percentage = gradedStepIds.length ? Math.round((completedCount / gradedStepIds.length) * 100) : 0
 

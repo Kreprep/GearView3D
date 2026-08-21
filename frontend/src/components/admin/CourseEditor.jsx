@@ -50,7 +50,7 @@ const GOAL_HINTS = {
   parking: 'Completes when the vehicle is inside the bay, aligned, stopped, any forks lowered and the engine off.',
   pallet: 'Completes when a pallet is lifted and set down inside the drop zone.',
   racking: 'Completes when a pallet is raised to its assigned shelf height and set down inside its target rack.',
-  free: 'No goal - the step is completed by the module page (for example pressing every control key).',
+  free: 'No built-in goal - completes when this course\'s own completion code returns true. Required below.',
 }
 
 const SNAP_OPTIONS = [
@@ -647,6 +647,29 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
               </select>
             </label>
             <p className="admin-panel-note">{GOAL_HINTS[draft.goalType]}</p>
+
+            {draft.goalType === 'free' && (
+              <label>
+                Custom completion code (JavaScript, required)
+                <textarea
+                  rows={6}
+                  spellCheck={false}
+                  className="course-code-field"
+                  value={data.completionCode || ''}
+                  onChange={(event) => setCourseValue({ completionCode: event.target.value || null })}
+                />
+              </label>
+            )}
+            {draft.goalType === 'free' && (
+              <p className="admin-panel-note">
+                Runs in every learner's browser inside a sandboxed worker (no access to the page or their login) each
+                time they press a key or start the engine. Receives <code>context.keysUsed</code> (array of key
+                strings pressed so far) and <code>context.engineStarted</code> (boolean); return a truthy value once
+                the step should complete, e.g. <code>return context.engineStarted &amp;&amp; context.keysUsed.includes('w')</code>.
+                A free-practice course cannot be published without this. Describe the actual requirement to learners
+                in this step's Instructions or Hint field above.
+              </p>
+            )}
 
             <label>
               Rated capacity (kg, blank for no limit)

@@ -102,6 +102,7 @@ export function normalizeCourseGeometry(course = {}) {
     parkingBay: course.parkingBay || null,
     capacityKg: typeof course.capacityKg === 'number' ? course.capacityKg : null,
     failConditions: course.failConditions || null,
+    completionCode: course.completionCode || null,
   }
 }
 
@@ -130,6 +131,7 @@ export function emptyCourseGeometry() {
     parkingBay: null,
     capacityKg: null,
     failConditions: null,
+    completionCode: null,
   }
 }
 
