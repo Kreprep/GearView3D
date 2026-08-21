@@ -9,7 +9,7 @@ export const partsHotspots = [
     safetyNote: 'Never stand under raised forks, and keep the load centered before lifting.',
     relatedModule: 'Load Handling and Operational Controls',
     checklist: ['Check fork tips', 'Confirm locking pins', 'Keep load centered'],
-    image: '/images/parts/forks.jpg',
+    image: 'forks.jpg',
   },
   {
     id: 'mast',
@@ -21,7 +21,7 @@ export const partsHotspots = [
     safetyNote: 'Keep hands, feet, and loose clothing away from the mast and lift chain path.',
     relatedModule: 'Walk-Around Check',
     checklist: ['Look for visible damage', 'Check lift path clearance', 'Raise load smoothly'],
-    image: '/images/parts/mast.jpg',
+    image: 'mast.jpg',
   },
   {
     id: 'lift-chain',
@@ -33,7 +33,7 @@ export const partsHotspots = [
     safetyNote: 'Do not touch or inspect the chain while the engine is running or the forks are moving.',
     relatedModule: 'Walk-Around Check',
     checklist: ['Look for slack', 'Check for uneven movement', 'Keep clear while lifting'],
-    image: '/images/parts/lift-chain.jpg',
+    image: 'lift-chain.jpg',
   },
   {
     id: 'carriage',
@@ -67,7 +67,7 @@ export const partsHotspots = [
     safetyNote: 'Do not operate if the overhead guard is visibly damaged.',
     relatedModule: 'Walk-Around Check',
     checklist: ['Check structural damage', 'Keep guard unobstructed', 'Never remove the guard'],
-    image: '/images/parts/overhead-guard.jpg',
+    image: 'overhead-guard.jpg',
   },
   {
     id: 'counterweight',
@@ -79,7 +79,7 @@ export const partsHotspots = [
     safetyNote: 'Watch rear swing and never exceed the rated load capacity.',
     relatedModule: 'Load Handling and Operational Controls',
     checklist: ['Avoid overloading', 'Watch rear swing', 'Respect capacity plate'],
-    image: '/images/parts/counterweight.jpg',
+    image: 'counterweight.jpg',
   },
   {
     id: 'tires',
@@ -91,7 +91,7 @@ export const partsHotspots = [
     safetyNote: 'Damaged or underinflated tires can affect stability and steering.',
     relatedModule: 'Walk-Around Check',
     checklist: ['Check visible wear', 'Check inflation or damage', 'Report unsafe tire condition'],
-    image: '/images/parts/tires.jpg',
+    image: 'tires.jpg',
   },
   {
     id: 'capacity-plate',

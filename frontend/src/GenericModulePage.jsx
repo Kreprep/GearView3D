@@ -13,6 +13,7 @@ import { WalkAroundScene, WalkAroundTask } from './components/WalkAroundStep'
 import { engineOnDeviceEffects, resolveEffectLamps, walkAroundDefectOverlays } from './data/viewerHotspots'
 import { playDeviceSound, stopDeviceSound } from './lib/deviceAudio'
 import { getEquipment, getHotspotDetails } from './lib/api'
+import { preloadImages } from './lib/imagePreload'
 import {
   PHASE_TITLES,
   isPhaseComplete,
@@ -101,7 +102,14 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     getEquipment()
       .then((rows) => setEquipmentRecord(rows.find((row) => row.id === equipmentId) || null))
       .catch(() => {})
-    if (hasWalkAround) getHotspotDetails(equipmentId).then(setPartDetails).catch(() => {})
+    if (hasWalkAround) {
+      getHotspotDetails(equipmentId)
+        .then((details) => {
+          setPartDetails(details)
+          preloadImages(Object.values(details).map((detail) => detail.image))
+        })
+        .catch(() => {})
+    }
 
     return undefined
   }, [hasWalkAround, hasDriving, equipmentId])
