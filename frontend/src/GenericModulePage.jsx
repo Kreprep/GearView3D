@@ -27,7 +27,7 @@ import { useModuleRecord } from './hooks/useModuleRecord'
 import { usePageTitle } from './hooks/usePageTitle'
 import { useProgress } from './hooks/useProgress'
 import { courseTaskCopy } from './lib/courseGoals'
-import { legacyStepFieldsFor, REQUIRED_CONTROL_KEYS } from './lib/legacyStepFields'
+import { evaluateFreeCompletion } from './lib/customCompletion'
 import { moduleObjectives, nextModuleRoute } from './lib/moduleContent'
 import { getStoredProgress } from './lib/progressService'
 import { buildSimulationState, isStepComplete, withStepComplete } from './lib/simulationProgress'
@@ -81,7 +81,6 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   const [showScopeNotice, setShowScopeNotice] = useState(true)
   const deviceEffectTimer = useRef(null)
   const engineStartTimer = useRef(null)
-  const legacyStepFields = legacyStepFieldsFor(moduleSlug)
 
   // Walk-around steps need this module's inspection markers; every other
   // module skips the request entirely.
@@ -145,7 +144,6 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
       shutdownMistakes: savedSimulation.shutdownMistakes || 0,
     },
     gradedStepIds,
-    legacyStepFields,
   )
   const shutdownComplete = isStepComplete(simulation, 'shutdown-sequence')
   const reportingComplete = isStepComplete(simulation, 'reporting')
@@ -159,7 +157,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   const reportPrompts = activityContent('reporting').prompts || []
 
   const saveSimulation = (partial) => {
-    const next = buildSimulationState({ ...simulation, ...partial }, gradedStepIds, legacyStepFields)
+    const next = buildSimulationState({ ...simulation, ...partial }, gradedStepIds)
     updateSimulation(moduleSlug, next)
     return next
   }
@@ -171,13 +169,24 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
 
   // A `free` course has no checkpoints, pallet or bay to complete against, so
   // it grades the only thing it can: the engine running and every control key
-  // tried at least once. Tracked per step id, so more than one free-practice
-  // step can exist in a module.
+  // tried at least once - or, if the course defines `completionCode`, an
+  // admin-authored rule evaluated asynchronously in a Worker (see
+  // lib/customCompletion.js). Tracked per step id, so more than one
+  // free-practice step can exist in a module.
+  //
+  // The completion write reads the *stored* snapshot rather than the
+  // `simulation` this render closed over, same reasoning as `savePhase`
+  // below: several key events (each awaiting the Worker) can be in flight
+  // before React re-renders, and each must build on the previous one.
   const saveFreePractice = (stepId, partial) => {
     const merged = { ...simulation, ...partial }
     const keysUsed = merged.keysUsedByStep?.[stepId] || []
-    const done = merged.engineStarted && REQUIRED_CONTROL_KEYS.every((key) => keysUsed.includes(key))
-    saveSimulation(done ? { ...partial, ...withStepComplete(simulation, stepId) } : partial)
+    saveSimulation(partial)
+    evaluateFreeCompletion(courseById[stepId], { keysUsed, engineStarted: merged.engineStarted }).then((done) => {
+      if (!done) return
+      const live = buildSimulationState(getStoredProgress().simulations[moduleSlug] || {}, gradedStepIds)
+      updateSimulation(moduleSlug, buildSimulationState({ ...live, ...withStepComplete(live, stepId) }, gradedStepIds))
+    })
   }
 
   const handleDrivingEvent = (currentStep) => (event) => {
@@ -276,7 +285,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   // the one this render closed over: several markers can be clicked before
   // React re-renders, and each click must build on the previous one.
   const liveSimulation = () =>
-    buildSimulationState(getStoredProgress().simulations[moduleSlug] || {}, gradedStepIds, legacyStepFields)
+    buildSimulationState(getStoredProgress().simulations[moduleSlug] || {}, gradedStepIds)
 
   // Saves the phase's answers and re-grades the step in one write, so the step
   // list ticks over the moment the last item is answered. `patchFor` receives
@@ -290,11 +299,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
 
     updateSimulation(
       moduleSlug,
-      buildSimulationState(
-        { ...merged, ...(complete ? withStepComplete(merged, step.id) : {}) },
-        gradedStepIds,
-        legacyStepFields,
-      ),
+      buildSimulationState({ ...merged, ...(complete ? withStepComplete(merged, step.id) : {}) }, gradedStepIds),
     )
   }
 
@@ -577,15 +582,13 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     const failVisible = lastFail && lastFail.stepId === currentStep.id && !done
 
     if (course.goalType === 'free') {
-      const remainingKeys = REQUIRED_CONTROL_KEYS.filter((key) => !keysUsedFor(currentStep.id).includes(key))
+      // Completion is entirely up to the course's own `completionCode` (see
+      // lib/customCompletion.js), so this can't describe what remains -
+      // the step's own Instructions/Hint text is where that's described.
       return (
         <div className="load-task-stack">
           <p className={done ? 'completion-ready' : 'task-note'}>
-            {done
-              ? 'Step complete. Use Next to continue.'
-              : !simulation.engineStarted
-                ? 'Press E to start the engine.'
-                : `Try each control key: ${remainingKeys.map((key) => key.toUpperCase()).join(', ')} remaining.`}
+            {done ? 'Step complete. Use Next to continue.' : "Complete this step's requirements, then continue."}
           </p>
         </div>
       )

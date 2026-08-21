@@ -22,6 +22,11 @@ export const drivingCourses = {
     id: 'controls-intro',
     start: { position: [0, 0, 0], heading: 0 },
     checkpoints: [],
+    // No checkpoints/bay/pallet to complete against (goalType resolves to
+    // 'free'), so this is graded by its own completion code instead of a
+    // built-in default - see lib/customCompletion.js.
+    completionCode:
+      "return context.engineStarted && ['w', 'a', 's', 'd'].every((key) => context.keysUsed.includes(key))",
   },
   'accelerate-course': {
     id: 'accelerate-course',
