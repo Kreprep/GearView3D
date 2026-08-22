@@ -286,6 +286,14 @@
   background: #ffffff;
 }
 
+.gauge-image {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 .gauge-dial::after {
   position: absolute;
   left: 50%;
