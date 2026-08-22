@@ -195,6 +195,27 @@ function activityContent(stepId) {
 // controls reference image; the other two showed a hardcoded text panel, kept
 // here verbatim as markdown so nothing is lost when it becomes editable.
 const BRIEFING_SCENE = {
+  'walk-around-check': {
+    image: '',
+    sceneBody: [
+      '### BLOWBAGETS Pre-Operation Check',
+      '',
+      'BLOWBAGETS is the standard walk-around mnemonic drivers use before operating any vehicle or equipment. This module organizes the forklift inspection the same way - one letter, one system to check:',
+      '',
+      '- **B - Battery** - tight connections, clean terminals, no corrosion.',
+      '- **L - Lights** - headlights, taillights, brake lights, and turn signals respond.',
+      '- **O - Oil** - engine oil level is sufficient and no leaks are visible.',
+      '- **W - Water** - coolant and any hydraulic fluid reservoirs are full, with no leaks.',
+      '- **B - Brake** - brake fluid is adequate and the service/parking brake respond.',
+      '- **A - Air** - tire pressure looks correct and tires show no damage.',
+      '- **G - Gas** - enough LPG fuel remains for the shift.',
+      '- **E - Engine** - idles smoothly with no unusual sounds.',
+      '- **T - Tires** - tread shows no excessive wear, cuts, or bulges.',
+      '- **S - Self** - you are rested, alert, and fit to operate.',
+      '',
+      'The next two steps split these the same way a real inspection does: **Engine-Off** covers what you can see and touch with the engine stopped (Battery, Oil, Water, Air, Gas, Tires), and **Engine-On** covers what you can only confirm once it is running (Lights, Brake, Engine, plus a Self check before you start).',
+    ].join('\n'),
+  },
   'load-handling': {
     image: '/images/controls-wasd.png',
     sceneBody: '',
@@ -268,6 +289,61 @@ const WALK_AROUND_STEP_PHASES = {
   'defect-recognition': 'defect-test',
 }
 
+// The walk-around task panel's intro text, by phase - ties the interactive
+// checks/gauges/devices/scenarios back to the BLOWBAGETS letters introduced on
+// the briefing's centre panel.
+const WALK_AROUND_BODY = {
+  'engine-off': [
+    '### Engine-Off Inspection - BLOWBAGETS (Before Starting)',
+    '',
+    'With the engine off, walk around the forklift and check each area below - by clicking its inspection card or its marker on the 3D model.',
+    '',
+    '- **B - Battery**: LPG tank, mounting bracket, and battery area - tight connections, no corrosion or leaks.',
+    '- **O - Oil**: hydraulic hoses, lift chain, and the ground beneath the forklift - no oil or hydraulic fluid leaks.',
+    '- **W - Water**: hydraulic fluid is at a safe level, with no visible leaks.',
+    '- **A - Air**: tire pressure looks correct for a pneumatic tire.',
+    '- **G - Gas**: the LPG tank is mounted securely with no leak at the fittings - the gauge reading comes later, once the engine is on.',
+    '- **T - Tires**: tread and sidewalls show no cuts, bulges, or excessive wear.',
+    '- **S - Self**: before you turn the key, confirm you are rested, alert, and fit to operate.',
+    '',
+    'Forks, mast, counterweight, seat belt, and the overhead guard round out the walk-around even though they sit outside the BLOWBAGETS letters. Any damaged or unsafe item found here should stop operation before the engine is started.',
+  ].join('\n'),
+  'engine-on': [
+    '### Engine-On Inspection - BLOWBAGETS (After Starting)',
+    '',
+    'With the engine running, confirm the dashboard readings and test each control below.',
+    '',
+    '- **B - Battery**: the battery charge indicator should not stay lit.',
+    '- **L - Lights**: headlights, tail lights, turn signals, and the warning beacon all respond.',
+    '- **B - Brake**: the service brake and parking brake respond correctly.',
+    '- **G - Gas**: the LPG level gauge shows enough fuel for the shift.',
+    '- **E - Engine**: listen for unusual sounds and confirm a smooth idle - the temperature gauge should read in the normal range, not the red zone.',
+    '',
+    'Steering, the horn, the backup alarm, and the lift/tilt and travel controls complete the check. Not every gauge reads normal in this exercise - a warning light that stays lit or a needle in the red zone must be marked Abnormal and reported.',
+  ].join('\n'),
+  'defect-test': [
+    '### Defect Recognition Test',
+    '',
+    'Each scenario below shows the forklift in a different visual state. Decide whether it is safe to operate using the same BLOWBAGETS judgment from the previous two steps - a defect in any BLOWBAGETS system is reason enough to answer No.',
+    '',
+    '- A visible fluid leak points to a possible **Oil** or **Water** problem.',
+    '- A flat or worn tire points to an **Air** or **Tires** problem.',
+    '- No visible defect at all means the forklift may proceed to operation.',
+    '',
+    'Choose Yes only when nothing in the scene indicates an unsafe condition.',
+  ].join('\n'),
+}
+
+const SUMMARY_BODY = {
+  'walk-around-check': [
+    '### Walk-Around Check Complete',
+    '',
+    "This module walked through the forklift's pre-operation inspection using BLOWBAGETS: **B**attery, **L**ights, **O**il, **W**ater, **B**rake, **A**ir, **G**as, **E**ngine, **T**ires, and **S**elf. Engine-off checks covered what can be seen and touched before starting; engine-on checks confirmed the gauges and controls once running; the defect recognition test practiced deciding when a visible condition means the forklift should not be used.",
+    '',
+    'Carry this same habit into every shift - a consistent walk-around before operation catches problems before they become incidents.',
+  ].join('\n'),
+}
+
 function stepKind(stepId) {
   if (drivingCourses[stepId]) return 'driving'
   if (WALK_AROUND_STEP_PHASES[stepId]) return 'walk-around'
@@ -338,7 +414,7 @@ function stepContent(moduleSlug, stepId, kind) {
 
   if (kind === 'summary') {
     return {
-      body: '',
+      body: SUMMARY_BODY[moduleSlug] || '',
       completeMessage: 'All requirements are complete. Submit the module to record completion feedback.',
       incompleteMessage: SUMMARY_INCOMPLETE[moduleSlug] || 'Complete every graded step to finish this module.',
       counters: SUMMARY_COUNTERS[moduleSlug] || [],
@@ -351,7 +427,7 @@ function stepContent(moduleSlug, stepId, kind) {
   }
 
   if (kind === 'walk-around') {
-    return { body: '' }
+    return { body: WALK_AROUND_BODY[WALK_AROUND_STEP_PHASES[stepId]] || '' }
   }
 
   return null
