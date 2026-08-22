@@ -5571,6 +5571,7 @@
               "answer": "Normal",
               "reading": "No warning lights active",
               "dialAngle": -30,
+              "image": "/images/parts/warning-lights.jpeg",
               "correctFeedback": "Correct. No warning light is lit, so the forklift is clear to continue the check.",
               "incorrectFeedback": "A dashboard with no active warning light is a normal reading."
             },
@@ -5580,6 +5581,7 @@
               "answer": "Abnormal",
               "reading": "Charge warning light stays lit",
               "dialAngle": -42,
+              "image": "/images/parts/battery-charge-indicator.avif",
               "correctFeedback": "Correct. A charge light that stays on means the charging system is not keeping up. Report it.",
               "incorrectFeedback": "A charge warning that stays lit is abnormal. It means the battery is not charging."
             },
@@ -5589,6 +5591,7 @@
               "answer": "Normal",
               "reading": "Sufficient LPG level",
               "dialAngle": 24,
+              "image": "/images/parts/lpg-level-gauge.jfif",
               "correctFeedback": "Correct. There is enough LPG to complete the shift.",
               "incorrectFeedback": "A sufficient LPG level is a normal reading. Only a near-empty tank needs action."
             },
@@ -5598,6 +5601,7 @@
               "answer": "Normal",
               "reading": "Reading logged for maintenance tracking",
               "dialAngle": 0,
+              "image": "/images/parts/hour-meter.jfif",
               "correctFeedback": "Correct. The hour meter is a record, not a fault indicator. Log it and continue.",
               "incorrectFeedback": "The hour meter only records running hours. Logging the reading is a normal step."
             },
@@ -5607,6 +5611,7 @@
               "answer": "Abnormal",
               "reading": "Needle in the red zone",
               "dialAngle": 44,
+              "image": "/images/parts/engine-temperature-gauge.webp",
               "correctFeedback": "Correct. An overheating engine must be shut down and reported before operation.",
               "incorrectFeedback": "A needle in the red zone means overheating. That is an abnormal reading and must be reported."
             }
