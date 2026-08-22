@@ -132,7 +132,7 @@ function WalkAroundContentFields({ data, onChange }) {
                 <label>Reading<input value={item.reading || ''} onChange={(event) => patch({ reading: event.target.value })} /></label>
                 <label>Dial angle (degrees)<input type="number" value={item.dialAngle ?? 0} onChange={(event) => patch({ dialAngle: Number(event.target.value) })} /></label>
                 <label>
-                  Image URL (optional - shows a photo instead of the dial icon)
+                  Image URL (optional - reference photo shown in Part Details when clicked)
                   <input value={item.image || ''} onChange={(event) => patch({ image: event.target.value })} />
                 </label>
                 <label>
