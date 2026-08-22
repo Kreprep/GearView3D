@@ -124,13 +124,17 @@ function WalkAroundContentFields({ data, onChange }) {
             note="The learner judges each reading. Only a correct call counts toward completing the step."
             items={data?.gauges || []}
             onChange={(gauges) => setData({ gauges })}
-            emptyItem={() => ({ id: '', label: 'New gauge', reading: '', dialAngle: 0, answer: 'Normal', correctFeedback: '', incorrectFeedback: '' })}
+            emptyItem={() => ({ id: '', label: 'New gauge', reading: '', dialAngle: 0, answer: 'Normal', image: '', correctFeedback: '', incorrectFeedback: '' })}
             renderFields={(item, patch) => (
               <>
                 <label>Label<input value={item.label || ''} onChange={(event) => patch({ label: event.target.value, id: item.id || slugify(event.target.value, 'gauge') })} /></label>
                 <label>Id<input value={item.id || ''} onChange={(event) => patch({ id: event.target.value })} /></label>
                 <label>Reading<input value={item.reading || ''} onChange={(event) => patch({ reading: event.target.value })} /></label>
                 <label>Dial angle (degrees)<input type="number" value={item.dialAngle ?? 0} onChange={(event) => patch({ dialAngle: Number(event.target.value) })} /></label>
+                <label>
+                  Image URL (optional - shows a photo instead of the dial icon)
+                  <input value={item.image || ''} onChange={(event) => patch({ image: event.target.value })} />
+                </label>
                 <label>
                   Correct answer
                   <select value={item.answer || 'Normal'} onChange={(event) => patch({ answer: event.target.value })}>

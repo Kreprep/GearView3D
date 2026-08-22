@@ -120,9 +120,13 @@ function EngineOnTask({ data, state, onGauge, onDevice }) {
 
             return (
               <div key={gauge.id} className={answer ? (correct ? 'gauge-card done' : 'gauge-card wrong') : 'gauge-card'}>
-                <div className="gauge-dial" aria-hidden="true">
-                  <i style={{ transform: `rotate(${gauge.dialAngle || 0}deg)` }} />
-                </div>
+                {gauge.image ? (
+                  <img className="gauge-image" src={gauge.image} alt={gauge.label} />
+                ) : (
+                  <div className="gauge-dial" aria-hidden="true">
+                    <i style={{ transform: `rotate(${gauge.dialAngle || 0}deg)` }} />
+                  </div>
+                )}
                 <div className="gauge-readout">
                   <span>{gauge.label}</span>
                   <strong>{gauge.reading}</strong>
