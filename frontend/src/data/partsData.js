@@ -45,6 +45,7 @@ export const partsHotspots = [
     safetyNote: 'Confirm the carriage is stable before handling any load.',
     relatedModule: 'Load Handling and Operational Controls',
     checklist: ['Check fork attachment', 'Check visible cracks', 'Confirm smooth travel'],
+    image: 'carriage.webp',
   },
   {
     id: 'operator-area',
@@ -56,6 +57,7 @@ export const partsHotspots = [
     safetyNote: 'Fasten the seat belt and confirm controls are understood before operation.',
     relatedModule: 'Walk-Around Check',
     checklist: ['Fasten seat belt', 'Check mirrors', 'Test horn and brakes'],
+    image: 'operator-area.png',
   },
   {
     id: 'overhead-guard',
@@ -103,6 +105,7 @@ export const partsHotspots = [
     safetyNote: 'Do not lift a load beyond the capacity shown on the plate.',
     relatedModule: 'Load Handling and Operational Controls',
     checklist: ['Read rated capacity', 'Confirm load center', 'Follow plate limits'],
+    image: 'capacity-plate.png',
   },
   {
     id: 'warning-devices',
@@ -114,6 +117,7 @@ export const partsHotspots = [
     safetyNote: 'Do not operate if required warning devices are not working.',
     relatedModule: 'Walk-Around Check',
     checklist: ['Test horn', 'Check lights', 'Check backup alarm'],
+    image: 'warning-devices.jpg',
   },
 ]
 
