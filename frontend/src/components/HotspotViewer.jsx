@@ -104,13 +104,17 @@ const TRAVEL_DISTANCE = 0.3
 const BRAKE_RUN_SPEED = 0.45
 const BRAKE_STOP_TIME = 0.9
 const BRAKE_DIP = 0.09
+// Forward tilt is unsafe (shifts load centre of gravity away from the
+// forklift - the loose-mast defect scenario), so this holds noticeably past
+// the lift-tilt demo's own swing rather than springing back to vertical.
+const MAST_STUCK_TILT = TILT_SWING * 1.8
 
 function smoothstep(x) {
   const clamped = Math.min(Math.max(x, 0), 1)
   return clamped * clamped * (3 - 2 * clamped)
 }
 
-function EquipmentModel({ modelUrl, modelScale, deviceEffect, adminEditMode, onSurfaceDown, onSurfaceMove, onSurfaceUp }) {
+function EquipmentModel({ modelUrl, modelScale, scenario, deviceEffect, adminEditMode, onSurfaceDown, onSurfaceMove, onSurfaceUp }) {
   const { scene } = useGLTF(modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const rigRef = useRef(null)
@@ -192,6 +196,11 @@ function EquipmentModel({ modelUrl, modelScale, deviceEffect, adminEditMode, onS
         }
       }
     }
+
+    // The loose-mast defect scenario holds the mast tilted instead of
+    // playing a demo - it stays this way for as long as the scenario is on
+    // screen, not just for one animation pass.
+    if (scenario === 'mast-tilt') tiltTarget = MAST_STUCK_TILT
 
     const damp = Math.min(ANIM_DAMP * delta, 1)
 
@@ -438,16 +447,33 @@ function DeviceEffect({ effect }) {
 }
 
 function PuddleOverlay({ id, position, rotation, radius, label, feedback, onScenarioAction }) {
+  const [hovered, setHovered] = useState(false)
   const emit = () => onScenarioAction?.({ id, type: 'defect', feedback })
 
   return (
     <group>
-      <mesh position={position} rotation={rotation} onClick={(event) => { event.stopPropagation(); emit() }}>
+      <mesh
+        position={position}
+        rotation={rotation}
+        onClick={(event) => { event.stopPropagation(); emit() }}
+        onPointerOver={(event) => { event.stopPropagation(); setHovered(true) }}
+        onPointerOut={() => setHovered(false)}
+      >
         <circleGeometry args={[radius, 48]} />
         <meshBasicMaterial color="#111111" transparent opacity={0.72} />
       </mesh>
+      {/* Hover-only: the label previously covered the puddle at all times,
+          which read as a spoiler ("Fluid leak detected") before the learner
+          had judged the scene. Revealing it on hover keeps it as a hint. */}
       <Html center position={[position[0], position[1] + 0.056, position[2]]} distanceFactor={2.4}>
-        <button type="button" className="viewer-warning-label" onClick={emit}>
+        <button
+          type="button"
+          className="viewer-warning-label"
+          style={{ opacity: hovered ? 1 : 0 }}
+          onClick={emit}
+          onMouseOver={() => setHovered(true)}
+          onMouseOut={() => setHovered(false)}
+        >
           {label}
         </button>
       </Html>
@@ -458,11 +484,14 @@ function PuddleOverlay({ id, position, rotation, radius, label, feedback, onScen
 function MarkerOverlay({ id, position, label, feedback, onScenarioAction }) {
   const emit = () => onScenarioAction?.({ id, type: 'defect', feedback })
 
+  // The "!" badge stays visible as the obvious, non-spoiling cue; the label
+  // text only reveals on hover (a real DOM button, so plain CSS :hover
+  // covers it - no hover state needed here the way the puddle label needs).
   return (
     <Html center position={position} distanceFactor={2.4}>
       <button type="button" className="viewer-tire-warning" onClick={emit}>
         <strong>!</strong>
-        <span>{label}</span>
+        <span className="viewer-tire-warning-text">{label}</span>
       </button>
     </Html>
   )
@@ -555,6 +584,7 @@ function InteractiveScene({
             <EquipmentModel
               modelUrl={modelUrl}
               modelScale={modelScale}
+              scenario={scenario}
               deviceEffect={deviceEffect}
               adminEditMode={adminEditMode}
               onSurfaceDown={handleSurfacePointerDown}

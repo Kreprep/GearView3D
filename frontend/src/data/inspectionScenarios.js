@@ -234,6 +234,49 @@ export const defectRecognitionScenarios = [
     feedback:
       'Unsafe tire condition affects steering and stability. The forklift must not be used until the issue is reported and corrected.',
   },
+  {
+    id: 'warning-light-blink',
+    title: 'Scenario 4: Dashboard warning light blinking',
+    visualState: 'warning-light-blink',
+    question: 'Is this forklift usable for operation?',
+    choices: ['Yes', 'No'],
+    answer: 'No',
+    feedback:
+      'A warning light that stays lit or blinks points to an active fault in that system. The forklift must not be used until the issue is reported and cleared.',
+  },
+  {
+    id: 'red-light-beep',
+    title: 'Scenario 5: Beeping red warning light',
+    visualState: 'red-light-beep',
+    question: 'Is this forklift usable for operation?',
+    choices: ['Yes', 'No'],
+    answer: 'No',
+    feedback:
+      'An audible alarm paired with a red warning light signals a critical fault. The forklift must not be used until the issue is reported and cleared.',
+  },
+  {
+    id: 'brakes-working',
+    title: 'Scenario 6: Brake test',
+    visualState: 'normal',
+    deviceEffectId: 'brakes',
+    demoLabel: 'Play brake test',
+    question:
+      'Press "Play brake test" to watch the forklift roll forward and stop. It stops abruptly with no unusual noise or delay. Is this forklift usable for operation?',
+    choices: ['Yes', 'No'],
+    answer: 'Yes',
+    feedback:
+      'A brake that stops the forklift promptly and smoothly is working as intended. With no other unsafe condition present, the forklift may proceed to supervised training use.',
+  },
+  {
+    id: 'mast-tilt',
+    title: 'Scenario 7: Mast stuck tilted',
+    visualState: 'mast-tilt',
+    question: 'Is this forklift usable for operation?',
+    choices: ['Yes', 'No'],
+    answer: 'No',
+    feedback:
+      "A mast that stays tilted forward instead of returning to vertical points to a loose or faulty tilt cylinder connection. This shifts the load's centre of gravity away from the forklift and increases tip-over risk, so the forklift must be reported and removed from operation.",
+  },
 ]
 
 export const walkAroundDefects = [
