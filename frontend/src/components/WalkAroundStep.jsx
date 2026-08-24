@@ -172,7 +172,7 @@ function EngineOnTask({ data, state, onGauge, onDevice }) {
   )
 }
 
-function DefectTask({ data, state, activeScenarioId, onSelectScenario, onAnswerScenario }) {
+function DefectTask({ data, state, activeScenarioId, onSelectScenario, onAnswerScenario, onPlayDemo }) {
   const scenarios = data.scenarios || []
   const active = scenarios.find((entry) => entry.id === activeScenarioId) || scenarios[0]
   if (!active) return <p className="task-note">This step has no defect scenarios yet.</p>
@@ -205,6 +205,11 @@ function DefectTask({ data, state, activeScenarioId, onSelectScenario, onAnswerS
       </div>
       <h4>{active.title}</h4>
       <p>{active.question}</p>
+      {active.deviceEffectId && (
+        <button type="button" className="scenario-demo-button" onClick={() => onPlayDemo(active)}>
+          {active.demoLabel || 'Play demo'}
+        </button>
+      )}
       <div className="scenario-choice-row">
         {(active.choices || []).map((choice) => (
           <button
@@ -254,6 +259,7 @@ export function WalkAroundTask({ data, content, state, engineStarted, activeScen
           activeScenarioId={activeScenarioId}
           onSelectScenario={handlers.onSelectScenario}
           onAnswerScenario={handlers.onAnswerScenario}
+          onPlayDemo={handlers.onPlayDemo}
         />
       )}
       {!PHASE_TITLES[phase] && <p className="task-note">This step has no walk-around phase set yet.</p>}

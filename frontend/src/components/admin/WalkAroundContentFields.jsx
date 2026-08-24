@@ -203,6 +203,9 @@ function WalkAroundContentFields({ data, onChange }) {
               </label>
               <label>Correct answer<input value={item.answer || ''} onChange={(event) => patch({ answer: event.target.value })} /></label>
               <label>Feedback<textarea rows={3} value={item.feedback || ''} onChange={(event) => patch({ feedback: event.target.value })} /></label>
+              <label>Demo animation id (optional)<input value={item.deviceEffectId || ''} placeholder="brakes / steering-response / lift-tilt-functions / forward-reverse-travel" onChange={(event) => patch({ deviceEffectId: event.target.value })} /></label>
+              <label>Demo button label<input value={item.demoLabel || ''} placeholder="Play demo" onChange={(event) => patch({ demoLabel: event.target.value })} /></label>
+              <p className="admin-panel-note">Adds a &quot;Play demo&quot; button that plays that Engine-On device animation on the model, for scenarios that are a behavior rather than a visible defect (e.g. a working brake test). Leave blank for scenarios with no demo.</p>
             </>
           )}
         />

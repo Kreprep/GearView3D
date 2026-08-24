@@ -167,18 +167,37 @@
   font-size: 12px;
   font-weight: 700;
   padding: 8px 12px;
+  transition: opacity 0.12s ease;
 }
 
 .viewer-tire-warning {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
   border-radius: 6px;
   background: #dc2626;
   color: #ffffff;
   font-size: 12px;
   font-weight: 700;
   padding: 8px 11px;
+}
+
+/* Collapsed to nothing by default so only the "!" badge reads as the
+   defect cue - the wording (what's wrong) only shows once the learner
+   hovers to check, same hide-until-hover idea as the puddle label. */
+.viewer-tire-warning-text {
+  display: inline-block;
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 0.15s ease, opacity 0.12s ease, margin-left 0.15s ease;
+}
+
+.viewer-tire-warning:hover .viewer-tire-warning-text,
+.viewer-tire-warning:focus-visible .viewer-tire-warning-text {
+  max-width: 220px;
+  margin-left: 7px;
+  opacity: 1;
 }
 
 .scale-reference-label {
