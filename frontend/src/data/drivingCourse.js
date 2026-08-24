@@ -219,7 +219,7 @@ export const drivingCourses = {
     start: { position: [0, 0, 0], heading: 0 },
     checkpoints: [],
     capacityKg: 1000,
-    failConditions: { suddenStop: true, overload: true },
+    failConditions: { suddenStop: true, overload: true, highTravel: true },
     pallets: [{ id: 'carry-pallet', position: [0, 0, 5], rotation: 0, weightKg: 500 }],
     dropZone: { position: [0, 0, 19], radius: 0.9, label: 'Drop Zone' },
     obstacles: [
@@ -244,7 +244,7 @@ export const drivingCourses = {
     start: { position: [0, 0, 0], heading: 0 },
     checkpoints: [],
     capacityKg: 1000,
-    failConditions: { suddenStop: true, overload: true },
+    failConditions: { suddenStop: true, overload: true, highTravel: true },
     pallets: [
       { id: 'pallet-600', position: [-2.2, 0, 7], rotation: 0, weightKg: 600 },
       { id: 'pallet-1500', position: [0, 0, 7], rotation: 0, weightKg: 1500 },
