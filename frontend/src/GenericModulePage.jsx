@@ -380,6 +380,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     setSelectedDetail({
       title: gauge.label,
       subtitle: 'Dashboard indicator',
+      image: gauge.image,
       description: `Reading: ${gauge.reading}`,
       status: correct ? gauge.correctFeedback : gauge.incorrectFeedback,
       statusType: correct ? 'correct' : 'incorrect',
