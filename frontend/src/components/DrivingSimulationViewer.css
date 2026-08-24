@@ -31,9 +31,9 @@
 .driving-speed-badge,
 .driving-checkpoint-badge {
   border-radius: 6px;
-  padding: 8px 14px;
+  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 1vw, 14px);
   font-weight: 700;
-  font-size: 13px;
+  font-size: clamp(11px, 0.9vw, 13px);
   color: #f8fafc;
   background: rgba(15, 23, 42, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -82,8 +82,8 @@
   background: rgba(15, 23, 42, 0.72);
   color: #f8fafc;
   font-weight: 700;
-  font-size: 12px;
-  padding: 8px 12px;
+  font-size: clamp(10px, 0.85vw, 12px);
+  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 0.9vw, 12px);
   cursor: pointer;
 }
 
@@ -109,14 +109,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: clamp(26px, 2vw, 34px);
+  height: clamp(26px, 2vw, 34px);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.28);
   background: rgba(15, 23, 42, 0.72);
   color: #e2e8f0;
   font-weight: 700;
-  font-size: 13px;
+  font-size: clamp(11px, 0.9vw, 13px);
 }
 
 .driving-key.active {
@@ -127,7 +127,7 @@
 }
 
 .driving-key-caption {
-  font-size: 10px;
+  font-size: clamp(8px, 0.7vw, 10px);
   color: #cbd5e1;
   font-weight: 700;
   white-space: nowrap;
@@ -136,17 +136,17 @@
 .driving-hud-help {
   margin: 0;
   color: #e2e8f0;
-  font-size: 12px;
+  font-size: clamp(10px, 0.85vw, 12px);
   font-weight: 700;
   background: rgba(15, 23, 42, 0.6);
-  padding: 8px 12px;
+  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 0.9vw, 12px);
   border-radius: 10px;
 }
 
 .driving-checkpoint-label {
   border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 11px;
+  padding: clamp(4px, 0.45vw, 6px) clamp(8px, 0.8vw, 10px);
+  font-size: clamp(9px, 0.8vw, 11px);
   font-weight: 700;
   white-space: nowrap;
   color: #111827;
@@ -160,14 +160,14 @@
 
 .driving-checkpoint-label.active {
   color: #ffffff;
-  background: rgba(8, 145, 178, 0.92);
+  background: rgba(8, 145, 178, 0.82);
 }
 
 .driving-load-badge {
   border-radius: 6px;
-  padding: 8px 14px;
+  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 1vw, 14px);
   font-weight: 700;
-  font-size: 13px;
+  font-size: clamp(11px, 0.9vw, 13px);
   color: #f8fafc;
   background: rgba(21, 128, 61, 0.78);
 }
@@ -178,9 +178,9 @@
 
 .driving-parking-badge {
   border-radius: 6px;
-  padding: 8px 14px;
+  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 1vw, 14px);
   font-weight: 700;
-  font-size: 13px;
+  font-size: clamp(11px, 0.9vw, 13px);
   color: #f8fafc;
   background: rgba(30, 64, 175, 0.8);
 }
@@ -191,17 +191,17 @@
 
 .pallet-weight-label {
   border-radius: 6px;
-  padding: 5px 10px;
-  font-size: 11px;
+  padding: clamp(3px, 0.35vw, 5px) clamp(7px, 0.7vw, 10px);
+  font-size: clamp(9px, 0.8vw, 11px);
   font-weight: 700;
   white-space: nowrap;
   color: #f8fafc;
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.72);
   border: 2px solid rgba(148, 163, 184, 0.7);
 }
 
 .pallet-weight-label.overweight {
-  background: rgba(153, 27, 27, 0.9);
+  background: rgba(153, 27, 27, 0.82);
   border-color: rgba(252, 165, 165, 0.8);
 }
 
@@ -254,11 +254,5 @@
 
   .driving-hud-help {
     order: 3;
-  }
-
-  .driving-key {
-    width: 30px;
-    height: 30px;
-    font-size: 12px;
   }
 }

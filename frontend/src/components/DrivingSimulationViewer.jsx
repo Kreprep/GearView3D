@@ -89,6 +89,15 @@ const FORK_SPEED = 0.6
 const MAST_LIFT_RATIO = 0.5
 const FORK_TIP_OFFSET_FALLBACK = 0.45
 
+// Mast tilt: rotation.x on the rig's tiltPivot (see buildVehicleRig). Negative
+// tilts the mast top back toward the operator (secures a carried load),
+// positive tilts it forward (used to level the forks against a rack/floor
+// before engaging a pallet). A load is only considered "secured" against a
+// sudden-stop fail once tilted back past TILT_SECURE_ANGLE.
+const TILT_MAX_ANGLE = 0.12
+const TILT_SPEED = 0.5
+const TILT_SECURE_ANGLE = -0.06
+
 // Pallet pickup gameplay thresholds (no physics engine - proximity/height checks).
 const PICKUP_RADIUS = 0.35
 const ALIGN_DOT_MIN = 0.9
@@ -123,6 +132,12 @@ const WALL_HIT_MARGIN = 0.12
 const BODY_SAMPLE_OFFSETS = [0.38, 0, -0.32]
 const SUDDEN_STOP_DECEL = 1.6
 const SUDDEN_STOP_MIN_SPEED = 0.85
+// Standard travel height: forks should stay low and close to the ground while
+// moving with a load. Above LIFT_THRESHOLD (0.12) so a normal pickup doesn't
+// immediately trip it, well below FORK_MAX_HEIGHT (0.8) - exact value tuned
+// for gameplay feel, not a real-world cm conversion.
+const SAFE_TRAVEL_HEIGHT = 0.22
+const HIGH_TRAVEL_MIN_SPEED = 0.4
 const LOAD_GRAVITY = 2.0
 const LOAD_TUMBLE_RATE = 2.6
 const LOAD_REST_TILT = 0.16
@@ -147,8 +162,17 @@ function clamp(value, min, max) {
 }
 
 function useDrivingInput(onEngineToggle, onKeyActive) {
-  const keysRef = useRef({ forward: false, back: false, left: false, right: false, raise: false, lower: false })
-  const [pressed, setPressed] = useState({ w: false, a: false, s: false, d: false, e: false, r: false, f: false })
+  const keysRef = useRef({
+    forward: false,
+    back: false,
+    left: false,
+    right: false,
+    raise: false,
+    lower: false,
+    tiltBack: false,
+    tiltForward: false,
+  })
+  const [pressed, setPressed] = useState({ w: false, a: false, s: false, d: false, e: false, r: false, f: false, t: false, g: false })
   const onEngineToggleRef = useRef(onEngineToggle)
   const onKeyActiveRef = useRef(onKeyActive)
 
@@ -163,7 +187,7 @@ function useDrivingInput(onEngineToggle, onKeyActive) {
   useEffect(() => {
     const handleKeyDown = (event) => {
       const key = event.key.toLowerCase()
-      if (!['w', 'a', 's', 'd', 'e', 'r', 'f'].includes(key)) return
+      if (!['w', 'a', 's', 'd', 'e', 'r', 'f', 't', 'g'].includes(key)) return
       event.preventDefault()
       if (key === 'w') keysRef.current.forward = true
       if (key === 's') keysRef.current.back = true
@@ -171,6 +195,8 @@ function useDrivingInput(onEngineToggle, onKeyActive) {
       if (key === 'd') keysRef.current.right = true
       if (key === 'r') keysRef.current.raise = true
       if (key === 'f') keysRef.current.lower = true
+      if (key === 't') keysRef.current.tiltBack = true
+      if (key === 'g') keysRef.current.tiltForward = true
       if (key === 'e' && !event.repeat) onEngineToggleRef.current?.()
       setPressed((current) => {
         if (current[key]) return current
@@ -181,13 +207,15 @@ function useDrivingInput(onEngineToggle, onKeyActive) {
 
     const handleKeyUp = (event) => {
       const key = event.key.toLowerCase()
-      if (!['w', 'a', 's', 'd', 'e', 'r', 'f'].includes(key)) return
+      if (!['w', 'a', 's', 'd', 'e', 'r', 'f', 't', 'g'].includes(key)) return
       if (key === 'w') keysRef.current.forward = false
       if (key === 's') keysRef.current.back = false
       if (key === 'a') keysRef.current.left = false
       if (key === 'd') keysRef.current.right = false
       if (key === 'r') keysRef.current.raise = false
       if (key === 'f') keysRef.current.lower = false
+      if (key === 't') keysRef.current.tiltBack = false
+      if (key === 'g') keysRef.current.tiltForward = false
       setPressed((current) => (current[key] ? { ...current, [key]: false } : current))
     }
 
@@ -422,7 +450,7 @@ function Pallet({ pallet, palletRef, overweight = false }) {
         </group>
       )}
       {typeof pallet.weightKg === 'number' && (
-        <Html center position={[0, 0.55, 0]} distanceFactor={8}>
+        <Html center position={[0, 0.85, 0]} distanceFactor={5}>
           <div className={`pallet-weight-label ${overweight ? 'overweight' : ''}`}>{pallet.weightKg} kg</div>
         </Html>
       )}
@@ -523,7 +551,7 @@ function RackLevelMarker({ rack, level, delivered }) {
         />
       </mesh>
       {!delivered && (
-        <Html center position={[0, 0.16, 0]} distanceFactor={6}>
+        <Html center position={[0, 0.32, 0]} distanceFactor={4}>
           <div className="driving-checkpoint-label active">{RACK_LEVEL_LABELS[level] || level}</div>
         </Html>
       )}
@@ -655,6 +683,7 @@ function DrivingScene({
   const lookTargetRef = useRef(new Vector3())
 
   const forkHeightRef = useRef(0)
+  const tiltAngleRef = useRef(0)
   const steerAngleRef = useRef(0)
   const palletRefs = useRef([])
   const palletSimRef = useRef(null)
@@ -770,9 +799,17 @@ function DrivingScene({
         } else if (keys.lower) {
           forkHeightRef.current = Math.max(forkHeightRef.current - FORK_SPEED * dt, 0)
         }
+        if (profile.hasForks && rig.tiltPivot) {
+          if (keys.tiltBack) {
+            tiltAngleRef.current = Math.max(tiltAngleRef.current - TILT_SPEED * dt, -TILT_MAX_ANGLE)
+          } else if (keys.tiltForward) {
+            tiltAngleRef.current = Math.min(tiltAngleRef.current + TILT_SPEED * dt, TILT_MAX_ANGLE)
+          }
+        }
       }
       if (rig.carriageLift) rig.carriageLift.position.y = forkHeightRef.current
       if (rig.mastLift) rig.mastLift.position.y = forkHeightRef.current * MAST_LIFT_RATIO
+      if (rig.tiltPivot) rig.tiltPivot.rotation.x = tiltAngleRef.current
     }
 
     // Overload tip-over: pitch the whole truck about the front axle with an
@@ -970,6 +1007,7 @@ function DrivingScene({
           } else if (
             course.failConditions?.suddenStop &&
             !failedRef.current &&
+            tiltAngleRef.current > TILT_SECURE_ANGLE &&
             prevSpeed > SUDDEN_STOP_MIN_SPEED &&
             (prevSpeed - speedRef.current) / dt > SUDDEN_STOP_DECEL
           ) {
@@ -980,6 +1018,15 @@ function DrivingScene({
             sim.vz = forwardZ * prevSpeed * 1.15
             sim.vy = 0.1
             triggerFail('load-dropped')
+          } else if (
+            course.failConditions?.highTravel &&
+            !failedRef.current &&
+            Math.abs(speedRef.current) > HIGH_TRAVEL_MIN_SPEED &&
+            forkHeightRef.current > SAFE_TRAVEL_HEIGHT
+          ) {
+            // Driving at speed with the forks raised above standard travel
+            // height: unsafe practice, not a physical spill - fail in place.
+            triggerFail('high-travel')
           } else {
             const lerpK = Math.min(CARRY_LERP * dt, 1)
             pallet.position.x += (tipX - pallet.position.x) * lerpK
@@ -1442,7 +1489,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
         </div>
         <p className="driving-hud-help">
           {engineOn
-            ? `Hold W to accelerate, S to brake or reverse, A / D to steer${profile.hasForks ? ', R / F to raise or lower the forks' : ''}.`
+            ? `Hold W to accelerate, S to brake or reverse, A / D to steer${profile.hasForks ? ', R / F to raise or lower the forks, T / G to tilt the mast back or forward' : ''}.`
             : 'Press E to start the engine.'}
         </p>
       </div>

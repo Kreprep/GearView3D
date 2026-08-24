@@ -696,6 +696,14 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
               />
               Fail on braking hard while carrying
             </label>
+            <label className="course-checkbox">
+              <input
+                type="checkbox"
+                checked={Boolean(data.failConditions?.highTravel)}
+                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, highTravel: event.target.checked } })}
+              />
+              Fail on driving fast with forks raised
+            </label>
             <p className="admin-panel-note">Cones, walls and parked vehicles are always live colliders - striking one always fails the attempt.</p>
           </section>
           )}
