@@ -38,6 +38,8 @@ export const DEFAULT_KEY_LEGEND = [
   { key: 'e', caption: 'Engine' },
   { key: 'r', caption: 'Raise Forks', forks: true },
   { key: 'f', caption: 'Lower Forks', forks: true },
+  { key: 't', caption: 'Tilt Mast Back', forks: true },
+  { key: 'g', caption: 'Tilt Mast Forward', forks: true },
 ]
 
 export const DEFAULT_FAIL_MESSAGES = {
@@ -60,6 +62,10 @@ export const DEFAULT_FAIL_MESSAGES = {
   'load-dropped': {
     title: 'Load Thrown Off',
     message: 'Braking hard at speed threw the pallet off the forks. Reset, slow down early, and brake gently while loaded.',
+  },
+  'high-travel': {
+    title: 'Unsafe Travel Height',
+    message: 'You drove at speed with the forks raised above the standard travel height. Reset, and lower the forks close to the ground before moving with a load.',
   },
 }
 
