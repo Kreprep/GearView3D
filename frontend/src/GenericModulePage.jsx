@@ -457,6 +457,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     onGauge: (gauge, choice) => handleGauge(step, gauge, choice),
     onSelectScenario: setActiveScenarioId,
     onAnswerScenario: (scenario, choice) => handleScenario(step, scenario, choice),
+    onPlayDemo: (scenario) => triggerDeviceEffect(scenario.deviceEffectId),
   })
 
   const scenarioIdFor = (step) =>
