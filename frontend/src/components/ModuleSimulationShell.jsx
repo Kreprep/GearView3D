@@ -42,7 +42,9 @@ function ModuleSimulationShell({
       <header className="simulation-briefing">
         <div>
           <p className="simulation-kicker">Guided Simulation</p>
-          <h2>{module.fullTitle || module.title}</h2>
+          {/* The page heading: SimulationPageLayout runs in compact mode on
+              every page that renders this shell, so it prints no <h1> of its own. */}
+          <h1>{module.fullTitle || module.title}</h1>
         </div>
         <div className="simulation-score-card">
           <span>Progress</span>

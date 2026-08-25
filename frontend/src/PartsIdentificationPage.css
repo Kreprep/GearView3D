@@ -1,5 +1,14 @@
 @import "./components/WalkAroundStep.css";
 
+/* PartsViewport draws its chrome with Tailwind utilities; these two class
+   names put it on the shared z ladder (styles/tokens.css) so the shell's
+   overlay panels float above it, and give ModuleSimulationShell.css something
+   to inset out from under those panels. */
+.parts-viewer-toolbar,
+.parts-viewer-help {
+  z-index: var(--z-scene-chrome);
+}
+
 .parts-scene-wrap {
   position: relative;
   height: 100%;

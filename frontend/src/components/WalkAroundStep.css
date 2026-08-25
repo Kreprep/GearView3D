@@ -1,11 +1,11 @@
 /* Styles for the `walk-around` step kind (components/WalkAroundStep.jsx) plus
    a few classes the other simulation pages share. Page shell classes
-   (module-page-container/header, back-button, module-content) live in
+   (module-page-container/header, back-button, wide-simulation-content) live in
    components/SimulationPageLayout.css. */
 
 .walkaround-intro {
   color: #475569;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
 }
 
@@ -23,14 +23,14 @@
 }
 
 .walkaround-scene-wrap > section {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 
 .oil-leak-overlay {
   position: absolute;
   left: 42%;
   bottom: 26%;
-  z-index: 8;
+  z-index: var(--z-scene-chrome);
   width: 180px;
   height: 72px;
   border-radius: 50%;
@@ -43,17 +43,17 @@
   position: absolute;
   left: 36%;
   bottom: 34%;
-  z-index: 9;
+  z-index: var(--z-scene-chrome);
   display: inline-flex;
   width: 56px;
   height: 56px;
   align-items: center;
   justify-content: center;
   border: 4px solid #fecaca;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #dc2626;
   color: #ffffff;
-  font-size: 34px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   pointer-events: none;
 }
@@ -62,12 +62,12 @@
   position: absolute;
   top: 18px;
   right: 18px;
-  z-index: 9;
-  border-radius: 999px;
+  z-index: var(--z-scene-chrome);
+  border-radius: var(--radius-pill);
   color: #ffffff;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
-  padding: 10px 14px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   pointer-events: none;
 }
 
@@ -89,12 +89,12 @@
 .lesson-bubble,
 .task-note {
   border: 1px solid #dbe3ef;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: #f8fafc;
   color: #475569;
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
-  padding: 10px 12px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 .reference-card {
@@ -124,11 +124,11 @@
   display: grid;
   gap: 3px;
   border: 1px solid #1e293b;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: #0f172a;
   color: #ffffff;
   cursor: pointer;
-  padding: 11px 12px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   text-align: left;
 }
 
@@ -138,20 +138,20 @@
 }
 
 .start-engine-button strong {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
 .start-engine-button small {
   color: #67e8f9;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 
 .subsection-label {
   margin: 4px 0 -4px;
   color: #0f172a;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -163,13 +163,13 @@
 .scenario-choice-row button,
 .scenario-picker button {
   border: 1px solid #cbd5e1;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  padding: 9px 10px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   text-align: left;
 }
 
@@ -179,13 +179,13 @@
 }
 
 .inspection-card span {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
 .inspection-card small {
   color: #64748b;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 
@@ -203,8 +203,8 @@
   border-radius: 14px;
   background: #0f172a;
   color: #ffffff;
-  font-size: 13px;
-  padding: 11px;
+  font-size: var(--fs-sm);
+  padding: var(--space-3);
 }
 
 .virtual-dashboard h4 {
@@ -232,13 +232,13 @@
 
 .gauge-answer-row button {
   border: 1px solid #cbd5e1;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
-  padding: 6px 10px;
+  padding: var(--space-1) var(--space-2);
   text-align: center;
 }
 
@@ -251,7 +251,7 @@
 .gauge-verdict {
   grid-column: 1 / -1;
   margin: 0;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -271,7 +271,7 @@
 .gauge-score {
   margin: 0;
   color: #cbd5e1;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -292,7 +292,7 @@
   bottom: 0;
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #0f172a;
   content: "";
   transform: translateX(-50%);
@@ -304,7 +304,7 @@
   bottom: 2px;
   width: 3px;
   height: 17px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #dc2626;
   transform-origin: 50% 100%;
   transition: transform 180ms ease;
@@ -314,7 +314,7 @@
   color: #0891b2;
   display: block;
   margin-top: 2px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 
@@ -335,7 +335,7 @@
   height: 34px;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0;
   text-align: center;
 }
@@ -358,9 +358,9 @@
   background: #0891b2;
   color: #ffffff;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
-  padding: 9px 14px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 .scenario-next-button:hover {
@@ -374,9 +374,9 @@
   background: #b45309;
   color: #ffffff;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
-  padding: 9px 14px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   margin-bottom: 4px;
 }
 
@@ -394,20 +394,20 @@
   display: grid;
   gap: 4px;
   border: 1px solid #dbe3ef;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: #f8fafc;
-  padding: 12px 14px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 .summary-grid span {
   color: #64748b;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .summary-grid strong {
   color: #0f172a;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 
@@ -422,11 +422,11 @@
 
 .completion-ready,
 .completion-warning {
-  border-radius: 12px;
-  font-size: 12.5px;
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.5;
-  padding: 10px 12px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 .completion-ready {
@@ -440,10 +440,6 @@
 }
 
 @media (max-width: 1180px) {
-  .module-content {
-    grid-template-columns: 1fr;
-  }
-
   .guided-checklist {
     position: static;
   }
@@ -453,11 +449,6 @@
   .module-page-header {
     align-items: flex-start;
     flex-direction: column;
-    padding: 14px 18px;
-  }
-
-  .module-content {
-    padding: 18px;
   }
 
   .device-test-grid,

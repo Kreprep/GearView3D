@@ -1,22 +1,27 @@
+/* Sizes come from styles/tokens.css. The quiz renders both full width (module
+   quiz step) and inside ModuleSimulationShell's narrow right-hand overlay lane
+   (parts quiz), so it adapts to its container rather than to the viewport -
+   a viewport media query cannot tell those two cases apart. */
 .module-quiz {
-  margin-top: 22px;
+  container-type: inline-size;
+  margin-top: var(--space-5);
   border: 1px solid #dbe3ef;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: #ffffff;
-  padding: 20px;
+  padding: var(--space-4);
 }
 
 .module-quiz-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .module-quiz h3 {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-1);
   color: #0f172a;
-  font-size: 22px;
+  font-size: var(--fs-xl);
 }
 
 .module-quiz p {
@@ -25,38 +30,47 @@
 
 .quiz-status-pill,
 .quiz-result {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #ecfeff;
   color: #155e75;
+  font-size: var(--fs-xs);
   font-weight: 900;
-  padding: 9px 12px;
+  padding: var(--space-1) var(--space-3);
   white-space: nowrap;
 }
 
 .quiz-question-list {
   display: grid;
-  gap: 14px;
-  margin-top: 16px;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .quiz-question {
   border: 1px solid #dbe3ef;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: #f8fafc;
-  padding: 14px;
+  padding: var(--space-3);
 }
 
+/* A legend sits *in* the fieldset's top border, so a question long enough to
+   wrap (which it always is in the narrow overlay lane) draws the border
+   straight through it. Floating the legend takes it out of that slot and makes
+   it lay out as a normal block; the options grid clears the float. */
 .quiz-question legend {
+  float: left;
+  width: 100%;
   color: #0f172a;
+  font-size: var(--fs-md);
   font-weight: 900;
-  padding: 0 6px;
+  padding: 0;
 }
 
 .quiz-options {
+  clear: both;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .quiz-option {
@@ -67,12 +81,13 @@
   min-width: 0;
   overflow-wrap: break-word;
   border: 1px solid #cbd5e1;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
+  font-size: var(--fs-sm);
   font-weight: 700;
-  padding: 10px 12px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   text-align: left;
 }
 
@@ -82,10 +97,11 @@
 }
 
 .quiz-feedback {
-  margin-top: 10px;
-  border-radius: 12px;
+  margin-top: var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
   font-weight: 800;
-  padding: 10px 12px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 .quiz-feedback.correct {
@@ -101,18 +117,19 @@
 .quiz-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
 .quiz-actions button {
   border: 1px solid #cbd5e1;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
+  font-size: var(--fs-sm);
   font-weight: 800;
-  padding: 10px 16px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 .quiz-actions .quiz-submit {
@@ -128,16 +145,23 @@
 
 .quiz-result {
   display: inline-block;
-  margin-top: 14px;
+  margin-top: var(--space-3);
 }
 
-@media (max-width: 760px) {
-  .module-quiz-header,
+/* Narrow container - the overlay lane, or a phone. One answer per row, and the
+   header stacks so the status pill stops squeezing the intro copy to one word
+   per line. */
+@container (max-width: 420px) {
   .quiz-options {
     grid-template-columns: 1fr;
   }
 
   .module-quiz-header {
     flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .module-quiz p {
+    font-size: var(--fs-sm);
   }
 }

@@ -190,6 +190,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
       )}
       <SimulationPageLayout
         className="parts-identification-page"
+        compact
         title="Parts Identification"
         subtitle={`${equipment?.title || 'Equipment'} Familiarization`}
         onBack={onBack}
