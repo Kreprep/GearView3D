@@ -90,8 +90,8 @@ export const moduleScenarioSteps = {
       title: 'Pallet Pickup & Placement',
       objective: 'Pick up a pallet with the forks and place it in the marked drop zone.',
       instructions:
-        'Drive up to the pallet with the forks lowered (F), slide them under the load, raise with R to lift, carry the pallet to the drop zone, lower with F, then reverse away to release it.',
-      hint: 'Approach the pallet slowly and squarely - the forks only engage when they are low and centered under the load.',
+        'Drive up to the pallet with the forks lowered (F), slide them all the way under the load, raise with R to lift, carry the pallet to the drop zone, lower with F until it rests on the ground, tilt the mast forward with G to let it off the forks, then reverse away.',
+      hint: 'Approach the pallet slowly and squarely - the forks only engage when they are low and centered under the load. Setting it back down takes both moves: lower it onto the ground, then tilt forward.',
     },
     {
       id: 'summary',
@@ -115,7 +115,7 @@ export const moduleScenarioSteps = {
       title: 'Precision Carry',
       objective: 'Carry a pallet through a cone-lined lane and deliver it without a single fail condition.',
       instructions:
-        'Pick up the pallet, carry it down the cone corridor to the drop zone, lower it with F, and reverse away. Hitting a cone or braking hard while carrying fails the attempt - use Reset Attempt and try again.',
+        'Pick up the pallet, carry it down the cone corridor to the drop zone, lower it with F until it rests on the ground, tilt forward with G to release it, and reverse away. Hitting a cone or braking hard while carrying fails the attempt - use Reset Attempt and try again.',
       hint: 'Ease off W early and let the forklift coast instead of slamming S at speed.',
     },
     {
@@ -131,15 +131,15 @@ export const moduleScenarioSteps = {
       title: 'Rack Storage',
       objective: 'Raise a pallet to its assigned shelf height and store it in the correct rack level.',
       instructions:
-        'Pick up the pallet, then raise it with R to the target shelf\'s height, drive it into the rack, and hold steady to set it in place. Racking has a bottom, middle, and top shelf - this exercise is graded on the middle shelf.',
-      hint: 'Watch the pallet through the chase camera as you raise it - line it up with the target ring floating at shelf height before driving in.',
+        'Pick up the pallet, raise it with R just above the target shelf, drive it into the bay, then lower with F until it rests on the shelf and tilt forward with G to set it down. Racking has a bottom, middle, and top shelf - this exercise is graded on the middle shelf.',
+      hint: 'Watch the pallet through the chase camera as you raise it - line it up with the target ring floating at shelf height before driving in, and stop short of the uprights: the forks do the reaching, not the truck.',
     },
     {
       id: 'rack-storage-top',
       title: 'Top Shelf Storage',
       objective: 'Raise a pallet to the top shelf and store it there.',
       instructions:
-        'Pick up the pallet, then hold R to raise it to the top shelf, drive it into the rack, and hold steady to set it in place. This is a fuller lift than the middle shelf, so give the forks time to reach height before driving in.',
+        'Pick up the pallet, hold R to raise it just above the top shelf, drive it into the bay, then lower with F until it rests on the shelf and tilt forward with G to set it down. This is a fuller lift than the middle shelf, so give the forks time to reach height before driving in.',
       hint: 'Hold R until the carried pallet lines up with the top target ring - it takes longer to reach than the middle shelf.',
     },
     {

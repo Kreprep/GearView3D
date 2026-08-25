@@ -11,9 +11,16 @@
 
 export const DEFAULT_VEHICLE_MODEL_URL = '/models/forklift.glb'
 
-// Half-extents of the body used for cone and wall collision, in metres, along
-// the vehicle's local X (width) and Z (length).
-export const DEFAULT_FOOTPRINT = { halfWidth: 0.15, halfLength: 0.45 }
+// Half-extents of the body used for cone, wall, rack and pallet collision, in
+// metres, along the vehicle's local X (width) and Z (length).
+//
+// This is the *body*, not the whole model: forklift.glb's chassis and wheels
+// span z -0.284 to +0.278 and x +/-0.142, while its mast and forks reach out
+// to z +0.606 ahead of them. Measuring the whole bounding box instead put the
+// front of the rectangle 0.16 out in the empty air the forks occupy, which
+// stopped - and failed - the truck against racking it had not reached, and
+// left the tines short of the bay they were supposed to reach into.
+export const DEFAULT_FOOTPRINT = { halfWidth: 0.15, halfLength: 0.29 }
 
 // Node names the rig builder looks for in the GLB, plus the world-space mast
 // foot the tilt pivot sits on.
@@ -55,13 +62,29 @@ export const DEFAULT_FAIL_MESSAGES = {
     title: 'Vehicle Struck',
     message: 'You clipped a parked vehicle. Ease in slowly and keep clearance on both sides - reset the attempt and try again.',
   },
+  rack: {
+    title: 'Racking Struck',
+    message: 'You drove the truck body into the racking. Only the forks belong inside a bay - stop square in front of the rack and let the forks do the reaching.',
+  },
   overload: {
     title: 'Tip-Over: Overloaded',
     message: 'That pallet exceeds the rated capacity, so the vehicle tipped forward. Reset and choose a load within capacity.',
   },
   'load-dropped': {
     title: 'Load Thrown Off',
-    message: 'Braking hard at speed threw the pallet off the forks. Reset, slow down early, and brake gently while loaded.',
+    message: 'Braking hard at speed threw the pallet off the forks. A load only rides out a hard stop when the forks are all the way in and the mast is tilted back - reset, seat the forks fully, and brake gently while loaded.',
+  },
+  'load-slipped': {
+    title: 'Load Slipped Off',
+    message: 'Turning sharply at speed shook the pallet off the forks. Reset, drive the forks fully into the pallet, tilt the mast back, and take corners slowly with a load.',
+  },
+  'unsecured-load': {
+    title: 'Unsecured Load',
+    message: 'You travelled with the mast upright or tilted forward, and the pallet worked its way off the forks. Reset, and tilt the mast back with T before moving a raised load.',
+  },
+  'load-tipping': {
+    title: 'Tip-Over: Load Too Far Forward',
+    message: 'Tilting a heavy load forward that high moved the centre of gravity past the front wheels. Reset, and only tilt forward once the forks are down at the shelf you are setting the load on.',
   },
   'high-travel': {
     title: 'Unsafe Travel Height',

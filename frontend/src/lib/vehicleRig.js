@@ -129,15 +129,27 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
   const mastLift = wrapInLiftGroup(mastMesh)
   const carriageLift = wrapInLiftGroup(carriageMesh)
 
-  let forkTipOffset = 0.45
+  // Where the tines end, and how much of their length a load can sit on.
+  // Measured off the carriage mesh: max.z is the tine tip, min.z the plate
+  // behind them, so the difference is the usable reach.
+  //
+  // `forkTipOffset` used to have a flat 0.15 taken off the tip - a leftover
+  // from when pickup was a proximity radius around a single point, where a
+  // slightly short tip only made the catch zone smaller. Insertion depth is
+  // now measured against the pallet's own faces, and there that shortfall made
+  // a pallet seated squarely against the carriage read as two-thirds engaged:
+  // the only way to reach a full grip was to drive the body into the load.
+  let forkTipOffset = 0.6
+  let forkReach = 0.36
   if (carriageMesh) {
     const carriageBox = new Box3().setFromObject(carriageMesh)
-    if (Number.isFinite(carriageBox.max.z)) {
-      forkTipOffset = clamp(carriageBox.max.z - 0.15, 0.3, 1.2)
+    if (Number.isFinite(carriageBox.max.z) && Number.isFinite(carriageBox.min.z)) {
+      forkTipOffset = clamp(carriageBox.max.z, 0.3, 1.2)
+      forkReach = clamp(carriageBox.max.z - carriageBox.min.z, 0.1, 1.2)
     }
   }
 
-  const rig = { wheels, mastLift, carriageLift, tiltPivot, forkTipOffset }
+  const rig = { wheels, mastLift, carriageLift, tiltPivot, forkTipOffset, forkReach }
   root.userData.__vehicleRig = rig
   if (typeof window !== 'undefined') window.__vehicleRig = rig
   return rig

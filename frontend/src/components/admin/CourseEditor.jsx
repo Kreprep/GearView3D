@@ -704,7 +704,47 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
               />
               Fail on driving fast with forks raised
             </label>
-            <p className="admin-panel-note">Cones, walls and parked vehicles are always live colliders - striking one always fails the attempt.</p>
+            <label className="course-checkbox">
+              <input
+                type="checkbox"
+                checked={Boolean(data.failConditions?.sharpTurn)}
+                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, sharpTurn: event.target.checked } })}
+              />
+              Fail on turning sharply at speed while carrying
+            </label>
+            <label className="course-checkbox">
+              <input
+                type="checkbox"
+                checked={Boolean(data.failConditions?.unsecuredTravel)}
+                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, unsecuredTravel: event.target.checked } })}
+              />
+              Fail on travelling with the mast not tilted back
+            </label>
+            <label className="course-checkbox">
+              <input
+                type="checkbox"
+                checked={Boolean(data.failConditions?.loadTipping)}
+                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, loadTipping: event.target.checked } })}
+              />
+              Fail on tilting a heavy load forward up high
+            </label>
+            <p className="admin-panel-note">
+              Braking hard, turning sharply and travelling mast-forward only lose the load when the forks went in
+              partway: a pallet driven fully onto the forks and centred rides all three out, and tilting the mast back
+              saves most of the rest. The tip-over rules need a rated capacity to judge "too heavy" against, so they do
+              nothing while the field above is blank.
+            </p>
+            <p className="admin-panel-note">
+              Cones, walls, parked vehicles and racking are always live colliders. Striking a cone, wall or parked
+              vehicle always fails the attempt; racking stops the truck at any speed but only fails it when hit at
+              travelling speed, since placing a load puts the nose at the rack&apos;s face on purpose. Pallets are
+              solid too, but they only block the truck, since driving into a pallet is how the forks go in.
+            </p>
+            <p className="admin-panel-note">
+              Setting a load down is always two moves, on the floor and on a shelf alike: lower it until the surface
+              takes its weight, then tilt the mast forward to let it off the tines. This is a mechanic, not a fail
+              rule, so it applies to every driving course.
+            </p>
           </section>
           )}
 
