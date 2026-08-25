@@ -301,15 +301,18 @@ function ReferenceBox({ x }) {
  */
 function ReferenceForklift({ x }) {
   const { scene } = useGLTF(DEFAULT_MODEL_URL)
-  const clone = useMemo(() => cloneSkeleton(scene), [scene])
-
-  // A passive effect runs after paint, which is too late: <Center> measures
-  // in its own layout effect, and child layout effects fire first (see
-  // EquipmentModel above), so buildVehicleRig has to be a layout effect too
-  // or Center measures the still-skinned clone and grounds it wildly wrong.
-  React.useLayoutEffect(() => {
-    buildVehicleRig(clone)
-  }, [clone])
+  // The rig is built during render rather than in an effect: <Center> measures
+  // in its own layout effect, so anything that changes the geometry has to have
+  // happened before that or Center grounds the still-skinned clone wildly
+  // wrong. De-skinning here also makes the model's real height knowable, which
+  // the label needs - a hardcoded offset floats it above the overhead guard.
+  const { clone, labelHeight } = useMemo(() => {
+    const next = cloneSkeleton(scene)
+    buildVehicleRig(next)
+    next.updateWorldMatrix(true, true)
+    const box = new THREE.Box3().setFromObject(next)
+    return { clone: next, labelHeight: box.max.y - box.min.y }
+  }, [scene])
 
   useEffect(() => {
     clone.traverse((object) => {
@@ -332,7 +335,7 @@ function ReferenceForklift({ x }) {
       <Center top cacheKey={DEFAULT_MODEL_URL}>
         <primitive object={clone} />
       </Center>
-      <ReferenceLabel height={0.6}>Forklift (baseline)</ReferenceLabel>
+      <ReferenceLabel height={labelHeight}>Forklift (baseline)</ReferenceLabel>
     </group>
   )
 }
