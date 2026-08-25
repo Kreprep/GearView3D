@@ -19,9 +19,8 @@ export const RACK_MODEL_URL = '/models/pallet-racking.glb'
 // --- Tuning knobs -----------------------------------------------------
 // RACK_SCALE_XZ: footprint size (width/depth). Purely visual - bump this
 // freely to make the rack bigger/smaller on screen. No upper limit; a huge
-// value just makes a huge rack. Keep RACK_SLOT_RADIUS below the resulting
-// RACK_FOOTPRINT.halfWidth (printed below) or the target ring will poke out
-// past the model's edges.
+// value just makes a huge rack. RACK_SLOT_HALF_WIDTH below scales with it, so
+// the target marker keeps tracking the centre bay.
 //
 // RACK_SCALE_Y: height squash. This ONE has a ceiling - raw top-shelf height
 // is 2.579 model units, and it must clear FORK_MAX_HEIGHT (now 0.8, raised
@@ -35,10 +34,11 @@ export const RACK_SCALE_Y = 0.250
 export const RACK_MODEL_SCALE = [RACK_SCALE_XZ, RACK_SCALE_Y, RACK_SCALE_XZ]
 
 // Half-extents of the rack's footprint (world units, X = width, Z = depth) -
-// used only for the 2D admin map icon. The rack is deliberately not a live
-// collider: the learner has to drive the fork tip inside this footprint to
-// place a pallet, so treating it as a solid obstacle like a wall would make
-// delivery impossible.
+// the 2D admin map icon, and the live collider the vehicle body is blocked by.
+// Racking is structure: the truck body must never touch it, so a body hit
+// fails the attempt like a wall. Only the *forks* reach into the bay, and they
+// can, because the body is stopped a half-length back - see RACK_SLOT_* below
+// and the placement check in DrivingSimulationViewer.
 export const RACK_FOOTPRINT = { halfWidth: (2.9 / 2) * RACK_SCALE_XZ, halfDepth: (1.2 / 2) * RACK_SCALE_XZ }
 
 export const RACK_LEVELS = ['bottom', 'middle', 'top']
@@ -61,13 +61,39 @@ export const RACK_LEVEL_HEIGHTS = Object.fromEntries(
   RACK_LEVELS.map((level) => [level, Number((RACK_LEVEL_RAW_Y[level] * RACK_SCALE_Y).toFixed(4))]),
 )
 
-// How close the carried pallet's fork height must be to a level's target,
-// and how close (XZ, world units) the fork tip must be to the rack, to place
-// it there. Generous on both counts - this is untimed practice and the
-// learner has no numeric height readout, only the chase-cam view.
+// How close the carried pallet's fork height must be to a level's target to
+// place it there. Generous - this is untimed practice and the learner has no
+// numeric height readout, only the chase-cam view.
 export const RACK_LEVEL_TOLERANCE = 0.05
-export const RACK_SLOT_RADIUS = 0.32
 export const RACK_PLACE_MAX_SPEED = 0.25
+
+// Speed above which touching a rack is a strike rather than a stop. The truck
+// is blocked by racking at any speed, so a learner creeping up to a bay to
+// place a pallet - which is the correct way to do it, and puts the body right
+// at the rack's face - is stopped without being failed. Only hitting it at
+// travelling speed counts as driving into the structure. Deliberately above
+// RACK_PLACE_MAX_SPEED, so every approach slow enough to place a load is also
+// slow enough not to fail.
+export const RACK_STRIKE_SPEED = 0.3
+
+// The centre bay's mouth, in the rack's own local frame. The fork tip has to
+// be inside this rectangle to set a pallet down.
+//
+// This used to be a radius from the rack's *centre*, which stopped working
+// once the rack became a collider: the vehicle body is blocked at the rack's
+// front face, and the fork tip sits roughly a body half-length ahead of the
+// vehicle centre, so the tip can only ever reach the face plane - never the
+// middle of the rack. A rectangle spanning the bay's width, entered from
+// either face, is both reachable and a fairer target than a circle.
+//
+// The approach margin is deliberately generous for the same reason: the body
+// is stopped, and failed, at the rack's front face, so a tight margin would
+// leave a delivery window barely wider than one frame of travel and the
+// learner would strike the rack trying to hit it. Stopping short and tilting
+// forward has to be the winning move, not threading a gap. The viewer widens
+// this further for a vehicle whose forks reach less far past its own body.
+export const RACK_SLOT_HALF_WIDTH = (0.825 / 2) * RACK_SCALE_XZ
+export const RACK_SLOT_APPROACH_MARGIN = 0.32
 
 // --- Decorative racks ---------------------------------------------------
 // Background dressing, not a course object: no id, no target, not graded, not

@@ -199,6 +199,31 @@
   background: rgba(185, 28, 28, 0.85);
 }
 
+/* Fork engagement quality and mast tilt. Both decide whether a load stays on
+   the forks, so they read as traffic lights: green is safe to travel with,
+   amber is the state that loses the load. */
+.driving-grip-badge,
+.driving-tilt-badge {
+  border-radius: var(--radius-sm);
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: #f8fafc;
+  background: rgba(51, 65, 85, 0.82);
+}
+
+.driving-grip-badge.secure,
+.driving-tilt-badge.back {
+  background: rgba(21, 128, 61, 0.82);
+}
+
+.driving-grip-badge.partial,
+.driving-grip-badge.shallow,
+.driving-tilt-badge.warn {
+  color: #1c1917;
+  background: rgba(217, 119, 6, 0.9);
+}
+
 .driving-parking-badge {
   border-radius: var(--radius-sm);
   padding: var(--ctl-pad-y) var(--ctl-pad-x);
