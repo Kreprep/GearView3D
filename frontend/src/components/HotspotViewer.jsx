@@ -310,7 +310,11 @@ function ReferenceForklift({ x }) {
     const next = cloneSkeleton(scene)
     buildVehicleRig(next)
     next.updateWorldMatrix(true, true)
-    const box = new THREE.Box3().setFromObject(next)
+    // Precise (per-vertex), because forklift.glb's meshes carry morph targets
+    // and the cheap bounding-box path inflates the model to more than twice its
+    // real height. <Center> measures precisely too, so this is the same number
+    // it grounds against.
+    const box = new THREE.Box3().setFromObject(next, true)
     return { clone: next, labelHeight: box.max.y - box.min.y }
   }, [scene])
 
