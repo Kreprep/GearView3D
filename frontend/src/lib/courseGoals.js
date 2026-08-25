@@ -3,6 +3,10 @@
 // from the markers they contain, which is also the fallback when a stored
 // `goalType` is missing.
 
+import { DECOR_RACK_KINDS, RACK_FOOTPRINT } from '../data/rackProfile.js'
+import { PALLET_FALLBACK_FOOTPRINT } from '../data/palletProfile.js'
+import { orientedRectsOverlap } from './simCollision.js'
+
 export const COURSE_GOAL_TYPES = ['checkpoints', 'parking', 'pallet', 'racking', 'free']
 
 // The driveable box every course used to share as a hardcoded constant in
@@ -47,11 +51,11 @@ export function courseTaskCopy(course, profile) {
         : 'Drive to the marked bay, straighten up between the lines, stop completely, then switch the engine off with E.'
     case 'pallet':
       return hasForks
-        ? 'Slide the lowered forks under the pallet, raise it with R, carry it to the drop zone, lower with F, then reverse away to release it.'
-        : 'Line up with the load, lift it with R, carry it to the drop zone, lower it with F, then reverse away to release it.'
+        ? 'Line up square with the pallet and drive the lowered forks all the way in, raise it with R, tilt the mast back with T to secure it, carry it to the drop zone, lower with F until it rests on the ground, tilt forward with G to let it off the forks, then reverse away.'
+        : 'Line up with the load, lift it with R, carry it to the drop zone, lower it with F until it rests on the ground, then reverse away to release it.'
     case 'racking':
       return hasForks
-        ? 'Slide the lowered forks under the pallet, raise it with R to the target shelf height, then drive it into the rack and hold steady to set it in place.'
+        ? 'Drive the lowered forks all the way into the pallet, raise it with R above the target shelf, tilt back with T to carry it there, stop square in front of the bay, lower with F until the load rests on the shelf, then tilt forward with G to set it down.'
         : 'Lift the load with R to the target shelf height, then drive it into the rack and hold steady to set it in place.'
     case 'checkpoints': {
       const count = course.checkpoints?.length || 0
@@ -60,6 +64,45 @@ export function courseTaskCopy(course, profile) {
     default:
       return 'Press E to start the engine to finish this step.'
   }
+}
+
+// Racking and pallets are solid (see rackProfile.js / DrivingSimulationViewer),
+// so a course that starts the vehicle inside one, or stacks two racks on the
+// same spot, is unplayable. The vehicle's own footprint is not known here -
+// this file also runs in the backend, with no equipment row to hand - so the
+// start check uses the forklift default, rounded up: the truck's chassis is
+// 0.29 half-long, and the extra covers the mast and forks reaching ahead of
+// it, which an authored start position should also keep clear of a rack.
+const START_FOOTPRINT = { halfX: 0.15, halfZ: 0.45 }
+
+function solidRects(course) {
+  const racks = (course?.racks || []).map((rack) => ({
+    x: rack.position[0],
+    z: rack.position[2],
+    rotation: rack.rotation || 0,
+    halfX: RACK_FOOTPRINT.halfWidth,
+    halfZ: RACK_FOOTPRINT.halfDepth,
+    label: 'racking',
+  }))
+  const decorRacks = (course?.decorations || [])
+    .filter((item) => DECOR_RACK_KINDS.includes(item.type))
+    .map((item) => ({
+      x: item.position[0],
+      z: item.position[2],
+      rotation: item.rotation || 0,
+      halfX: RACK_FOOTPRINT.halfWidth,
+      halfZ: RACK_FOOTPRINT.halfDepth,
+      label: 'racking',
+    }))
+  const pallets = (course?.pallets || (course?.pallet ? [course.pallet] : [])).map((pallet) => ({
+    x: pallet.position[0],
+    z: pallet.position[2],
+    rotation: pallet.rotation || 0,
+    halfX: PALLET_FALLBACK_FOOTPRINT.halfWidth,
+    halfZ: PALLET_FALLBACK_FOOTPRINT.halfDepth,
+    label: 'a pallet',
+  }))
+  return [...racks, ...decorRacks, ...pallets]
 }
 
 // A course an admin can save must be winnable: every goal type needs the
@@ -95,6 +138,27 @@ export function validateCourse(course) {
       ([x, , z]) => x < -bounds.halfWidth || x > bounds.halfWidth || z < bounds.minZ || z > bounds.maxZ,
     )
     if (outOfBounds) problems.push('One or more objects are placed outside the course boundary.')
+  }
+
+  const solids = solidRects(course)
+  if (course?.start?.position) {
+    const startRect = {
+      x: course.start.position[0],
+      z: course.start.position[2],
+      rotation: course.start.heading || 0,
+      ...START_FOOTPRINT,
+    }
+    const blockingStart = solids.find((solid) => orientedRectsOverlap(startRect, solid))
+    if (blockingStart) problems.push(`The start position sits inside ${blockingStart.label} - the vehicle cannot spawn there.`)
+  }
+  for (let i = 0; i < solids.length; i += 1) {
+    for (let j = i + 1; j < solids.length; j += 1) {
+      if (orientedRectsOverlap(solids[i], solids[j])) {
+        problems.push('Two solid objects overlap - racking and pallets block the vehicle, so they cannot share a spot.')
+        i = solids.length
+        break
+      }
+    }
   }
 
   if (goal === 'checkpoints' && !course.checkpoints?.length) {

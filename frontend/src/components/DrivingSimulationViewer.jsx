@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Grid, Html, OrbitControls, useGLTF } from '@react-three/drei'
-import { DoubleSide, Quaternion, Vector3 } from 'three'
+import { Box3, DoubleSide, Euler, Quaternion, Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Compass, Eye, RotateCcw, Locate } from 'lucide-react'
 import { buildVehicleRig, REAR_WHEEL_KEYS } from '../lib/vehicleRig'
@@ -9,15 +9,31 @@ import { decorationType } from '../lib/courseEdit'
 import { resolveCourseBounds } from '../lib/courseGoals'
 import { DEFAULT_VEHICLE_MODEL_URL } from '../data/vehicleProfile'
 import { resolveVehicleProfile } from '../lib/vehicleProfile'
+import { evaluateForkEngagement, engagementRisk, gripQuality, slipThisFrame } from '../lib/loadPhysics'
+import { distanceToOrientedRect, orientedRectOverlap, pointInOrientedRect, toRectLocal } from '../lib/simCollision'
 import {
+  LOAD_LAND_CLEARANCE,
+  LOAD_TIP_HEIGHT,
+  LOAD_TIP_TILT_RATIO,
+  LOAD_TIP_WEIGHT_RATIO,
+  PALLET_FALLBACK_FOOTPRINT,
+  SLIP_FAIL_RATIO,
+  TILT_RELEASE_ANGLE,
+} from '../data/palletProfile'
+import {
+  DECOR_RACK_KINDS,
+  RACK_FOOTPRINT,
   RACK_LEVEL_HEIGHTS,
   RACK_LEVEL_LABELS,
   RACK_LEVEL_TOLERANCE,
+  RACK_LEVELS,
   RACK_MODEL_SCALE,
   RACK_MODEL_URL,
   RACK_PLACE_MAX_SPEED,
-  RACK_SLOT_RADIUS,
+  RACK_SLOT_APPROACH_MARGIN,
+  RACK_SLOT_HALF_WIDTH,
   RACK_SLOTS_BY_KIND,
+  RACK_STRIKE_SPEED,
   rackSlotOffset,
 } from '../data/rackProfile'
 import './DrivingSimulationViewer.css'
@@ -87,7 +103,8 @@ const STEER_DAMP = 8
 const FORK_MAX_HEIGHT = 0.8
 const FORK_SPEED = 0.6
 const MAST_LIFT_RATIO = 0.5
-const FORK_TIP_OFFSET_FALLBACK = 0.45
+const FORK_TIP_OFFSET_FALLBACK = 0.6
+const FORK_REACH_FALLBACK = 0.36
 
 // Mast tilt: rotation.x on the rig's tiltPivot (see buildVehicleRig). Negative
 // tilts the mast top back toward the operator (secures a carried load),
@@ -98,15 +115,15 @@ const TILT_MAX_ANGLE = 0.12
 const TILT_SPEED = 0.5
 const TILT_SECURE_ANGLE = -0.06
 
-// Pallet pickup gameplay thresholds (no physics engine - proximity/height checks).
-const PICKUP_RADIUS = 0.35
-const ALIGN_DOT_MIN = 0.9
+// Pallet pickup gameplay thresholds (no physics engine - see lib/loadPhysics.js
+// for how far the forks are in, and data/palletProfile.js for the tiers it
+// grades that against). These are the viewer's own fork-height gates.
 const FORK_ENGAGE_HEIGHT = 0.05
 const LIFT_THRESHOLD = 0.12
-const DROP_LOWER_THRESHOLD = 0.06
 const CLEAR_DISTANCE = 0.8
-const PALLET_CARRY_Y = 0.01
-const CARRY_LERP = 10
+// How far a carried pallet sits above the tines - just enough to keep the two
+// surfaces from z-fighting.
+const PALLET_CARRY_Y = 0
 
 // Fail-condition "physics" (Module 4) - still kinematic, no physics engine.
 // Tip-over pivots the whole truck about the front axle; dropped loads follow a
@@ -128,8 +145,15 @@ const WALL_HALF_THICKNESS = WALL_THICKNESS / 2
 const WALL_HIT_MARGIN = 0.12
 // Body footprint (half-extents) comes from the equipment's vehicle profile -
 // width along local X, length along local Z, same convention as the wall
-// rectangle check. The defaults are forklift.glb's measured bounding box.
-const BODY_SAMPLE_OFFSETS = [0.38, 0, -0.32]
+// rectangle check. The defaults are forklift.glb's measured chassis box.
+// Solid objects the truck is stopped by rather than driven through: racking
+// (which also fails the attempt, like a wall) and pallets sitting on the floor
+// (which do not - driving into a pallet is how you pick one up). Racking is
+// given a small margin so the body stops just clear of the uprights.
+const RACK_HIT_MARGIN = 0.04
+const PALLET_NUDGE_MAX = 0.02
+// Above this the pallet is on a shelf or mid-fall, not an obstacle on the floor.
+const PALLET_SOLID_MAX_Y = 0.1
 const SUDDEN_STOP_DECEL = 1.6
 const SUDDEN_STOP_MIN_SPEED = 0.85
 // Standard travel height: forks should stay low and close to the ground while
@@ -157,8 +181,29 @@ const PALLET_STATE_LABELS = {
   delivered: 'Pallet: Delivered',
 }
 
+// How well the forks are in, as the learner sees it. 'shallow' is lined up
+// with a pallet but not far enough in to lift it; 'none' means no pallet is
+// engaged at all, and hides the badge.
+const GRIP_LABELS = {
+  shallow: 'Forks not seated',
+  partial: 'Partial grip',
+  secure: 'Secure',
+}
+
+const TILT_LABELS = {
+  back: 'Mast: Back',
+  level: 'Mast: Level',
+  forward: 'Mast: Forward',
+}
+
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max)
+}
+
+function tiltStateName(angle) {
+  if (angle <= TILT_SECURE_ANGLE) return 'back'
+  if (angle >= TILT_RELEASE_ANGLE) return 'forward'
+  return 'level'
 }
 
 function useDrivingInput(onEngineToggle, onKeyActive) {
@@ -338,6 +383,29 @@ function FinishLineMarker({ checkpoint, status }) {
   )
 }
 
+// Half-extents of a prop's model, in world units, measured off the source GLTF
+// and scaled by its MODEL_TRANSFORM entry. Same idea as buildVehicleRig
+// deriving forkTipOffset from the carriage's bounding box: the number that
+// matters is the model's, so read it from the model rather than restating it
+// as a constant that silently goes stale when the asset is swapped.
+const footprintCache = new Map()
+
+function modelFootprint(url, scene) {
+  if (footprintCache.has(url)) return footprintCache.get(url)
+  const { scale } = MODEL_TRANSFORM[url] || {}
+  const scaleX = Array.isArray(scale) ? scale[0] : (scale ?? 1)
+  const scaleZ = Array.isArray(scale) ? scale[2] : (scale ?? 1)
+  const box = new Box3().setFromObject(scene)
+  const footprint = Number.isFinite(box.max.x) && Number.isFinite(box.max.z)
+    ? {
+        halfWidth: ((box.max.x - box.min.x) / 2) * scaleX,
+        halfDepth: ((box.max.z - box.min.z) / 2) * scaleZ,
+      }
+    : { ...PALLET_FALLBACK_FOOTPRINT }
+  footprintCache.set(url, footprint)
+  return footprint
+}
+
 function ModelProp({ url }) {
   const { scene } = useGLTF(url)
   const cloned = useMemo(() => {
@@ -372,8 +440,8 @@ function ParkedVehicle({ position, rotation, modelUrl }) {
 // Background-dressing rack: same model/scale as the functional rack (see
 // data/rackProfile.js), plus a pallet+box on whichever slots RACK_SLOTS_BY_KIND
 // gives its type - 'rack-empty' gets none. Purely a `decorations` entry: no
-// id, no target, not graded, not a collider, same as a cone or wall's
-// non-colliding cousins.
+// id, no target, not graded. It is still solid, though - dressing the course
+// with racking the truck can drive through would teach the wrong clearance.
 function DecorRack({ type, position, rotation }) {
   const boxUrl = type === 'rack-loaded' ? CARGO_BOX_STACK_MODEL_URL : CARGO_BOX_MODEL_URL
   return (
@@ -437,9 +505,21 @@ function CourseDecorations({ decorations, parkedModelUrl }) {
   )
 }
 
-function Pallet({ pallet, palletRef, overweight = false }) {
+function Pallet({ pallet, palletRef, overweight = false, onMeasure }) {
   const modelUrl = palletModelForWeight(pallet.weightKg)
   const cargoDeckY = PALLET_DECK_Y[modelUrl]
+  const { scene } = useGLTF(modelUrl)
+  const onMeasureRef = useRef(onMeasure)
+  useEffect(() => {
+    onMeasureRef.current = onMeasure
+  }, [onMeasure])
+
+  // The frame loop needs this pallet's real half-extents for both the fork
+  // insertion maths and the solid-obstacle test, so report them up once the
+  // model is in.
+  useEffect(() => {
+    onMeasureRef.current?.(modelFootprint(modelUrl, scene))
+  }, [modelUrl, scene])
 
   return (
     <group ref={palletRef} position={[pallet.position[0], 0, pallet.position[2]]} rotation={[0, pallet.rotation || 0, 0]}>
@@ -506,9 +586,10 @@ function DropZoneMarker({ zone, delivered }) {
   )
 }
 
-// Static racking props. Deliberately not colliders - the learner has to
-// drive the fork tip inside a rack's footprint to place a pallet on it, so
-// treating the rack like a wall would make delivery impossible.
+// Static racking props. Solid: the truck body is blocked by, and fails
+// against, a rack's footprint (see rackProfile.js). Only the forks reach into
+// a bay, which is enough to place a pallet because the body stops roughly a
+// fork-length short of the shelf.
 function CourseRacks({ racks }) {
   return (
     <group>
@@ -541,7 +622,7 @@ function RackLevelMarker({ rack, level, delivered }) {
   return (
     <group position={[rack.position[0], height, rack.position[2]]} rotation={[0, rack.rotation || 0, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
-        <ringGeometry args={[Math.max(RACK_SLOT_RADIUS - 0.08, 0.05), RACK_SLOT_RADIUS, 40]} />
+        <ringGeometry args={[Math.max(RACK_SLOT_HALF_WIDTH - 0.06, 0.05), RACK_SLOT_HALF_WIDTH, 40]} />
         <meshBasicMaterial
           ref={ringMaterialRef}
           color={delivered ? '#22c55e' : '#a855f7'}
@@ -613,7 +694,7 @@ function DrivingScene({
   checkpointIndex,
   checkpointIndexRef,
   onAdvanceCheckpoint,
-  onSpeedSample,
+  onHudSample,
   palletState,
   onPalletEvent,
   onFail,
@@ -653,6 +734,19 @@ function DrivingScene({
     () => (course.decorations || []).filter((item) => item.type === 'wall' || decorationType(item) === 'vehicle'),
     [course],
   )
+  // Racking is solid, functional and decorative alike, so both lists become
+  // the same kind of oriented rectangle for the collision test.
+  const rackColliders = useMemo(
+    () =>
+      [...racks, ...(course.decorations || []).filter((item) => DECOR_RACK_KINDS.includes(item.type))].map((item) => ({
+        x: item.position[0],
+        z: item.position[2],
+        rotation: item.rotation || 0,
+        halfX: RACK_FOOTPRINT.halfWidth,
+        halfZ: RACK_FOOTPRINT.halfDepth,
+      })),
+    [racks, course],
+  )
 
   useEffect(() => {
     rigRef.current = buildVehicleRig(forklift, profile.rig)
@@ -677,6 +771,11 @@ function DrivingScene({
     })
   }, [forklift])
 
+  // Nose, middle and tail of the body, along its own centreline: the points
+  // the wall check samples. Derived from the footprint so a profile with a
+  // different body length samples its own ends, not the forklift's.
+  const bodySampleOffsets = useMemo(() => [halfLength, 0, -halfLength], [halfLength])
+
   const hudAccumRef = useRef(0)
   const backRef = useRef(new Vector3())
   const desiredCamRef = useRef(new Vector3())
@@ -687,6 +786,14 @@ function DrivingScene({
   const steerAngleRef = useRef(0)
   const palletRefs = useRef([])
   const palletSimRef = useRef(null)
+  const palletFootprintsRef = useRef([])
+  const bodyRectRef = useRef({ x: 0, z: 0, rotation: 0, halfX: 0, halfZ: 0 })
+  const palletRectRef = useRef({ x: 0, z: 0, rotation: 0, halfX: 0, halfZ: 0 })
+  const gripLocalRef = useRef(new Vector3())
+  const palletEulerRef = useRef(new Euler(0, 0, 0, 'YXZ'))
+  const gripQuatRef = useRef(new Quaternion())
+  const carriageQuatRef = useRef(new Quaternion())
+  const gripQualityRef = useRef('none')
   const carriedIndexRef = useRef(-1)
   const deliveredCountRef = useRef(0)
   const prevSpeedRef = useRef(0)
@@ -721,6 +828,7 @@ function DrivingScene({
       if (typeof patch.heading === 'number') headingRef.current = patch.heading
       if (typeof patch.speed === 'number') speedRef.current = patch.speed
       if (typeof patch.forkHeight === 'number') forkHeightRef.current = clamp(patch.forkHeight, 0, FORK_MAX_HEIGHT)
+      if (typeof patch.tilt === 'number') tiltAngleRef.current = clamp(patch.tilt, -TILT_MAX_ANGLE, TILT_MAX_ANGLE)
       if (typeof patch.engineOn === 'boolean') engineOnRef.current = patch.engineOn
     }
     return () => {
@@ -772,8 +880,102 @@ function DrivingScene({
 
     const forwardX = Math.sin(headingRef.current)
     const forwardZ = Math.cos(headingRef.current)
-    posRef.current.x = clamp(posRef.current.x + forwardX * speedRef.current * dt, -groundHalfWidth, groundHalfWidth)
-    posRef.current.z = clamp(posRef.current.z + forwardZ * speedRef.current * dt, courseMinZ, courseMaxZ)
+    const nextX = clamp(posRef.current.x + forwardX * speedRef.current * dt, -groundHalfWidth, groundHalfWidth)
+    const nextZ = clamp(posRef.current.z + forwardZ * speedRef.current * dt, courseMinZ, courseMaxZ)
+
+    // Solid objects stop the truck rather than let it drive through. Racking
+    // also fails the attempt - it is structure, and only the forks belong
+    // inside a bay. A pallet does not fail, because driving into one is how
+    // the forks go in: it lets the tines through when the approach is square
+    // and low, blocks once they have bottomed out against the carriage, and
+    // gets shoved aside when the truck hits it off-square.
+    const body = bodyRectRef.current
+    body.x = nextX
+    body.z = nextZ
+    body.rotation = headingRef.current
+    body.halfX = halfWidth
+    body.halfZ = halfLength
+
+    // Only a move that pushes *deeper* into an object is rejected. Testing raw
+    // overlap instead would trap the truck the moment it ended up inside
+    // something - most easily right after setting a pallet down, where it is
+    // standing on top of the load it just released and still has to reverse
+    // clear of it.
+    const worsensOverlap = (rect, margin = 0) => {
+      const next = orientedRectOverlap(body, rect, margin)
+      if (!next) return null
+      body.x = posRef.current.x
+      body.z = posRef.current.z
+      const now = orientedRectOverlap(body, rect, margin)
+      body.x = nextX
+      body.z = nextZ
+      return !now || next.depth > now.depth + 1e-4 ? next : null
+    }
+
+    let blocked = false
+
+    for (const rack of rackColliders) {
+      if (!worsensOverlap(rack, RACK_HIT_MARGIN)) continue
+      blocked = true
+      // Placing a load on a shelf puts the truck's nose at the rack's face on
+      // purpose, so touching it while creeping only stops the truck. Above
+      // RACK_STRIKE_SPEED it is a strike, and racking is structure.
+      if (Math.abs(speedRef.current) > RACK_STRIKE_SPEED) triggerFail('rack')
+      break
+    }
+
+    if (!blocked && pallets.length) {
+      const tipOffset = rigRef.current?.forkTipOffset || FORK_TIP_OFFSET_FALLBACK
+      const tipReach = rigRef.current?.forkReach || FORK_REACH_FALLBACK
+      for (let i = 0; i < pallets.length; i += 1) {
+        const pallet = palletRefs.current[i]
+        if (!pallet || palletSimRef.current?.[i]?.state === 'carried') continue
+        // A pallet up on a shelf, or still in the air, is not in the way.
+        if (pallet.position.y > PALLET_SOLID_MAX_Y) continue
+
+        const palletHalf = palletFootprintsRef.current[i] || PALLET_FALLBACK_FOOTPRINT
+        const rect = palletRectRef.current
+        rect.x = pallet.position.x
+        rect.z = pallet.position.z
+        rect.rotation = pallet.rotation.y
+        rect.halfX = palletHalf.halfWidth
+        rect.halfZ = palletHalf.halfDepth
+
+        const hit = worsensOverlap(rect)
+        if (!hit) continue
+
+        const engagement = evaluateForkEngagement({
+          palletX: rect.x,
+          palletZ: rect.z,
+          palletRot: rect.rotation,
+          palletHalf,
+          vehicleX: nextX,
+          vehicleZ: nextZ,
+          heading: headingRef.current,
+          forkTipOffset: tipOffset,
+          forkReach: tipReach,
+        })
+        const forksEntering =
+          profile.hasForks && engagement.canEnter && forkHeightRef.current <= FORK_ENGAGE_HEIGHT
+
+        if (forksEntering && engagement.insertDepth < engagement.seatedDepth) continue
+
+        blocked = true
+        if (!forksEntering) {
+          const push = Math.min(hit.depth, PALLET_NUDGE_MAX)
+          pallet.position.x -= hit.axisX * push
+          pallet.position.z -= hit.axisZ * push
+        }
+        break
+      }
+    }
+
+    if (blocked) {
+      speedRef.current = 0
+    } else {
+      posRef.current.x = nextX
+      posRef.current.z = nextZ
+    }
 
     if (forkliftGroupRef.current) {
       forkliftGroupRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z)
@@ -833,16 +1035,14 @@ function DrivingScene({
     if (liveCones.length && !failedRef.current && Math.abs(speedRef.current) > CONE_MIN_HIT_SPEED) {
       if (!coneSimRef.current) coneSimRef.current = liveCones.map(() => ({ hit: false, angle: 0, dirX: 0, dirZ: 1 }))
       const coneSims = coneSimRef.current
+      body.x = posRef.current.x
+      body.z = posRef.current.z
       for (let i = 0; i < liveCones.length && !failedRef.current; i += 1) {
         const cone = liveCones[i]
         if (coneSims[i].hit) continue
         const dx = cone.position[0] - posRef.current.x
         const dz = cone.position[2] - posRef.current.z
-        const localRight = dx * forwardZ - dz * forwardX
-        const localForward = dx * forwardX + dz * forwardZ
-        const edgeRight = localRight - clamp(localRight, -halfWidth, halfWidth)
-        const edgeForward = localForward - clamp(localForward, -halfLength, halfLength)
-        if (Math.hypot(edgeRight, edgeForward) <= CONE_RADIUS) {
+        if (distanceToOrientedRect(cone.position[0], cone.position[2], body) <= CONE_RADIUS) {
           const len = Math.hypot(dx, dz) || 1
           coneSims[i] = { hit: true, angle: 0, dirX: dx / len, dirZ: dz / len }
           triggerFail('cone')
@@ -869,19 +1069,18 @@ function DrivingScene({
     // decoration's oriented rectangle (thickness x length, or a parked
     // vehicle's footprint). Immovable, so a hit just fails the attempt.
     if (liveWalls.length && !failedRef.current && Math.abs(speedRef.current) > CONE_MIN_HIT_SPEED) {
+      const wallRect = palletRectRef.current
       wallLoop: for (const wall of liveWalls) {
         const isVehicle = decorationType(wall) === 'vehicle'
-        const rot = wall.rotation || 0
-        const cosRot = Math.cos(rot)
-        const sinRot = Math.sin(rot)
-        const halfThickness = isVehicle ? halfWidth : WALL_HALF_THICKNESS
-        const halfLen = isVehicle ? halfLength : (wall.length || 3) / 2
-        for (const offset of BODY_SAMPLE_OFFSETS) {
-          const dx = posRef.current.x + forwardX * offset - wall.position[0]
-          const dz = posRef.current.z + forwardZ * offset - wall.position[2]
-          const localX = dx * cosRot - dz * sinRot
-          const localZ = dx * sinRot + dz * cosRot
-          if (Math.abs(localX) <= halfThickness + WALL_HIT_MARGIN && Math.abs(localZ) <= halfLen + WALL_HIT_MARGIN) {
+        wallRect.x = wall.position[0]
+        wallRect.z = wall.position[2]
+        wallRect.rotation = wall.rotation || 0
+        wallRect.halfX = isVehicle ? halfWidth : WALL_HALF_THICKNESS
+        wallRect.halfZ = isVehicle ? halfLength : (wall.length || 3) / 2
+        for (const offset of bodySampleOffsets) {
+          const sampleX = posRef.current.x + forwardX * offset
+          const sampleZ = posRef.current.z + forwardZ * offset
+          if (pointInOrientedRect(sampleX, sampleZ, wallRect, WALL_HIT_MARGIN)) {
             triggerFail(isVehicle ? 'vehicle' : 'wall')
             break wallLoop
           }
@@ -911,39 +1110,190 @@ function DrivingScene({
       }
     }
 
-    // Pallet pickup/carry/release - proximity + fork-height checks, no physics
-    // engine. Multi-pallet aware: only one pallet can be carried at a time, and
-    // courses with `capacityKg`/`failConditions` add overload and sudden-stop
-    // fail behavior on top of the module-2 flow.
+    // Pallet pickup/carry/release. Still kinematic, no physics engine, but
+    // lib/loadPhysics.js now grades how far the forks actually went in and how
+    // squarely, and that grade decides whether the load survives being thrown
+    // about. Multi-pallet aware: only one pallet can be carried at a time, and
+    // a course's `capacityKg`/`failConditions` layer the overload, slip and
+    // tip-over rules on top of the module-2 flow.
     if (pallets.length) {
       if (!palletSimRef.current) {
-        palletSimRef.current = pallets.map(() => ({ state: 'ground', engaged: false, vx: 0, vy: 0, vz: 0 }))
+        palletSimRef.current = pallets.map(() => ({
+          state: 'ground',
+          engaged: false,
+          vx: 0,
+          vy: 0,
+          vz: 0,
+          risk: 0,
+          grip: null,
+          slipCause: null,
+          landed: false,
+          restY: 0,
+        }))
       }
       const capacity = typeof course.capacityKg === 'number' ? course.capacityKg : Infinity
+      const failConditions = course.failConditions || {}
       const attachOffset = rig?.forkTipOffset || FORK_TIP_OFFSET_FALLBACK
+      const attachReach = rig?.forkReach || FORK_REACH_FALLBACK
       const tipX = posRef.current.x + forwardX * attachOffset
       const tipZ = posRef.current.z + forwardZ * attachOffset
+      const decel = prevSpeed > SUDDEN_STOP_MIN_SPEED ? (prevSpeed - speedRef.current) / dt : 0
+      const brakingHard = decel > SUDDEN_STOP_DECEL
+      const turnLoad = Math.abs(turnInput) * Math.abs(speedRef.current)
+      let liveQuality = 'none'
+      // Racking blocks the truck body, so the fork tip can only ever reach a
+      // little way past the rack's front face - and how far depends on the
+      // vehicle, since a short fork on a long body reaches less. Derive the
+      // depth the slot accepts from that geometry rather than trusting a fixed
+      // margin, or a vehicle profile with a shorter fork could never deliver.
+      const slotReach =
+        RACK_FOOTPRINT.halfDepth +
+        Math.max(RACK_SLOT_APPROACH_MARGIN, halfLength + RACK_HIT_MARGIN - attachOffset + 0.05)
+
+      // A carried pallet is pinned to the carriage rather than chased toward a
+      // point in front of the truck: its pose is captured in the carriage's own
+      // local frame the moment it lifts, then replayed from that node's world
+      // matrix every frame. The carriage sits under the tilt pivot (see
+      // lib/vehicleRig.js), so one matrix already carries the truck's position
+      // and heading, the fork height and the mast tilt. The load therefore
+      // stays exactly where it was picked up - including a shallow or
+      // off-centre bite - and pitches with the mast, with no lag.
+      const carriage = rig?.carriageLift || null
+
+      const captureGrip = (pallet, engagement) => {
+        if (!carriage) return { local: null, quat: null, insertDepth: engagement.insertDepth, seatedDepth: engagement.seatedDepth }
+        carriage.updateWorldMatrix(true, false)
+        pallet.updateWorldMatrix(true, false)
+        carriage.getWorldQuaternion(carriageQuatRef.current)
+        const world = pallet.getWorldPosition(gripLocalRef.current)
+        // Only the *bite* is captured - how far in along the tines and how far
+        // off their centreline the pallet is. Its height is the tines
+        // themselves: measure from the deck it is being picked off rather than
+        // from wherever the forks have already lifted or pitched it to, or that
+        // head start is baked into the grip and the load rides that far above
+        // the tines for the rest of the carry.
+        world.y = 0
+        const local = carriage.worldToLocal(world).clone()
+        // Undo however far the carriage has already lifted: lift travels along
+        // the carriage's local +Y (up the tilted mast), so this is its exact
+        // inverse, and leaves an offset that holds at any fork height.
+        local.y += forkHeightRef.current + PALLET_CARRY_Y
+        return {
+          local,
+          quat: carriageQuatRef.current.clone().invert().multiply(pallet.getWorldQuaternion(gripQuatRef.current)),
+          insertDepth: engagement.insertDepth,
+          seatedDepth: engagement.seatedDepth,
+        }
+      }
+
+      const applyGrip = (pallet, grip) => {
+        if (carriage && grip?.local) {
+          carriage.updateWorldMatrix(true, false)
+          carriage.getWorldQuaternion(carriageQuatRef.current)
+          pallet.position.copy(grip.local).applyMatrix4(carriage.matrixWorld)
+          pallet.quaternion.copy(carriageQuatRef.current).multiply(grip.quat)
+          return
+        }
+        // No carriage node in this vehicle's rig: pin the load to the fork tip
+        // point instead. Same result minus lift and tilt, neither of which such
+        // a model animates anyway.
+        pallet.position.set(tipX, forkHeightRef.current + PALLET_CARRY_Y, tipZ)
+        pallet.rotation.set(0, headingRef.current, 0)
+      }
+
+      // A load resting on the floor or a shelf is held up by that surface, not
+      // by the tines. It keeps its own yaw, pitches only with a mast tilted
+      // *back* - tilting forward would drive its far edge through the deck -
+      // and rises just enough to keep its near edge on the surface as it does.
+      const settleLoad = (pallet, surfaceY, halfDepth, pitch) => {
+        palletEulerRef.current.setFromQuaternion(pallet.quaternion, 'YXZ')
+        const yaw = palletEulerRef.current.y
+        pallet.rotation.order = 'YXZ'
+        pallet.rotation.set(pitch, yaw, 0)
+        pallet.position.y = surfaceY + halfDepth * Math.sin(-pitch)
+      }
+
+      // How much of the mast's tilt a supported load actually shows.
+      const restingPitch = () => Math.min(tiltAngleRef.current, 0)
+
+      // What is under a carried load: the shelf it is lined up with, or the
+      // floor. Only a level the load has already been raised above counts, so
+      // lowering past one shelf settles on the next one down rather than
+      // snapping back up to the one it just cleared.
+      const supportHeight = (loadY, inSlot) => {
+        if (!inSlot) return 0
+        let best = 0
+        for (const level of RACK_LEVELS) {
+          const height = RACK_LEVEL_HEIGHTS[level] ?? 0
+          if (height <= loadY + RACK_LEVEL_TOLERANCE && height > best) best = height
+        }
+        return best
+      }
+
+      const dropLoad = (pallet, sim, reason, launchSpeed) => {
+        sim.state = 'falling'
+        sim.grip = null
+        sim.engaged = false
+        carriedIndexRef.current = -1
+        sim.vx = forwardX * launchSpeed
+        sim.vz = forwardZ * launchSpeed
+        sim.vy = 0.1
+        triggerFail(reason)
+      }
 
       pallets.forEach((palletDef, i) => {
         const pallet = palletRefs.current[i]
         const sim = palletSimRef.current[i]
         if (!pallet || !sim) return
+        const palletHalf = palletFootprintsRef.current[i] || PALLET_FALLBACK_FOOTPRINT
 
         if ((sim.state === 'ground' || sim.state === 'released') && carriedIndexRef.current === -1 && !failedRef.current) {
-          const near = Math.hypot(pallet.position.x - tipX, pallet.position.z - tipZ) <= PICKUP_RADIUS
-          const toX = pallet.position.x - posRef.current.x
-          const toZ = pallet.position.z - posRef.current.z
-          const facing = (forwardX * toX + forwardZ * toZ) / (Math.hypot(toX, toZ) || 1)
+          const engagement = evaluateForkEngagement({
+            palletX: pallet.position.x,
+            palletZ: pallet.position.z,
+            palletRot: pallet.rotation.y,
+            palletHalf,
+            vehicleX: posRef.current.x,
+            vehicleZ: posRef.current.z,
+            heading: headingRef.current,
+            forkTipOffset: attachOffset,
+            forkReach: attachReach,
+          })
+          const forksDown = forkHeightRef.current <= FORK_ENGAGE_HEIGHT
 
-          if (near && facing >= ALIGN_DOT_MIN && forkHeightRef.current <= FORK_ENGAGE_HEIGHT) {
+          // Engagement latches: the forks have to go in with the carriage down,
+          // but raising them from there must not undo it - the learner passes
+          // through FORK_ENGAGE_HEIGHT on the way to LIFT_THRESHOLD. It only
+          // clears when the pallet stops being forkable at all, which also
+          // freezes `risk` at the quality the forks actually went in with.
+          if (engagement.canLift && forksDown) {
             sim.engaged = true
-          } else if (!near || facing < ALIGN_DOT_MIN) {
+            sim.risk = engagementRisk(engagement)
+          } else if (!engagement.canLift) {
             sim.engaged = false
+            sim.risk = 0
+            sim.grip = null
+          }
+
+          if (sim.engaged) {
+            // Keep the grip current right up until the load leaves the ground,
+            // so it lifts from exactly where it is sitting. Capturing it only
+            // at the lift threshold would record the carriage already raised
+            // and pin the pallet to the floor.
+            sim.grip = captureGrip(pallet, engagement)
+            liveQuality = gripQuality({ risk: sim.risk, canLift: true })
+            // Tines in, load still on the deck: it already answers the mast.
+            // Raising the carriage lifts it, and tilting back rolls its outer
+            // edge up off the floor - which is exactly why an operator tilts
+            // back before travelling, so it has to be visible here.
+            settleLoad(pallet, forkHeightRef.current + PALLET_CARRY_Y, palletHalf.halfDepth, restingPitch())
+          } else if (engagement.canEnter && forksDown && engagement.insertDepth > 0) {
+            liveQuality = 'shallow'
           }
 
           if (sim.engaged && engineOnRef.current) {
             const overweight = (palletDef.weightKg ?? 0) > capacity
-            if (course.failConditions?.overload && overweight && forkHeightRef.current >= OVERLOAD_TIP_HEIGHT) {
+            if (failConditions.overload && overweight && forkHeightRef.current >= OVERLOAD_TIP_HEIGHT) {
               // Overload: the truck pitches forward and throws the load off.
               sim.engaged = false
               sim.state = 'falling'
@@ -955,71 +1305,55 @@ function DrivingScene({
             } else if (!overweight && forkHeightRef.current >= LIFT_THRESHOLD) {
               sim.engaged = false
               sim.state = 'carried'
+              sim.slipCause = null
               carriedIndexRef.current = i
               onPalletEvent({ type: 'pallet-lifted', palletId: palletDef.id, weightKg: palletDef.weightKg }, 'carried')
             }
           }
         } else if (sim.state === 'carried') {
+          liveQuality = gripQuality({ risk: sim.risk, canLift: true })
+
           // Rack-targeted pallets place directly from the carried state: the
-          // learner holds the pallet at the target shelf's height and drives
-          // it into the rack's footprint, rather than lowering to the ground
-          // like a dropZone delivery - a shelf is elevated, so there is no
-          // "lower to release" step.
+          // learner holds the pallet at the target shelf's height, drives it
+          // into the bay and tilts the mast forward to set it down, rather than
+          // lowering to the ground like a dropZone delivery - a shelf is
+          // elevated, so there is no "lower to release" step.
           const targetRack = palletDef.targetRack ? racks.find((rack) => rack.id === palletDef.targetRack) : null
           const targetHeight = targetRack && palletDef.targetLevel ? RACK_LEVEL_HEIGHTS[palletDef.targetLevel] : null
-          let placedOnRack = false
+          const rackRot = targetRack?.rotation || 0
+          // Lined up with the bay at any height is what puts a shelf under the
+          // load instead of the floor; being at the *target* level as well is
+          // what makes setting it down a delivery. The set-down itself happens
+          // in the carry branch below, so the floor and the shelf are one rule.
+          let inSlotRect = false
+          let atTargetSlot = false
 
-          if (
-            targetRack &&
-            targetHeight != null &&
-            !failedRef.current &&
-            Math.abs(speedRef.current) <= RACK_PLACE_MAX_SPEED
-          ) {
-            const rackRot = targetRack.rotation || 0
-            const dxr = tipX - targetRack.position[0]
-            const dzr = tipZ - targetRack.position[2]
-            const localX = dxr * Math.cos(rackRot) - dzr * Math.sin(rackRot)
-            const localZ = dxr * Math.sin(rackRot) + dzr * Math.cos(rackRot)
-            const withinSlot = Math.hypot(localX, localZ) <= RACK_SLOT_RADIUS
-            const atHeight = Math.abs(forkHeightRef.current - targetHeight) <= RACK_LEVEL_TOLERANCE
-
-            if (withinSlot && atHeight) {
-              placedOnRack = true
-              sim.state = 'delivered'
-              carriedIndexRef.current = -1
-              pallet.position.set(targetRack.position[0], targetHeight, targetRack.position[2])
-              pallet.rotation.y = rackRot
-              deliveredCountRef.current += 1
-              onPalletEvent(
-                {
-                  type: 'pallet-delivered',
-                  palletId: palletDef.id,
-                  weightKg: palletDef.weightKg,
-                  deliveredCount: deliveredCountRef.current,
-                },
-                'delivered',
-              )
-            }
+          if (targetRack && targetHeight != null) {
+            const slot = toRectLocal(tipX, tipZ, { x: targetRack.position[0], z: targetRack.position[2], rotation: rackRot })
+            inSlotRect = Math.abs(slot.x) <= RACK_SLOT_HALF_WIDTH && Math.abs(slot.z) <= slotReach
+            atTargetSlot = inSlotRect && Math.abs(forkHeightRef.current - targetHeight) <= RACK_LEVEL_TOLERANCE
           }
 
-          if (placedOnRack) {
-            // Handled above - nothing left to do this frame.
-          } else if (
-            course.failConditions?.suddenStop &&
+          // Lined up at the target shelf, tilting forward is the correct move -
+          // exempt it, or storing a heavy pallet up high would be impossible
+          // whenever the tip-over rule is on.
+          const tipsForward =
+            failConditions.loadTipping &&
             !failedRef.current &&
-            tiltAngleRef.current > TILT_SECURE_ANGLE &&
-            prevSpeed > SUDDEN_STOP_MIN_SPEED &&
-            (prevSpeed - speedRef.current) / dt > SUDDEN_STOP_DECEL
-          ) {
-            // Hard braking at speed: the load slides off the forks.
-            sim.state = 'falling'
-            carriedIndexRef.current = -1
-            sim.vx = forwardX * prevSpeed * 1.15
-            sim.vz = forwardZ * prevSpeed * 1.15
-            sim.vy = 0.1
-            triggerFail('load-dropped')
+            !atTargetSlot &&
+            !sim.landed &&
+            profile.hasForks &&
+            forkHeightRef.current > LOAD_TIP_HEIGHT &&
+            tiltAngleRef.current >= TILT_MAX_ANGLE * LOAD_TIP_TILT_RATIO &&
+            (palletDef.weightKg ?? 0) > capacity * LOAD_TIP_WEIGHT_RATIO
+
+          if (tipsForward) {
+            // A heavy load, high up and tilted forward, puts the combined
+            // centre of gravity past the front wheels.
+            tipStateRef.current.active = true
+            dropLoad(pallet, sim, 'load-tipping', Math.abs(speedRef.current) + 0.4)
           } else if (
-            course.failConditions?.highTravel &&
+            failConditions.highTravel &&
             !failedRef.current &&
             Math.abs(speedRef.current) > HIGH_TRAVEL_MIN_SPEED &&
             forkHeightRef.current > SAFE_TRAVEL_HEIGHT
@@ -1028,17 +1362,90 @@ function DrivingScene({
             // height: unsafe practice, not a physical spill - fail in place.
             triggerFail('high-travel')
           } else {
-            const lerpK = Math.min(CARRY_LERP * dt, 1)
-            pallet.position.x += (tipX - pallet.position.x) * lerpK
-            pallet.position.z += (tipZ - pallet.position.z) * lerpK
-            pallet.position.y += (forkHeightRef.current + PALLET_CARRY_Y - pallet.position.y) * lerpK
-            pallet.rotation.y = headingRef.current
+            // A partially engaged load creeps out along the tines when the
+            // truck is braked hard, swung round or carried with the mast not
+            // tilted back. A load seated to the carriage and square has risk 0
+            // and never moves, which is the habit the step is teaching.
+            if (!failedRef.current && sim.grip && !sim.landed) {
+              const { slip, cause } = slipThisFrame({
+                risk: sim.risk,
+                tiltAngle: tiltAngleRef.current,
+                tiltSecureAngle: TILT_SECURE_ANGLE,
+                decel: brakingHard ? decel : 0,
+                turnLoad,
+                dt,
+                enabled: failConditions,
+              })
+              if (slip > 0) {
+                sim.grip.insertDepth = Math.max(sim.grip.insertDepth - slip, 0)
+                // The carriage's local +Z runs out along the forks, so losing
+                // insertion depth slides the pallet toward the tips.
+                if (sim.grip.local) sim.grip.local.z += slip
+                sim.slipCause = cause
+              }
+            }
 
-            if (forkHeightRef.current <= DROP_LOWER_THRESHOLD) {
-              sim.state = 'released'
-              carriedIndexRef.current = -1
-              pallet.position.set(tipX, 0, tipZ)
-              onPalletEvent({ type: 'pallet-dropped', palletId: palletDef.id }, 'released')
+            const depthRatio = sim.grip?.seatedDepth > 0 ? sim.grip.insertDepth / sim.grip.seatedDepth : 1
+
+            if (!failedRef.current && sim.grip && depthRatio < SLIP_FAIL_RATIO) {
+              dropLoad(pallet, sim, sim.slipCause || 'load-dropped', Math.max(Math.abs(prevSpeed), 0.35) * 1.15)
+            } else {
+              applyGrip(pallet, sim.grip)
+
+              // Setting a load down is two moves, on the floor and on a shelf
+              // alike: lower it until the surface takes its weight, then tilt
+              // the mast forward to let it off the tines. Between the two the
+              // pallet is landed - it stops following the forks down and sits
+              // on whatever is holding it up while the forks keep moving.
+              // A surface that has taken the load keeps it until the forks
+              // raise it clear again. Re-deriving the support from the load's
+              // live height every frame would let tilting the mast forward -
+              // which drops it a few centimetres - sink it straight through
+              // the shelf it is already resting on, which is exactly the move
+              // that is supposed to release it.
+              const holding = sim.landed && (inSlotRect || sim.restY === 0)
+              const surfaceY = holding ? sim.restY : supportHeight(pallet.position.y, inSlotRect)
+              sim.landed = pallet.position.y <= surfaceY + LOAD_LAND_CLEARANCE
+
+              if (sim.landed) {
+                sim.restY = surfaceY
+                settleLoad(pallet, surfaceY, palletHalf.halfDepth, restingPitch())
+
+                const tiltedForward = !profile.hasForks || tiltAngleRef.current >= TILT_RELEASE_ANGLE
+                const onTargetShelf = targetHeight != null && Math.abs(surfaceY - targetHeight) < 1e-3
+                const steady = !onTargetShelf || Math.abs(speedRef.current) <= RACK_PLACE_MAX_SPEED
+
+                if (tiltedForward && steady && !failedRef.current) {
+                  sim.grip = null
+                  sim.engaged = false
+                  sim.landed = false
+                  carriedIndexRef.current = -1
+                  settleLoad(pallet, surfaceY, palletHalf.halfDepth, 0)
+
+                  if (onTargetShelf) {
+                    // Square the delivered pallet up in its bay. The truck body
+                    // is stopped at the rack's face, so the load comes off the
+                    // tines at the mouth of the shelf rather than over its
+                    // middle - the only place they can reach.
+                    sim.state = 'delivered'
+                    pallet.position.set(targetRack.position[0], targetHeight, targetRack.position[2])
+                    pallet.rotation.set(0, rackRot, 0)
+                    deliveredCountRef.current += 1
+                    onPalletEvent(
+                      {
+                        type: 'pallet-delivered',
+                        palletId: palletDef.id,
+                        weightKg: palletDef.weightKg,
+                        deliveredCount: deliveredCountRef.current,
+                      },
+                      'delivered',
+                    )
+                  } else {
+                    sim.state = 'released'
+                    onPalletEvent({ type: 'pallet-dropped', palletId: palletDef.id }, 'released')
+                  }
+                }
+              }
             }
           }
         } else if (sim.state === 'falling') {
@@ -1076,6 +1483,8 @@ function DrivingScene({
           }
         }
       })
+
+      gripQualityRef.current = liveQuality
     }
 
     // Secure-parking proficiency: report the first unmet requirement while the
@@ -1121,8 +1530,14 @@ function DrivingScene({
         heading: headingRef.current,
         speed: speedRef.current,
         forkHeight: forkHeightRef.current,
+        tilt: tiltAngleRef.current,
         steer: steerAngleRef.current,
+        grip: gripQualityRef.current,
         palletStates: palletSimRef.current?.map((sim) => sim.state) || [],
+        palletRisks: palletSimRef.current?.map((sim) => sim.risk) || [],
+        palletInsertDepths: palletSimRef.current?.map((sim) => sim.grip?.insertDepth ?? null) || [],
+        palletHeights: palletRefs.current.map((pallet) => pallet?.position.y ?? null),
+        palletLanded: palletSimRef.current?.map((sim) => Boolean(sim.landed)) || [],
         carriedIndex: carriedIndexRef.current,
         deliveredCount: deliveredCountRef.current,
         failed: failedRef.current,
@@ -1169,10 +1584,16 @@ function DrivingScene({
       }
     }
 
+    // One throttled sample feeds every live HUD readout - the frame loop must
+    // never setState per frame.
     hudAccumRef.current += dt
     if (hudAccumRef.current >= 0.12) {
       hudAccumRef.current = 0
-      onSpeedSample(Math.round(Math.abs(speedRef.current) * 20))
+      onHudSample({
+        speed: Math.round(Math.abs(speedRef.current) * 20),
+        grip: gripQualityRef.current,
+        tilt: tiltStateName(tiltAngleRef.current),
+      })
     }
   })
 
@@ -1265,6 +1686,9 @@ function DrivingScene({
           palletRef={(el) => {
             palletRefs.current[index] = el
           }}
+          onMeasure={(footprint) => {
+            palletFootprintsRef.current[index] = footprint
+          }}
           overweight={typeof course.capacityKg === 'number' && (palletDef.weightKg ?? 0) > course.capacityKg}
         />
       ))}
@@ -1312,6 +1736,8 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   const [engineOn, setEngineOn] = useState(false)
   const [checkpointIndex, setCheckpointIndex] = useState(0)
   const [hudSpeed, setHudSpeed] = useState(0)
+  const [gripState, setGripState] = useState('none')
+  const [tiltState, setTiltState] = useState('level')
   const [palletState, setPalletState] = useState('ground')
   const [carriedLoad, setCarriedLoad] = useState(null)
   const [failInfo, setFailInfo] = useState(null)
@@ -1375,6 +1801,17 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
               {carriedLoad != null
                 ? `Load ${carriedLoad.toLocaleString()} kg / ${course.capacityKg.toLocaleString()} kg`
                 : `Capacity ${course.capacityKg.toLocaleString()} kg`}
+            </span>
+          )}
+          {/* How far the forks are in, and which way the mast is leaning. Both
+              decide whether a load stays put, so the learner has to be able to
+              read them without guessing from the model. */}
+          {hasPallet && profile.hasForks && gripState !== 'none' && (
+            <span className={`driving-grip-badge ${gripState}`}>{GRIP_LABELS[gripState]}</span>
+          )}
+          {hasPallet && profile.hasForks && (
+            <span className={`driving-tilt-badge ${tiltState} ${palletState === 'carried' && tiltState !== 'back' ? 'warn' : ''}`}>
+              {TILT_LABELS[tiltState]}
             </span>
           )}
         </div>
@@ -1444,7 +1881,11 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
               }
               setTimeout(() => onEventRef.current?.(event), 0)
             }}
-            onSpeedSample={setHudSpeed}
+            onHudSample={({ speed, grip, tilt }) => {
+              setHudSpeed(speed)
+              setGripState(grip)
+              setTiltState(tilt)
+            }}
             palletState={palletState}
             onPalletEvent={(event, nextState) => {
               setPalletState(nextState)
