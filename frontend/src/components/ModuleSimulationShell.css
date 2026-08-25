@@ -27,7 +27,13 @@
   text-align: right;
 }
 
+/* Every row is pinned rather than auto-placed: fullscreen hides the briefing
+   with `display: none`, which drops it out of the grid entirely, and
+   auto-placement would then slide the workspace into the `auto` first row
+   (collapsing it to 0, since its children are absolutely positioned) and
+   stretch the control bar over the `1fr` row. */
 .simulation-briefing {
+  grid-row: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -100,6 +106,7 @@
 }
 
 .simulation-workspace {
+  grid-row: 2;
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -330,6 +337,7 @@
 
 /* Sits below the viewport as its own row so it never covers the scene. */
 .simulation-control-bar {
+  grid-row: 3;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
