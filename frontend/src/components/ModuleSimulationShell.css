@@ -1,11 +1,18 @@
+/* Sizes come from styles/tokens.css - see that file for why they are clamps. */
+
 .simulation-shell {
   position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
+  height: 100%;
   flex: 1 1 auto;
-  min-height: 640px;
+  /* No height floor: the page is an app shell (SimulationPageLayout.css), so
+     the scene row takes whatever the briefing and control bar leave over and
+     grows with the viewport. The floor comes back below 1180px, where the
+     layout stacks and the page scrolls. */
+  min-height: 0;
   margin: 0;
 }
 
@@ -14,7 +21,7 @@
   min-width: 0;
   margin: 0;
   color: #92400e;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.3;
   text-align: right;
@@ -24,12 +31,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   border: 1px solid #0f172a;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: #0f172a;
   color: #ffffff;
-  padding: 10px 16px;
+  padding: var(--space-2) var(--space-4);
 }
 
 .simulation-briefing > div:first-child {
@@ -39,7 +46,7 @@
 .simulation-kicker,
 .simulation-panel-label {
   color: #0891b2;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -49,10 +56,10 @@
   color: #67e8f9;
 }
 
-.simulation-briefing h2 {
+.simulation-briefing h1 {
   margin: 1px 0 2px;
   color: #ffffff;
-  font-size: clamp(16px, 1.3vw, 20px);
+  font-size: var(--fs-xl);
   font-weight: 700;
 }
 
@@ -65,34 +72,30 @@
   max-width: 900px;
   overflow: hidden;
   color: #cbd5e1;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
-}
-
-.simulation-briefing .simulation-kicker {
-  font-size: 10px;
 }
 
 .simulation-score-card {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
   flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
 }
 
 .simulation-score-card span,
 .simulation-score-card small {
   color: #cbd5e1;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .simulation-score-card strong {
   color: #ffffff;
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 
@@ -109,7 +112,7 @@
   height: 100vh;
   min-height: 0;
   background: #f4f7fb;
-  padding: 12px;
+  padding: var(--space-3);
 }
 
 .simulation-shell:fullscreen .simulation-briefing {
@@ -118,13 +121,17 @@
 
 .simulation-overlay {
   position: absolute;
-  z-index: 5;
+  z-index: var(--z-overlay);
   display: grid;
   grid-auto-rows: max-content;
   align-content: start;
-  gap: 10px;
+  gap: var(--space-2);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* A lane usually overflows by a few pixels; the platform's default scrollbar
+     is wide enough to look like a broken panel edge over the 3D scene. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
   /* This box stretches the full overlay lane (top to bottom) so it can
      scroll, but its cards rarely fill that height - the empty space below
      them would otherwise sit on top of the HUD/canvas and swallow clicks
@@ -138,92 +145,115 @@
 
 .simulation-overlay-left,
 .simulation-overlay-right {
-  bottom: 12px;
+  top: var(--sim-lane-inset);
+  bottom: var(--sim-lane-inset);
 }
 
-/* Top offset clears the viewer's own toolbar row. */
 .simulation-overlay-left {
-  top: 64px;
-  left: 12px;
-  width: min(250px, 23%);
+  left: var(--sim-lane-inset);
+  width: var(--sim-lane-left);
 }
 
 .simulation-overlay-right {
-  top: 16px;
-  right: 12px;
-  width: min(330px, 29%);
+  right: var(--sim-lane-inset);
+  width: var(--sim-lane-right);
 }
 
-/* Viewer chrome lives inside the scene, so keep it out of the overlay lanes. */
-.simulation-workspace .interactive-viewer-help {
-  font-size: 11px;
-  padding: 7px 10px;
+/* The scene's own chrome - the driving HUD rows, the hotspot viewer toolbar
+   and its drag/zoom hint - lives in the middle band between the two overlay
+   lanes. Insetting it by the lane widths is what keeps the HUD buttons and the
+   key legend out from under the objectives/steps/current-task cards; because
+   both sides read the same tokens, widening a lane moves the HUD with it. */
+.simulation-workspace .driving-hud-top,
+.simulation-workspace .driving-hud-bottom,
+.simulation-workspace .interactive-viewer-toolbar,
+.simulation-workspace .interactive-viewer-help,
+.simulation-workspace .parts-viewer-toolbar,
+.simulation-workspace .parts-viewer-help {
+  left: calc(var(--sim-lane-left) + var(--sim-lane-inset) * 2);
+  right: calc(var(--sim-lane-right) + var(--sim-lane-inset) * 2);
+}
+
+/* Those two are left-anchored on their own, so centre them once they span the
+   middle band instead of leaving them pinned to its left edge. The hint is a
+   plain box, so it centres by shrinking to its content inside the band. */
+.simulation-workspace .interactive-viewer-toolbar,
+.simulation-workspace .parts-viewer-toolbar {
+  justify-content: center;
+}
+
+.simulation-workspace .interactive-viewer-help,
+.simulation-workspace .parts-viewer-help {
+  width: fit-content;
+  margin-inline: auto;
+  font-size: var(--fs-xs);
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 /* The scope notice is sized for full-width pages; tighten it inside an overlay. */
 .simulation-overlay .scope-notice {
-  gap: 8px;
+  gap: var(--space-2);
   margin-bottom: 0;
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .simulation-overlay .scope-notice strong {
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .simulation-overlay .scope-notice p {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
 }
 
 .simulation-panel {
   border: 1px solid #dbe3ef;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: #ffffff;
-  padding: 12px;
+  padding: var(--space-3);
 }
 
 .simulation-panel h3 {
-  margin: 4px 0 6px;
+  margin: 2px 0 var(--space-1);
   color: #0f172a;
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 
 .simulation-panel p {
   color: #64748b;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
 }
 
 .simulation-objectives {
   display: grid;
-  gap: 6px;
-  margin: 8px 0 0;
-  padding-left: 18px;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
   list-style: disc;
   color: #475569;
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
 }
 
 .simulation-step-list {
   display: grid;
-  gap: 6px;
-  margin: 8px 0 0;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
   padding: 0;
   list-style: none;
 }
 
 .simulation-step-list li {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
   align-items: center;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: #f8fafc;
-  padding: 7px 8px;
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
 }
 
@@ -234,21 +264,21 @@
 
 .simulation-step-list span {
   display: inline-flex;
-  width: 24px;
-  height: 24px;
+  width: clamp(20px, 1.6vw, 24px);
+  height: clamp(20px, 1.6vw, 24px);
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #e2e8f0;
   color: #334155;
-  font-size: 12px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .simulation-step-list p {
   margin: 0;
   color: #475569;
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   font-weight: 800;
 }
 
@@ -271,31 +301,31 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .simulation-hint-button {
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
-  padding: 8px 14px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 .simulation-panel-header .simulation-hint-button {
   flex-shrink: 0;
-  font-size: 11px;
-  padding: 5px 10px;
+  font-size: var(--fs-2xs);
+  padding: var(--space-1) var(--space-2);
 }
 
 .simulation-hint-text {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   border-left: 3px solid #06b6d4;
   background: #ecfeff;
-  padding: 8px 10px;
+  padding: var(--space-2);
 }
 
 /* Sits below the viewport as its own row so it never covers the scene. */
@@ -303,17 +333,17 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: var(--space-3);
   border: 1px solid #dbe3ef;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: #ffffff;
-  padding: 10px 14px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .simulation-progress-bar {
-  height: 9px;
+  height: clamp(6px, 0.5vw, 9px);
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #dbe3ef;
 }
 
@@ -333,18 +363,18 @@
   min-height: 0;
   overflow: hidden;
   border: 1px solid #dbe3ef;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: #0f172a;
 }
 
 .simulation-placeholder-scene {
   display: grid;
-  min-height: 520px;
+  height: 100%;
   place-items: center;
   align-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: #ffffff;
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
 }
 
@@ -352,31 +382,27 @@
   color: #cbd5e1;
 }
 
-.current-task-panel {
-  min-height: 280px;
-}
-
 .hotspot-detail-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .hotspot-detail-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 14px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .hotspot-detail-back,
 .hotspot-detail-next {
   flex: 1;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
-  padding: 14px 20px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   transition: background 140ms ease;
 }
 
@@ -404,24 +430,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 .simulation-navigation-buttons {
   display: flex;
   flex-shrink: 0;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .simulation-navigation button {
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 700;
-  padding: 12px 26px;
+  padding: var(--ctl-pad-y) clamp(16px, 1.6vw, 26px);
 }
 
 .simulation-navigation .primary {
@@ -440,6 +466,8 @@
   opacity: 0.55;
 }
 
+/* Stacked: the panels drop below the scene, so the lane insets on the scene
+   chrome no longer apply and the shell gets its height floor back. */
 @media (max-width: 1180px) {
   .simulation-shell {
     flex: none;
@@ -449,7 +477,7 @@
 
   .simulation-workspace {
     display: grid;
-    gap: 18px;
+    gap: var(--space-4);
   }
 
   .simulation-overlay {
@@ -463,6 +491,17 @@
   .simulation-overlay-right {
     top: auto;
     bottom: auto;
+    width: auto;
+  }
+
+  .simulation-workspace .driving-hud-top,
+  .simulation-workspace .driving-hud-bottom,
+  .simulation-workspace .interactive-viewer-toolbar,
+  .simulation-workspace .interactive-viewer-help,
+  .simulation-workspace .parts-viewer-toolbar,
+  .simulation-workspace .parts-viewer-help {
+    left: var(--space-3);
+    right: var(--space-3);
   }
 
   .simulation-scene {

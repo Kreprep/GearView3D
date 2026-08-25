@@ -276,7 +276,10 @@ export default function PartsViewport({
 
   return (
     <div ref={containerRef} className="relative h-full w-full overflow-hidden rounded-[1rem] bg-gradient-to-br from-slate-900 via-slate-950 to-black">
-      <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
+      {/* parts-viewer-toolbar / -help are the hooks ModuleSimulationShell.css
+          uses to inset this scene chrome out from under the overlay lanes and
+          put it on the shared z ladder - keep them on these two elements. */}
+      <div className="parts-viewer-toolbar absolute left-4 top-4 flex flex-wrap justify-start gap-2">
         <Button size="sm" variant="secondary" className="gap-2 rounded-full bg-white/90" onClick={resetView}>
           <RotateCcw className="h-4 w-4" /> Reset view
         </Button>
@@ -301,7 +304,7 @@ export default function PartsViewport({
         )}
       </div>
 
-      <div className="absolute bottom-4 left-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs text-slate-200 shadow-xl backdrop-blur">
+      <div className="parts-viewer-help absolute bottom-4 left-4 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs text-slate-200 shadow-xl backdrop-blur">
         Drag to rotate - Scroll to zoom - Right-drag to pan
       </div>
 

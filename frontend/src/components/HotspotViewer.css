@@ -13,7 +13,7 @@
   min-height: 0;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: #0f172a;
 }
 
@@ -24,28 +24,30 @@
   max-height: 100%;
 }
 
+/* Below the shell overlay panels in the z ladder (styles/tokens.css): this is
+   the scene's own chrome, the panels float above it. */
 .interactive-viewer-toolbar {
   position: absolute;
-  left: 16px;
-  top: 16px;
-  z-index: 12;
+  left: var(--space-3);
+  top: var(--space-3);
+  z-index: var(--z-scene-chrome);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .interactive-viewer-toolbar button {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: #ffffff;
   color: #0f172a;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
-  padding: 9px 12px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 .interactive-viewer-toolbar button.is-active {
@@ -56,16 +58,16 @@
 
 .interactive-viewer-help {
   position: absolute;
-  bottom: 16px;
-  left: 16px;
-  z-index: 12;
+  bottom: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-scene-chrome);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: #0f172a;
   color: #e2e8f0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  padding: 10px 12px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
 }
 
 .hotspot-marker-wrap {
@@ -253,7 +255,7 @@
 
 .interactive-viewer-error {
   display: grid;
-  min-height: 520px;
+  min-height: 100%;
   place-items: center;
   align-content: center;
   gap: 10px;
