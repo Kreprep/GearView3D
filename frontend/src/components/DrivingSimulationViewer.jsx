@@ -1354,28 +1354,70 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   return (
     <section className={`driving-simulation ${className}`}>
       <div className="driving-hud-top">
-        <span className={`driving-engine-badge ${engineOn ? 'on' : 'off'}`}>Engine {engineOn ? 'ON' : 'OFF'}</span>
-        <span className="driving-speed-badge">Speed {hudSpeed}</span>
-        {checkpoints.length > 0 && (
-          <span className="driving-checkpoint-badge">
-            {checkpointIndex >= checkpoints.length
-              ? 'Course complete'
-              : `Checkpoint ${checkpointIndex + 1} / ${checkpoints.length}`}
-          </span>
-        )}
-        {hasPallet && (
-          <span className="driving-checkpoint-badge">{PALLET_STATE_LABELS[palletState]}</span>
-        )}
-        {course.parkingBay && parkingStatus && (
-          <span className={`driving-parking-badge ${parked ? 'done' : ''}`}>{parkingStatus}</span>
-        )}
-        {typeof course.capacityKg === 'number' && (
-          <span className={`driving-load-badge ${carriedLoad != null && carriedLoad > course.capacityKg ? 'over' : ''}`}>
-            {carriedLoad != null
-              ? `Load ${carriedLoad.toLocaleString()} kg / ${course.capacityKg.toLocaleString()} kg`
-              : `Capacity ${course.capacityKg.toLocaleString()} kg`}
-          </span>
-        )}
+        <div className="driving-hud-status">
+          <span className={`driving-engine-badge ${engineOn ? 'on' : 'off'}`}>Engine {engineOn ? 'ON' : 'OFF'}</span>
+          <span className="driving-speed-badge">Speed {hudSpeed}</span>
+          {checkpoints.length > 0 && (
+            <span className="driving-checkpoint-badge">
+              {checkpointIndex >= checkpoints.length
+                ? 'Course complete'
+                : `Checkpoint ${checkpointIndex + 1} / ${checkpoints.length}`}
+            </span>
+          )}
+          {hasPallet && (
+            <span className="driving-checkpoint-badge">{PALLET_STATE_LABELS[palletState]}</span>
+          )}
+          {course.parkingBay && parkingStatus && (
+            <span className={`driving-parking-badge ${parked ? 'done' : ''}`}>{parkingStatus}</span>
+          )}
+          {typeof course.capacityKg === 'number' && (
+            <span className={`driving-load-badge ${carriedLoad != null && carriedLoad > course.capacityKg ? 'over' : ''}`}>
+              {carriedLoad != null
+                ? `Load ${carriedLoad.toLocaleString()} kg / ${course.capacityKg.toLocaleString()} kg`
+                : `Capacity ${course.capacityKg.toLocaleString()} kg`}
+            </span>
+          )}
+        </div>
+        <div className="driving-hud-actions">
+          <button type="button" className="driving-reset-button" onClick={onRequestReset}>
+            <RotateCcw size={14} /> Reset Attempt
+          </button>
+          <button
+            type="button"
+            className={`driving-reset-button ${firstPerson ? 'is-active' : ''}`}
+            onClick={() => {
+              setFirstPerson((value) => !value)
+              setFreeCam(false)
+              camAdjustedRef.current = false
+            }}
+          >
+            <Eye size={14} /> First-Person {firstPerson ? 'On' : 'Off'}
+          </button>
+          {!firstPerson && (
+            <button
+              type="button"
+              className="driving-reset-button"
+              onClick={() => {
+                camAdjustedRef.current = false
+              }}
+            >
+              <Locate size={14} /> Reset Camera
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              type="button"
+              className={`driving-reset-button ${freeCam ? 'is-active' : ''}`}
+              onClick={() => {
+                setFreeCam((value) => !value)
+                setFirstPerson(false)
+                camAdjustedRef.current = false
+              }}
+            >
+              <Compass size={14} /> Free Cam {freeCam ? 'On' : 'Off'}
+            </button>
+          )}
+        </div>
       </div>
 
       <Canvas shadows dpr={[1, 1.35]} camera={{ position: [0, 2, -4], fov: 55 }}>
@@ -1439,46 +1481,11 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
       )}
 
       <div className="driving-hud-bottom">
-        <div className="driving-hud-actions">
-          <button type="button" className="driving-reset-button" onClick={onRequestReset}>
-            <RotateCcw size={14} /> Reset Attempt
-          </button>
-          <button
-            type="button"
-            className={`driving-reset-button ${firstPerson ? 'is-active' : ''}`}
-            onClick={() => {
-              setFirstPerson((value) => !value)
-              setFreeCam(false)
-              camAdjustedRef.current = false
-            }}
-          >
-            <Eye size={14} /> First-Person {firstPerson ? 'On' : 'Off'}
-          </button>
-          {!firstPerson && (
-            <button
-              type="button"
-              className="driving-reset-button"
-              onClick={() => {
-                camAdjustedRef.current = false
-              }}
-            >
-              <Locate size={14} /> Reset Camera
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              type="button"
-              className={`driving-reset-button ${freeCam ? 'is-active' : ''}`}
-              onClick={() => {
-                setFreeCam((value) => !value)
-                setFirstPerson(false)
-                camAdjustedRef.current = false
-              }}
-            >
-              <Compass size={14} /> Free Cam {freeCam ? 'On' : 'Off'}
-            </button>
-          )}
-        </div>
+        <p className="driving-hud-help">
+          {engineOn
+            ? `Hold W to accelerate, S to brake or reverse, A / D to steer${profile.hasForks ? ', R / F to raise or lower the forks, T / G to tilt the mast back or forward' : ''}.`
+            : 'Press E to start the engine.'}
+        </p>
         <div className="driving-keys">
           {profile.keyLegend.map(({ key, caption }) => (
             <div key={key} className="driving-key-wrap">
@@ -1487,11 +1494,6 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
             </div>
           ))}
         </div>
-        <p className="driving-hud-help">
-          {engineOn
-            ? `Hold W to accelerate, S to brake or reverse, A / D to steer${profile.hasForks ? ', R / F to raise or lower the forks, T / G to tilt the mast back or forward' : ''}.`
-            : 'Press E to start the engine.'}
-        </p>
       </div>
     </section>
   )

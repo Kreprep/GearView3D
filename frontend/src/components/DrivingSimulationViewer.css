@@ -1,10 +1,14 @@
+/* Sizes come from styles/tokens.css. The HUD is inset by the overlay lane
+   tokens when this viewer runs inside ModuleSimulationShell - that rule lives
+   in ModuleSimulationShell.css, next to the lanes it has to clear. */
+
 .driving-simulation {
   position: relative;
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: #0f172a;
 }
@@ -17,23 +21,35 @@
 
 .driving-hud-top {
   position: absolute;
-  top: 14px;
-  left: 14px;
-  right: 14px;
-  z-index: 5;
+  top: var(--space-3);
+  left: var(--space-3);
+  right: var(--space-3);
+  z-index: var(--z-scene-chrome);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+/* Status chips left, camera/reset controls right. The controls live up here
+   rather than in the bottom row because the bottom row also carries the key
+   legend and the hint line: on a 1920-wide viewport all three together are
+   wider than the band between the overlay lanes, and they wrapped into a
+   ragged two-row block. */
+.driving-hud-status {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  pointer-events: none;
+  gap: var(--space-2);
 }
 
 .driving-engine-badge,
 .driving-speed-badge,
 .driving-checkpoint-badge {
-  border-radius: 6px;
-  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 1vw, 14px);
+  border-radius: var(--radius-sm);
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   font-weight: 700;
-  font-size: clamp(11px, 0.9vw, 13px);
+  font-size: var(--fs-sm);
   color: #f8fafc;
   background: rgba(15, 23, 42, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -55,35 +71,39 @@
 
 .driving-hud-bottom {
   position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 14px;
-  z-index: 5;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: var(--z-scene-chrome);
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  pointer-events: none;
 }
 
 .driving-hud-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
+  gap: var(--ctl-gap);
   flex-wrap: wrap;
+  /* The top row is click-through so the canvas can be dragged; the buttons
+     opt back in. */
+  pointer-events: auto;
 }
 
 .driving-reset-button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 6px;
+  gap: var(--space-1);
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.24);
   background: rgba(15, 23, 42, 0.72);
   color: #f8fafc;
   font-weight: 700;
-  font-size: clamp(10px, 0.85vw, 12px);
-  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 0.9vw, 12px);
+  font-size: var(--fs-xs);
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   cursor: pointer;
 }
 
@@ -94,9 +114,10 @@
 
 .driving-keys {
   display: flex;
+  max-width: 100%;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: var(--ctl-gap);
 }
 
 .driving-key-wrap {
@@ -109,14 +130,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: clamp(26px, 2vw, 34px);
-  height: clamp(26px, 2vw, 34px);
-  border-radius: 8px;
+  width: clamp(24px, 1.9vw, 32px);
+  height: clamp(24px, 1.9vw, 32px);
+  border-radius: var(--radius-md);
   border: 1px solid rgba(255, 255, 255, 0.28);
   background: rgba(15, 23, 42, 0.72);
   color: #e2e8f0;
   font-weight: 700;
-  font-size: clamp(11px, 0.9vw, 13px);
+  font-size: var(--fs-sm);
 }
 
 .driving-key.active {
@@ -127,7 +148,7 @@
 }
 
 .driving-key-caption {
-  font-size: clamp(8px, 0.7vw, 10px);
+  font-size: var(--fs-2xs);
   color: #cbd5e1;
   font-weight: 700;
   white-space: nowrap;
@@ -135,18 +156,20 @@
 
 .driving-hud-help {
   margin: 0;
+  max-width: 100%;
+  text-align: center;
   color: #e2e8f0;
-  font-size: clamp(10px, 0.85vw, 12px);
+  font-size: var(--fs-xs);
   font-weight: 700;
   background: rgba(15, 23, 42, 0.6);
-  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 0.9vw, 12px);
-  border-radius: 10px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
+  border-radius: var(--radius-lg);
 }
 
 .driving-checkpoint-label {
-  border-radius: 6px;
-  padding: clamp(4px, 0.45vw, 6px) clamp(8px, 0.8vw, 10px);
-  font-size: clamp(9px, 0.8vw, 11px);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
   color: #111827;
@@ -164,10 +187,10 @@
 }
 
 .driving-load-badge {
-  border-radius: 6px;
-  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 1vw, 14px);
+  border-radius: var(--radius-sm);
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   font-weight: 700;
-  font-size: clamp(11px, 0.9vw, 13px);
+  font-size: var(--fs-sm);
   color: #f8fafc;
   background: rgba(21, 128, 61, 0.78);
 }
@@ -177,10 +200,10 @@
 }
 
 .driving-parking-badge {
-  border-radius: 6px;
-  padding: clamp(6px, 0.55vw, 8px) clamp(10px, 1vw, 14px);
+  border-radius: var(--radius-sm);
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   font-weight: 700;
-  font-size: clamp(11px, 0.9vw, 13px);
+  font-size: var(--fs-sm);
   color: #f8fafc;
   background: rgba(30, 64, 175, 0.8);
 }
@@ -190,9 +213,9 @@
 }
 
 .pallet-weight-label {
-  border-radius: 6px;
-  padding: clamp(3px, 0.35vw, 5px) clamp(7px, 0.7vw, 10px);
-  font-size: clamp(9px, 0.8vw, 11px);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
   color: #f8fafc;
@@ -208,7 +231,7 @@
 .driving-fail-overlay {
   position: absolute;
   inset: 0;
-  z-index: 8;
+  z-index: var(--z-scene-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -219,7 +242,7 @@
   max-width: 380px;
   margin: 0 16px;
   padding: 22px 24px;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   text-align: center;
   background: #0f172a;
   border: 1px solid rgba(248, 113, 113, 0.75);
@@ -229,7 +252,7 @@
 .driving-fail-card h3 {
   margin: 0 0 8px;
   color: #fca5a5;
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -238,7 +261,7 @@
 .driving-fail-card p {
   margin: 0 0 16px;
   color: #e2e8f0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -247,12 +270,9 @@
 }
 
 @media (max-width: 760px) {
-  .driving-hud-bottom {
+  /* No room for two columns up top: the controls drop under the chips. */
+  .driving-hud-top {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .driving-hud-help {
-    order: 3;
   }
 }

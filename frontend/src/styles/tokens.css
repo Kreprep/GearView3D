@@ -1,0 +1,63 @@
+/* Sizing tokens - the single source for spacing, type, control size, radii and
+   stacking order on the simulation and 3D-viewer surfaces.
+   Colours are NOT here: they stay in the :root block in index.css.
+
+   Everything that scales with the window is a clamp(min, vw, max):
+   - the min keeps the UI legible/unclipped on a 1080p display at 125% OS
+     scaling (a ~1400x780 CSS-pixel viewport, the smallest layout we target
+     before the 1180px stacking breakpoint takes over),
+   - the vw term makes it grow with the window instead of pinning to one size,
+   - the max stops a 1440p/4K display from rendering a cartoon-sized UI.
+
+   Breakpoints (custom properties can't be used inside @media, so they are
+   documented here and written literally in the files that use them):
+     1180px - overlay panels stop floating over the scene and stack under it
+      760px - single column / mobile */
+
+:root {
+  /* Spacing - 4px base scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Page/main padding */
+  --gutter: clamp(12px, 1.4vw, 24px);
+
+  /* Type ramp */
+  --fs-2xs: clamp(9px, 0.62vw, 11px);
+  --fs-xs: clamp(10px, 0.72vw, 12px);
+  --fs-sm: clamp(11px, 0.82vw, 13px);
+  --fs-md: clamp(12px, 0.92vw, 15px);
+  --fs-lg: clamp(14px, 1.05vw, 17px);
+  --fs-xl: clamp(16px, 1.3vw, 22px);
+
+  /* Controls */
+  --ctl-pad-y: clamp(6px, 0.5vw, 10px);
+  --ctl-pad-x: clamp(10px, 0.9vw, 16px);
+  --ctl-gap: clamp(6px, 0.5vw, 10px);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* One stacking ladder for the whole viewer stack. The scene's own chrome
+     (HUD chips, viewer toolbar, help bubble) must sit BELOW the shell's
+     overlay panels - it used to be the other way around. */
+  --z-scene-chrome: 4;
+  --z-overlay: 6;
+  --z-page-header: 20;
+  --z-scene-modal: 30;
+  --z-modal: 60;
+
+  /* Simulation overlay lanes. The scene chrome is inset by these same values
+     (see ModuleSimulationShell.css) so a HUD row can never end up underneath
+     an overlay panel. Change a lane width here and the HUD follows. */
+  --sim-lane-left: clamp(190px, 16vw, 260px);
+  --sim-lane-right: clamp(250px, 21vw, 340px);
+  --sim-lane-inset: var(--space-3);
+}

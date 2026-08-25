@@ -681,6 +681,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
       )}
       <SimulationPageLayout
         className="load-simulation-page"
+        compact
         title={moduleTitle}
         subtitle="Guided Simulation"
         onBack={onBack}
