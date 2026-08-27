@@ -13,6 +13,11 @@ import {
 
 const router = Router()
 
+// Every route here only ever renders behind the app's own login gate (see
+// App.jsx), so there is no legitimate anonymous caller - and without this,
+// module/quiz/checklist content was fetchable by anyone with the URL.
+router.use(requireAuth)
+
 // `moduleCount` rides along because the catalogue decides whether a card is
 // clickable from whether the equipment actually has training behind it -
 // modules, or a model for its identification page - rather than from a
@@ -142,7 +147,7 @@ router.get('/quizzes', async (req, res) => {
   })))
 })
 
-router.post('/quizzes/submit', requireAuth, async (req, res) => {
+router.post('/quizzes/submit', async (req, res) => {
   const scope = await quizScope(req.body)
   if (!scope) return res.status(404).json({ error: 'Unknown quiz' })
 
