@@ -2,9 +2,19 @@
    moved here from the old PostOperationPage.css when the activities became
    shared components. */
 
+/* Both activities sit inside the shell's fixed-height dark scene area
+   (`.simulation-scene`), same as the checklist/quiz scenes - height: 100%
+   gives them the box to center in, rather than block-flowing to the top and
+   leaving the rest of the scene empty underneath. */
 .shutdown-activity {
   width: min(640px, 100%);
+  height: 100%;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 24px 0;
 }
 
 .shutdown-grid {
@@ -85,9 +95,13 @@
 
 .reporting-activity {
   width: min(640px, 100%);
+  height: 100%;
   margin: 0 auto;
   display: grid;
+  align-content: center;
   gap: 12px;
+  overflow-y: auto;
+  padding: 24px 0;
 }
 
 .reporting-card {
