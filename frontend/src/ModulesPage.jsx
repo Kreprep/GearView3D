@@ -33,9 +33,13 @@ function ModulesPage({ user, onLogout, onNavigate }) {
   usePageTitle('Equipment Catalog')
   const [equipment, setEquipment] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    getEquipment().then(setEquipment).finally(() => setLoading(false))
+    getEquipment()
+      .then(setEquipment)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false))
   }, [])
 
   // Anything without a route - unavailable, or available but still empty -
@@ -52,8 +56,9 @@ function ModulesPage({ user, onLogout, onNavigate }) {
 
         <div className="modules-grid">
           {loading && <div className="catalog-state">Loading training models...</div>}
-          {!loading && modules.length === 0 && <div className="catalog-state">No training models are available yet.</div>}
-          {!loading && modules.map((module) => (
+          {!loading && error && <div className="catalog-state">Training models could not be loaded: {error}</div>}
+          {!loading && !error && modules.length === 0 && <div className="catalog-state">No training models are available yet.</div>}
+          {!loading && !error && modules.map((module) => (
             <article
               key={module.id}
               className="module-card"

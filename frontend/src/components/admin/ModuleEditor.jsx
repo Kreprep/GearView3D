@@ -49,10 +49,10 @@ function ModuleEditor({
   useEffect(() => {
     let cancelled = false
 
-    adminListCourses()
+    adminListCourses(module.slug)
       .then((data) => {
         if (cancelled) return
-        setCourses(data.courses.filter((course) => course.moduleSlug === module.slug))
+        setCourses(data.courses)
         setCreatableKinds(data.creatableKinds || ['briefing'])
         setLoadState({ loading: false, error: null })
       })

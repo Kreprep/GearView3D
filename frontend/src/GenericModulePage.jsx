@@ -81,6 +81,8 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   const [showScopeNotice, setShowScopeNotice] = useState(true)
   const deviceEffectTimer = useRef(null)
   const engineStartTimer = useRef(null)
+  const wrongPickTimer = useRef(null)
+  const completeModuleTimer = useRef(null)
 
   // Walk-around steps need this module's inspection markers; every other
   // module skips the request entirely.
@@ -118,6 +120,8 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   useEffect(() => () => {
     clearTimeout(deviceEffectTimer.current)
     clearTimeout(engineStartTimer.current)
+    clearTimeout(wrongPickTimer.current)
+    clearTimeout(completeModuleTimer.current)
     stopDeviceSound()
   }, [])
 
@@ -238,7 +242,8 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     } else {
       setWrongPickId(action.id)
       saveSimulation({ shutdownMistakes: simulation.shutdownMistakes + 1 })
-      setTimeout(() => setWrongPickId(null), 700)
+      clearTimeout(wrongPickTimer.current)
+      wrongPickTimer.current = setTimeout(() => setWrongPickId(null), 700)
     }
   }
 
@@ -470,7 +475,8 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
 
     // The summary step's stored nextRoute wins when it resolves; otherwise
     // return to the equipment's module list to pick the next one.
-    setTimeout(
+    clearTimeout(completeModuleTimer.current)
+    completeModuleTimer.current = setTimeout(
       () => onNavigate?.(nextModuleRoute(steps, equipmentId) || `/training/${equipmentId}/modules`),
       NEXT_MODULE_DELAY_MS,
     )

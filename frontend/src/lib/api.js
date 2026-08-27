@@ -244,8 +244,9 @@ export async function adminDeleteUser(userId) {
 // Courses carry large geometry blobs, so they are fetched separately from
 // adminListContent() rather than bundled into it.
 
-export async function adminListCourses() {
-  return request('/admin/courses')
+export async function adminListCourses(moduleSlug) {
+  const query = moduleSlug ? `?module=${encodeURIComponent(moduleSlug)}` : ''
+  return request(`/admin/courses${query}`)
 }
 
 export async function adminCreateCourse(payload) {

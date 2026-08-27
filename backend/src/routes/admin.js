@@ -94,7 +94,6 @@ router.get('/content', async (req, res) => {
   const { progress, activityLogs } = buildAdminProgressReport(snapshots, modules, checklistTotals)
 
   res.json({
-    localOnly: false,
     equipment,
     modules,
     // Hotspots are not here: they carry position blobs and per-surface text
@@ -683,7 +682,8 @@ router.delete('/quiz-questions/:id', async (req, res) => {
 // and only the Courses tab needs them.
 
 router.get('/courses', async (req, res) => {
-  const rows = await prisma.course.findMany({ orderBy: [{ moduleSlug: 'asc' }, { sortOrder: 'asc' }] })
+  const where = req.query.module ? { moduleSlug: req.query.module } : {}
+  const rows = await prisma.course.findMany({ where, orderBy: [{ moduleSlug: 'asc' }, { sortOrder: 'asc' }] })
   res.json({ courses: rows.map(adminCourse), creatableKinds: CREATABLE_KINDS })
 })
 

@@ -151,6 +151,6 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
 
   const rig = { wheels, mastLift, carriageLift, tiltPivot, forkTipOffset, forkReach }
   root.userData.__vehicleRig = rig
-  if (typeof window !== 'undefined') window.__vehicleRig = rig
+  if (import.meta.env.DEV && typeof window !== 'undefined') window.__vehicleRig = rig
   return rig
 }
