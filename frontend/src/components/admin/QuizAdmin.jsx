@@ -4,6 +4,7 @@ import {
   adminDeleteQuizQuestion,
   adminUpdateQuizQuestion,
 } from '../../lib/api'
+import { useAdminAction } from '../../hooks/useAdminAction'
 
 // One quiz's questions. `scope` is the same shape the learner API takes:
 //
@@ -31,17 +32,7 @@ function QuizAdmin({ scope, questions, onQuestionsChanged, onMessage, note }) {
   const [newPrompt, setNewPrompt] = useState('')
 
   const scopeQuestions = questions.filter((question) => inScope(question, scope))
-
-  const run = async (action, message) => {
-    try {
-      const result = await action()
-      onMessage(message)
-      return result
-    } catch (error) {
-      onMessage(error.message)
-      return null
-    }
-  }
+  const { run } = useAdminAction(onMessage)
 
   const select = (question) => {
     setSelectedId(question.id)

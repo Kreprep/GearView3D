@@ -1,24 +1,15 @@
 import { useState } from 'react'
 import { adminCreateModule, adminDeleteModule, adminReorderModules } from '../../lib/api'
+import { useAdminAction } from '../../hooks/useAdminAction'
 
 // The ordered module list for one equipment: open, reorder, delete, add.
 // Opening a module hands off to ModuleEditor, which is where its steps,
 // checklist items and quiz questions are edited.
 function ModuleListAdmin({ equipmentId, modules, onModulesChanged, onOpenModule, onMessage }) {
   const [newTitle, setNewTitle] = useState('')
+  const { run } = useAdminAction(onMessage)
 
   const ordered = [...modules].sort((a, b) => a.sortOrder - b.sortOrder)
-
-  const run = async (action, message) => {
-    try {
-      const result = await action()
-      if (message) onMessage(message)
-      return result
-    } catch (error) {
-      onMessage(error.message)
-      return null
-    }
-  }
 
   const move = async (index, delta) => {
     const target = index + delta

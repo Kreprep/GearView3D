@@ -58,6 +58,21 @@ const ADMIN_SECTION_LABELS = Object.fromEntries(
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+// The shape of adminListContent()'s response - used both as the initial state
+// (nothing has loaded yet) and as the base a fetch's response is spread over,
+// so a field the current backend doesn't send still renders as an empty list
+// instead of undefined.
+const EMPTY_ADMIN_CONTENT = {
+  equipment: [],
+  modules: [],
+  hotspotCategories: [],
+  checklists: [],
+  quizQuestions: [],
+  users: [],
+  progress: [],
+  activityLogs: [],
+}
+
 // Local draft so typing a category name doesn't PATCH on every keystroke -
 // commits once, on blur or Enter, only when the label actually changed.
 function CategoryRow({ category, onRename, onDelete }) {
@@ -97,16 +112,7 @@ function CategoryRow({ category, onRename, onDelete }) {
 }
 
 function AdminDashboard({ user, onBack, path, onNavigate }) {
-  const [content, setContent] = useState({
-    equipment: [],
-    modules: [],
-    hotspotCategories: [],
-    checklists: [],
-    quizQuestions: [],
-    users: [],
-    progress: [],
-    activityLogs: [],
-  })
+  const [content, setContent] = useState(EMPTY_ADMIN_CONTENT)
   const [editingEquipment, setEditingEquipment] = useState(null)
   // Which equipment's section is expanded in the nav - the sub-tab paths are
   // shared by every equipment, so this (not the URL) decides whose
@@ -220,17 +226,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   useEffect(() => {
     adminListContent()
       .then((data) => {
-        setContent({
-          equipment: [],
-          modules: [],
-          hotspotCategories: [],
-          checklists: [],
-          quizQuestions: [],
-          users: [],
-          progress: [],
-          activityLogs: [],
-          ...data,
-        })
+        setContent({ ...EMPTY_ADMIN_CONTENT, ...data })
         setEditingEquipment((current) => current || data.equipment?.[0] || null)
         // First row in sortOrder, whatever it is - the dashboard should open on
         // real content rather than on a named equipment that may not exist.

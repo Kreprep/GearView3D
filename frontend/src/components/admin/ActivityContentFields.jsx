@@ -5,6 +5,7 @@
 //
 // Both write through CourseEditor's `setContent`, so the edits land in the
 // step's draft and reach learners only on Publish.
+import { slugify } from '../../lib/slug'
 
 function moveInList(list, index, delta) {
   const target = index + delta
@@ -17,7 +18,7 @@ function moveInList(list, index, delta) {
 }
 
 function slugId(prefix, label, taken) {
-  const base = `${label || prefix}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || prefix
+  const base = slugify(label || prefix) || prefix
   let id = base
   let suffix = 2
   while (taken.includes(id)) {
