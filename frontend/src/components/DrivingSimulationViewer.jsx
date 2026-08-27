@@ -1523,7 +1523,7 @@ function DrivingScene({
 
     prevSpeedRef.current = speedRef.current
 
-    if (typeof window !== 'undefined') {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
       window.__drivingDebug = {
         x: posRef.current.x,
         z: posRef.current.z,
