@@ -21,22 +21,39 @@ export function moduleProgressFromSnapshot(snapshot, slug, checklistTotals) {
   return checklistPercentage
 }
 
+// The most recent moment this module was actually touched, not the snapshot's
+// overall updatedAt (which is the last write to *any* module and would show
+// the same timestamp against every module a learner hasn't opened). Null when
+// the learner has never touched this module.
+function moduleUpdatedAtFromSnapshot(snapshot, slug) {
+  const candidates = [
+    snapshot?.simulations?.[slug]?.updatedAt,
+    snapshot?.checklists?.[slug]?.updatedAt,
+    snapshot?.quizzes?.[slug]?.[0]?.attemptedAt,
+  ].filter(Boolean)
+
+  if (!candidates.length) return null
+  return candidates.reduce((latest, current) => (new Date(current) > new Date(latest) ? current : latest))
+}
+
 // Builds the admin dashboard's progress rows and activity log entries from
 // every user's stored progress snapshot.
 export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
   const progress = []
   const activityLogs = []
+  const moduleBySlug = Object.fromEntries(modules.map((module) => [module.slug, module]))
 
   for (const snapshot of snapshots) {
-    const user = { email: snapshot.user.email, fullName: snapshot.user.fullName }
+    const user = { id: snapshot.userId, email: snapshot.user.email, fullName: snapshot.user.fullName }
     const data = snapshot.data || {}
 
     for (const module of modules) {
       progress.push({
         id: `${snapshot.userId}-${module.slug}`,
         moduleSlug: module.slug,
+        equipmentId: module.equipmentId,
         progress: moduleProgressFromSnapshot(data, module.slug, checklistTotals),
-        updatedAt: snapshot.updatedAt,
+        updatedAt: moduleUpdatedAtFromSnapshot(data, module.slug),
         user,
       })
     }
@@ -46,6 +63,8 @@ export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
         activityLogs.push({
           id: attempt.id,
           action: 'quiz_attempt',
+          moduleSlug,
+          equipmentId: moduleBySlug[moduleSlug]?.equipmentId || null,
           detail: moduleSlug,
           createdAt: attempt.attemptedAt,
           user,
@@ -60,6 +79,8 @@ export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
         activityLogs.push({
           id: attempt.id,
           action: 'parts_quiz_attempt',
+          moduleSlug: null,
+          equipmentId,
           detail: `${equipmentId} ${attempt.score}/${attempt.total}`,
           createdAt: attempt.attemptedAt,
           user,
