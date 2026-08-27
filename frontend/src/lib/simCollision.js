@@ -18,10 +18,7 @@
 //
 // No three.js here on purpose - lib/courseGoals.js imports this to validate a
 // course, and that file also runs inside the Node backend process.
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max)
-}
+import { clamp } from './math.js'
 
 // A point in the rect's local frame.
 export function toRectLocal(px, pz, rect) {

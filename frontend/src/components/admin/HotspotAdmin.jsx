@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAdminAction } from '../../hooks/useAdminAction'
 import HotspotViewer from '../HotspotViewer'
 import {
   adminCreateHotspot,
@@ -73,7 +74,6 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
   const [draft, setDraft] = useState(null)
   const [dirty, setDirty] = useState(false)
   const [placing, setPlacing] = useState(false)
-  const [busy, setBusy] = useState(false)
   const [newLabel, setNewLabel] = useState('')
   const [showAll, setShowAll] = useState(false)
 
@@ -127,24 +127,13 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
     setHotspots((current) => current.map((entry) => (entry.id === hotspot.id ? hotspot : entry)))
   }
 
-  const run = async (action, message, { resync = false } = {}) => {
-    setBusy(true)
-    try {
-      const result = await action()
-      if (result?.hotspot) {
-        replace(result.hotspot)
-        setDirty(false)
-        if (resync) setDraft(draftOf(result.hotspot))
-      }
-      if (message) onMessage(message)
-      return result
-    } catch (err) {
-      onMessage(err.message)
-      return null
-    } finally {
-      setBusy(false)
+  const { busy, run } = useAdminAction(onMessage, (result, { resync = false } = {}) => {
+    if (result?.hotspot) {
+      replace(result.hotspot)
+      setDirty(false)
+      if (resync) setDraft(draftOf(result.hotspot))
     }
-  }
+  })
 
   const saveDraft = () => run(() => adminSaveHotspotDraft(selectedId, draft), 'Draft saved.')
 

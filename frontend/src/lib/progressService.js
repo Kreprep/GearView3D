@@ -1,4 +1,5 @@
 import { moduleChecklists } from './trainingData.js'
+import { migrateParts } from './migrateParts.js'
 import {
   getChecklistCounts as fetchChecklistCounts,
   getProgress as fetchServerProgress,
@@ -95,6 +96,7 @@ function emptyProgress() {
   }
 }
 
+// Runs on every read, which is also every hydration.
 function normalizeProgress(progress) {
   return {
     ...emptyProgress(),
@@ -103,23 +105,6 @@ function normalizeProgress(progress) {
     parts: migrateParts(progress?.parts),
     quizzes: progress?.quizzes || {},
     simulations: progress?.simulations || {},
-  }
-}
-
-// Forklift's parts-quiz attempts used to live at `parts.practiceAttempts`,
-// separate from every other equipment's `parts.quizzes[equipmentId]`. Migration
-// 20260814100000 moved the stored copies; this folds in a locally cached one
-// that predates it, so the next push writes the merged shape and the old key
-// disappears on its own. Runs on every read, which is also every hydration.
-function migrateParts(parts) {
-  const legacy = Array.isArray(parts?.practiceAttempts) ? parts.practiceAttempts : []
-  const quizzes = parts?.quizzes || {}
-
-  return {
-    viewedPartIds: parts?.viewedPartIds || [],
-    quizzes: legacy.length
-      ? { ...quizzes, forklift: [...(quizzes.forklift || []), ...legacy] }
-      : quizzes,
   }
 }
 
