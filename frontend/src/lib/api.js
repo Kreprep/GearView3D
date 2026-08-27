@@ -61,12 +61,6 @@ export async function signupUser(credentials) {
   return request('/auth/signup', { method: 'POST', body: credentials })
 }
 
-// Checked before the "Forgot password?" flow opens its email draft, so a
-// mistyped address gets caught instead of silently going nowhere.
-export async function checkEmailExists(email) {
-  return request(`/auth/check-email?email=${encodeURIComponent(email)}`)
-}
-
 export async function getCurrentUser() {
   return request('/auth/me')
 }

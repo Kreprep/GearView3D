@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { checkEmailExists } from './lib/api'
 import { usePageTitle } from './hooks/usePageTitle'
 import './LoginPage.css'
 
@@ -32,8 +31,6 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isCheckingReset, setIsCheckingReset] = useState(false)
-  const [showEmailNotFound, setShowEmailNotFound] = useState(false)
 
   const isSignup = mode === 'signup'
   usePageTitle(isSignup ? 'Create Account' : 'Sign In')
@@ -46,7 +43,10 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
     setConfirmPassword('')
   }
 
-  const handleForgotPassword = async () => {
+  // Opens the reset-request email draft regardless of whether the address is
+  // registered - checking first would mean the backend confirms or denies an
+  // account's existence to anyone who asks, unauthenticated.
+  const handleForgotPassword = () => {
     setError('')
     setLoginError('')
 
@@ -55,19 +55,7 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
       return
     }
 
-    setIsCheckingReset(true)
-    try {
-      const { exists } = await checkEmailExists(email)
-      if (exists) {
-        window.location.href = buildResetMailto(email)
-      } else {
-        setShowEmailNotFound(true)
-      }
-    } catch (err) {
-      setLoginError(err.message || 'Unable to check that email right now')
-    } finally {
-      setIsCheckingReset(false)
-    }
+    window.location.href = buildResetMailto(email)
   }
 
   const handleSubmit = async (e) => {
@@ -219,9 +207,8 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
                   type="button"
                   className="forgot-password-link"
                   onClick={handleForgotPassword}
-                  disabled={isCheckingReset}
                 >
-                  {isCheckingReset ? 'Checking...' : 'Forgot password?'}
+                  Forgot password?
                 </button>
               )}
             </div>
@@ -250,28 +237,6 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
           </div>
         </div>
       </div>
-
-      {showEmailNotFound && (
-        <div
-          className="email-not-found-modal-backdrop"
-          role="presentation"
-          onClick={() => setShowEmailNotFound(false)}
-        >
-          <div
-            className="email-not-found-modal"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="email-not-found-modal-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <strong id="email-not-found-modal-title">We couldn't find that account</strong>
-            <p>No GearView3D account is registered under "{email}". Double-check the email address and try again.</p>
-            <button type="button" className="email-not-found-modal-dismiss" onClick={() => setShowEmailNotFound(false)}>
-              Okay
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
