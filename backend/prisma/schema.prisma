@@ -221,7 +221,6 @@ model ChecklistItem {
   sortOrder Int    @default(0)
 }
 
-// `options` is an array of { id, text, sortOrder } matching the frontend shape.
 // Every quiz question in the app, module quizzes and parts quizzes alike (the
 // PracticeQuestion table was merged in here). `context` says which one:
 //
