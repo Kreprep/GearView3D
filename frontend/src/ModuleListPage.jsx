@@ -12,25 +12,40 @@ import './ModuleListPage.css'
 // from the Module rows, so an admin adding a module adds a card here with no
 // code change.
 function ModuleListPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
-  const [equipment, setEquipment] = useState(null)
-  const [modules, setModules] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Tagged with the equipmentId it was loaded for, so a prop change reads as
+  // loading without a synchronous setState in the effect body - same pattern
+  // as useModuleCourses.js.
+  const [loaded, setLoaded] = useState({ equipmentId: null, equipment: null, modules: [], error: null })
   const { summary } = useProgress()
 
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getEquipment(), getTrainingModules(equipmentId)]).then(([equipmentRows, moduleRows]) => {
-      if (cancelled) return
-      setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
-      setModules(moduleRows)
-      setLoading(false)
-    })
+    Promise.all([getEquipment(), getTrainingModules(equipmentId)])
+      .then(([equipmentRows, moduleRows]) => {
+        if (cancelled) return
+        setLoaded({
+          equipmentId,
+          equipment: equipmentRows.find((item) => item.id === equipmentId) || null,
+          modules: moduleRows,
+          error: null,
+        })
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setLoaded({ equipmentId, equipment: null, modules: [], error: err.message })
+      })
 
     return () => {
       cancelled = true
     }
   }, [equipmentId])
+
+  const fresh = loaded.equipmentId === equipmentId
+  const loading = !fresh
+  const equipment = fresh ? loaded.equipment : null
+  const modules = fresh ? loaded.modules : []
+  const error = fresh ? loaded.error : null
 
   const equipmentTitle = equipment?.title || 'Equipment'
   usePageTitle(`${equipmentTitle} Modules`)
@@ -55,10 +70,13 @@ function ModuleListPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
 
       <div className="module-list-grid">
         {loading && <div className="module-list-state">Loading training modules...</div>}
-        {!loading && modules.length === 0 && (
+        {!loading && error && (
+          <div className="module-list-state">Training modules could not be loaded: {error}</div>
+        )}
+        {!loading && !error && modules.length === 0 && (
           <div className="module-list-state">No training modules are available yet.</div>
         )}
-        {!loading && modules.map((module, index) => {
+        {!loading && !error && modules.map((module, index) => {
           const percentage = getModuleProgress(summary.raw, module.slug)
 
           return (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   BarChart3,
@@ -58,6 +58,44 @@ const ADMIN_SECTION_LABELS = Object.fromEntries(
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+// Local draft so typing a category name doesn't PATCH on every keystroke -
+// commits once, on blur or Enter, only when the label actually changed.
+function CategoryRow({ category, onRename, onDelete }) {
+  const [draft, setDraft] = useState(category.label)
+  // Adjusted during render rather than in an effect, so an external label
+  // change (the server's response to a rename, or switching equipment)
+  // takes effect in the same render instead of flashing the stale value
+  // for one paint - see https://react.dev/learn/you-might-not-need-an-effect.
+  const [syncedLabel, setSyncedLabel] = useState(category.label)
+  if (category.label !== syncedLabel) {
+    setSyncedLabel(category.label)
+    setDraft(category.label)
+  }
+
+  const commit = () => {
+    const trimmed = draft.trim()
+    if (trimmed && trimmed !== category.label) {
+      onRename(category, trimmed)
+    } else {
+      setDraft(category.label)
+    }
+  }
+
+  return (
+    <div className="admin-row-actions">
+      <input
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.target.blur()
+        }}
+      />
+      <button onClick={() => onDelete(category)}>Delete</button>
+    </div>
+  )
+}
+
 function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [content, setContent] = useState({
     equipment: [],
@@ -68,7 +106,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     users: [],
     progress: [],
     activityLogs: [],
-    localOnly: true,
   })
   const [editingEquipment, setEditingEquipment] = useState(null)
   // Which equipment's section is expanded in the nav - the sub-tab paths are
@@ -82,6 +119,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [newEquipmentTitle, setNewEquipmentTitle] = useState('')
   const [newUser, setNewUser] = useState({ email: '', fullName: '', role: 'TRAINEE', password: '' })
   const [saveMessage, setSaveMessage] = useState('')
+  const [contentError, setContentError] = useState(null)
+  const saveMessageTimer = useRef(null)
   // Captured once rather than read live, so computing "recent" activity stays
   // a pure function of state/props during render.
   const [loadedAt] = useState(() => Date.now())
@@ -126,10 +165,13 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   // module the Forklift's sibling modules, model and categories.
   const editingModuleEquipment = useMemo(() => {
     const equipmentId = moduleBySlug[editingModuleSlug]?.equipmentId || activeEquipmentId
+    const equipment = content.equipment.find((item) => item.id === equipmentId)
 
     return {
       id: equipmentId,
-      modelUrl: content.equipment.find((item) => item.id === equipmentId)?.modelUrl,
+      modelUrl: equipment?.modelUrl,
+      modelScale: equipment?.modelScale,
+      modelOffsetY: equipment?.modelOffsetY,
       modules: content.modules.filter((module) => module.equipmentId === equipmentId),
       categories: content.hotspotCategories.filter((category) => category.equipmentId === equipmentId),
     }
@@ -176,29 +218,33 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const recentActivity = useMemo(() => content.activityLogs.slice(0, 8), [content.activityLogs])
 
   useEffect(() => {
-    adminListContent().then((data) => {
-      setContent({
-        equipment: [],
-        modules: [],
-        hotspotCategories: [],
-        checklists: [],
-        quizQuestions: [],
-        users: [],
-        progress: [],
-        activityLogs: [],
-        localOnly: true,
-        ...data,
+    adminListContent()
+      .then((data) => {
+        setContent({
+          equipment: [],
+          modules: [],
+          hotspotCategories: [],
+          checklists: [],
+          quizQuestions: [],
+          users: [],
+          progress: [],
+          activityLogs: [],
+          ...data,
+        })
+        setEditingEquipment((current) => current || data.equipment?.[0] || null)
+        // First row in sortOrder, whatever it is - the dashboard should open on
+        // real content rather than on a named equipment that may not exist.
+        setActiveEquipmentId((current) => current || data.equipment?.[0]?.id || null)
       })
-      setEditingEquipment((current) => current || data.equipment?.[0] || null)
-      // First row in sortOrder, whatever it is - the dashboard should open on
-      // real content rather than on a named equipment that may not exist.
-      setActiveEquipmentId((current) => current || data.equipment?.[0]?.id || null)
-    })
+      .catch((err) => setContentError(err.message))
   }, [])
+
+  useEffect(() => () => clearTimeout(saveMessageTimer.current), [])
 
   const refreshMessage = (message) => {
     setSaveMessage(message)
-    window.setTimeout(() => setSaveMessage(''), 2400)
+    clearTimeout(saveMessageTimer.current)
+    saveMessageTimer.current = window.setTimeout(() => setSaveMessage(''), 2400)
   }
 
   // Category rows are short labels with no learner-visible body, so they save
@@ -395,10 +441,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         </nav>
       )}
 
-      {content.localOnly && (
-        <div className="admin-alert">
-          Frontend-only prototype mode is active. Admin changes are saved in this browser's localStorage.
-        </div>
+      {contentError && (
+        <div className="admin-alert">Admin content could not be loaded: {contentError}</div>
       )}
 
       {saveMessage && <div className="admin-save-message">{saveMessage}</div>}
@@ -537,10 +581,12 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             <h2>Part Categories</h2>
             <p className="admin-panel-note">The filter chips above the parts list on the learner page. A category still used by a part cannot be deleted.</p>
             {activeEquipmentCategories.map((category) => (
-              <div key={category.id} className="admin-row-actions">
-                <input value={category.label} onChange={(event) => handleRenameCategory(category, event.target.value)} />
-                <button onClick={() => handleDeleteCategory(category)}>Delete</button>
-              </div>
+              <CategoryRow
+                key={category.id}
+                category={category}
+                onRename={handleRenameCategory}
+                onDelete={handleDeleteCategory}
+              />
             ))}
             <label>
               New category

@@ -103,7 +103,7 @@ router.get('/checklists/:moduleSlug', async (req, res) => {
     where: { moduleId: module.id },
     orderBy: { sortOrder: 'asc' },
   })
-  res.json(items.map((item) => item.text))
+  res.json(items.map((item) => ({ id: item.id, text: item.text })))
 })
 
 // One endpoint for every quiz, module and parts alike:
