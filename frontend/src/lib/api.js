@@ -6,7 +6,10 @@
 // vite.config.js), so no base URL configuration is needed. Set VITE_API_URL
 // only when the API is hosted somewhere else entirely.
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api'
+// Optional chaining so this file can be imported under plain Node (the test
+// runner has no Vite, so `import.meta.env` itself is undefined there) without
+// changing behavior under Vite, which always defines it.
+const API_BASE = import.meta.env?.VITE_API_URL || '/api'
 
 let authToken = localStorage.getItem('gearview_token')
 

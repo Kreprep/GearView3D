@@ -1,9 +1,9 @@
-import { moduleChecklists } from './trainingData'
+import { moduleChecklists } from './trainingData.js'
 import {
   getChecklistCounts as fetchChecklistCounts,
   getProgress as fetchServerProgress,
   saveProgress as pushServerProgress,
-} from './api'
+} from './api.js'
 
 const STORAGE_KEY = 'gearview_progress_v1'
 const CHECKLIST_COUNTS_KEY = 'gearview_checklist_counts_v1'
