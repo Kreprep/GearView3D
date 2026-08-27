@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useAdminAction } from '../../hooks/useAdminAction'
 import DrivingSimulationViewer from '../DrivingSimulationViewer'
 import {
   adminDeleteCourse,
@@ -85,7 +86,6 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
   const [dirty, setDirty] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [previewSeed, setPreviewSeed] = useState(0)
-  const [busy, setBusy] = useState(false)
   const [undoStack, setUndoStack] = useState([])
 
   // Local edits stay authoritative while the admin works - saving must not
@@ -231,24 +231,13 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
     setContent({ counters: [...counters] })
   }
 
-  const run = async (action, successMessage, { resync = false } = {}) => {
-    setBusy(true)
-    try {
-      const result = await action()
-      if (result?.course) {
-        onCourseChanged(result.course)
-        setDirty(false)
-        if (resync) resyncFrom(result.course)
-      }
-      onMessage(successMessage)
-      return result
-    } catch (err) {
-      onMessage(err.message)
-      return null
-    } finally {
-      setBusy(false)
+  const { busy, run } = useAdminAction(onMessage, (result, { resync = false } = {}) => {
+    if (result?.course) {
+      onCourseChanged(result.course)
+      setDirty(false)
+      if (resync) resyncFrom(result.course)
     }
-  }
+  })
 
   const saveDraft = () => run(() => adminSaveCourseDraft(course.id, draft), 'Draft saved.')
 
@@ -270,16 +259,8 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
 
   const remove = async () => {
     if (!window.confirm(`Delete the step "${draft.title}"? Learners will no longer see it.`)) return
-    setBusy(true)
-    try {
-      await adminDeleteCourse(course.id)
-      onCourseDeleted(course.id)
-      onMessage('Course deleted.')
-    } catch (err) {
-      onMessage(err.message)
-    } finally {
-      setBusy(false)
-    }
+    const result = await run(() => adminDeleteCourse(course.id), 'Course deleted.')
+    if (result) onCourseDeleted(course.id)
   }
 
   const previewCourse = useMemo(

@@ -5,6 +5,7 @@ import { Box3, DoubleSide, Euler, Quaternion, Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Compass, Eye, RotateCcw, Locate } from 'lucide-react'
 import { buildVehicleRig, REAR_WHEEL_KEYS } from '../lib/vehicleRig'
+import { clamp } from '../lib/math'
 import { decorationType } from '../lib/courseEdit'
 import { resolveCourseBounds } from '../lib/courseGoals'
 import { DEFAULT_VEHICLE_MODEL_URL } from '../data/vehicleProfile'
@@ -194,10 +195,6 @@ const TILT_LABELS = {
   back: 'Mast: Back',
   level: 'Mast: Level',
   forward: 'Mast: Forward',
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max)
 }
 
 function tiltStateName(angle) {

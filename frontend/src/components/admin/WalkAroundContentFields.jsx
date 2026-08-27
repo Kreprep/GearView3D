@@ -1,4 +1,5 @@
 import { WALK_AROUND_PHASES } from '../../data/courseDefaults'
+import { slugify as toSlug } from '../../lib/slug'
 import './WalkAroundContentFields.css'
 
 // The editable payload of a `walk-around` step: which phase it runs and the
@@ -12,13 +13,11 @@ const PHASE_LABELS = {
   'defect-test': 'Defect recognition',
 }
 
+// These ids are derived client-side (no server round trip to dedupe them
+// against, unlike the admin.js routes' equivalent), so an empty slug falls
+// back to a timestamped placeholder rather than an empty string.
 function slugify(value, fallback) {
-  const slug = String(value || '')
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-  return slug || `${fallback}-${Date.now()}`
+  return toSlug(value) || `${fallback}-${Date.now()}`
 }
 
 // Every list here is edited the same way: patch one row, drop one row, or

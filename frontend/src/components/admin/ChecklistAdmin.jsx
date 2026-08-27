@@ -4,26 +4,17 @@ import {
   adminDeleteChecklistItem,
   adminUpdateChecklistItem,
 } from '../../lib/api'
+import { useAdminAction } from '../../hooks/useAdminAction'
 
 // One module's checklist items, edited inside its checklist step. Short lines
 // of text with no learner-visible body, so they save immediately.
 function ChecklistAdmin({ moduleId, items, onItemsChanged, onMessage }) {
   const [newText, setNewText] = useState('')
+  const { run } = useAdminAction(onMessage)
 
   const moduleItems = items
     .filter((item) => String(item.moduleId) === String(moduleId))
     .sort((a, b) => a.sortOrder - b.sortOrder)
-
-  const run = async (action, message) => {
-    try {
-      const result = await action()
-      if (message) onMessage(message)
-      return result
-    } catch (error) {
-      onMessage(error.message)
-      return null
-    }
-  }
 
   const addItem = async () => {
     if (!newText.trim()) return
