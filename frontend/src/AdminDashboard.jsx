@@ -15,8 +15,10 @@ import HotspotAdmin from './components/admin/HotspotAdmin'
 import HotspotViewer from './components/HotspotViewer'
 import ModuleListAdmin from './components/admin/ModuleListAdmin'
 import QuizAdmin from './components/admin/QuizAdmin'
+import ReportsPanel from './components/admin/ReportsPanel'
 import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
 import { usePageTitle } from './hooks/usePageTitle'
+import { describeActivity, formatRelativeTime } from './lib/adminActivity'
 import {
   adminCreateEquipment,
   adminCreateHotspotCategory,
@@ -54,33 +56,7 @@ const ADMIN_SECTION_LABELS = Object.fromEntries(
   [...equipmentContentTabs, ...trailingTabs].map(([path, label]) => [path, label]),
 )
 
-function downloadCsv(filename, rows) {
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
 const DAY_MS = 24 * 60 * 60 * 1000
-
-function formatRelativeTime(dateString) {
-  const elapsed = Date.now() - new Date(dateString).getTime()
-  if (elapsed < 60 * 1000) return 'just now'
-  if (elapsed < 60 * 60 * 1000) return `${Math.floor(elapsed / (60 * 1000))}m ago`
-  if (elapsed < DAY_MS) return `${Math.floor(elapsed / (60 * 60 * 1000))}h ago`
-  return `${Math.floor(elapsed / DAY_MS)}d ago`
-}
-
-function describeActivity(entry, moduleTitle) {
-  const who = entry.user?.fullName || entry.user?.email || 'A learner'
-  if (entry.action === 'quiz_attempt') return `${who} completed a quiz in ${moduleTitle || entry.detail}`
-  if (entry.action === 'parts_quiz_attempt') return `${who} scored ${entry.detail} on the parts quiz`
-  return `${who} - ${entry.action}`
-}
 
 function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [content, setContent] = useState({
@@ -338,13 +314,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     } catch (err) {
       refreshMessage(err.message)
     }
-  }
-
-  const exportReports = () => {
-    downloadCsv('gearview3d-progress-report.csv', [
-      ['Learner', 'Module', 'Progress', 'Updated At'],
-      ...content.progress.map((item) => [item.user?.email, item.moduleSlug, item.progress, item.updatedAt]),
-    ])
   }
 
   return (
@@ -810,18 +779,13 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
 
       {activePath === routes.adminReports && (
         <main className="admin-grid">
-          <section className="admin-panel wide-panel">
-            <div className="admin-panel-heading">
-              <h2>Progress Reports</h2>
-              <button className="admin-save" onClick={exportReports}>Export CSV</button>
-            </div>
-            {content.progress.length ? content.progress.map((item) => (
-              <article key={item.id} className="admin-list-item">
-                <h3>{item.user?.fullName || item.user?.email}</h3>
-                <p>{item.moduleSlug}: {item.progress}% complete</p>
-              </article>
-            )) : <p>No saved local progress yet.</p>}
-          </section>
+          <ReportsPanel
+            equipment={content.equipment}
+            modules={content.modules}
+            users={content.users}
+            progress={content.progress}
+            activityLogs={content.activityLogs}
+          />
         </main>
       )}
     </div>
