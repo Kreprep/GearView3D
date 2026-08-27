@@ -117,16 +117,27 @@ function ReportsPanel({ equipment, modules, users, progress, activityLogs }) {
     [modules, equipmentFilter],
   )
 
+  // Walks the same per-user sections the roster renders (including the zero
+  // rows synthesized for a user with no snapshot yet), so the export always
+  // covers every user and every module rather than only users who have saved
+  // progress at least once.
   const exportCsv = () => {
+    const rows = sortedUsers.flatMap((user) => {
+      const sections = buildUserSections(user.id)
+      return [...sections.entries()].flatMap(([equipmentId, moduleRows]) =>
+        moduleRows.map((row) => [
+          user.email,
+          equipmentById[equipmentId]?.title || equipmentId,
+          moduleTitleBySlug[row.moduleSlug] || row.moduleSlug,
+          row.progress,
+          row.updatedAt || '',
+        ]),
+      )
+    })
+
     downloadCsv('gearview3d-progress-report.csv', [
       ['Learner', 'Equipment', 'Module', 'Progress', 'Last Activity'],
-      ...progress.map((item) => [
-        item.user?.email,
-        equipmentById[item.equipmentId]?.title || item.equipmentId,
-        moduleTitleBySlug[item.moduleSlug] || item.moduleSlug,
-        item.progress,
-        item.updatedAt || '',
-      ]),
+      ...rows,
     ])
   }
 
