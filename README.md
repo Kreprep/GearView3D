@@ -91,6 +91,8 @@ npm run dev
 - Admin: `admin@mail.com` / `admin123`
 - Learner: `trainee@mail.com` / `trainee123`
 
+Local only - seeded by `npm run seed` when `SEED_DEMO_USERS` is unset or not `false` (`backend/.env.example` default). Production (`docker-compose.yml`) sets `SEED_DEMO_USERS=false`, so these accounts are never (re-)created on the live box.
+
 Learner progress is saved per account in the database, so the same login shows the same progress on any machine pointing at the same database.
 
 ## Admin Flow
@@ -180,7 +182,7 @@ Or set `IMPORT_CONTENT_ON_BOOT=true` in `.env` to replay `prisma/content-export.
 
 Notes:
 
-- **Change the demo passwords** before exposing this. `admin@mail.com` / `admin123` is fine on localhost, not behind a public proxy.
+- `docker-compose.yml` sets `SEED_DEMO_USERS=false`, so `admin@mail.com`/`admin123` is never seeded in this deployment - create your own admin account instead of relying on it.
 - The database lives in the `pgdata` volume. `docker compose down` keeps it; `docker compose down -v` deletes it.
 - Both images build from the repo root, because the seed imports the frontend's data files directly.
 
