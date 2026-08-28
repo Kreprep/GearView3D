@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { adminCreateModule, adminDeleteModule, adminReorderModules } from '../../lib/api'
 import { useAdminAction } from '../../hooks/useAdminAction'
+import { Button } from '../ui/button'
+import { Panel, PanelHeader, PanelNote } from '../ui/panel'
+import { Field } from '../ui/field'
+import { Input } from '../ui/input'
+import { Toolbar } from '../ui/toolbar'
 
 // The ordered module list for one equipment: open, reorder, delete, add.
 // Opening a module hands off to ModuleEditor, which is where its steps,
@@ -47,40 +52,43 @@ function ModuleListAdmin({ equipmentId, modules, onModulesChanged, onOpenModule,
 
   return (
     <>
-      <section className="admin-panel wide-panel">
-        <h2>Training Modules</h2>
-        <p className="admin-panel-note">
+      <Panel>
+        <PanelHeader>Training Modules</PanelHeader>
+        <PanelNote>
           The cards learners see on this equipment&apos;s module list, in this order. Open one to edit its steps,
           checklist items and quiz questions.
-        </p>
+        </PanelNote>
 
-        {ordered.map((module, index) => (
-          <article key={module.id} className="admin-list-item">
-            <h3>{index + 1}. {module.title}</h3>
-            <p>{module.subtitle ? `${module.subtitle} - ` : ''}{module.description}</p>
-            <div className="admin-row-actions">
-              <button className="admin-save" onClick={() => onOpenModule(module)}>Edit</button>
-              <button onClick={() => move(index, -1)} disabled={index === 0}>Move up</button>
-              <button onClick={() => move(index, 1)} disabled={index === ordered.length - 1}>Move down</button>
-              <button onClick={() => remove(module)}>Delete</button>
-            </div>
-          </article>
-        ))}
-        {ordered.length === 0 && <p className="admin-panel-note">No modules for this equipment yet.</p>}
-      </section>
+        <div className="mt-2 grid">
+          {ordered.map((module, index) => (
+            <article key={module.id} className="border-t border-slate-200 py-3 first:border-t-0">
+              <h3 className="m-0 text-sm font-extrabold text-ink">{index + 1}. {module.title}</h3>
+              <p className="mt-1 text-[13px] text-muted">{module.subtitle ? `${module.subtitle} - ` : ''}{module.description}</p>
+              <Toolbar>
+                <Button size="sm" onClick={() => onOpenModule(module)}>Edit</Button>
+                <Button size="sm" variant="secondary" onClick={() => move(index, -1)} disabled={index === 0}>Move up</Button>
+                <Button size="sm" variant="secondary" onClick={() => move(index, 1)} disabled={index === ordered.length - 1}>Move down</Button>
+                <Button size="sm" variant="danger" onClick={() => remove(module)}>Delete</Button>
+              </Toolbar>
+            </article>
+          ))}
+        </div>
+        {ordered.length === 0 && <PanelNote className="mt-2">No modules for this equipment yet.</PanelNote>}
+      </Panel>
 
-      <section className="admin-panel admin-editor">
-        <h2>Add Module</h2>
-        <p className="admin-panel-note">
+      <Panel>
+        <PanelHeader>Add Module</PanelHeader>
+        <PanelNote>
           A new module starts with one blank Read Up step so it has something to show; add driving, checklist and
           quiz steps inside it.
-        </p>
-        <label>
-          Module title
-          <input value={newTitle} placeholder="Load Handling" onChange={(event) => setNewTitle(event.target.value)} />
-        </label>
-        <button className="admin-save" onClick={addModule} disabled={!newTitle.trim()}>Add module</button>
-      </section>
+        </PanelNote>
+        <Field label="Module title" className="mt-3">
+          <Input value={newTitle} placeholder="Load Handling" onChange={(event) => setNewTitle(event.target.value)} />
+        </Field>
+        <Toolbar>
+          <Button onClick={addModule} disabled={!newTitle.trim()}>Add module</Button>
+        </Toolbar>
+      </Panel>
     </>
   )
 }
