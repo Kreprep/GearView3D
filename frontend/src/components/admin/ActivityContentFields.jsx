@@ -6,6 +6,12 @@
 // Both write through CourseEditor's `setContent`, so the edits land in the
 // step's draft and reach learners only on Publish.
 import { slugify } from '../../lib/slug'
+import { Button } from '../ui/button'
+import { PanelNote } from '../ui/panel'
+import { Field } from '../ui/field'
+import { Input, Textarea, Select } from '../ui/input'
+
+const ITEM_CLASSES = 'grid gap-2.5 rounded-xl border border-border bg-slate-50 p-3.5'
 
 function moveInList(list, index, delta) {
   const target = index + delta
@@ -26,6 +32,19 @@ function slugId(prefix, label, taken) {
     suffix += 1
   }
   return id
+}
+
+function ItemToolbar({ index, count, onMoveUp, onMoveDown, onRemove }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <strong className="text-sm text-ink">{index + 1}.</strong>
+      <span className="ml-auto flex gap-1.5">
+        <Button type="button" size="sm" variant="secondary" onClick={onMoveUp} disabled={index === 0}>Up</Button>
+        <Button type="button" size="sm" variant="secondary" onClick={onMoveDown} disabled={index === count - 1}>Down</Button>
+        <Button type="button" size="sm" variant="danger" onClick={onRemove}>Remove</Button>
+      </span>
+    </div>
+  )
 }
 
 export function ShutdownActivityFields({ content, onChange }) {
@@ -52,39 +71,32 @@ export function ShutdownActivityFields({ content, onChange }) {
 
   return (
     <>
-      <p className="admin-panel-note">
-        Cards are listed in the order the learner must select them. Position 1 is picked first.
-      </p>
+      <PanelNote>Cards are listed in the order the learner must select them. Position 1 is picked first.</PanelNote>
 
-      {actions.map((action, index) => (
-        <div key={action.id} className="activity-item">
-          <div className="activity-item-bar">
-            <strong>{index + 1}.</strong>
-            <span className="course-toolbar-spacer" />
-            <button type="button" className="admin-btn admin-btn-sm" onClick={() => writeActions(moveInList(actions, index, -1))} disabled={index === 0}>Up</button>
-            <button type="button" className="admin-btn admin-btn-sm" onClick={() => writeActions(moveInList(actions, index, 1))} disabled={index === actions.length - 1}>Down</button>
-            <button
-              type="button"
-              className="admin-btn-danger admin-btn-sm"
-              onClick={() => writeActions(actions.filter((entry, position) => position !== index))}
-            >
-              Remove
-            </button>
+      <div className="mt-3 grid gap-2.5">
+        {actions.map((action, index) => (
+          <div key={action.id} className={ITEM_CLASSES}>
+            <ItemToolbar
+              index={index}
+              count={actions.length}
+              onMoveUp={() => writeActions(moveInList(actions, index, -1))}
+              onMoveDown={() => writeActions(moveInList(actions, index, 1))}
+              onRemove={() => writeActions(actions.filter((entry, position) => position !== index))}
+            />
+            <Field label="Label">
+              <Input value={action.label || ''} onChange={(event) => updateAction(index, { label: event.target.value })} />
+            </Field>
+            <Field label="Detail">
+              <Input value={action.detail || ''} onChange={(event) => updateAction(index, { detail: event.target.value })} />
+            </Field>
           </div>
-          <label>
-            Label
-            <input value={action.label || ''} onChange={(event) => updateAction(index, { label: event.target.value })} />
-          </label>
-          <label>
-            Detail
-            <input value={action.detail || ''} onChange={(event) => updateAction(index, { detail: event.target.value })} />
-          </label>
-        </div>
-      ))}
+        ))}
+      </div>
 
-      <button
+      <Button
         type="button"
-        className="admin-btn"
+        variant="secondary"
+        className="mt-2.5"
         onClick={() =>
           writeActions([
             ...actions,
@@ -93,32 +105,36 @@ export function ShutdownActivityFields({ content, onChange }) {
         }
       >
         Add action
-      </button>
+      </Button>
 
-      <h4>Card display order</h4>
-      <p className="admin-panel-note">
+      <h4 className="mb-1 mt-4 text-sm font-extrabold text-ink">Card display order</h4>
+      <PanelNote>
         The scrambled order the cards are shown in before the learner sorts them. It is a fixed scramble, not a
         shuffle, so every retry looks the same.
-      </p>
-      <ol className="course-checkpoint-list">
+      </PanelNote>
+      <ol className="m-0 mt-2 grid list-none gap-1.5 p-0">
         {displayOrder.map((id, index) => (
-          <li key={id}>
-            <span>{actions.find((action) => action.id === id)?.label || id}</span>
-            <span>
-              <button
+          <li key={id} className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+            <span className="text-body">{actions.find((action) => action.id === id)?.label || id}</span>
+            <span className="flex gap-1.5">
+              <Button
                 type="button"
+                size="sm"
+                variant="secondary"
                 onClick={() => onChange({ displayOrder: moveInList(displayOrder, index, -1) })}
                 disabled={index === 0}
               >
                 Up
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                size="sm"
+                variant="secondary"
                 onClick={() => onChange({ displayOrder: moveInList(displayOrder, index, 1) })}
                 disabled={index === displayOrder.length - 1}
               >
                 Down
-              </button>
+              </Button>
             </span>
           </li>
         ))}
@@ -135,54 +151,45 @@ export function ReportingActivityFields({ content, onChange }) {
 
   return (
     <>
-      <p className="admin-panel-note">
-        Each condition is answered Report or No Action. The learner must get every one right to finish the step.
-      </p>
+      <PanelNote>Each condition is answered Report or No Action. The learner must get every one right to finish the step.</PanelNote>
 
-      {prompts.map((prompt, index) => (
-        <div key={prompt.id} className="activity-item">
-          <div className="activity-item-bar">
-            <strong>{index + 1}.</strong>
-            <span className="course-toolbar-spacer" />
-            <button type="button" className="admin-btn admin-btn-sm" onClick={() => onChange({ prompts: moveInList(prompts, index, -1) })} disabled={index === 0}>Up</button>
-            <button type="button" className="admin-btn admin-btn-sm" onClick={() => onChange({ prompts: moveInList(prompts, index, 1) })} disabled={index === prompts.length - 1}>Down</button>
-            <button
-              type="button"
-              className="admin-btn-danger admin-btn-sm"
-              onClick={() => onChange({ prompts: prompts.filter((entry, position) => position !== index) })}
-            >
-              Remove
-            </button>
+      <div className="mt-3 grid gap-2.5">
+        {prompts.map((prompt, index) => (
+          <div key={prompt.id} className={ITEM_CLASSES}>
+            <ItemToolbar
+              index={index}
+              count={prompts.length}
+              onMoveUp={() => onChange({ prompts: moveInList(prompts, index, -1) })}
+              onMoveDown={() => onChange({ prompts: moveInList(prompts, index, 1) })}
+              onRemove={() => onChange({ prompts: prompts.filter((entry, position) => position !== index) })}
+            />
+
+            <Field label="Condition shown to the learner">
+              <Textarea rows={2} value={prompt.text || ''} onChange={(event) => updatePrompt(index, { text: event.target.value })} />
+            </Field>
+            <Field label="Correct answer">
+              <Select
+                value={prompt.shouldReport ? 'report' : 'no-action'}
+                onChange={(event) => updatePrompt(index, { shouldReport: event.target.value === 'report' })}
+              >
+                <option value="report">Report</option>
+                <option value="no-action">No Action</option>
+              </Select>
+            </Field>
+            <Field label="Feedback when correct">
+              <Textarea rows={2} value={prompt.feedback || ''} onChange={(event) => updatePrompt(index, { feedback: event.target.value })} />
+            </Field>
+            <Field label="Feedback when wrong">
+              <Textarea rows={2} value={prompt.wrongFeedback || ''} onChange={(event) => updatePrompt(index, { wrongFeedback: event.target.value })} />
+            </Field>
           </div>
+        ))}
+      </div>
 
-          <label>
-            Condition shown to the learner
-            <textarea rows={2} value={prompt.text || ''} onChange={(event) => updatePrompt(index, { text: event.target.value })} />
-          </label>
-          <label>
-            Correct answer
-            <select
-              value={prompt.shouldReport ? 'report' : 'no-action'}
-              onChange={(event) => updatePrompt(index, { shouldReport: event.target.value === 'report' })}
-            >
-              <option value="report">Report</option>
-              <option value="no-action">No Action</option>
-            </select>
-          </label>
-          <label>
-            Feedback when correct
-            <textarea rows={2} value={prompt.feedback || ''} onChange={(event) => updatePrompt(index, { feedback: event.target.value })} />
-          </label>
-          <label>
-            Feedback when wrong
-            <textarea rows={2} value={prompt.wrongFeedback || ''} onChange={(event) => updatePrompt(index, { wrongFeedback: event.target.value })} />
-          </label>
-        </div>
-      ))}
-
-      <button
+      <Button
         type="button"
-        className="admin-btn"
+        variant="secondary"
+        className="mt-2.5"
         onClick={() =>
           onChange({
             prompts: [
@@ -199,7 +206,7 @@ export function ReportingActivityFields({ content, onChange }) {
         }
       >
         Add condition
-      </button>
+      </Button>
     </>
   )
 }
