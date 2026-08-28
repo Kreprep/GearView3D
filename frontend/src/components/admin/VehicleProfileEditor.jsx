@@ -2,6 +2,14 @@ import { useState } from 'react'
 import { defaultVehicleProfile } from '../../data/vehicleProfile'
 import { resolveVehicleProfile } from '../../lib/vehicleProfile'
 import { adminUpdateEquipment } from '../../lib/api'
+import { Button } from '../ui/button'
+import { PanelNote } from '../ui/panel'
+import { Field } from '../ui/field'
+import { Input, Checkbox } from '../ui/input'
+import { Toolbar } from '../ui/toolbar'
+
+const FIELDSET_CLASSES = 'm-0 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] items-start gap-3 rounded-xl border border-border bg-slate-50 p-4'
+const LEGEND_CLASSES = 'px-1 text-xs font-extrabold uppercase tracking-wider text-body'
 
 // Editor for Equipment.simConfig - how this equipment drives in a `driving`
 // step. Only overrides are stored, so a blank field keeps the coded default
@@ -12,7 +20,7 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
   const [draft, setDraft] = useState(() => equipment?.simConfig || {})
   const [saving, setSaving] = useState(false)
 
-  if (!equipment) return <p className="admin-panel-note">Select an equipment first.</p>
+  if (!equipment) return <PanelNote>Select an equipment first.</PanelNote>
 
   const defaults = defaultVehicleProfile()
   const resolved = resolveVehicleProfile(equipment)
@@ -44,113 +52,111 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
 
   return (
     <>
-      <p className="admin-panel-note">
+      <PanelNote>
         How this equipment behaves in a Driving Course step. Leave a field blank to use the default in its
         placeholder. An equipment with no model of its own drives the forklift model; one whose model has none of
         the rig node names below still drives, just without spinning wheels or a moving mast.
-      </p>
+      </PanelNote>
 
-      <fieldset className="admin-fieldset">
-        <legend>Vehicle</legend>
-        <label>
-          Driving model URL
-          <input
-            value={draft.modelUrl || ''}
-            placeholder={resolved.modelUrl}
-            onChange={(event) => setField({ modelUrl: event.target.value })}
-          />
-        </label>
-        <label>
-          Parked-obstacle model URL
-          <input
-            value={draft.parkedModelUrl || ''}
-            placeholder={resolved.parkedModelUrl}
-            onChange={(event) => setField({ parkedModelUrl: event.target.value })}
-          />
-        </label>
-        <label className="admin-checkbox">
-          <input
-            type="checkbox"
+      <div className="mt-3 grid gap-3.5">
+        <fieldset className={FIELDSET_CLASSES}>
+          <legend className={LEGEND_CLASSES}>Vehicle</legend>
+          <Field label="Driving model URL">
+            <Input
+              value={draft.modelUrl || ''}
+              placeholder={resolved.modelUrl}
+              onChange={(event) => setField({ modelUrl: event.target.value })}
+            />
+          </Field>
+          <Field label="Parked-obstacle model URL">
+            <Input
+              value={draft.parkedModelUrl || ''}
+              placeholder={resolved.parkedModelUrl}
+              onChange={(event) => setField({ parkedModelUrl: event.target.value })}
+            />
+          </Field>
+          <Checkbox
+            label="This vehicle has forks"
+            className="col-span-full"
             checked={draft.hasForks !== undefined ? Boolean(draft.hasForks) : defaults.hasForks}
             onChange={(event) => setField({ hasForks: event.target.checked })}
           />
-          This vehicle has forks
-        </label>
-        <p className="admin-panel-note">Unchecked hides the raise/lower keys from the HUD legend and help line.</p>
-      </fieldset>
+          <PanelNote className="col-span-full">Unchecked hides the raise/lower keys from the HUD legend and help line.</PanelNote>
+        </fieldset>
 
-      <fieldset className="admin-fieldset">
-        <legend>Body footprint (metres, half-extents)</legend>
-        <label>
-          Half width
-          <input
-            type="number"
-            step="0.01"
-            value={draft.footprint?.halfWidth ?? ''}
-            placeholder={String(resolved.footprint.halfWidth)}
-            onChange={(event) => setFootprint({ halfWidth: event.target.value === '' ? undefined : Number(event.target.value) })}
-          />
-        </label>
-        <label>
-          Half length
-          <input
-            type="number"
-            step="0.01"
-            value={draft.footprint?.halfLength ?? ''}
-            placeholder={String(resolved.footprint.halfLength)}
-            onChange={(event) => setFootprint({ halfLength: event.target.value === '' ? undefined : Number(event.target.value) })}
-          />
-        </label>
-        <p className="admin-panel-note">Used for cone and wall collision. Too small and the vehicle clips through; too large and it fails on clearances a real one would make.</p>
-      </fieldset>
-
-      <fieldset className="admin-fieldset">
-        <legend>Rig node names (from the GLB)</legend>
-        {['FL', 'FR', 'RL', 'RR'].map((wheel) => (
-          <label key={wheel}>
-            {wheel} wheel
-            <input
-              value={draft.rig?.wheels?.[wheel] || ''}
-              placeholder={resolved.rig.wheels[wheel]}
-              onChange={(event) => setWheels({ [wheel]: event.target.value })}
-            />
-          </label>
-        ))}
-        <label>
-          Mast node
-          <input value={draft.rig?.mast || ''} placeholder={resolved.rig.mast} onChange={(event) => setRig({ mast: event.target.value })} />
-        </label>
-        <label>
-          Lift carriage node
-          <input value={draft.rig?.carriage || ''} placeholder={resolved.rig.carriage} onChange={(event) => setRig({ carriage: event.target.value })} />
-        </label>
-        <p className="admin-panel-note">A name that does not exist in the model is skipped rather than failing the scene.</p>
-      </fieldset>
-
-      <fieldset className="admin-fieldset">
-        <legend>Cabin (first-person seat, metres, local to the vehicle)</legend>
-        {[['Side (x)', 0], ['Height (y)', 1], ['Forward (z)', 2]].map(([label, axis]) => (
-          <label key={axis}>
-            {label}
-            <input
+        <fieldset className={FIELDSET_CLASSES}>
+          <legend className={LEGEND_CLASSES}>Body footprint (metres, half-extents)</legend>
+          <Field label="Half width">
+            <Input
               type="number"
               step="0.01"
-              value={draft.rig?.cabin?.seatOffset?.[axis] ?? ''}
-              placeholder={String(resolved.rig.cabin.seatOffset[axis])}
-              onChange={(event) => setSeatAxis(axis, event.target.value === '' ? resolved.rig.cabin.seatOffset[axis] : Number(event.target.value))}
+              value={draft.footprint?.halfWidth ?? ''}
+              placeholder={String(resolved.footprint.halfWidth)}
+              onChange={(event) => setFootprint({ halfWidth: event.target.value === '' ? undefined : Number(event.target.value) })}
             />
-          </label>
-        ))}
-        <p className="admin-panel-note">Where the first-person camera sits: sideways, up, and forward from the vehicle's centre. Test it by driving the course with First-Person on.</p>
-      </fieldset>
+          </Field>
+          <Field label="Half length">
+            <Input
+              type="number"
+              step="0.01"
+              value={draft.footprint?.halfLength ?? ''}
+              placeholder={String(resolved.footprint.halfLength)}
+              onChange={(event) => setFootprint({ halfLength: event.target.value === '' ? undefined : Number(event.target.value) })}
+            />
+          </Field>
+          <PanelNote className="col-span-full">
+            Used for cone and wall collision. Too small and the vehicle clips through; too large and it fails on
+            clearances a real one would make.
+          </PanelNote>
+        </fieldset>
 
-      <div className="admin-row-actions">
-        <button className="admin-save" onClick={save} disabled={saving}>Save vehicle profile</button>
-        <button onClick={() => setDraft({})} disabled={overrideCount === 0}>Reset to default</button>
+        <fieldset className={FIELDSET_CLASSES}>
+          <legend className={LEGEND_CLASSES}>Rig node names (from the GLB)</legend>
+          {['FL', 'FR', 'RL', 'RR'].map((wheel) => (
+            <Field key={wheel} label={`${wheel} wheel`}>
+              <Input
+                value={draft.rig?.wheels?.[wheel] || ''}
+                placeholder={resolved.rig.wheels[wheel]}
+                onChange={(event) => setWheels({ [wheel]: event.target.value })}
+              />
+            </Field>
+          ))}
+          <Field label="Mast node">
+            <Input value={draft.rig?.mast || ''} placeholder={resolved.rig.mast} onChange={(event) => setRig({ mast: event.target.value })} />
+          </Field>
+          <Field label="Lift carriage node">
+            <Input value={draft.rig?.carriage || ''} placeholder={resolved.rig.carriage} onChange={(event) => setRig({ carriage: event.target.value })} />
+          </Field>
+          <PanelNote className="col-span-full">A name that does not exist in the model is skipped rather than failing the scene.</PanelNote>
+        </fieldset>
+
+        <fieldset className={FIELDSET_CLASSES}>
+          <legend className={LEGEND_CLASSES}>Cabin (first-person seat, metres, local to the vehicle)</legend>
+          {[['Side (x)', 0], ['Height (y)', 1], ['Forward (z)', 2]].map(([label, axis]) => (
+            <Field key={axis} label={label}>
+              <Input
+                type="number"
+                step="0.01"
+                value={draft.rig?.cabin?.seatOffset?.[axis] ?? ''}
+                placeholder={String(resolved.rig.cabin.seatOffset[axis])}
+                onChange={(event) => setSeatAxis(axis, event.target.value === '' ? resolved.rig.cabin.seatOffset[axis] : Number(event.target.value))}
+              />
+            </Field>
+          ))}
+          <PanelNote className="col-span-full">
+            Where the first-person camera sits: sideways, up, and forward from the vehicle&apos;s centre. Test it by
+            driving the course with First-Person on.
+          </PanelNote>
+        </fieldset>
       </div>
-      <p className="admin-panel-note">
+
+      <Toolbar>
+        <Button onClick={save} disabled={saving}>Save vehicle profile</Button>
+        <Button variant="secondary" onClick={() => setDraft({})} disabled={overrideCount === 0}>Reset to default</Button>
+      </Toolbar>
+      <PanelNote>
         {overrideCount === 0 ? 'No overrides - this equipment drives with the default profile.' : `${overrideCount} group(s) overridden.`}
-      </p>
+      </PanelNote>
     </>
   )
 }
