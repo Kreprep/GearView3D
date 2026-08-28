@@ -5,6 +5,11 @@ import {
   adminUpdateChecklistItem,
 } from '../../lib/api'
 import { useAdminAction } from '../../hooks/useAdminAction'
+import { Button } from '../ui/button'
+import { Panel, PanelHeader, PanelNote } from '../ui/panel'
+import { Field } from '../ui/field'
+import { Input } from '../ui/input'
+import { Toolbar } from '../ui/toolbar'
 
 // One module's checklist items, edited inside its checklist step. Short lines
 // of text with no learner-visible body, so they save immediately.
@@ -41,26 +46,29 @@ function ChecklistAdmin({ moduleId, items, onItemsChanged, onMessage }) {
   }
 
   return (
-    <section className="admin-panel admin-editor">
-      <h3>Checklist Items</h3>
-      <p className="admin-panel-note">
+    <Panel>
+      <PanelHeader>Checklist Items</PanelHeader>
+      <PanelNote>
         What the learner ticks off on this step. Completion feeds the module percentage but never blocks Next.
-      </p>
+      </PanelNote>
 
-      {moduleItems.map((item) => (
-        <div key={item.id} className="admin-row-actions">
-          <input defaultValue={item.text} onBlur={(event) => saveItem(item, event.target.value)} />
-          <button onClick={() => removeItem(item)}>Delete</button>
-        </div>
-      ))}
-      {moduleItems.length === 0 && <p className="admin-panel-note">No checklist items yet.</p>}
+      <div className="mt-3 grid gap-2">
+        {moduleItems.map((item) => (
+          <div key={item.id} className="flex items-center gap-2">
+            <Input defaultValue={item.text} onBlur={(event) => saveItem(item, event.target.value)} />
+            <Button type="button" size="sm" variant="danger" onClick={() => removeItem(item)}>Delete</Button>
+          </div>
+        ))}
+      </div>
+      {moduleItems.length === 0 && <PanelNote className="mt-2">No checklist items yet.</PanelNote>}
 
-      <label>
-        New checklist item
-        <input value={newText} onChange={(event) => setNewText(event.target.value)} placeholder="Check the tyres for damage" />
-      </label>
-      <button className="admin-save" onClick={addItem} disabled={!newText.trim()}>Add item</button>
-    </section>
+      <Field label="New checklist item" className="mt-3">
+        <Input value={newText} onChange={(event) => setNewText(event.target.value)} placeholder="Check the tyres for damage" />
+      </Field>
+      <Toolbar>
+        <Button type="button" onClick={addItem} disabled={!newText.trim()}>Add item</Button>
+      </Toolbar>
+    </Panel>
   )
 }
 
