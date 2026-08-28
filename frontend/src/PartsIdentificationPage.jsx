@@ -196,7 +196,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
         onBack={onBack}
       >
         {loading ? (
-          <p className="admin-panel-note">Loading parts...</p>
+          <p>Loading parts...</p>
         ) : (
           <ModuleSimulationShell
             module={{ fullTitle: 'Parts Identification', title: 'Parts Identification' }}

@@ -39,7 +39,6 @@ import {
   adminUpdateUser,
 } from './lib/api'
 import { adminModuleRoute, routes } from './lib/router'
-import './AdminDashboard.css'
 
 // The three sections every equipment has under Training Content. Paths stay
 // equipment-agnostic; which equipment's data fills them is tracked by
