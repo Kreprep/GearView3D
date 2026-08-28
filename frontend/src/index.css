@@ -27,6 +27,27 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Bridges Tailwind's utility generation to the app's own design tokens above,
+   so bg-accent/text-muted/border-border etc. stay in lockstep with the
+   learner-facing CSS instead of shipping Tailwind's stock palette. Must come
+   after the :root block: `var(--bg)` etc. read the tokens declared there.
+   Deliberately namespaced (color-ink/color-body, not color-text) so none of
+   these keys collide with the plain --text/--bg/... custom properties above -
+   a same-named key here would self-reference instead of reading them. */
+@theme {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-border: var(--border);
+  --color-ink: var(--text-h);
+  --color-body: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-warning: var(--warning);
+  --font-sans: var(--sans);
+}
+
 * {
   box-sizing: border-box;
 }

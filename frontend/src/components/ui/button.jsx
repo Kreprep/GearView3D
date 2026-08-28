@@ -1,9 +1,11 @@
 export function Button({ children, className = '', variant = 'default', size = 'md', ...props }) {
-  const baseClasses = 'inline-flex items-center justify-center rounded-xl border font-medium transition focus:outline-none focus:ring-2 focus:ring-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-60'
+  const baseClasses = 'inline-flex items-center justify-center rounded-xl border font-medium transition focus:outline-none focus:ring-2 focus:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-60'
 
   const variantClasses = {
-    default: 'border-transparent bg-cyan-600 text-white hover:bg-cyan-500',
-    secondary: 'border-slate-200 bg-white text-slate-900 hover:bg-slate-100',
+    default: 'border-transparent bg-accent text-white hover:bg-accent-strong',
+    secondary: 'border-border bg-panel text-ink hover:bg-accent-soft',
+    danger: 'border-transparent bg-red-600 text-white hover:bg-red-500',
+    ghost: 'border-transparent bg-transparent text-body hover:bg-accent-soft',
   }[variant] || variant
 
   const sizeClasses = {
