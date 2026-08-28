@@ -1,28 +1,30 @@
 import { OBJECT_LABELS } from '../../lib/courseEdit'
 import { RACK_LEVEL_LABELS, RACK_LEVELS } from '../../data/rackProfile'
+import { Button } from '../ui/button'
+import { PanelNote } from '../ui/panel'
+import { Field } from '../ui/field'
+import { Input, Textarea, Select } from '../ui/input'
 
 const RAD_PER_DEG = Math.PI / 180
 
 function NumberField({ label, value, step = 0.1, onChange }) {
   return (
-    <label>
-      {label}
-      <input
+    <Field label={label}>
+      <Input
         type="number"
         step={step}
         value={value ?? ''}
         onChange={(event) => onChange(event.target.value === '' ? undefined : Number(event.target.value))}
       />
-    </label>
+    </Field>
   )
 }
 
 function TextField({ label, value, onChange }) {
   return (
-    <label>
-      {label}
-      <input value={value ?? ''} onChange={(event) => onChange(event.target.value)} />
-    </label>
+    <Field label={label}>
+      <Input value={value ?? ''} onChange={(event) => onChange(event.target.value)} />
+    </Field>
   )
 }
 
@@ -40,17 +42,17 @@ function AngleField({ label, value, onChange }) {
 
 function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
   if (!item) {
-    return <p className="admin-panel-note">Select an object on the map, or pick a tool and click to place one.</p>
+    return <PanelNote>Select an object on the map, or pick a tool and click to place one.</PanelNote>
   }
 
   const { kind, entry } = item
   const set = (patch) => onChange(patch)
 
   return (
-    <div className="course-inspector">
-      <p className="course-inspector-kind">{OBJECT_LABELS[kind] || kind}</p>
+    <div className="grid gap-2">
+      <p className="m-0 font-semibold text-ink">{OBJECT_LABELS[kind] || kind}</p>
 
-      <div className="course-inspector-grid">
+      <div className="grid grid-cols-2 gap-2">
         <NumberField label="X" value={item.x} onChange={(x) => onMove(x ?? 0, item.z)} />
         <NumberField label="Z" value={item.z} onChange={(z) => onMove(item.x, z ?? 0)} />
       </div>
@@ -78,12 +80,11 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
             value={entry.weightKg}
             onChange={(weightKg) => set({ weightKg })}
           />
-          <p className="admin-panel-note">
+          <PanelNote>
             Weight is shown on the pallet and checked against the course capacity. Over capacity tips the vehicle.
-          </p>
-          <label>
-            Target rack
-            <select
+          </PanelNote>
+          <Field label="Target rack">
+            <Select
               value={entry.targetRack || ''}
               onChange={(event) =>
                 set({ targetRack: event.target.value || undefined, targetLevel: event.target.value ? entry.targetLevel : undefined })
@@ -93,24 +94,23 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
               {racks.map((rack) => (
                 <option key={rack.id} value={rack.id}>{rack.id}</option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
           {entry.targetRack && (
-            <label>
-              Target shelf level
-              <select value={entry.targetLevel || ''} onChange={(event) => set({ targetLevel: event.target.value || undefined })}>
+            <Field label="Target shelf level">
+              <Select value={entry.targetLevel || ''} onChange={(event) => set({ targetLevel: event.target.value || undefined })}>
                 <option value="">Choose a level</option>
                 {RACK_LEVELS.map((level) => (
                   <option key={level} value={level}>{RACK_LEVEL_LABELS[level]}</option>
                 ))}
-              </select>
-            </label>
+              </Select>
+            </Field>
           )}
           {entry.targetRack && (
-            <p className="admin-panel-note">
-              Raise this pallet to the target level's height, drive it into that rack, and hold steady to set it down.
+            <PanelNote>
+              Raise this pallet to the target level&apos;s height, drive it into that rack, and hold steady to set it down.
               Set the goal type to Rack storage below so the step reads this instead of a drop zone.
-            </p>
+            </PanelNote>
           )}
         </>
       )}
@@ -119,20 +119,20 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
         <>
           <TextField label="Id" value={entry.id} onChange={(id) => set({ id })} />
           <AngleField label="Rotation" value={entry.rotation} onChange={(rotation) => set({ rotation })} />
-          <p className="admin-panel-note">
-            Assign a pallet to this rack from that pallet's own panel (Target rack / Target shelf level). The rack
+          <PanelNote>
+            Assign a pallet to this rack from that pallet&apos;s own panel (Target rack / Target shelf level). The rack
             itself is not a collider - the vehicle has to reach inside its footprint to place a load.
-          </p>
+          </PanelNote>
         </>
       )}
 
       {(kind === 'rack-empty' || kind === 'rack-loaded' || kind === 'rack-spare') && (
         <>
           <AngleField label="Rotation" value={entry.rotation} onChange={(rotation) => set({ rotation })} />
-          <p className="admin-panel-note">
+          <PanelNote>
             Background dressing only - no id, no target, not graded, not a collider. Switch which one this is by
             deleting it and placing the other kind from the palette.
-          </p>
+          </PanelNote>
         </>
       )}
 
@@ -140,16 +140,14 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
         <>
           <TextField label="Id" value={entry.id} onChange={(id) => set({ id })} />
           <TextField label="Label" value={entry.label} onChange={(label) => set({ label })} />
-          <label>
-            Requirement
-            <select value={entry.type || 'pass'} onChange={(event) => set({ type: event.target.value })}>
+          <Field label="Requirement">
+            <Select value={entry.type || 'pass'} onChange={(event) => set({ type: event.target.value })}>
               <option value="pass">Pass through</option>
               <option value="stop">Stop inside</option>
-            </select>
-          </label>
-          <label>
-            Shape
-            <select
+            </Select>
+          </Field>
+          <Field label="Shape">
+            <Select
               value={entry.shape === 'line' ? 'line' : 'radius'}
               onChange={(event) =>
                 set(
@@ -161,8 +159,8 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
             >
               <option value="radius">Circle</option>
               <option value="line">Finish line</option>
-            </select>
-          </label>
+            </Select>
+          </Field>
           {entry.shape === 'line' ? (
             <>
               <NumberField label="Half width" value={entry.halfWidth ?? 3} onChange={(halfWidth) => set({ halfWidth })} />
@@ -179,15 +177,14 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
               onChange={(maxSpeed) => set({ maxSpeed })}
             />
           )}
-          <label>
-            Message on clear
-            <textarea
+          <Field label="Message on clear">
+            <Textarea
               rows={2}
               value={entry.completeMessage || ''}
               onChange={(event) => set({ completeMessage: event.target.value })}
             />
-          </label>
-          <p className="admin-panel-note">Checkpoints must be cleared in list order - reorder them in the Objects list.</p>
+          </Field>
+          <PanelNote>Checkpoints must be cleared in list order - reorder them in the Objects list.</PanelNote>
         </>
       )}
 
@@ -201,22 +198,22 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
       {kind === 'parkingBay' && (
         <>
           <TextField label="Label" value={entry.label} onChange={(label) => set({ label })} />
-          <div className="course-inspector-grid">
+          <div className="grid grid-cols-2 gap-2">
             <NumberField label="Width" step={0.05} value={entry.width ?? 0.45} onChange={(width) => set({ width })} />
             <NumberField label="Depth" step={0.05} value={entry.depth ?? 1} onChange={(depth) => set({ depth })} />
           </div>
           <AngleField label="Heading" value={entry.heading} onChange={(heading) => set({ heading })} />
-          <p className="admin-panel-note">
+          <PanelNote>
             The bay must be wider than the vehicle or it can never be parked in. Completion also needs the vehicle
             stopped, aligned to this heading, forks lowered and the engine off.
-          </p>
+          </PanelNote>
         </>
       )}
 
       {kind !== 'start' && (
-        <button type="button" className="course-danger" onClick={onDelete}>
+        <Button type="button" size="sm" variant="danger" className="justify-self-start" onClick={onDelete}>
           Delete object
-        </button>
+        </Button>
       )}
     </div>
   )
