@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { describeActivity, formatRelativeTime } from '../../lib/adminActivity'
+import { Button } from '../ui/button'
+import { Panel, PanelHeader, PanelNote } from '../ui/panel'
+import { Select } from '../ui/input'
+import { Badge } from '../ui/badge'
 
 const TIMELINE_PAGE_SIZE = 15
 
@@ -143,13 +147,10 @@ function ReportsPanel({ equipment, modules, users, progress, activityLogs }) {
 
   return (
     <>
-      <section className="admin-panel wide-panel">
-        <div className="admin-panel-heading reports-panel-heading">
-          <h2>Progress Reports</h2>
-          <button className="admin-save" onClick={exportCsv}>Export CSV</button>
-        </div>
-        {sortedUsers.length === 0 && <p className="admin-panel-note">No users yet.</p>}
-        <div className="reports-user-list">
+      <Panel wide>
+        <PanelHeader actions={<Button onClick={exportCsv}>Export CSV</Button>}>Progress Reports</PanelHeader>
+        {sortedUsers.length === 0 && <PanelNote>No users yet.</PanelNote>}
+        <div className="grid gap-2.5">
           {sortedUsers.map((user) => {
             const isExpanded = expandedUserIds.has(user.id)
             const userEntries = progressByUserId.get(user.id) || []
@@ -158,27 +159,23 @@ function ReportsPanel({ equipment, modules, users, progress, activityLogs }) {
               : 0
 
             return (
-              <article key={user.id} className="reports-user-row">
+              <article key={user.id} className="overflow-hidden rounded-xl border border-border">
                 <button
                   type="button"
-                  className="reports-user-header"
+                  className="flex w-full items-center gap-2.5 bg-slate-50 px-3.5 py-3 text-left text-ink hover:bg-slate-100"
                   onClick={() => toggleUser(user.id)}
                   aria-expanded={isExpanded}
                 >
                   {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  <span className="reports-user-name">{userLabel(user)}</span>
-                  <span className="reports-user-email">{user.email}</span>
-                  <span className="reports-user-average">{average}% avg</span>
+                  <span className="text-sm font-bold">{userLabel(user)}</span>
+                  <span className="text-[12.5px] text-muted">{user.email}</span>
+                  <span className="ml-auto text-[13px] font-bold text-accent-strong">{average}% avg</span>
                 </button>
 
                 {isExpanded && (
-                  <div className="reports-user-body">
-                    {userEntries.length === 0 && (
-                      <p className="admin-panel-note">No progress recorded yet.</p>
-                    )}
-                    {reportedEquipment.length === 0 && (
-                      <p className="admin-panel-note">No training content published yet.</p>
-                    )}
+                  <div className="grid gap-2 border-t border-slate-200 p-3.5">
+                    {userEntries.length === 0 && <PanelNote>No progress recorded yet.</PanelNote>}
+                    {reportedEquipment.length === 0 && <PanelNote>No training content published yet.</PanelNote>}
                     {[...buildUserSections(user.id).entries()].map(([equipmentId, rows]) => {
                       const item = equipmentById[equipmentId]
                       const equipmentKey = `${user.id}:${equipmentId}`
@@ -188,31 +185,36 @@ function ReportsPanel({ equipment, modules, users, progress, activityLogs }) {
                         : 0
 
                       return (
-                        <div key={equipmentId} className="reports-equipment-group">
+                        <div key={equipmentId} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                           <button
                             type="button"
-                            className={`reports-equipment-title${item?.available ? '' : ' is-unavailable'}`}
+                            className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] font-bold hover:bg-slate-100 ${
+                              item?.available ? 'text-body' : 'text-muted'
+                            }`}
                             onClick={() => toggleEquipment(equipmentKey)}
                             aria-expanded={isEquipmentExpanded}
                           >
                             {isEquipmentExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                             {item?.title || equipmentId}
-                            {!item?.available && <span className="reports-unavailable-tag">Not available for training</span>}
-                            <span className="reports-equipment-average">{equipmentAverage}% avg</span>
+                            {!item?.available && <Badge>Not available for training</Badge>}
+                            <span className="ml-auto text-xs font-bold text-accent-strong">{equipmentAverage}% avg</span>
                           </button>
                           {isEquipmentExpanded && (
-                            <div className="overview-meter-list">
+                            <div className="grid gap-0.5 border-t border-slate-200 px-3 pb-2.5 pt-1.5">
                               {rows.map((row) => (
-                                <div key={row.moduleSlug} className="reports-module-row">
-                                  <span className="overview-meter-label">{moduleTitleBySlug[row.moduleSlug] || row.moduleSlug}</span>
-                                  <div className="overview-meter-track">
-                                    <div className="overview-meter-fill" style={{ width: `${row.progress}%` }} />
+                                <div
+                                  key={row.moduleSlug}
+                                  className="grid grid-cols-[minmax(160px,260px)_1fr_44px_90px] items-center gap-3 border-t border-slate-100 py-1.5 first:border-t-0 max-[980px]:grid-cols-1 max-[980px]:gap-1"
+                                >
+                                  <span className="text-[13px] font-bold text-body">{moduleTitleBySlug[row.moduleSlug] || row.moduleSlug}</span>
+                                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
+                                    <div className="h-full rounded-full bg-accent-strong" style={{ width: `${row.progress}%` }} />
                                   </div>
-                                  <span className="overview-meter-value">{row.progress}%</span>
-                                  <span className="reports-module-timestamp">
+                                  <span className="text-right text-[13px] font-bold text-muted max-[980px]:text-left">{row.progress}%</span>
+                                  <span className="text-right text-xs font-semibold text-muted max-[980px]:text-left">
                                     {row.updatedAt
                                       ? <time dateTime={row.updatedAt} title={new Date(row.updatedAt).toLocaleString()}>{formatRelativeTime(row.updatedAt)}</time>
-                                      : <span className="reports-module-timestamp-empty">No activity yet</span>}
+                                      : <span className="italic">No activity yet</span>}
                                   </span>
                                 </div>
                               ))}
@@ -227,16 +229,17 @@ function ReportsPanel({ equipment, modules, users, progress, activityLogs }) {
             )
           })}
         </div>
-      </section>
+      </Panel>
 
-      <section className="admin-panel wide-panel">
-        <h2>Recent activity</h2>
-        <div className="reports-filters">
-          <select value={userFilter} onChange={(event) => { setUserFilter(event.target.value); setTimelineLimit(TIMELINE_PAGE_SIZE) }}>
+      <Panel wide>
+        <PanelHeader>Recent activity</PanelHeader>
+        <div className="mb-3.5 flex flex-wrap gap-2.5">
+          <Select style={{ width: 'auto' }} value={userFilter} onChange={(event) => { setUserFilter(event.target.value); setTimelineLimit(TIMELINE_PAGE_SIZE) }}>
             <option value="all">All learners</option>
             {sortedUsers.map((user) => <option key={user.id} value={user.id}>{userLabel(user)}</option>)}
-          </select>
-          <select
+          </Select>
+          <Select
+            style={{ width: 'auto' }}
             value={equipmentFilter}
             onChange={(event) => {
               setEquipmentFilter(event.target.value)
@@ -246,28 +249,30 @@ function ReportsPanel({ equipment, modules, users, progress, activityLogs }) {
           >
             <option value="all">All equipment</option>
             {reportedEquipment.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-          </select>
-          <select value={moduleFilter} onChange={(event) => { setModuleFilter(event.target.value); setTimelineLimit(TIMELINE_PAGE_SIZE) }}>
+          </Select>
+          <Select style={{ width: 'auto' }} value={moduleFilter} onChange={(event) => { setModuleFilter(event.target.value); setTimelineLimit(TIMELINE_PAGE_SIZE) }}>
             <option value="all">All modules</option>
             {moduleFilterOptions.map((module) => <option key={module.slug} value={module.slug}>{module.title || module.fullTitle}</option>)}
-          </select>
+          </Select>
         </div>
 
-        {filteredActivity.length === 0 && <p className="admin-panel-note">No learner activity recorded yet.</p>}
-        <ul className="overview-activity-list">
+        {filteredActivity.length === 0 && <PanelNote>No learner activity recorded yet.</PanelNote>}
+        <ul className="m-0 grid gap-0.5 p-0">
           {filteredActivity.slice(0, timelineLimit).map((entry) => (
-            <li key={entry.id}>
+            <li key={entry.id} className="flex items-baseline justify-between gap-4 border-t border-slate-200 py-2.5 text-[13.5px] text-body first:border-t-0">
               <span>{describeActivity(entry, moduleTitleBySlug[entry.moduleSlug])}</span>
-              <time dateTime={entry.createdAt} title={new Date(entry.createdAt).toLocaleString()}>{formatRelativeTime(entry.createdAt)}</time>
+              <time dateTime={entry.createdAt} title={new Date(entry.createdAt).toLocaleString()} className="flex-none text-xs font-semibold text-muted">
+                {formatRelativeTime(entry.createdAt)}
+              </time>
             </li>
           ))}
         </ul>
         {filteredActivity.length > timelineLimit && (
-          <button className="admin-btn" onClick={() => setTimelineLimit((current) => current + TIMELINE_PAGE_SIZE)}>
+          <Button type="button" variant="secondary" className="mt-2.5" onClick={() => setTimelineLimit((current) => current + TIMELINE_PAGE_SIZE)}>
             Load more
-          </button>
+          </Button>
         )}
-      </section>
+      </Panel>
     </>
   )
 }
