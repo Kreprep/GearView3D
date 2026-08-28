@@ -104,9 +104,8 @@
      .admin-btn-danger    destructive action - same shape, red
      .admin-btn-sm         compact modifier, for reorder/inline controls
 
-   Course Editor and Hotspot Admin keep their own bordered button variant
-   (CourseEditor.css / HotspotAdmin.css) for their dense in-canvas toolbars;
-   everywhere else, use these. */
+   Course Editor keeps its own bordered button variant (CourseEditor.css)
+   for its dense in-canvas toolbars; everywhere else, use these. */
 .admin-btn,
 .admin-btn-danger {
   display: inline-flex;
