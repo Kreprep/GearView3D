@@ -1,4 +1,4 @@
-import { LayoutGrid, LogOut, ShieldCheck } from 'lucide-react'
+import { ClipboardList, LayoutGrid, LogOut, ShieldCheck } from 'lucide-react'
 import { routes } from '../lib/router'
 import './AppHeader.css'
 
@@ -22,6 +22,15 @@ function AppHeader({ user, onLogout, onNavigate }) {
           <LayoutGrid size={16} />
           Equipment Selection
         </button>
+        <a
+          className="nav-link"
+          href="https://forms.gle/HhadFBkLaruZ7quK6"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <ClipboardList size={16} />
+          GearView3D Survey
+        </a>
         {user?.role === 'ADMIN' && (
           <button className="nav-link" onClick={() => onNavigate(routes.admin)}>
             <ShieldCheck size={16} />
