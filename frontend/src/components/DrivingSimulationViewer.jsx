@@ -20,7 +20,7 @@ import {
   PALLET_MODEL_LIGHT_URL,
   PALLET_MODEL_MEDIUM_URL,
 } from '../lib/driving/models'
-import { FORK_MAX_HEIGHT, GRIP_LABELS, PALLET_STATE_LABELS, TILT_LABELS, TILT_MAX_ANGLE, TIP_PIVOT_Y, TIP_PIVOT_Z, tiltStateName } from '../lib/driving/constants'
+import { FORK_MAX_HEIGHT, GRIP_LABELS, LOOK_MAX_PITCH, LOOK_SENSITIVITY, PALLET_STATE_LABELS, TILT_LABELS, TILT_MAX_ANGLE, TIP_PIVOT_Y, TIP_PIVOT_Z, tiltStateName } from '../lib/driving/constants'
 import { stepDrive } from '../lib/driving/stepDrive'
 import { stepCollisionBody, stepCollisionHazards } from '../lib/driving/stepCollision'
 import { stepForks } from '../lib/driving/stepForks'
@@ -72,7 +72,7 @@ function DrivingScene({
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const halfWidth = profile.footprint.halfWidth
   const halfLength = profile.footprint.halfLength
-  const { camera } = useThree()
+  const { camera, gl } = useThree()
   const checkpoints = course.checkpoints || []
   const { halfWidth: groundHalfWidth, minZ: courseMinZ, maxZ: courseMaxZ } = useMemo(
     () => resolveCourseBounds(course),
@@ -106,7 +106,7 @@ function DrivingScene({
   )
 
   const {
-    rigRef, vehicleOrbitRef, seatWorldRef, seatLookRef, orbitTargetRef, prevOrbitTargetRef, orbitDeltaRef,
+    rigRef, vehicleOrbitRef, seatWorldRef, seatLookRef, lookYawRef, lookPitchRef, orbitTargetRef, prevOrbitTargetRef, orbitDeltaRef,
     hudAccumRef, backRef, desiredCamRef, lookTargetRef,
     forkHeightRef, tiltAngleRef, steerAngleRef, palletRefs, palletSimRef, palletFootprintsRef,
     bodyRectRef, palletRectRef, gripLocalRef, palletEulerRef, gripQuatRef, carriageQuatRef,
@@ -167,6 +167,57 @@ function DrivingScene({
     }
   }, [posRef, headingRef, speedRef, engineOnRef, forkHeightRef, tiltAngleRef])
 
+  // Recentre the look-around offset every time first-person is (re-)entered,
+  // same idea as the chase-cam's "Reset Camera" button - a leftover look
+  // angle from the last session in the seat would be confusing to land in.
+  useEffect(() => {
+    if (!firstPerson) return
+    lookYawRef.current = 0
+    lookPitchRef.current = 0
+  }, [firstPerson, lookYawRef, lookPitchRef])
+
+  // Click-and-drag look-around: the camera stays pinned to the seat (still
+  // riding along with the vehicle every frame, see stepCamera), only the
+  // look direction swings free. Native pointer events rather than drei's
+  // PointerLockControls so it works without capturing the cursor or an
+  // Escape-to-exit lock, and drag-move listens on window so the look doesn't
+  // stop just because the pointer slid off the canvas mid-drag.
+  useEffect(() => {
+    if (!firstPerson) return undefined
+    const dom = gl.domElement
+    let dragging = false
+    let lastX = 0
+    let lastY = 0
+
+    const handlePointerDown = (event) => {
+      if (event.button !== 0) return
+      dragging = true
+      lastX = event.clientX
+      lastY = event.clientY
+    }
+    const handlePointerMove = (event) => {
+      if (!dragging) return
+      const dx = event.clientX - lastX
+      const dy = event.clientY - lastY
+      lastX = event.clientX
+      lastY = event.clientY
+      lookYawRef.current -= dx * LOOK_SENSITIVITY
+      lookPitchRef.current = clamp(lookPitchRef.current - dy * LOOK_SENSITIVITY, -LOOK_MAX_PITCH, LOOK_MAX_PITCH)
+    }
+    const handlePointerUp = () => {
+      dragging = false
+    }
+
+    dom.addEventListener('pointerdown', handlePointerDown)
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => {
+      dom.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [firstPerson, gl, lookYawRef, lookPitchRef])
+
   useFrame((_, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05)
 
@@ -184,7 +235,7 @@ function DrivingScene({
       coneRefs, coneSimRef, coneAxisRef, coneQuatRef,
       onFailRef, parkedRef, parkingStatusRef, onParkingUpdateRef,
       hudAccumRef, backRef, desiredCamRef, lookTargetRef,
-      seatWorldRef, seatLookRef, orbitTargetRef, prevOrbitTargetRef, orbitDeltaRef,
+      seatWorldRef, seatLookRef, lookYawRef, lookPitchRef, orbitTargetRef, prevOrbitTargetRef, orbitDeltaRef,
       vehicleOrbitRef, camAdjustedRef,
       onAdvanceCheckpoint, onHudSample, onPalletEvent,
       frame: frameRef.current,
@@ -506,7 +557,12 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
         </div>
       </div>
 
-      <Canvas shadows dpr={[1, 1.35]} camera={{ position: [0, 2, -4], fov: 55 }}>
+      <Canvas
+        shadows
+        dpr={[1, 1.35]}
+        camera={{ position: [0, 2, -4], fov: 55 }}
+        className={firstPerson ? 'driving-canvas-lookable' : undefined}
+      >
         <Suspense fallback={<DrivingLoadingPanel />}>
           <DrivingScene
             profile={profile}
@@ -575,6 +631,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
           {engineOn
             ? `Hold W to accelerate, S to brake or reverse, A / D to steer${profile.hasForks ? ', R / F to raise or lower the forks, T / G to tilt the mast back or forward' : ''}.`
             : 'Press E to start the engine.'}
+          {firstPerson && ' Click and drag the scene to look around.'}
         </p>
         <div className="driving-keys">
           {profile.keyLegend.map(({ key, caption }) => (
