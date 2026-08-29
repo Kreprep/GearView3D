@@ -11,6 +11,11 @@ export function useDrivingSceneRefs({ onFail, onParkingUpdate }) {
   const vehicleOrbitRef = useRef(null)
   const seatWorldRef = useRef(new Vector3())
   const seatLookRef = useRef(new Vector3())
+  // First-person look-around offset from the vehicle's own forward direction
+  // (radians), driven by dragging the scene - see DrivingScene's pointer
+  // handlers and stepCamera.
+  const lookYawRef = useRef(0)
+  const lookPitchRef = useRef(0)
   const orbitTargetRef = useRef(new Vector3())
   const prevOrbitTargetRef = useRef(new Vector3())
   const orbitDeltaRef = useRef(new Vector3())
@@ -61,6 +66,8 @@ export function useDrivingSceneRefs({ onFail, onParkingUpdate }) {
     vehicleOrbitRef,
     seatWorldRef,
     seatLookRef,
+    lookYawRef,
+    lookPitchRef,
     orbitTargetRef,
     prevOrbitTargetRef,
     orbitDeltaRef,

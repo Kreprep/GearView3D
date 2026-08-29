@@ -3,7 +3,7 @@
 export function stepCamera(ctx, dt) {
   const {
     firstPerson, freeCam, profile, posRef, camera,
-    seatWorldRef, seatLookRef, orbitTargetRef, camAdjustedRef, orbitDeltaRef, prevOrbitTargetRef,
+    seatWorldRef, seatLookRef, lookYawRef, lookPitchRef, orbitTargetRef, camAdjustedRef, orbitDeltaRef, prevOrbitTargetRef,
     backRef, desiredCamRef, lookTargetRef, vehicleOrbitRef, frame,
   } = ctx
   const { forwardX, forwardZ } = frame
@@ -15,10 +15,21 @@ export function stepCamera(ctx, dt) {
       posRef.current.y + seatY,
       posRef.current.z - seatX * forwardX + seatZ * forwardZ,
     )
+    // Look direction is the vehicle's forward vector rotated by the dragged
+    // yaw/pitch offset, not the vehicle's own heading - so looking around
+    // never fights steering, and recentres to dead-ahead whenever
+    // first-person is re-toggled (see DrivingScene's reset effect).
+    const yaw = lookYawRef.current
+    const pitch = lookPitchRef.current
+    const cosYaw = Math.cos(yaw)
+    const sinYaw = Math.sin(yaw)
+    const lookX = forwardX * cosYaw + forwardZ * sinYaw
+    const lookZ = forwardZ * cosYaw - forwardX * sinYaw
+    const cosPitch = Math.cos(pitch)
     seatLookRef.current.set(
-      seatWorldRef.current.x + forwardX * 5,
-      seatWorldRef.current.y,
-      seatWorldRef.current.z + forwardZ * 5,
+      seatWorldRef.current.x + lookX * cosPitch * 5,
+      seatWorldRef.current.y + Math.sin(pitch) * 5,
+      seatWorldRef.current.z + lookZ * cosPitch * 5,
     )
     camera.position.copy(seatWorldRef.current)
     camera.lookAt(seatLookRef.current)

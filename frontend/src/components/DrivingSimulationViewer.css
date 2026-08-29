@@ -19,6 +19,16 @@
   height: 100% !important;
 }
 
+/* First-person look-around: drag to swing the view, see DrivingScene's
+   pointer handlers in DrivingSimulationViewer.jsx. */
+.driving-canvas-lookable canvas {
+  cursor: grab;
+}
+
+.driving-canvas-lookable canvas:active {
+  cursor: grabbing;
+}
+
 .driving-hud-top {
   position: absolute;
   top: var(--space-3);
