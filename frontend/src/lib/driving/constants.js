@@ -99,6 +99,12 @@ export const PARKING_ALIGN_TOLERANCE = 0.26
 export const PARKING_SPEED_EPSILON = 0.03
 export const PARKING_FORK_MAX = 0.02
 
+// stepCamera: first-person mouse-drag look-around. Yaw is unclamped (looking
+// over your shoulder is normal); pitch is clamped short of straight up/down
+// so lookAt never flips.
+export const LOOK_SENSITIVITY = 0.005
+export const LOOK_MAX_PITCH = 1.3
+
 export const PALLET_STATE_LABELS = {
   ground: 'Pallet: On Ground',
   carried: 'Pallet: Carried',
