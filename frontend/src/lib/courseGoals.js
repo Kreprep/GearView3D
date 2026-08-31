@@ -41,28 +41,30 @@ export function courseGoalType(course) {
 // false` also hides the R/F keys from the HUD - telling a learner to press a
 // key that is not on screen is worse than saying nothing. A pallet course on a
 // forkless vehicle still completes the same way; only the wording changes.
-export function courseTaskCopy(course, profile) {
+// Returns the catalog key for this course's task copy plus the values it
+// needs, rather than the sentence itself: this file is imported by
+// backend/src/lib/courses.js (for validateCourse), so it must not pull the i18n
+// catalog into the Node process. The caller translates.
+//
+// The fork branch is not decoration - the HUD already hides the R/F keys for a
+// forkless vehicle, so describing a key that is not on screen would be wrong.
+export function courseTaskKey(course, profile) {
   const hasForks = profile?.hasForks !== false
 
   switch (courseGoalType(course)) {
     case 'parking':
-      return hasForks
-        ? 'Drive to the marked bay, straighten up between the lines, stop completely, lower the forks with F, then switch the engine off with E.'
-        : 'Drive to the marked bay, straighten up between the lines, stop completely, then switch the engine off with E.'
+      return { key: hasForks ? 'driving.task.parking' : 'driving.task.parkingNoForks' }
     case 'pallet':
-      return hasForks
-        ? 'Line up square with the pallet and drive the lowered forks all the way in, raise it with R, tilt the mast back with T to secure it, carry it to the drop zone, lower with F until it rests on the ground, tilt forward with G to let it off the forks, then reverse away.'
-        : 'Line up with the load, lift it with R, carry it to the drop zone, lower it with F until it rests on the ground, then reverse away to release it.'
+      return { key: hasForks ? 'driving.task.pallet' : 'driving.task.palletNoForks' }
     case 'racking':
-      return hasForks
-        ? 'Drive the lowered forks all the way into the pallet, raise it with R above the target shelf, tilt back with T to carry it there, stop square in front of the bay, lower with F until the load rests on the shelf, then tilt forward with G to set it down.'
-        : 'Lift the load with R to the target shelf height, then drive it into the rack and hold steady to set it in place.'
-    case 'checkpoints': {
-      const count = course.checkpoints?.length || 0
-      return `Drive through ${count} checkpoint${count === 1 ? '' : 's'} in order to finish this step.`
-    }
+      return { key: hasForks ? 'driving.task.racking' : 'driving.task.rackingNoForks' }
+    case 'checkpoints':
+      return {
+        key: 'driving.task.checkpoints',
+        values: { count: course.checkpoints?.length || 0 },
+      }
     default:
-      return 'Press E to start the engine to finish this step.'
+      return { key: 'driving.task.free' }
   }
 }
 

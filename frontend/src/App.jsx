@@ -15,6 +15,8 @@ import {
   resetStoredProgress,
 } from './lib/progressService'
 import { goTo, normalizePath, routes } from './lib/router'
+import { useMediaQuery } from './hooks/useMediaQuery'
+import DesktopOnlyNotice, { DESKTOP_MEDIA_QUERY } from './components/DesktopOnlyNotice'
 import './App.css'
 
 function App() {
@@ -233,4 +235,16 @@ function App() {
   return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
 }
 
-export default App
+// The viewport gate sits outside App rather than inside it, so a phone or a
+// portrait tablet never mounts App at all - no session restore, no progress
+// hydration, no content fetches for a screen that cannot run the training.
+// Crossing the breakpoint remounts App, which is the right behaviour: the page
+// is being entered fresh at a size it was designed for.
+function AppRoot() {
+  const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY)
+
+  if (!isDesktop) return <DesktopOnlyNotice />
+  return <App />
+}
+
+export default AppRoot

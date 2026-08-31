@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { courseTaskCopy } from '../lib/courseGoals'
+import { useT } from '../i18n'
+import { courseTaskKey } from '../lib/courseGoals'
 import { evaluateFreeCompletion } from '../lib/customCompletion'
 import { getStoredProgress } from '../lib/progressService'
 import { buildSimulationState, withStepComplete } from '../lib/simulationProgress'
@@ -20,6 +21,7 @@ function unique(items) {
 // free-practice step can exist in a module.
 export function useDrivingController({ moduleSlug, courseById, simulation, gradedStepIds, saveSimulation, markStepComplete, updateSimulation, vehicleProfile }) {
   const [lastFail, setLastFail] = useState(null)
+  const t = useT()
 
   const keysUsedFor = (stepId) => simulation.keysUsedByStep?.[stepId] || []
 
@@ -84,11 +86,13 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
       return (
         <div className="load-task-stack">
           <p className={done ? 'completion-ready' : 'task-note'}>
-            {done ? 'Step complete. Use Next to continue.' : "Complete this step's requirements, then continue."}
+            {done ? t('driving.task.done') : t('module.task.completeRequirements')}
           </p>
         </div>
       )
     }
+
+    const task = courseTaskKey(course, vehicleProfile)
 
     return (
       <div className="load-task-stack">
@@ -98,7 +102,7 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
           </p>
         )}
         <p className={done ? 'completion-ready' : 'task-note'}>
-          {done ? 'Step complete. Use Next to continue.' : courseTaskCopy(course, vehicleProfile)}
+          {done ? t('driving.task.done') : t(task.key, task.values)}
         </p>
       </div>
     )

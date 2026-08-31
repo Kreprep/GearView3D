@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getChecklist } from '../lib/api'
+import { useT } from '../i18n'
+import { ProgressBar } from './ui/progress'
 import { useProgress } from '../hooks/useProgress'
 import { getStoredProgress } from '../lib/progressService'
 import './GuidedChecklist.css'
 
 function GuidedChecklist({ moduleSlug, title }) {
+  const t = useT()
+  const percentId = `checklist-percent-${moduleSlug}`
   const [items, setItems] = useState([])
   const [checked, setChecked] = useState({})
   const [error, setError] = useState(null)
@@ -56,17 +60,23 @@ function GuidedChecklist({ moduleSlug, title }) {
     <section className="guided-checklist">
       <div className="checklist-header">
         <div>
-          <p className="checklist-kicker">Guided activity</p>
+          <p className="checklist-kicker">{t('module.checklist.kicker')}</p>
           <h3>{title}</h3>
         </div>
-        <span className="checklist-progress">{completionPercentage}% complete</span>
+        <span id={percentId} className="checklist-progress">
+          {t('common.percentComplete', { percent: completionPercentage })}
+        </span>
       </div>
 
-      <div className="checklist-bar">
-        <div style={{ width: `${completionPercentage}%` }} />
-      </div>
+      {/* The last learner-facing bar that was a bare div with an inline width -
+          no role, nothing announced. Named by the visible percentage above. */}
+      <ProgressBar
+        value={completionPercentage}
+        labelledBy={percentId}
+        className="my-[18px]"
+      />
 
-      {error && <p className="checklist-error">Checklist could not be loaded: {error}</p>}
+      {error && <p className="checklist-error">{t('module.checklist.error', { error })}</p>}
 
       <div className="checklist-items">
         {items.map((item, index) => (

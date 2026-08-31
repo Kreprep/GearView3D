@@ -4,6 +4,7 @@ import { Grid, OrbitControls, useGLTF } from '@react-three/drei'
 import { DoubleSide, Vector3 } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Compass, Eye, RotateCcw, Locate } from 'lucide-react'
+import { useT } from '../i18n'
 import { buildVehicleRig } from '../lib/vehicleRig'
 import { clamp } from '../lib/math'
 import { decorationType } from '../lib/courseEdit'
@@ -20,7 +21,7 @@ import {
   PALLET_MODEL_LIGHT_URL,
   PALLET_MODEL_MEDIUM_URL,
 } from '../lib/driving/models'
-import { FORK_MAX_HEIGHT, GRIP_LABELS, LOOK_MAX_PITCH, LOOK_SENSITIVITY, PALLET_STATE_LABELS, TILT_LABELS, TILT_MAX_ANGLE, TIP_PIVOT_Y, TIP_PIVOT_Z, tiltStateName } from '../lib/driving/constants'
+import { FORK_MAX_HEIGHT, GRIP_LABEL_KEYS, LOOK_MAX_PITCH, LOOK_SENSITIVITY, PALLET_STATE_LABEL_KEYS, TILT_LABEL_KEYS, TILT_MAX_ANGLE, TIP_PIVOT_Y, TIP_PIVOT_Z, tiltStateName } from '../lib/driving/constants'
 import { stepDrive } from '../lib/driving/stepDrive'
 import { stepCollisionBody, stepCollisionHazards } from '../lib/driving/stepCollision'
 import { stepForks } from '../lib/driving/stepForks'
@@ -466,6 +467,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
 
   const [engineOn, setEngineOn] = useState(false)
   const [checkpointIndex, setCheckpointIndex] = useState(0)
+  const t = useT()
   const [hudSpeed, setHudSpeed] = useState(0)
   const [gripState, setGripState] = useState('none')
   const [tiltState, setTiltState] = useState('level')
@@ -473,7 +475,8 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   const [carriedLoad, setCarriedLoad] = useState(null)
   const [failInfo, setFailInfo] = useState(null)
   const failInfoRef = useRef(null)
-  const [parkingStatus, setParkingStatus] = useState(course.parkingBay ? 'Drive into the bay' : null)
+  // A catalog key, set by lib/driving/stepGoals.js from inside useFrame.
+  const [parkingStatus, setParkingStatus] = useState(course.parkingBay ? 'driving.parking.enterBay' : null)
   const [parked, setParked] = useState(false)
 
   const onEventRef = useRef(onEvent)
@@ -512,43 +515,51 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
     <section className={`driving-simulation ${className}`}>
       <div className="driving-hud-top">
         <div className="driving-hud-status">
-          <span className={`driving-engine-badge ${engineOn ? 'on' : 'off'}`}>Engine {engineOn ? 'ON' : 'OFF'}</span>
-          <span className="driving-speed-badge">Speed {hudSpeed}</span>
+          <span className={`driving-engine-badge ${engineOn ? 'on' : 'off'}`}>
+            {t(engineOn ? 'driving.hud.engineOn' : 'driving.hud.engineOff')}
+          </span>
+          <span className="driving-speed-badge">{t('driving.hud.speed', { speed: hudSpeed })}</span>
           {checkpoints.length > 0 && (
             <span className="driving-checkpoint-badge">
               {checkpointIndex >= checkpoints.length
-                ? 'Course complete'
-                : `Checkpoint ${checkpointIndex + 1} / ${checkpoints.length}`}
+                ? t('driving.hud.courseComplete')
+                : t('driving.hud.checkpoint', {
+                    index: checkpointIndex + 1,
+                    total: checkpoints.length,
+                  })}
             </span>
           )}
           {hasPallet && (
-            <span className="driving-checkpoint-badge">{PALLET_STATE_LABELS[palletState]}</span>
+            <span className="driving-checkpoint-badge">{t(PALLET_STATE_LABEL_KEYS[palletState])}</span>
           )}
           {course.parkingBay && parkingStatus && (
-            <span className={`driving-parking-badge ${parked ? 'done' : ''}`}>{parkingStatus}</span>
+            <span className={`driving-parking-badge ${parked ? 'done' : ''}`}>{t(parkingStatus)}</span>
           )}
           {typeof course.capacityKg === 'number' && (
             <span className={`driving-load-badge ${carriedLoad != null && carriedLoad > course.capacityKg ? 'over' : ''}`}>
               {carriedLoad != null
-                ? `Load ${carriedLoad.toLocaleString()} kg / ${course.capacityKg.toLocaleString()} kg`
-                : `Capacity ${course.capacityKg.toLocaleString()} kg`}
+                ? t('driving.hud.load', {
+                    load: carriedLoad.toLocaleString(),
+                    capacity: course.capacityKg.toLocaleString(),
+                  })
+                : t('driving.hud.capacity', { capacity: course.capacityKg.toLocaleString() })}
             </span>
           )}
           {/* How far the forks are in, and which way the mast is leaning. Both
               decide whether a load stays put, so the learner has to be able to
               read them without guessing from the model. */}
           {hasPallet && profile.hasForks && gripState !== 'none' && (
-            <span className={`driving-grip-badge ${gripState}`}>{GRIP_LABELS[gripState]}</span>
+            <span className={`driving-grip-badge ${gripState}`}>{t(GRIP_LABEL_KEYS[gripState])}</span>
           )}
           {hasPallet && profile.hasForks && (
             <span className={`driving-tilt-badge ${tiltState} ${palletState === 'carried' && tiltState !== 'back' ? 'warn' : ''}`}>
-              {TILT_LABELS[tiltState]}
+              {t(TILT_LABEL_KEYS[tiltState])}
             </span>
           )}
         </div>
         <div className="driving-hud-actions">
           <button type="button" className="driving-reset-button" onClick={onRequestReset}>
-            <RotateCcw size={14} /> Reset Attempt
+            <RotateCcw size={14} /> {t('driving.hud.resetAttempt')}
           </button>
           <button
             type="button"
@@ -559,7 +570,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
               camAdjustedRef.current = false
             }}
           >
-            <Eye size={14} /> First-Person {firstPerson ? 'On' : 'Off'}
+            <Eye size={14} /> {t(firstPerson ? 'driving.hud.firstPersonOn' : 'driving.hud.firstPersonOff')}
           </button>
           {!firstPerson && (
             <button
@@ -569,7 +580,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
                 camAdjustedRef.current = false
               }}
             >
-              <Locate size={14} /> Reset Camera
+              <Locate size={14} /> {t('driving.hud.resetCamera')}
             </button>
           )}
           {isAdmin && (
@@ -582,7 +593,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
                 camAdjustedRef.current = false
               }}
             >
-              <Compass size={14} /> Free Cam {freeCam ? 'On' : 'Off'}
+              <Compass size={14} /> {t(freeCam ? 'driving.hud.freeCamOn' : 'driving.hud.freeCamOff')}
             </button>
           )}
         </div>

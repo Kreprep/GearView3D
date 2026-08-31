@@ -1,6 +1,11 @@
 import { useState } from 'react'
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { usePageTitle } from './hooks/usePageTitle'
-import './LoginPage.css'
+import { useT } from './i18n'
+import LanguageToggle from './components/LanguageToggle'
+import { Button } from './components/ui/button'
+import { Input } from './components/ui/input'
+import { PageState } from './components/ui/pageState'
 
 const RESET_RECIPIENTS = [
   'eclmaniego@mymail.mapua.edu.ph',
@@ -8,32 +13,37 @@ const RESET_RECIPIENTS = [
   'bedocampo@mymail.mapua.edu.ph',
 ]
 
-function buildResetMailto(email) {
-  const subject = 'GearView3D password reset request'
-  const body = [
-    'Hello,',
-    '',
-    `Please reset the password for my GearView3D account${email ? ` (${email})` : ''}.`,
-    '',
-    'Thank you.',
-  ].join('\n')
+// The mailto draft is text a learner reads and sends, so it is translated. The
+// recipient addresses are not copy and stay as they are.
+function buildResetMailto(email, t) {
+  const params = new URLSearchParams({
+    subject: t('login.reset.subject'),
+    body: email ? t('login.reset.bodyWithEmail', { email }) : t('login.reset.body'),
+  })
 
-  const params = new URLSearchParams({ subject, body })
   return `mailto:${RESET_RECIPIENTS.join(',')}?${params.toString()}`
 }
 
+// The first screen anyone sees, and the only place the language switch can do
+// its job before a trainee has read anything - which is why it sits in the
+// plate band here rather than only in AppHeader, which this page has neither
+// room nor a session for.
 function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
+  const t = useT()
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
   const isSignup = mode === 'signup'
-  usePageTitle(isSignup ? 'Create Account' : 'Sign In')
+  usePageTitle(isSignup ? t('login.pageTitle.signUp') : t('login.pageTitle.signIn'))
+
+  // One region, not two. Local validation and the server's rejection used to
+  // render as two stacked error boxes that could appear at the same time.
+  const message = error || loginError
 
   const switchMode = (nextMode) => {
     setMode(nextMode)
@@ -51,11 +61,11 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
     setLoginError('')
 
     if (!email) {
-      setError('Enter your email first')
+      setError(t('login.error.emailFirst'))
       return
     }
 
-    window.location.href = buildResetMailto(email)
+    window.location.href = buildResetMailto(email, t)
   }
 
   const handleSubmit = async (e) => {
@@ -64,15 +74,15 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
     setLoginError('')
 
     if (!email || !password) {
-      setError('Please fill in all fields')
+      setError(t('login.error.allFields'))
       return
     }
     if (isSignup && password.length < 8) {
-      setError('Password must be at least 8 characters')
+      setError(t('login.error.passwordLength'))
       return
     }
     if (isSignup && password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t('login.error.passwordMismatch'))
       return
     }
 
@@ -84,157 +94,140 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
         await onLogin({ email, password })
       }
     } catch (err) {
-      setLoginError(err.message || (isSignup ? 'Unable to create account' : 'Unable to sign in'))
+      setLoginError(err.message || t(isSignup ? 'login.error.signUpFailed' : 'login.error.signInFailed'))
     } finally {
       setIsLoading(false)
     }
   }
 
+  const tab = (tabMode, label) => {
+    const active = (tabMode === 'signup') === isSignup
+
+    return (
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active}
+        className={`h-11 rounded-lg text-sm font-bold transition ${
+          active ? 'bg-panel text-ink shadow-sm' : 'text-muted hover:text-ink'
+        }`}
+        onClick={() => switchMode(tabMode)}
+      >
+        {label}
+      </button>
+    )
+  }
+
+  const fieldLabel = 'grid gap-1.5 text-[13.5px] font-bold text-body'
+  const fieldIcon = 'pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted'
+
   return (
-    <div className="login-page">
-      <div className="login-box">
-        <div className="login-content">
-          <h1>Welcome to GearView 3D</h1>
-          <p className="login-subtitle">
-            {isSignup ? 'Create an account to start your learning journey' : 'Sign in to continue your learning journey'}
+    <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
+      <div className="w-full max-w-[440px] overflow-hidden rounded-2xl border border-border bg-panel shadow-sm">
+        {/* The plate band: the same stamped dark ground the training hub's hero
+            uses, carrying the brand and the language switch. */}
+        <div className="flex items-center justify-between gap-3 bg-surface-deep px-6 py-4">
+          <span className="text-lg font-extrabold tracking-tight text-white">GearView3D</span>
+          <LanguageToggle tone="deep" />
+        </div>
+
+        <div className="grid gap-4 p-6">
+          <p className="m-0 text-[15px] font-semibold text-ink">
+            {isSignup ? t('login.subtitle.signUp') : t('login.subtitle.signIn')}
           </p>
 
-          <div className="auth-tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={!isSignup}
-              className={!isSignup ? 'active' : ''}
-              onClick={() => switchMode('login')}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={isSignup}
-              className={isSignup ? 'active' : ''}
-              onClick={() => switchMode('signup')}
-            >
-              Create Account
-            </button>
+          {/* One mode switch. The page used to carry these tabs *and* a
+              "New here? Create an account" link doing the same thing. */}
+          <div role="tablist" className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+            {tab('login', t('login.tab.signIn'))}
+            {tab('signup', t('login.tab.signUp'))}
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {error && <div className="error-message">{error}</div>}
-            {loginError && <div className="error-message">{loginError}</div>}
+          <form className="grid gap-4" onSubmit={handleSubmit}>
+            {message && <PageState tone="error" span={false}>{message}</PageState>}
 
-            <div className="form-group">
-              <label htmlFor="email">Email</label>
-              <div className="input-wrapper">
-                <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M3 8l9 6 9-6M3 8v10a2 2 0 002 2h14a2 2 0 002-2V8M3 8l9 6 9-6" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                <input
+            <label className={fieldLabel} htmlFor="email">
+              {t('login.field.email')}
+              <span className="relative block">
+                <Mail size={18} className={fieldIcon} aria-hidden="true" />
+                <Input
                   id="email"
                   type="email"
-                  placeholder="you@email.com"
+                  autoComplete="email"
+                  className="h-[52px] pl-11"
+                  placeholder={t('login.field.emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                 />
-              </div>
-            </div>
+              </span>
+            </label>
 
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <div className="input-wrapper">
-                <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M3 16l2.26 2.26A9.75 9.75 0 0 0 12 21a9 9 0 0 0 9-9M9 12a3 3 0 1 1 6 0 3 3 0 0 1-6 0" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                <input
+            <label className={fieldLabel} htmlFor="password">
+              {t('login.field.password')}
+              <span className="relative block">
+                <Lock size={18} className={fieldIcon} aria-hidden="true" />
+                <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Password"
+                  autoComplete={isSignup ? 'new-password' : 'current-password'}
+                  className="h-[52px] pl-11 pr-12"
+                  placeholder={t('login.field.passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
                 />
                 <button
                   type="button"
-                  className="toggle-password"
+                  className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted transition hover:bg-slate-100 hover:text-ink"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={t(showPassword ? 'login.hidePassword' : 'login.showPassword')}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeWidth="2" strokeLinecap="round" />
-                    <circle cx="12" cy="12" r="3" strokeWidth="2" />
-                  </svg>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
-              </div>
-            </div>
+              </span>
+            </label>
 
             {isSignup && (
-              <div className="form-group">
-                <label htmlFor="confirmPassword">Confirm password</label>
-                <div className="input-wrapper">
-                  <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M3 16l2.26 2.26A9.75 9.75 0 0 0 12 21a9 9 0 0 0 9-9M9 12a3 3 0 1 1 6 0 3 3 0 0 1-6 0" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                  <input
+              <label className={fieldLabel} htmlFor="confirmPassword">
+                {t('login.field.confirmPassword')}
+                <span className="relative block">
+                  <Lock size={18} className={fieldIcon} aria-hidden="true" />
+                  <Input
                     id="confirmPassword"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Confirm password"
+                    autoComplete="new-password"
+                    className="h-[52px] pl-11"
+                    placeholder={t('login.field.confirmPasswordPlaceholder')}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={isLoading}
                   />
-                </div>
-              </div>
+                </span>
+              </label>
             )}
 
-            <div className="form-options">
-              {isSignup ? (
-                <span className="password-hint">At least 8 characters</span>
-              ) : (
-                <div className="checkbox-wrapper">
-                  <input
-                    id="remember"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                  />
-                  <label htmlFor="remember">Remember me</label>
-                </div>
-              )}
+            <div className="flex min-h-6 items-center justify-between gap-3">
+              {isSignup
+                ? <span className="text-xs font-semibold text-muted">{t('login.passwordHint')}</span>
+                : <span />}
               {!isSignup && (
                 <button
                   type="button"
-                  className="forgot-password-link"
+                  className="text-xs font-bold text-accent-strong underline-offset-2 hover:underline"
                   onClick={handleForgotPassword}
                 >
-                  Forgot password?
+                  {t('login.forgotPassword')}
                 </button>
               )}
             </div>
 
-            <button type="submit" className="login-button" disabled={isLoading}>
-              {isLoading ? (isSignup ? 'Creating account...' : 'Signing in...') : isSignup ? 'Create Account' : 'Sign In'}
-            </button>
+            <Button type="submit" variant="deep" size="lg" className="w-full" disabled={isLoading}>
+              {isLoading
+                ? t(isSignup ? 'login.submit.creating' : 'login.submit.signingIn')
+                : t(isSignup ? 'login.submit.signUp' : 'login.submit.signIn')}
+            </Button>
           </form>
-
-          <div className="signup-section">
-            {isSignup ? (
-              <p>
-                Already have an account?{' '}
-                <button type="button" className="link-button" onClick={() => switchMode('login')}>
-                  Sign in
-                </button>
-              </p>
-            ) : (
-              <p>
-                New here?{' '}
-                <button type="button" className="link-button" onClick={() => switchMode('signup')}>
-                  Create an account
-                </button>
-              </p>
-            )}
-          </div>
         </div>
       </div>
     </div>

@@ -392,8 +392,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
       <div className="sticky top-0 z-20">
         <header className="flex flex-wrap items-start justify-between gap-4.5 border-b border-border bg-panel px-8 py-4">
           <div>
-            <p className="m-0 text-xs font-bold uppercase tracking-wider text-accent-strong">GearView3D Admin</p>
-            <h1 className="my-1 text-[22px] font-black text-ink">Content Management</h1>
+            <p className="m-0 text-[13px] font-semibold text-accent-strong">GearView3D Admin</p>
+            <h1 className="my-1 text-[22px] font-extrabold text-ink">Content Management</h1>
             <p className="m-0 text-[13px] text-muted">Signed in as {user?.email}</p>
           </div>
           <div className="flex flex-none gap-2.5 pt-0.5">

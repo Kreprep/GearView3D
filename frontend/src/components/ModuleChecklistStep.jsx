@@ -1,4 +1,5 @@
 import GuidedChecklist from './GuidedChecklist'
+import { useT } from '../i18n'
 import MarkdownContent from './MarkdownContent'
 import Quiz from './Quiz'
 import './ModuleChecklistStep.css'
@@ -19,10 +20,12 @@ export function ChecklistScene({ content, moduleSlug, title }) {
 }
 
 export function QuizScene({ content, moduleSlug, title }) {
+  const t = useT()
+
   return (
     <div className="module-rows-scene">
       <MarkdownContent className="module-rows-intro">{content?.body}</MarkdownContent>
-      <Quiz scope={{ module: moduleSlug }} title={title} emptyMessage="No quiz questions are available for this module yet." />
+      <Quiz scope={{ module: moduleSlug }} title={title} emptyMessage={t('quiz.empty.module')} />
     </div>
   )
 }
@@ -30,10 +33,8 @@ export function QuizScene({ content, moduleSlug, title }) {
 // Both kinds are ungraded: they record their own progress (checklist items and
 // quiz attempts) but do not gate Next, so a learner is never stuck on a quiz.
 export function ModuleRowsTask({ content, kind }) {
-  const fallback =
-    kind === 'quiz'
-      ? 'Answer the questions, then use Next to continue.'
-      : 'Tick each item as you complete it, then use Next to continue.'
+  const t = useT()
+  const fallback = t(kind === 'quiz' ? 'module.rows.quizNote' : 'module.rows.checklistNote')
 
   return (
     <div className="load-task-stack">

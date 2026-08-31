@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import './SimulationPageLayout.css'
 
 // The outer chrome every full-width simulation page shares: sticky header with
@@ -14,17 +15,18 @@ import './SimulationPageLayout.css'
 function SimulationPageLayout({
   title,
   subtitle,
-  backLabel = 'Back to Modules',
+  backLabel,
   onBack,
   className = '',
   compact = false,
   children,
 }) {
+  const t = useT()
   return (
     <div className={`module-page-container ${className}`.trim()}>
       <header className={`module-page-header ${compact ? 'is-compact' : ''}`.trim()}>
         <button className="back-button" onClick={onBack}>
-          {backLabel}
+          {backLabel || t('module.backToModules')}
         </button>
         {compact ? (
           subtitle && <p className="module-page-context">{subtitle}</p>

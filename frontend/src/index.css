@@ -14,8 +14,39 @@
   --warning: #f6c343;
   --shadow: none;
 
-  --sans: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
-  --heading: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  /* The operator's plate: the dark stamped ground the hub hero and the login
+     card band are built from, and the engraved cyan that sits on it. Reached
+     until now either as --text-h (a *text* token doing a surface's job) or as
+     the literal #0f172a, hardcoded in 14 stylesheets - those can adopt
+     var(--surface-deep) incrementally, there is no flag day. */
+  --surface-deep: #0f172a;
+  --surface-deep-accent: #67e8f9;
+
+  /* Status, in the safety-decal vocabulary a learner already reads: ISO 7010
+     blue for the mandatory action, green for a safe/complete condition.
+     --status-progress is an alias, not a fifth colour - it resolves the live
+     #0284a8 vs #0891b2 drift in favour of the token. */
+  --status-done: #0e9f6e;
+  --status-progress: var(--accent-strong);
+  --status-todo: #94a3b8;
+  --status-track: #e2e8f0;
+
+  /* One typeface, everywhere. Plus Jakarta Sans is a geometric humanist sans -
+     round bowls, open apertures, low contrast - which stays legible at the
+     13-14px most of this UI is set in, and holds up for a reader who is not
+     reading in their first language.
+
+     There is deliberately no second display face and no small-caps treatment.
+     Hierarchy here comes from size, weight and colour only. A condensed face
+     used for labels and figures read as a separate, ill-fitting system rather
+     than as one voice, and condensed letterforms cost reading speed - the
+     opposite of what this audience needs. Do not reintroduce one.
+
+     Note the weight ceiling: Plus Jakarta Sans ships 200-800 and :root sets
+     font-synthesis: none, so `font-black` (900) has nothing to render and
+     silently falls back. Use font-extrabold (800) as the heaviest weight. */
+  --sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --heading: var(--sans);
   --mono: ui-monospace, Consolas, monospace;
 
   font: 16px/1.5 var(--sans);
@@ -45,61 +76,79 @@
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
   --color-warning: var(--warning);
+  --color-surface-deep: var(--surface-deep);
+  --color-surface-deep-accent: var(--surface-deep-accent);
+  --color-status-done: var(--status-done);
+  --color-status-progress: var(--status-progress);
+  --color-status-todo: var(--status-todo);
+  --color-status-track: var(--status-track);
   --font-sans: var(--sans);
 }
 
-* {
-  box-sizing: border-box;
-}
+/* These element defaults MUST stay inside @layer base. Tailwind's utilities
+   live in @layer utilities, and an unlayered rule beats a layered one whatever
+   its specificity - so an unlayered `button { font: inherit }` silently
+   overrode `text-sm`/`font-bold` on every Button in the app, and an unlayered
+   `h1 { color: var(--text-h) }` rendered a `text-white` heading in the heading
+   colour, invisible on the dark operator plate. Layering these puts them where
+   a utility can win, which is the whole point of a base layer.
 
-body {
-  min-width: 320px;
-  margin: 0;
-  background: var(--bg);
-}
+   Co-located page/component .css files are still unlayered and so still beat
+   both - that is deliberate, and unchanged. */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 
-button,
-input,
-textarea {
-  font: inherit;
-}
+  body {
+    min-width: 320px;
+    margin: 0;
+    background: var(--bg);
+  }
 
-button {
-  cursor: pointer;
-}
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
 
-#root {
-  width: 100%;
-  min-height: 100svh;
-}
+  button {
+    cursor: pointer;
+  }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-p {
-  margin-top: 0;
-}
+  #root {
+    width: 100%;
+    min-height: 100svh;
+  }
 
-h1,
-h2,
-h3,
-h4,
-h5 {
-  font-family: var(--heading);
-  color: var(--text-h);
-}
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  p {
+    margin-top: 0;
+  }
 
-p {
-  margin-bottom: 0;
-}
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    font-family: var(--heading);
+    color: var(--text-h);
+  }
 
-code {
-  display: inline-flex;
-  border-radius: 6px;
-  background: #eef2f7;
-  color: #0f172a;
-  font: 14px/1.35 var(--mono);
-  padding: 4px 8px;
+  p {
+    margin-bottom: 0;
+  }
+
+  code {
+    display: inline-flex;
+    border-radius: 6px;
+    background: #eef2f7;
+    color: #0f172a;
+    font: 14px/1.35 var(--mono);
+    padding: 4px 8px;
+  }
 }

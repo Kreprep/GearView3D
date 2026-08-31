@@ -2,6 +2,7 @@ import {
   DEFAULT_VEHICLE_MODEL_URL,
   defaultVehicleProfile,
 } from '../data/vehicleProfile.js'
+import { DEFAULT_LANGUAGE } from './language.js'
 
 // Reader for Equipment.simConfig, the same shape as lib/hubContent.js is for
 // Equipment.content: overrides merged over the coded defaults, so a blank or
@@ -15,8 +16,8 @@ function mergeMessages(defaults, overrides) {
   return merged
 }
 
-export function resolveVehicleProfile(equipment) {
-  const defaults = defaultVehicleProfile()
+export function resolveVehicleProfile(equipment, lang = DEFAULT_LANGUAGE) {
+  const defaults = defaultVehicleProfile(lang)
   const overrides = equipment?.simConfig || {}
   const legend = Array.isArray(overrides.keyLegend) && overrides.keyLegend.length
     ? overrides.keyLegend

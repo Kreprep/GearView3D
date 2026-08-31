@@ -12,7 +12,8 @@ import { ChecklistScene, ModuleRowsTask, QuizScene } from './components/ModuleCh
 import { WalkAroundScene, WalkAroundTask } from './components/WalkAroundStep'
 import { walkAroundDefectOverlays } from './data/viewerHotspots'
 import { getEquipment } from './lib/api'
-import { PHASE_TITLES, phaseStateFor } from './lib/walkAroundStep'
+import { useLanguage, useT } from './i18n'
+import { PHASE_TITLE_KEYS, phaseStateFor } from './lib/walkAroundStep'
 import { resolveVehicleProfile } from './lib/vehicleProfile'
 import { useActivityController } from './hooks/useActivityController'
 import { useDrivingController } from './hooks/useDrivingController'
@@ -48,6 +49,8 @@ const ENGINE_ON_CAMERA = { position: [1.05, 0.82, 0.95], fov: 46, minDistance: 0
 // component owns what every step kind shares - the simulation snapshot,
 // grading, step navigation - and wires the three together.
 function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }) {
+  const t = useT()
+  const language = useLanguage()
   const isAdmin = user?.role === 'ADMIN'
   // Forklift's modules keep their static definitions as the fallback record
   // (objectives, fullTitle); admin-created modules fall back to a blank
@@ -84,7 +87,12 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     return undefined
   }, [hasWalkAround, hasDriving, equipmentId])
 
-  const vehicleProfile = useMemo(() => resolveVehicleProfile(equipmentRecord), [equipmentRecord])
+  // Keyed on language too: the profile carries the HUD legend and the fail
+  // messages, so a toggle has to rebuild it.
+  const vehicleProfile = useMemo(
+    () => resolveVehicleProfile(equipmentRecord, language),
+    [equipmentRecord, language],
+  )
 
   useEffect(() => () => clearTimeout(completeModuleTimer.current), [])
 
@@ -322,7 +330,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   const currentStepRow = stepById[steps[stepIndex]?.id]
   const moduleTitle = module.fullTitle || module.title
   const walkAroundPhaseLabel = currentStepRow?.walkAround?.phase
-    ? PHASE_TITLES[currentStepRow.walkAround.phase]
+    ? t(PHASE_TITLE_KEYS[currentStepRow.walkAround.phase])
     : null
   // The short `module.title` avoids a doubled parenthetical for modules whose
   // `fullTitle` already carries one, e.g. "Walk-Around Check (Visual Inspection)".
@@ -339,14 +347,14 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
         className="load-simulation-page"
         compact
         title={moduleTitle}
-        subtitle="Guided Simulation"
+        subtitle={t('module.kicker')}
         onBack={onBack}
       >
         {loading || error || hotspotsLoading || hotspotsError ? (
           <ModuleLoadingState loading={loading || hotspotsLoading} error={error || hotspotsError} />
         ) : !steps.length ? (
           <div className="module-loading-state">
-            <p>This module has no steps yet. An admin can add one from the Courses tab.</p>
+            <p>{t('module.empty')}</p>
           </div>
         ) : (
           <ModuleSimulationShell

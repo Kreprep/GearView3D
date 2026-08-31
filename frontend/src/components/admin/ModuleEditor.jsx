@@ -208,7 +208,7 @@ function ModuleEditor({
       <header className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-panel px-4 py-3">
         <Button variant="secondary" size="sm" onClick={onBack}>Back to modules</Button>
         <div className="grid min-w-0 gap-0.5">
-          <p className="m-0 text-xs font-bold uppercase tracking-wider text-accent-strong">Module Editor</p>
+          <p className="m-0 text-[13px] font-semibold text-accent-strong">Module Editor</p>
           <h2 className="m-0 text-[19px] font-black leading-tight text-ink">{module.fullTitle || module.title}</h2>
         </div>
         <span className="ml-auto whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-[12.5px] font-extrabold text-muted">

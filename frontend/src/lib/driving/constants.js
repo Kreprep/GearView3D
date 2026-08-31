@@ -105,26 +105,26 @@ export const PARKING_FORK_MAX = 0.02
 export const LOOK_SENSITIVITY = 0.005
 export const LOOK_MAX_PITCH = 1.3
 
-export const PALLET_STATE_LABELS = {
-  ground: 'Pallet: On Ground',
-  carried: 'Pallet: Carried',
-  released: 'Pallet: Set Down',
-  delivered: 'Pallet: Delivered',
+export const PALLET_STATE_LABEL_KEYS = {
+  ground: 'driving.hud.pallet.ground',
+  carried: 'driving.hud.pallet.carried',
+  released: 'driving.hud.pallet.released',
+  delivered: 'driving.hud.pallet.delivered',
 }
 
 // How well the forks are in, as the learner sees it. 'shallow' is lined up
 // with a pallet but not far enough in to lift it; 'none' means no pallet is
 // engaged at all, and hides the badge.
-export const GRIP_LABELS = {
-  shallow: 'Forks not seated',
-  partial: 'Partial grip',
-  secure: 'Secure',
+export const GRIP_LABEL_KEYS = {
+  shallow: 'driving.hud.grip.shallow',
+  partial: 'driving.hud.grip.partial',
+  secure: 'driving.hud.grip.secure',
 }
 
-export const TILT_LABELS = {
-  back: 'Mast: Back',
-  level: 'Mast: Level',
-  forward: 'Mast: Forward',
+export const TILT_LABEL_KEYS = {
+  back: 'driving.hud.tilt.back',
+  level: 'driving.hud.tilt.level',
+  forward: 'driving.hud.tilt.forward',
 }
 
 // TILT_RELEASE_ANGLE comes from data/palletProfile.js (shared with
