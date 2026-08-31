@@ -1,5 +1,7 @@
 import { ClipboardList, LayoutGrid, LogOut, ShieldCheck } from 'lucide-react'
 import { routes } from '../lib/router'
+import { useT } from '../i18n'
+import LanguageToggle from './LanguageToggle'
 import './AppHeader.css'
 
 function initials(user) {
@@ -11,16 +13,18 @@ function initials(user) {
 }
 
 function AppHeader({ user, onLogout, onNavigate }) {
+  const t = useT()
+
   return (
     <header className="app-header">
       <button className="brand-button" onClick={() => onNavigate(routes.catalog)}>
         <span className="brand-title">GearView3D</span>
       </button>
 
-      <nav className="header-nav" aria-label="Main navigation">
+      <nav className="header-nav" aria-label={t('header.mainNavigation')}>
         <button className="nav-link" onClick={() => onNavigate(routes.catalog)}>
           <LayoutGrid size={16} />
-          Equipment Selection
+          {t('header.nav.catalog')}
         </button>
         <a
           className="nav-link"
@@ -29,22 +33,23 @@ function AppHeader({ user, onLogout, onNavigate }) {
           rel="noopener noreferrer"
         >
           <ClipboardList size={16} />
-          GearView3D Survey
+          {t('header.nav.survey')}
         </a>
         {user?.role === 'ADMIN' && (
           <button className="nav-link" onClick={() => onNavigate(routes.admin)}>
             <ShieldCheck size={16} />
-            Admin
+            {t('header.nav.admin')}
           </button>
         )}
       </nav>
 
       <div className="header-account">
+        <LanguageToggle />
         <div className="account-chip">
           <span className="account-avatar">{initials(user)}</span>
           <span className="account-name">{user?.fullName || user?.email}</span>
         </div>
-        <button className="logout-button" onClick={onLogout} aria-label="Logout" title="Logout">
+        <button className="logout-button" onClick={onLogout} aria-label={t('header.logout')} title={t('header.logout')}>
           <LogOut size={16} />
         </button>
       </div>

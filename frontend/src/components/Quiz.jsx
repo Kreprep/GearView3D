@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useProgress } from '../hooks/useProgress'
 import { getQuizQuestions, submitQuiz } from '../lib/api'
+import { useT } from '../i18n'
 import { getLatestQuizAttempt, hydrateProgressFromServer } from '../lib/progressService'
 import './Quiz.css'
 
@@ -13,7 +14,9 @@ import './Quiz.css'
 // Questions come from the QuizQuestion rows the dashboard edits (never from
 // data/, which carries the answers), and grading happens on the server - the
 // GET payload has no answers, so there is nothing to score locally.
-function Quiz({ scope, title = 'Short Quiz', emptyMessage, onScored }) {
+function Quiz({ scope, title, emptyMessage, onScored }) {
+  const t = useT()
+  const heading = title || t('quiz.defaultTitle')
   const [questions, setQuestions] = useState([])
   const { progress } = useProgress()
   const scopeKey = scope.context === 'parts' ? `parts:${scope.equipment}` : `module:${scope.module}`
@@ -69,8 +72,8 @@ function Quiz({ scope, title = 'Short Quiz', emptyMessage, onScored }) {
   if (questions.length === 0) {
     return (
       <section className="module-quiz">
-        <h3>{title}</h3>
-        <p>{emptyMessage || 'No quiz questions are available yet.'}</p>
+        <h3>{heading}</h3>
+        <p>{emptyMessage || t('quiz.empty')}</p>
       </section>
     )
   }
@@ -79,11 +82,13 @@ function Quiz({ scope, title = 'Short Quiz', emptyMessage, onScored }) {
     <section className="module-quiz">
       <div className="module-quiz-header">
         <div>
-          <h3>{title}</h3>
-          <p>Answer the questions below. Your latest attempt is saved automatically after submission.</p>
+          <h3>{heading}</h3>
+          <p>{t('quiz.intro')}</p>
         </div>
         <div className="quiz-status-pill">
-          {latestAttempt ? `Latest: ${latestAttempt.score}/${latestAttempt.total}` : 'No attempt yet'}
+          {latestAttempt
+            ? t('quiz.latest', { score: latestAttempt.score, total: latestAttempt.total })
+            : t('quiz.noAttempt')}
         </div>
       </div>
 
@@ -109,7 +114,9 @@ function Quiz({ scope, title = 'Short Quiz', emptyMessage, onScored }) {
               </div>
               {verdict && (
                 <p className={verdict.correct ? 'quiz-feedback correct' : 'quiz-feedback incorrect'}>
-                  {verdict.correct ? 'Correct.' : `Incorrect. Correct answer: ${verdict.correctAnswer}.`}
+                  {verdict.correct
+                    ? t('quiz.correct')
+                    : t('quiz.incorrect', { answer: verdict.correctAnswer })}
                 </p>
               )}
             </fieldset>
@@ -124,16 +131,16 @@ function Quiz({ scope, title = 'Short Quiz', emptyMessage, onScored }) {
           onClick={submit}
           disabled={busy || submitted || Object.keys(answers).length < questions.length}
         >
-          {busy ? 'Submitting...' : 'Submit Quiz'}
+          {t(busy ? 'quiz.submitting' : 'quiz.submit')}
         </button>
         <button type="button" onClick={retry}>
-          Retry
+          {t('quiz.retry')}
         </button>
       </div>
 
       {result && (
         <div className="quiz-result">
-          Result: {result.score}/{result.total} ({result.percentage}%)
+          {t('quiz.result', { score: result.score, total: result.total, percentage: result.percentage })}
         </div>
       )}
     </section>

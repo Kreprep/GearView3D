@@ -1,3 +1,5 @@
+import { translate } from '../i18n/translate.js'
+
 // How an equipment drives in DrivingSimulationViewer.
 //
 // Every value here is a *default*, measured from forklift.glb. `Equipment.
@@ -37,62 +39,66 @@ export const DEFAULT_RIG = {
 
 // The HUD key legend. `forks: true` on a row means it is only shown when the
 // vehicle actually has forks.
-export const DEFAULT_KEY_LEGEND = [
-  { key: 'w', caption: 'Accelerate' },
-  { key: 'a', caption: 'Steer Left' },
-  { key: 's', caption: 'Brake' },
-  { key: 'd', caption: 'Steer Right' },
-  { key: 'e', caption: 'Engine' },
-  { key: 'r', caption: 'Raise Forks', forks: true },
-  { key: 'f', caption: 'Lower Forks', forks: true },
-  { key: 't', caption: 'Tilt Mast Back', forks: true },
-  { key: 'g', caption: 'Tilt Mast Forward', forks: true },
-]
-
-export const DEFAULT_FAIL_MESSAGES = {
-  cone: {
-    title: 'Cone Struck',
-    message: 'You hit a traffic cone. Treat cones as people or racking - reset the attempt and keep the lane clear.',
-  },
-  wall: {
-    title: 'Wall Struck',
-    message: 'You hit a wall or racking upright. Keep clear of structures while driving - reset the attempt and watch your clearance.',
-  },
-  vehicle: {
-    title: 'Vehicle Struck',
-    message: 'You clipped a parked vehicle. Ease in slowly and keep clearance on both sides - reset the attempt and try again.',
-  },
-  rack: {
-    title: 'Racking Struck',
-    message: 'You drove the truck body into the racking. Only the forks belong inside a bay - stop square in front of the rack and let the forks do the reaching.',
-  },
-  overload: {
-    title: 'Tip-Over: Overloaded',
-    message: 'That pallet exceeds the rated capacity, so the vehicle tipped forward. Reset and choose a load within capacity.',
-  },
-  'load-dropped': {
-    title: 'Load Thrown Off',
-    message: 'Braking hard at speed threw the pallet off the forks. A load only rides out a hard stop when the forks are all the way in and the mast is tilted back - reset, seat the forks fully, and brake gently while loaded.',
-  },
-  'load-slipped': {
-    title: 'Load Slipped Off',
-    message: 'Turning sharply at speed shook the pallet off the forks. Reset, drive the forks fully into the pallet, tilt the mast back, and take corners slowly with a load.',
-  },
-  'unsecured-load': {
-    title: 'Unsecured Load',
-    message: 'You travelled with the mast upright or tilted forward, and the pallet worked its way off the forks. Reset, and tilt the mast back with T before moving a raised load.',
-  },
-  'load-tipping': {
-    title: 'Tip-Over: Load Too Far Forward',
-    message: 'Tilting a heavy load forward that high moved the centre of gravity past the front wheels. Reset, and only tilt forward once the forks are down at the shelf you are setting the load on.',
-  },
-  'high-travel': {
-    title: 'Unsafe Travel Height',
-    message: 'You drove at speed with the forks raised above the standard travel height. Reset, and lower the forks close to the ground before moving with a load.',
-  },
+export function defaultKeyLegend(lang) {
+  return [
+    { key: 'w', caption: translate(lang, 'driving.key.accelerate') },
+    { key: 'a', caption: translate(lang, 'driving.key.steerLeft') },
+    { key: 's', caption: translate(lang, 'driving.key.brake') },
+    { key: 'd', caption: translate(lang, 'driving.key.steerRight') },
+    { key: 'e', caption: translate(lang, 'driving.key.engine') },
+    { key: 'r', caption: translate(lang, 'driving.key.raiseForks'), forks: true },
+    { key: 'f', caption: translate(lang, 'driving.key.lowerForks'), forks: true },
+    { key: 't', caption: translate(lang, 'driving.key.tiltBack'), forks: true },
+    { key: 'g', caption: translate(lang, 'driving.key.tiltForward'), forks: true },
+  ]
 }
 
-export function defaultVehicleProfile() {
+export function defaultFailMessages(lang) {
+  return {
+    cone: {
+      title: translate(lang, 'driving.fail.cone.title'),
+      message: translate(lang, 'driving.fail.cone.message'),
+    },
+    wall: {
+      title: translate(lang, 'driving.fail.wall.title'),
+      message: translate(lang, 'driving.fail.wall.message'),
+    },
+    vehicle: {
+      title: translate(lang, 'driving.fail.vehicle.title'),
+      message: translate(lang, 'driving.fail.vehicle.message'),
+    },
+    rack: {
+      title: translate(lang, 'driving.fail.rack.title'),
+      message: translate(lang, 'driving.fail.rack.message'),
+    },
+    overload: {
+      title: translate(lang, 'driving.fail.overload.title'),
+      message: translate(lang, 'driving.fail.overload.message'),
+    },
+    'load-dropped': {
+      title: translate(lang, 'driving.fail.loadDropped.title'),
+      message: translate(lang, 'driving.fail.loadDropped.message'),
+    },
+    'load-slipped': {
+      title: translate(lang, 'driving.fail.loadSlipped.title'),
+      message: translate(lang, 'driving.fail.loadSlipped.message'),
+    },
+    'unsecured-load': {
+      title: translate(lang, 'driving.fail.unsecuredLoad.title'),
+      message: translate(lang, 'driving.fail.unsecuredLoad.message'),
+    },
+    'load-tipping': {
+      title: translate(lang, 'driving.fail.loadTipping.title'),
+      message: translate(lang, 'driving.fail.loadTipping.message'),
+    },
+    'high-travel': {
+      title: translate(lang, 'driving.fail.highTravel.title'),
+      message: translate(lang, 'driving.fail.highTravel.message'),
+    },
+  }
+}
+
+export function defaultVehicleProfile(lang) {
   return {
     // Blank means "use the equipment's own modelUrl, then forklift.glb".
     modelUrl: '',
@@ -101,9 +107,7 @@ export function defaultVehicleProfile() {
     hasForks: true,
     footprint: { ...DEFAULT_FOOTPRINT },
     rig: { ...DEFAULT_RIG, wheels: { ...DEFAULT_RIG.wheels } },
-    keyLegend: DEFAULT_KEY_LEGEND.map((entry) => ({ ...entry })),
-    failMessages: Object.fromEntries(
-      Object.entries(DEFAULT_FAIL_MESSAGES).map(([key, value]) => [key, { ...value }]),
-    ),
+    keyLegend: defaultKeyLegend(lang),
+    failMessages: defaultFailMessages(lang),
   }
 }

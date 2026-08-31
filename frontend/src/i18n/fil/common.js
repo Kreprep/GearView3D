@@ -1,0 +1,19 @@
+export default {
+  'common.loading': 'Naglo-load...',
+  'common.back': 'Bumalik',
+  'common.retry': 'Subukan ulit',
+  'common.continue': 'Magpatuloy',
+  'common.close': 'Isara',
+  'common.complete': 'tapos na',
+  'common.percentComplete': '{percent}% tapos na',
+  'common.status.done': 'Tapos na',
+  'common.status.inProgress': 'Ginagawa pa',
+  'common.status.notStarted': 'Hindi pa sinisimulan',
+  'common.notFound.title': 'Hindi mahanap ang pahina',
+  'common.notFound.body': 'Ang pahinang binuksan mo ay wala sa kasalukuyang daloy ng training ng GearView3D.',
+  'common.notFound.action': 'Pumunta sa pagpili ng equipment',
+  'common.desktopOnly.title': 'Buksan ang GearView3D sa computer',
+  'common.desktopOnly.body':
+    'Kailangan ng keyboard at mas malaking screen ang 3D training, kaya masyadong maliit ang screen na ito.',
+  'common.desktopOnly.hint': 'Gumamit ng laptop o desktop computer.',
+}

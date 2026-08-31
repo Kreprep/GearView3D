@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import PartDetailCard from './PartDetailCard'
+import { useT } from '../i18n'
+import { ProgressBar } from './ui/progress'
 import './ModuleSimulationShell.css'
 
 function ModuleSimulationShell({
@@ -23,6 +25,7 @@ function ModuleSimulationShell({
   onClearDetail,
   onNextDetail,
 }) {
+  const t = useT()
   const [showHint, setShowHint] = useState(false)
   const currentTaskRef = useRef(null)
   const currentStep = steps[currentStepIndex] || steps[0]
@@ -41,15 +44,15 @@ function ModuleSimulationShell({
     <section className="simulation-shell">
       <header className="simulation-briefing">
         <div>
-          <p className="simulation-kicker">Guided Simulation</p>
+          <p className="simulation-kicker">{t('module.kicker')}</p>
           {/* The page heading: SimulationPageLayout runs in compact mode on
               every page that renders this shell, so it prints no <h1> of its own. */}
           <h1>{module.fullTitle || module.title}</h1>
         </div>
         <div className="simulation-score-card">
-          <span>Progress</span>
+          <span>{t('module.progress')}</span>
           <strong>{progress}%</strong>
-          {typeof score === 'number' && <small>Score: {score}</small>}
+          {typeof score === 'number' && <small>{t('module.score', { score })}</small>}
         </div>
       </header>
 
@@ -57,8 +60,8 @@ function ModuleSimulationShell({
         <div className="simulation-scene">
           {renderScene ? renderScene({ currentStep, currentStepIndex }) : (
             <div className="simulation-placeholder-scene">
-              <strong>Interactive task area</strong>
-              <p>3D viewer, diagram, or activity scene will appear here.</p>
+              <strong>{t('module.scene.placeholderTitle')}</strong>
+              <p>{t('module.scene.placeholderBody')}</p>
             </div>
           )}
         </div>
@@ -66,9 +69,9 @@ function ModuleSimulationShell({
         <aside className="simulation-overlay simulation-overlay-left">
           <section className="simulation-panel">
             <div className="simulation-panel-header">
-              <p className="simulation-panel-label">Objectives</p>
+              <p className="simulation-panel-label">{t('module.panel.objectives')}</p>
               <button className="simulation-hint-button" onClick={() => setShowHint((value) => !value)}>
-                {showHint ? 'Hide Hint' : 'Show Hint'}
+                {t(showHint ? 'module.hint.hide' : 'module.hint.show')}
               </button>
             </div>
             <ul className="simulation-objectives">
@@ -76,11 +79,11 @@ function ModuleSimulationShell({
                 <li key={objective}>{objective}</li>
               ))}
             </ul>
-            {showHint && <p className="simulation-hint-text">{currentStep?.hint || 'No hint is available for this step.'}</p>}
+            {showHint && <p className="simulation-hint-text">{currentStep?.hint || t('module.hint.none')}</p>}
           </section>
 
           <section className="simulation-panel">
-            <p className="simulation-panel-label">Steps</p>
+            <p className="simulation-panel-label">{t('module.panel.steps')}</p>
             <ol className="simulation-step-list">
               {steps.map((step, index) => {
                 const locked = index > maxSelectableStepIndex
@@ -117,7 +120,7 @@ function ModuleSimulationShell({
             {selectedDetail ? (
               <>
                 <div className="hotspot-detail-header">
-                  <p className="simulation-panel-label">Part Details</p>
+                  <p className="simulation-panel-label">{t('module.panel.partDetails')}</p>
                 </div>
                 <PartDetailCard
                   title={selectedDetail.title}
@@ -140,7 +143,7 @@ function ModuleSimulationShell({
               </>
             ) : (
               <>
-                <p className="simulation-panel-label">Current Task</p>
+                <p className="simulation-panel-label">{t('module.panel.currentTask')}</p>
                 <h3>{currentStep?.title}</h3>
                 <p>{currentStep?.instructions}</p>
                 {renderTask?.({ currentStep, currentStepIndex })}
@@ -150,7 +153,7 @@ function ModuleSimulationShell({
 
           {isLastStep && completionSummary && (
             <section className="simulation-panel completion-panel">
-              <p className="simulation-panel-label">Completion Summary</p>
+              <p className="simulation-panel-label">{t('module.panel.summary')}</p>
               {completionSummary}
             </section>
           )}
@@ -159,24 +162,26 @@ function ModuleSimulationShell({
       </div>
 
       <div className="simulation-control-bar">
-        <div className="simulation-progress-bar" aria-label={`Simulation progress ${progress}%`}>
-          <i style={{ width: `${progress}%` }} />
-        </div>
+        <ProgressBar
+          value={progress}
+          label={t('module.progressLabel', { percent: progress })}
+          size="h-[clamp(6px,0.5vw,9px)]"
+        />
         <div className="simulation-navigation">
           {!isLastStep && !canProceed && (
             <p className="simulation-required-note">{requiredNote}</p>
           )}
           <div className="simulation-navigation-buttons">
             <button type="button" onClick={onBackStep} disabled={isFirstStep}>
-              Back
+              {t('module.nav.back')}
             </button>
             {isLastStep ? (
               <button type="button" className="primary" onClick={onComplete}>
-                Complete Module
+                {t('module.nav.complete')}
               </button>
             ) : (
               <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
-                Next
+                {t('module.nav.next')}
               </button>
             )}
           </div>

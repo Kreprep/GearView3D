@@ -1,0 +1,15 @@
+export default {
+  'quiz.defaultTitle': 'Maikling pagsusulit',
+  'quiz.intro': 'Sagutin ang mga tanong sa ibaba. Awtomatikong nase-save ang pinakahuli mong sagot pagkatapos isumite.',
+  'quiz.latest': 'Pinakahuli: {score}/{total}',
+  'quiz.noAttempt': 'Wala pang sagot',
+  'quiz.empty': 'Wala pang tanong sa pagsusulit.',
+  'quiz.empty.module': 'Wala pang tanong sa pagsusulit para sa module na ito.',
+  'quiz.empty.parts': 'Wala pang naidagdag na tanong sa pagsusulit para sa kagamitang ito.',
+  'quiz.correct': 'Tama.',
+  'quiz.incorrect': 'Mali. Ang tamang sagot: {answer}.',
+  'quiz.submit': 'Isumite ang pagsusulit',
+  'quiz.submitting': 'Isinusumite...',
+  'quiz.retry': 'Subukan ulit',
+  'quiz.result': 'Resulta: {score}/{total} ({percentage}%)',
+}

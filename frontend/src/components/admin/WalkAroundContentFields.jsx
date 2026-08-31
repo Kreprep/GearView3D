@@ -40,7 +40,7 @@ function ListEditor({ title, note, items, onChange, emptyItem, renderFields }) {
           key={item.id || index}
           className="m-0 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] items-start gap-3 rounded-xl border border-border bg-slate-50 p-4"
         >
-          <legend className="px-1 text-xs font-extrabold uppercase tracking-wider text-body">
+          <legend className="px-1 text-[13px] font-bold text-body">
             {item.label || item.title || `Item ${index + 1}`}
           </legend>
           {renderFields(item, (changes) => patch(index, changes))}
