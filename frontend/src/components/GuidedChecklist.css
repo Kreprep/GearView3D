@@ -38,21 +38,6 @@
   padding: 6px 10px;
 }
 
-.checklist-bar {
-  height: 10px;
-  margin: 18px 0;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #e2e8f0;
-}
-
-.checklist-bar div {
-  height: 100%;
-  border-radius: inherit;
-  background: #0891b2;
-  transition: width 180ms ease;
-}
-
 .checklist-error {
   margin: 12px 0 0;
   color: #b91c1c;

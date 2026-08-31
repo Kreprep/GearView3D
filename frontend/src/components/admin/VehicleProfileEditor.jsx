@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { defaultVehicleProfile } from '../../data/vehicleProfile'
+import { useLanguage } from '../../i18n'
 import { resolveVehicleProfile } from '../../lib/vehicleProfile'
 import { adminUpdateEquipment } from '../../lib/api'
 import { Button } from '../ui/button'
@@ -9,7 +10,7 @@ import { Input, Checkbox } from '../ui/input'
 import { Toolbar } from '../ui/toolbar'
 
 const FIELDSET_CLASSES = 'm-0 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] items-start gap-3 rounded-xl border border-border bg-slate-50 p-4'
-const LEGEND_CLASSES = 'px-1 text-xs font-extrabold uppercase tracking-wider text-body'
+const LEGEND_CLASSES = 'px-1 text-[13px] font-bold text-body'
 
 // Editor for Equipment.simConfig - how this equipment drives in a `driving`
 // step. Only overrides are stored, so a blank field keeps the coded default
@@ -17,13 +18,16 @@ const LEGEND_CLASSES = 'px-1 text-xs font-extrabold uppercase tracking-wider tex
 //
 // Mount with key={equipment.id}: the draft is seeded from the row once.
 function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
+  // The placeholders show the coded defaults, so they follow the dashboard's
+  // language. simConfig overrides themselves stay single-language.
+  const language = useLanguage()
   const [draft, setDraft] = useState(() => equipment?.simConfig || {})
   const [saving, setSaving] = useState(false)
 
   if (!equipment) return <PanelNote>Select an equipment first.</PanelNote>
 
-  const defaults = defaultVehicleProfile()
-  const resolved = resolveVehicleProfile(equipment)
+  const defaults = defaultVehicleProfile(language)
+  const resolved = resolveVehicleProfile(equipment, language)
   const setField = (patch) => setDraft({ ...draft, ...patch })
   const setRig = (patch) => setField({ rig: { ...(draft.rig || {}), ...patch } })
   const setWheels = (patch) => setRig({ wheels: { ...(draft.rig?.wheels || {}), ...patch } })

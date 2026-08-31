@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import './ModuleActivities.css'
 
 // The two built-in `activity` step screens, extracted from the old
@@ -52,6 +53,8 @@ export function ShutdownSequenceActivity({ actions, displayOrder, pickedIds, com
 }
 
 export function ReportingActivity({ prompts, answers, completed, onAnswer }) {
+  const t = useT()
+
   return (
     <div className="reporting-activity">
       {prompts.map((prompt) => {
@@ -67,7 +70,7 @@ export function ReportingActivity({ prompts, answers, completed, onAnswer }) {
                 disabled={resolved}
                 onClick={() => onAnswer(prompt, true)}
               >
-                Report
+                {t('module.activity.report')}
               </button>
               <button
                 type="button"
@@ -75,12 +78,14 @@ export function ReportingActivity({ prompts, answers, completed, onAnswer }) {
                 disabled={resolved}
                 onClick={() => onAnswer(prompt, false)}
               >
-                No Action
+                {t('module.activity.noAction')}
               </button>
             </div>
             {resolved && <p className="reporting-feedback correct">{prompt.feedback}</p>}
             {!resolved && answer && !answer.correct && (
-              <p className="reporting-feedback wrong">{prompt.wrongFeedback} Try again.</p>
+              <p className="reporting-feedback wrong">
+                {t('module.activity.tryAgain', { feedback: prompt.wrongFeedback })}
+              </p>
             )}
           </div>
         )

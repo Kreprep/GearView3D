@@ -1,6 +1,10 @@
 // One focus ring, one disabled state, shared by every text control in the
 // admin UI.
-const CONTROL_CLASSES = 'w-full rounded-lg border border-border bg-panel px-3 py-2.5 text-sm text-ink placeholder:text-muted transition focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60'
+// font-normal is load-bearing: every one of these sits inside a <label>
+// that is font-bold (Field, and the login page's own labels), and a control
+// with no weight of its own inherits it - which made placeholder text read
+// as a filled-in value.
+const CONTROL_CLASSES = 'w-full rounded-lg border border-border bg-panel px-3 py-2.5 text-sm font-normal text-ink placeholder:text-muted transition focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60'
 
 export function Input({ className = '', ...props }) {
   return <input className={`${CONTROL_CLASSES} ${className}`.trim()} {...props} />

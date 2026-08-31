@@ -49,15 +49,19 @@ export function stepParking(ctx) {
   )
   const aligned = Math.abs(headingError) <= (bay.headingTolerance ?? PARKING_ALIGN_TOLERANCE)
 
+  // A catalog key, not a sentence. This runs every frame, and the comparison
+  // below is against the previous value - a short key literal is cheaper than
+  // a line of prose, and this file has no React and no catalog to translate
+  // with anyway. The viewer renders it.
   let status
   let isParked = false
-  if (!inside) status = 'Drive into the bay'
-  else if (!aligned) status = 'Straighten up between the lines'
-  else if (Math.abs(speedRef.current) > PARKING_SPEED_EPSILON) status = 'Come to a complete stop'
-  else if (forkHeightRef.current > PARKING_FORK_MAX) status = 'Lower the forks (F)'
-  else if (engineOnRef.current) status = 'Switch the engine off (E)'
+  if (!inside) status = 'driving.parking.enterBay'
+  else if (!aligned) status = 'driving.parking.straighten'
+  else if (Math.abs(speedRef.current) > PARKING_SPEED_EPSILON) status = 'driving.parking.stop'
+  else if (forkHeightRef.current > PARKING_FORK_MAX) status = 'driving.parking.lowerForks'
+  else if (engineOnRef.current) status = 'driving.parking.engineOff'
   else {
-    status = 'Parked - well done'
+    status = 'driving.parking.done'
     isParked = true
     parkedRef.current = true
   }
