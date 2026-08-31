@@ -119,10 +119,21 @@ function DrivingScene({
   // it back off each other in the same order the original single useFrame
   // computed them in.
   const frameRef = useRef({})
+  const sunLightRef = useRef()
+  const sunTargetRef = useRef()
 
   useEffect(() => {
     rigRef.current = buildVehicleRig(forklift, profile.rig)
   }, [forklift, profile.rig, rigRef])
+
+  // light.target defaults to an Object3D that isn't in the scene graph, so its
+  // matrixWorld never updates unless it's parented in - point the light at the
+  // rendered target object below instead of leaving it stuck at the origin.
+  useEffect(() => {
+    if (sunLightRef.current && sunTargetRef.current) {
+      sunLightRef.current.target = sunTargetRef.current
+    }
+  }, [])
 
   useEffect(() => {
     forklift.traverse((object) => {
@@ -300,11 +311,31 @@ function DrivingScene({
   const groundLength = courseMaxZ - courseMinZ
   const groundCenterZ = courseMinZ + groundLength / 2
 
+  // Directional light's shadow camera is orthographic and fixed-size around its
+  // target - default frustum only covers ~5 units, so a forklift driving further
+  // than that from the origin fell outside it and lost its shadow. Track the
+  // course center and size the frustum to the whole course instead of a fixed box.
+  const shadowFrustumSize = Math.max(groundHalfWidth + 4, groundLength / 2 + 8)
+
   return (
     <>
       <ambientLight intensity={1.1} />
       <hemisphereLight args={['#f8fafc', '#1e293b', 1.1]} />
-      <directionalLight castShadow position={[4, 6, 2]} intensity={2.2} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <directionalLight
+        ref={sunLightRef}
+        castShadow
+        position={[4, 6, 2 + groundCenterZ]}
+        intensity={2.2}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-left={-shadowFrustumSize}
+        shadow-camera-right={shadowFrustumSize}
+        shadow-camera-top={shadowFrustumSize}
+        shadow-camera-bottom={-shadowFrustumSize}
+        shadow-camera-near={0.5}
+        shadow-camera-far={shadowFrustumSize * 2 + 20}
+      />
+      <object3D ref={sunTargetRef} position={[0, 0, groundCenterZ]} />
       <directionalLight position={[-3, 3, -2]} intensity={0.9} />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, groundCenterZ]} receiveShadow>
