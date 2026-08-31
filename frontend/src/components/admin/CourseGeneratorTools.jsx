@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { coneBay, coneBox, coneLine, corridorCones, slalomCones } from '../../lib/courseGenerators'
+import { Button } from '../ui/button'
+import { PanelNote } from '../ui/panel'
+import { Field } from '../ui/field'
+import { Input, Textarea, Select } from '../ui/input'
 
 // Bulk cone layouts. Output is baked into the course's decorations list as
 // loose cones, so anything generated here can afterwards be nudged or deleted
@@ -92,48 +96,45 @@ function CourseGeneratorTools({ onInsert }) {
   }
 
   return (
-    <div className="course-generators">
-      <label>
-        Layout
-        <select value={kind} onChange={(event) => selectKind(event.target.value)}>
+    <div className="grid gap-2">
+      <Field label="Layout">
+        <Select value={kind} onChange={(event) => selectKind(event.target.value)}>
           {Object.entries(GENERATORS).map(([value, entry]) => (
             <option key={value} value={value}>
               {entry.label}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </Field>
 
-      <p className="admin-panel-note">{generator.hint}</p>
+      <PanelNote>{generator.hint}</PanelNote>
 
-      <div className="course-inspector-grid">
+      <div className="grid grid-cols-2 gap-2">
         {generator.fields.map(([name, label]) => (
-          <label key={name}>
-            {label}
-            <input
+          <Field key={name} label={label}>
+            <Input
               type="number"
               step={0.05}
               value={values[name]}
               onChange={(event) => setValues({ ...values, [name]: Number(event.target.value) })}
             />
-          </label>
+          </Field>
         ))}
       </div>
 
       {generator.textField && (
-        <label>
-          {generator.textField[1]}
-          <textarea
+        <Field label={generator.textField[1]}>
+          <Textarea
             rows={5}
             value={values[generator.textField[0]]}
             onChange={(event) => setValues({ ...values, [generator.textField[0]]: event.target.value })}
           />
-        </label>
+        </Field>
       )}
 
-      <button type="button" className="admin-save" onClick={insert}>
+      <Button type="button" className="justify-self-start" onClick={insert}>
         Insert cones
-      </button>
+      </Button>
     </div>
   )
 }

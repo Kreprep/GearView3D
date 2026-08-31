@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useProgress } from './hooks/useProgress'
 import { usePageTitle } from './hooks/usePageTitle'
+import { useT } from './i18n'
+import { Button } from './components/ui/button'
 import PageLayout from './components/PageLayout'
 import { getEquipment, getHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
 import {
@@ -16,13 +18,15 @@ import './AssessmentPage.css'
 // equipment it is: the modules, the parts markers and the parts quiz are all
 // that equipment's own rows.
 function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
+  const t = useT()
   const { summary } = useProgress()
   const [equipment, setEquipment] = useState(null)
   const [modules, setModules] = useState([])
   const [hotspots, setHotspots] = useState([])
   const [hasPartsQuiz, setHasPartsQuiz] = useState(false)
   const [loading, setLoading] = useState(true)
-  usePageTitle(`${equipment?.title || 'Equipment'} Assessment`)
+  const equipmentTitle = equipment?.title || 'Equipment'
+  usePageTitle(t('assessment.pageTitle', { equipment: equipmentTitle }))
 
   useEffect(() => {
     let cancelled = false
@@ -69,45 +73,42 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
 
   const requiredComplete = moduleProgress === 100 && (!hasPartsSection || partsProgress === 100)
   const recommendedAction = requiredComplete
-    ? 'Ready for instructor review or thesis demo presentation.'
+    ? t('assessment.next.ready')
     : hasPartsSection && partsProgress < moduleProgress
-      ? 'Review remaining parts on the 3D model.'
-      : 'Continue training modules and checklists.'
+      ? t('assessment.next.parts')
+      : t('assessment.next.modules')
 
   return (
     <PageLayout user={user} onLogout={onLogout} onNavigate={onNavigate}>
       <div className="page-back-row">
         <button className="back-button" onClick={onBack}>
-          Back to Modules
+          {t('assessment.back')}
         </button>
-        <h1 className="page-heading">{equipment?.title || 'Equipment'} - Final Assessment</h1>
+        <h1 className="page-heading">{t('assessment.heading', { equipment: equipmentTitle })}</h1>
       </div>
 
       <section className="assessment-card">
-        <p className="assessment-kicker">Progress Review</p>
-        <h2>{requiredComplete ? 'Prototype Module Completion' : 'Training still in progress'}</h2>
-        <p>
-          This page summarizes GearView3D learner progress for thesis demonstration. The completion badge is
-          only for prototype module completion and does not imply official TESDA certification.
-        </p>
+        <p className="assessment-kicker">{t('assessment.kicker')}</p>
+        <h2>{t(requiredComplete ? 'assessment.status.complete' : 'assessment.status.inProgress')}</h2>
+        <p>{t('assessment.intro')}</p>
 
         <p className="assessment-learner-identity">
-          <strong>{user?.fullName || 'Learner'}</strong>
-          <span>{user?.email || 'No email on file'}</span>
+          <strong>{user?.fullName || t('assessment.learnerFallback')}</strong>
+          <span>{user?.email || t('assessment.noEmail')}</span>
         </p>
 
         <div className="assessment-status-grid">
           <div>
-            <span>Overall</span>
+            <span>{t('assessment.stat.overall')}</span>
             <strong>{overall}%</strong>
           </div>
           <div>
-            <span>Modules</span>
+            <span>{t('assessment.stat.modules')}</span>
             <strong>{moduleProgress}%</strong>
           </div>
           {hasPartsSection && (
             <div>
-              <span>Parts Identification</span>
+              <span>{t('assessment.stat.parts')}</span>
               <strong>{partsProgress}%</strong>
             </div>
           )}
@@ -115,9 +116,9 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
 
         <div className="assessment-review-grid">
           <article>
-            <h3>Module Review</h3>
+            <h3>{t('assessment.modules.heading')}</h3>
             {loading ? (
-              <p>Loading modules...</p>
+              <p>{t('assessment.modules.loading')}</p>
             ) : (
               <ul>
                 {modules.map((module) => {
@@ -126,29 +127,53 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
                   // an admin added reported "no checklist items" whatever it had.
                   const checklist = getChecklistCompletion(summary.raw, module.slug)
                   const latestQuiz = summary.quizAttempts[module.slug]?.[0]
+                  const quiz = latestQuiz
+                    ? t('assessment.quiz.scored', { score: latestQuiz.score, total: latestQuiz.total })
+                    : t('assessment.quiz.notAttempted')
+
                   return (
                     <li key={module.slug}>
-                      {module.title}: {checklist.totalCount ? `${checklist.completedCount}/${checklist.totalCount}` : 'no'} checklist items,
-                      {' '}quiz {latestQuiz ? `${latestQuiz.score}/${latestQuiz.total}` : 'not attempted'}
+                      {checklist.totalCount
+                        ? t('assessment.modules.row', {
+                            module: module.title,
+                            completed: checklist.completedCount,
+                            total: checklist.totalCount,
+                            quiz,
+                          })
+                        : t('assessment.modules.rowNoChecklist', { module: module.title, quiz })}
                     </li>
                   )
                 })}
-                {modules.length === 0 && <li>No modules yet.</li>}
+                {modules.length === 0 && <li>{t('assessment.modules.empty')}</li>}
               </ul>
             )}
           </article>
 
           {hasPartsSection && (
             <article>
-              <h3>Parts Review</h3>
+              <h3>{t('assessment.parts.heading')}</h3>
               {loading ? (
-                <p>Loading parts...</p>
+                <p>{t('assessment.parts.loading')}</p>
               ) : (
                 <>
-                  <p>{hotspots.filter((hotspot) => viewedPartSet.has(hotspot.id)).length} of {hotspots.length} parts viewed.</p>
+                  <p>
+                    {t('assessment.parts.viewedCount', {
+                      viewed: hotspots.filter((hotspot) => viewedPartSet.has(hotspot.id)).length,
+                      total: hotspots.length,
+                    })}
+                  </p>
                   <ul>
                     {hotspots.map((hotspot) => (
-                      <li key={hotspot.id}>{hotspot.label}: {viewedPartSet.has(hotspot.id) ? 'viewed' : 'not viewed'}</li>
+                      <li key={hotspot.id}>
+                        {t('assessment.parts.row', {
+                          part: hotspot.label,
+                          state: t(
+                            viewedPartSet.has(hotspot.id)
+                              ? 'assessment.parts.viewed'
+                              : 'assessment.parts.notViewed',
+                          ),
+                        })}
+                      </li>
                     ))}
                   </ul>
                 </>
@@ -157,41 +182,56 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
           )}
 
           <article>
-            <h3>Quiz Scores</h3>
+            <h3>{t('assessment.scores.heading')}</h3>
             {latestAttempts.length ? (
               <ul>
                 {latestAttempts.slice(0, 8).map((attempt) => (
                   <li key={attempt.id}>
-                    {moduleLabels[attempt.moduleSlug] || attempt.moduleSlug}: {attempt.score}/{attempt.total} ({attempt.percentage}%)
+                    {t('assessment.scores.row', {
+                      module: moduleLabels[attempt.moduleSlug] || attempt.moduleSlug,
+                      score: attempt.score,
+                      total: attempt.total,
+                      percentage: attempt.percentage,
+                    })}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p>No quiz attempts saved yet.</p>
+              <p>{t('assessment.scores.empty')}</p>
             )}
           </article>
 
           <article>
-            <h3>Recommended Next Action</h3>
+            <h3>{t('assessment.next.heading')}</h3>
             <p>{recommendedAction}</p>
             {hasPartsQuiz && (
               <p>
-                Parts quiz: {latestPartsQuiz ? `${latestPartsQuiz.score}/${latestPartsQuiz.total} (${latestPartsQuiz.percentage}%)` : 'not attempted'}.
+                {t('assessment.next.partsQuiz', {
+                  result: latestPartsQuiz
+                    ? t('assessment.next.partsQuizScored', {
+                        score: latestPartsQuiz.score,
+                        total: latestPartsQuiz.total,
+                        percentage: latestPartsQuiz.percentage,
+                      })
+                    : t('assessment.quiz.notAttempted'),
+                })}
               </p>
             )}
           </article>
         </div>
 
         {requiredComplete && (
-          <p className="completion-badge">GearView3D Training Completion</p>
+          <p className="completion-badge">{t('assessment.badge')}</p>
         )}
 
         <div className="assessment-actions">
-          <button onClick={() => onNavigate(`/training/${equipmentId}/modules`)}>Review training modules</button>
+          <Button variant="deep" onClick={() => onNavigate(`/training/${equipmentId}/modules`)}>
+            {t('assessment.action.modules')}
+          </Button>
           {hasPartsSection && (
-            <button onClick={() => onNavigate(`/training/${equipmentId}/parts`)}>
-              Review parts identification
-            </button>
+            <Button variant="deep" onClick={() => onNavigate(`/training/${equipmentId}/parts`)}>
+              {t('assessment.action.parts')}
+            </Button>
           )}
         </div>
       </section>

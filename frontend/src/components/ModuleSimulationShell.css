@@ -348,20 +348,6 @@
   padding: var(--space-2) var(--space-3);
 }
 
-.simulation-progress-bar {
-  height: clamp(6px, 0.5vw, 9px);
-  overflow: hidden;
-  border-radius: var(--radius-pill);
-  background: #dbe3ef;
-}
-
-.simulation-progress-bar i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: #0891b2;
-}
-
 /* Absolutely positioned so the canvas's intrinsic size can never keep the
    workspace from shrinking when the window is resized down. */
 .simulation-scene {

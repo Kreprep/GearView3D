@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma.js'
 import { publicUser, requireAdmin, requireAuth } from '../lib/auth.js'
 import { buildAdminProgressReport } from '../lib/progressSummary.js'
+import { slugify, uniqueSlug } from '../lib/slug.js'
 import {
   adminCourse,
   courseDraftFields,
@@ -55,13 +56,9 @@ const checklistFields = ['text', 'sortOrder']
 const quizFields = ['prompt', 'options', 'answer', 'sortOrder']
 const hotspotCategoryFields = ['label', 'sortOrder']
 
-// Options are stored as plain strings (`answer` is one of them). Rows written
-// before the practice/quiz merge held { id, text, sortOrder } objects, so an
-// editor still holding one of those is flattened rather than rejected.
+// Options are stored as plain strings (`answer` is one of them).
 function normalizeOptions(options = []) {
-  return (Array.isArray(options) ? options : [])
-    .map((option) => (typeof option === 'string' ? option : option?.text || ''))
-    .filter(Boolean)
+  return (Array.isArray(options) ? options : []).filter((option) => typeof option === 'string' && option)
 }
 
 router.get('/content', async (req, res) => {
@@ -94,7 +91,6 @@ router.get('/content', async (req, res) => {
   const { progress, activityLogs } = buildAdminProgressReport(snapshots, modules, checklistTotals)
 
   res.json({
-    localOnly: false,
     equipment,
     modules,
     // Hotspots are not here: they carry position blobs and per-surface text
@@ -133,7 +129,7 @@ router.post('/hotspots', async (req, res) => {
     return res.status(400).json({ error: 'Hotspot label is required' })
   }
 
-  const slug = (payload.id || payload.label).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const slug = slugify(payload.id || payload.label)
   if (!slug) {
     return res.status(400).json({ error: 'Hotspot id could not be derived from the label' })
   }
@@ -246,9 +242,11 @@ router.post('/hotspots/reorder', async (req, res) => {
     return res.status(400).json({ error: 'equipmentId and ids are required' })
   }
 
+  // updateMany (not update) so an id that doesn't belong to this equipment is
+  // silently skipped rather than renumbering another equipment's hotspot.
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.hotspot.update({ where: { id }, data: { sortOrder: index + 1 } }),
+      prisma.hotspot.updateMany({ where: { id, equipmentId }, data: { sortOrder: index + 1 } }),
     ),
   )
 
@@ -312,16 +310,8 @@ router.post('/equipment', async (req, res) => {
   const title = String(payload.title || '').trim()
   if (!title) return res.status(400).json({ error: 'Equipment title is required' })
 
-  const idBase = String(payload.id || title)
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-  let id = idBase || 'equipment'
-  let suffix = 2
-  while (await prisma.equipment.findUnique({ where: { id } })) {
-    id = `${idBase}-${suffix++}`
-  }
+  const idBase = slugify(payload.id || title) || 'equipment'
+  const id = await uniqueSlug(idBase, (candidate) => prisma.equipment.findUnique({ where: { id: candidate } }))
 
   const last = await prisma.equipment.findFirst({ orderBy: { sortOrder: 'desc' }, select: { sortOrder: true } })
   const equipment = await prisma.equipment.create({
@@ -417,16 +407,8 @@ router.post('/modules', async (req, res) => {
     return res.status(400).json({ error: 'Unknown equipment' })
   }
 
-  const slugBase = `${equipmentId}-${title}`
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-  let slug = slugBase || `${equipmentId}-module`
-  let suffix = 2
-  while (await prisma.module.findUnique({ where: { slug } })) {
-    slug = `${slugBase}-${suffix++}`
-  }
+  const slugBase = slugify(`${equipmentId}-${title}`) || `${equipmentId}-module`
+  const slug = await uniqueSlug(slugBase, (candidate) => prisma.module.findUnique({ where: { slug: candidate } }))
 
   // Module.id is a plain Int (it mirrors the seeded module numbering rather
   // than being generated), so a new row takes the next one.
@@ -473,9 +455,11 @@ router.post('/modules/reorder', async (req, res) => {
     return res.status(400).json({ error: 'equipmentId and ids are required' })
   }
 
+  // updateMany (not update) so an id that doesn't belong to this equipment is
+  // silently skipped rather than renumbering another equipment's modules.
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.module.update({ where: { id: Number(id) }, data: { sortOrder: index + 1 } }),
+      prisma.module.updateMany({ where: { id: Number(id), equipmentId }, data: { sortOrder: index + 1 } }),
     ),
   )
 
@@ -683,7 +667,8 @@ router.delete('/quiz-questions/:id', async (req, res) => {
 // and only the Courses tab needs them.
 
 router.get('/courses', async (req, res) => {
-  const rows = await prisma.course.findMany({ orderBy: [{ moduleSlug: 'asc' }, { sortOrder: 'asc' }] })
+  const where = req.query.module ? { moduleSlug: req.query.module } : {}
+  const rows = await prisma.course.findMany({ where, orderBy: [{ moduleSlug: 'asc' }, { sortOrder: 'asc' }] })
   res.json({ courses: rows.map(adminCourse), creatableKinds: CREATABLE_KINDS })
 })
 
@@ -704,7 +689,7 @@ router.post('/courses', async (req, res) => {
 
   // Briefing and summary ids are namespaced by module because every module has
   // one; driving ids stay bare because learner progress is keyed on them.
-  const slug = (payload.id || payload.title).trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const slug = slugify(payload.id || payload.title)
   const id = kind === 'driving' ? slug : `${moduleSlug}-${slug}`
   if (!slug) {
     return res.status(400).json({ error: 'Step id could not be derived from the title' })
@@ -817,9 +802,11 @@ router.post('/courses/reorder', async (req, res) => {
     return res.status(400).json({ error: 'moduleSlug and ids are required' })
   }
 
+  // updateMany (not update) so an id that doesn't belong to this module is
+  // silently skipped rather than renumbering another module's steps.
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.course.update({ where: { id }, data: { sortOrder: index + 1 } }),
+      prisma.course.updateMany({ where: { id, moduleSlug }, data: { sortOrder: index + 1 } }),
     ),
   )
 

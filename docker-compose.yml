@@ -40,6 +40,9 @@ services:
       PORT: 4000
       # Set true to replay prisma/content-export.json over the database on boot.
       IMPORT_CONTENT_ON_BOOT: ${IMPORT_CONTENT_ON_BOOT:-false}
+      # Never seed the known-password demo accounts in production - deleting
+      # admin@mail.com through the dashboard must not have it come back.
+      SEED_DEMO_USERS: 'false'
     healthcheck:
       test: ['CMD-SHELL', 'node -e "fetch(\"http://localhost:4000/api/health\").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"']
       interval: 10s
