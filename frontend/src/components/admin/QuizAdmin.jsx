@@ -4,6 +4,12 @@ import {
   adminDeleteQuizQuestion,
   adminUpdateQuizQuestion,
 } from '../../lib/api'
+import { useAdminAction } from '../../hooks/useAdminAction'
+import { Button } from '../ui/button'
+import { Panel, PanelHeader, PanelNote } from '../ui/panel'
+import { Field } from '../ui/field'
+import { Input, Textarea } from '../ui/input'
+import { Toolbar } from '../ui/toolbar'
 
 // One quiz's questions. `scope` is the same shape the learner API takes:
 //
@@ -31,17 +37,7 @@ function QuizAdmin({ scope, questions, onQuestionsChanged, onMessage, note }) {
   const [newPrompt, setNewPrompt] = useState('')
 
   const scopeQuestions = questions.filter((question) => inScope(question, scope))
-
-  const run = async (action, message) => {
-    try {
-      const result = await action()
-      onMessage(message)
-      return result
-    } catch (error) {
-      onMessage(error.message)
-      return null
-    }
-  }
+  const { run } = useAdminAction(onMessage)
 
   const select = (question) => {
     setSelectedId(question.id)
@@ -98,65 +94,84 @@ function QuizAdmin({ scope, questions, onQuestionsChanged, onMessage, note }) {
   }
 
   return (
-    <div className="quiz-admin">
-      <section className="admin-panel admin-parts-list admin-editor">
-        <h3>Questions</h3>
-        {note && <p className="admin-panel-note">{note}</p>}
+    <div className="grid gap-3.5">
+      <Panel>
+        <PanelHeader>Questions</PanelHeader>
+        {note && <PanelNote>{note}</PanelNote>}
 
-        {scopeQuestions.map((question) => (
-          <button
-            key={question.id}
-            type="button"
-            className={`admin-part-button ${selectedId === question.id ? 'is-active' : ''}`}
-            onClick={() => select(question)}
-          >
-            {question.prompt}
-          </button>
-        ))}
-        {scopeQuestions.length === 0 && <p className="admin-panel-note">No questions here yet.</p>}
-
-        <label>
-          New question prompt
-          <input value={newPrompt} onChange={(event) => setNewPrompt(event.target.value)} placeholder="Which part ...?" />
-        </label>
-        <button className="admin-save" onClick={addQuestion} disabled={!newPrompt.trim()}>Add question</button>
-      </section>
-
-      <section className="admin-panel admin-editor">
-        <h3>Question Editor</h3>
-        {draft ? (
-          <>
-            <label>Prompt<textarea rows={2} value={draft.prompt || ''} onChange={(event) => setDraft({ ...draft, prompt: event.target.value })} /></label>
-
-            <h4>Options</h4>
-            <p className="admin-panel-note">Mark the correct one. Saving is refused if the answer is not one of the options.</p>
-            {(draft.options || []).map((option, index) => (
-              <div key={index} className="admin-row-actions">
-                <input value={option} onChange={(event) => setOption(index, event.target.value)} />
-                <button
-                  onClick={() => setDraft({ ...draft, answer: option })}
-                  className={draft.answer === option ? 'admin-save' : ''}
-                >
-                  {draft.answer === option ? 'Correct' : 'Mark correct'}
-                </button>
-                <button onClick={() => setDraft({ ...draft, options: draft.options.filter((entry, position) => position !== index) })}>
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button className="admin-btn" onClick={() => setDraft({ ...draft, options: [...(draft.options || []), 'New option'] })}>
-              Add option
+        <div className="mt-2.5 grid gap-1.5">
+          {scopeQuestions.map((question) => (
+            <button
+              key={question.id}
+              type="button"
+              className={`rounded-lg border px-3 py-2.5 text-left text-[13.5px] font-bold leading-snug transition ${
+                selectedId === question.id ? 'border-accent bg-accent-soft text-ink' : 'border-border bg-slate-50 text-ink hover:border-slate-400 hover:bg-white'
+              }`}
+              onClick={() => select(question)}
+            >
+              {question.prompt}
             </button>
+          ))}
+        </div>
+        {scopeQuestions.length === 0 && <PanelNote className="mt-2">No questions here yet.</PanelNote>}
 
-            <div className="admin-row-actions">
-              <button className="admin-save" onClick={save}>Save question</button>
-              <button onClick={remove}>Delete</button>
+        <Field label="New question prompt" className="mt-3">
+          <Input value={newPrompt} onChange={(event) => setNewPrompt(event.target.value)} placeholder="Which part ...?" />
+        </Field>
+        <Toolbar>
+          <Button type="button" onClick={addQuestion} disabled={!newPrompt.trim()}>Add question</Button>
+        </Toolbar>
+      </Panel>
+
+      <Panel>
+        <PanelHeader>Question Editor</PanelHeader>
+        {draft ? (
+          <div className="mt-3 grid gap-3">
+            <Field label="Prompt">
+              <Textarea rows={2} value={draft.prompt || ''} onChange={(event) => setDraft({ ...draft, prompt: event.target.value })} />
+            </Field>
+
+            <div>
+              <h4 className="m-0 text-sm font-extrabold text-ink">Options</h4>
+              <PanelNote className="mt-1">Mark the correct one. Saving is refused if the answer is not one of the options.</PanelNote>
             </div>
-          </>
+
+            <div className="grid gap-2">
+              {(draft.options || []).map((option, index) => (
+                <div key={index} className="flex flex-wrap items-center gap-2">
+                  <Input className="flex-1" value={option} onChange={(event) => setOption(index, event.target.value)} />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={draft.answer === option ? 'default' : 'secondary'}
+                    onClick={() => setDraft({ ...draft, answer: option })}
+                  >
+                    {draft.answer === option ? 'Correct' : 'Mark correct'}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="danger"
+                    onClick={() => setDraft({ ...draft, options: draft.options.filter((entry, position) => position !== index) })}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <Button type="button" variant="secondary" className="justify-self-start" onClick={() => setDraft({ ...draft, options: [...(draft.options || []), 'New option'] })}>
+              Add option
+            </Button>
+
+            <Toolbar>
+              <Button type="button" onClick={save}>Save question</Button>
+              <Button type="button" variant="danger" onClick={remove}>Delete</Button>
+            </Toolbar>
+          </div>
         ) : (
-          <p>Select a question to edit it, or add a new one.</p>
+          <PanelNote>Select a question to edit it, or add a new one.</PanelNote>
         )}
-      </section>
+      </Panel>
     </div>
   )
 }

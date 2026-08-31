@@ -1,3 +1,5 @@
+import { useT } from '../i18n'
+import LanguageToggle from './LanguageToggle'
 import './SimulationPageLayout.css'
 
 // The outer chrome every full-width simulation page shares: sticky header with
@@ -14,17 +16,18 @@ import './SimulationPageLayout.css'
 function SimulationPageLayout({
   title,
   subtitle,
-  backLabel = 'Back to Modules',
+  backLabel,
   onBack,
   className = '',
   compact = false,
   children,
 }) {
+  const t = useT()
   return (
     <div className={`module-page-container ${className}`.trim()}>
       <header className={`module-page-header ${compact ? 'is-compact' : ''}`.trim()}>
         <button className="back-button" onClick={onBack}>
-          {backLabel}
+          {backLabel || t('module.backToModules')}
         </button>
         {compact ? (
           subtitle && <p className="module-page-context">{subtitle}</p>
@@ -34,6 +37,9 @@ function SimulationPageLayout({
             {subtitle && <h2>{subtitle}</h2>}
           </div>
         )}
+        {/* These pages replace PageLayout, so they never mount AppHeader and
+            had no way to switch language once a learner was inside a module. */}
+        <LanguageToggle className="ml-auto" />
       </header>
 
       <main className="wide-simulation-content">{children}</main>

@@ -2,10 +2,11 @@ import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma.js'
 import { publicUser, requireAuth, signToken } from '../lib/auth.js'
+import { authLimiter } from '../lib/rateLimit.js'
 
 const router = Router()
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const { email, password } = req.body || {}
 
   if (!email || !password) {
@@ -26,7 +27,7 @@ router.post('/login', async (req, res) => {
 // step (infrastructure for it is out of scope for this prototype), so the
 // account is usable immediately. `fullName` is required by the schema but not
 // collected here, so it is derived from the email's local part.
-router.post('/signup', async (req, res) => {
+router.post('/signup', authLimiter, async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase()
   const password = String(req.body?.password || '')
 
@@ -59,19 +60,6 @@ router.post('/signup', async (req, res) => {
   })
 
   res.json({ token: signToken(user), user: publicUser(user) })
-})
-
-// Used by the "Forgot password?" flow to confirm an address is registered
-// before opening the reset-request email draft, so a learner isn't left
-// guessing why the request never gets a reply.
-router.get('/check-email', async (req, res) => {
-  const email = String(req.query.email || '').trim().toLowerCase()
-  if (!email) {
-    return res.status(400).json({ error: 'Email is required' })
-  }
-
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } })
-  res.json({ exists: Boolean(user) })
 })
 
 router.get('/me', requireAuth, (req, res) => {

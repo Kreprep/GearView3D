@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
 import authRoutes from './routes/auth.js'
 import contentRoutes from './routes/content.js'
 import progressRoutes from './routes/progress.js'
@@ -8,9 +9,20 @@ import adminRoutes from './routes/admin.js'
 export function createApp() {
   const app = express()
 
-  // In development the Vite dev server proxies /api here, so CORS mostly
-  // matters when the frontend is opened against a differently-hosted API.
-  app.use(cors())
+  // Deployment (docker-compose.yml) puts Caddy in front of nginx in front of
+  // this API - trust its X-Forwarded-For by one hop, so req.ip (which the
+  // auth rate limiter keys on) is the real client rather than the proxy.
+  app.set('trust proxy', 1)
+
+  app.use(helmet())
+
+  // In production nginx serves the frontend same-origin (see nginx.conf), so
+  // no CORS is needed there at all - CORS_ORIGIN stays unset and this reflects
+  // no origin. Set it (comma-separated) only when the frontend is hosted
+  // somewhere else entirely.
+  const allowedOrigins = process.env.CORS_ORIGIN?.split(',').map((origin) => origin.trim())
+  app.use(cors({ origin: allowedOrigins ?? false }))
+
   app.use(express.json({ limit: '2mb' }))
 
   app.get('/api/health', (req, res) => {

@@ -1,78 +1,99 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getChecklist } from '../lib/api'
+import { useT } from '../i18n'
+import { ProgressBar } from './ui/progress'
 import { useProgress } from '../hooks/useProgress'
+import { getStoredProgress } from '../lib/progressService'
 import './GuidedChecklist.css'
 
 function GuidedChecklist({ moduleSlug, title }) {
+  const t = useT()
+  const percentId = `checklist-percent-${moduleSlug}`
   const [items, setItems] = useState([])
   const [checked, setChecked] = useState({})
-  const [saved, setSaved] = useState(false)
-  const { progress, updateChecklist } = useProgress()
+  const [error, setError] = useState(null)
+  const { updateChecklist } = useProgress()
 
   useEffect(() => {
-    getChecklist(moduleSlug).then((checklist) => {
-      setItems(checklist)
-      const completedItems = progress.checklists[moduleSlug]?.completedItems || []
-      setChecked(Object.fromEntries(completedItems.map((item) => [item, true])))
-      setSaved(false)
-    })
-  }, [moduleSlug, progress.checklists])
+    let cancelled = false
+
+    getChecklist(moduleSlug)
+      .then((checklist) => {
+        if (cancelled) return
+        setItems(checklist)
+        setError(null)
+        // Read the stored snapshot directly rather than closing over the
+        // reactive `progress` value - toggleItem below writes progress via
+        // updateChecklist, and depending this effect on that value would
+        // refetch the checklist over HTTP on every click.
+        const completedItems = getStoredProgress().checklists[moduleSlug]?.completedItems || []
+        setChecked(Object.fromEntries(completedItems.map((id) => [id, true])))
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [moduleSlug])
 
   const completedCount = useMemo(
-    () => items.filter((item) => checked[item]).length,
+    () => items.filter((item) => checked[item.id]).length,
     [checked, items],
   )
   const completionPercentage = items.length ? Math.round((completedCount / items.length) * 100) : 0
 
-  const toggleItem = (item) => {
-    setChecked((current) => {
-      const next = {
-        ...current,
-        [item]: !current[item],
-      }
-      const completedItems = Object.keys(next).filter((key) => next[key])
-      updateChecklist(moduleSlug, completedItems)
-      setSaved(true)
-      return next
-    })
-  }
-
-  const handleSave = async () => {
-    updateChecklist(moduleSlug, Object.keys(checked).filter((item) => checked[item]))
-    setSaved(true)
+  // `updateChecklist` writes progress, which dispatches the change event the
+  // module page is subscribed to - a parent setState. React may call a state
+  // updater during a render, so doing that inside one warns ("cannot update a
+  // component while rendering a different component") and runs the write twice
+  // under StrictMode. Build the next map from the rendered state instead and
+  // keep the updater out of it.
+  const toggleItem = (itemId) => {
+    const next = {
+      ...checked,
+      [itemId]: !checked[itemId],
+    }
+    setChecked(next)
+    updateChecklist(moduleSlug, Object.keys(next).filter((key) => next[key]))
   }
 
   return (
     <section className="guided-checklist">
       <div className="checklist-header">
         <div>
-          <p className="checklist-kicker">Guided activity</p>
+          <p className="checklist-kicker">{t('module.checklist.kicker')}</p>
           <h3>{title}</h3>
         </div>
-        <span className="checklist-progress">{completionPercentage}% complete</span>
+        <span id={percentId} className="checklist-progress">
+          {t('common.percentComplete', { percent: completionPercentage })}
+        </span>
       </div>
 
-      <div className="checklist-bar">
-        <div style={{ width: `${completionPercentage}%` }} />
-      </div>
+      {/* The last learner-facing bar that was a bare div with an inline width -
+          no role, nothing announced. Named by the visible percentage above. */}
+      <ProgressBar
+        value={completionPercentage}
+        labelledBy={percentId}
+        className="my-[18px]"
+      />
+
+      {error && <p className="checklist-error">{t('module.checklist.error', { error })}</p>}
 
       <div className="checklist-items">
         {items.map((item, index) => (
-          <label key={item} className={`checklist-item ${checked[item] ? 'is-complete' : ''}`}>
+          <label key={item.id} className={`checklist-item ${checked[item.id] ? 'is-complete' : ''}`}>
             <input
               type="checkbox"
-              checked={Boolean(checked[item])}
-              onChange={() => toggleItem(item)}
+              checked={Boolean(checked[item.id])}
+              onChange={() => toggleItem(item.id)}
             />
             <span className="checklist-number">{index + 1}</span>
-            <span>{item}</span>
+            <span>{item.text}</span>
           </label>
         ))}
       </div>
-
-      <button className="checklist-save" onClick={handleSave}>
-        {saved ? 'Progress saved' : 'Save progress'}
-      </button>
     </section>
   )
 }

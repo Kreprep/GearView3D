@@ -4,7 +4,11 @@ import ChecklistAdmin from './ChecklistAdmin'
 import CourseEditor from './CourseEditor'
 import HotspotAdmin from './HotspotAdmin'
 import QuizAdmin from './QuizAdmin'
-import './CourseAdmin.css'
+import { Button } from '../ui/button'
+import { Panel, PanelHeader, PanelNote } from '../ui/panel'
+import { Field } from '../ui/field'
+import { Input, Select, Textarea } from '../ui/input'
+import { Badge } from '../ui/badge'
 
 // Learner-facing names for the step kinds. The DB values stay as they are;
 // these are what an admin picks from.
@@ -49,10 +53,10 @@ function ModuleEditor({
   useEffect(() => {
     let cancelled = false
 
-    adminListCourses()
+    adminListCourses(module.slug)
       .then((data) => {
         if (cancelled) return
-        setCourses(data.courses.filter((course) => course.moduleSlug === module.slug))
+        setCourses(data.courses)
         setCreatableKinds(data.creatableKinds || ['briefing'])
         setLoadState({ loading: false, error: null })
       })
@@ -111,13 +115,13 @@ function ModuleEditor({
   const renderStepPanel = () => {
     if (!selected) {
       return (
-        <div className="admin-panel module-step-empty">
-          <h3>No step selected</h3>
-          <p className="admin-panel-note">
+        <div className="grid min-h-[220px] content-center justify-start gap-2 rounded-2xl border border-dashed border-border bg-slate-50 p-5">
+          <h3 className="m-0 text-sm font-extrabold text-ink">No step selected</h3>
+          <PanelNote>
             Pick a step on the left to edit it, or add one at the bottom of the list. A step&apos;s panel changes
             with its type - a driving course gets the 3D map, a walk-around its inspection checks, a quiz its
             questions.
-          </p>
+          </PanelNote>
         </div>
       )
     }
@@ -158,14 +162,14 @@ function ModuleEditor({
       return (
         <>
           {stepEditor()}
-          <section className="admin-panel">
-            <h2>Inspection Hotspots</h2>
-            <p className="admin-panel-note">
+          <Panel>
+            <PanelHeader>Inspection Hotspots</PanelHeader>
+            <PanelNote>
               The markers this step shows on the model - not the checks themselves (that&apos;s the Walk-around
               content panel above). Click the model to place one, or drag a marker to move it; each has its own
               draft and publish. A marker that is also a part shows up under Parts Identification - it is the same
               hotspot, not a copy.
-            </p>
+            </PanelNote>
             <HotspotAdmin
               key={equipmentId}
               equipmentId={equipmentId}
@@ -176,7 +180,7 @@ function ModuleEditor({
               surface="walk-around"
               onMessage={onMessage}
             />
-          </section>
+          </Panel>
         </>
       )
     }
@@ -200,97 +204,104 @@ function ModuleEditor({
   }
 
   return (
-    <div className="module-editor">
-      <header className="module-editor-bar">
-        <button type="button" className="module-editor-back" onClick={onBack}>Back to modules</button>
-        <div className="module-editor-heading">
-          <p className="admin-kicker">Module Editor</p>
-          <h2>{module.fullTitle || module.title}</h2>
+    <div className="grid gap-4">
+      <header className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-panel px-4 py-3">
+        <Button variant="secondary" size="sm" onClick={onBack}>Back to modules</Button>
+        <div className="grid min-w-0 gap-0.5">
+          <p className="m-0 text-[13px] font-semibold text-accent-strong">Module Editor</p>
+          <h2 className="m-0 text-[19px] font-black leading-tight text-ink">{module.fullTitle || module.title}</h2>
         </div>
-        <span className="module-editor-count">
+        <span className="ml-auto whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-[12.5px] font-extrabold text-muted">
           {steps.length} step{steps.length === 1 ? '' : 's'}
         </span>
       </header>
 
-      <section className="admin-panel module-details-panel">
-        <div className="admin-panel-heading">
-          <h2>Module Details</h2>
-          <button className="admin-save" onClick={saveModule}>Save module</button>
+      <Panel>
+        <PanelHeader actions={<Button onClick={saveModule}>Save module</Button>}>Module Details</PanelHeader>
+        <div className="grid items-start gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+          <Field label="Title">
+            <Input value={fields.title || ''} onChange={(event) => setFields({ ...fields, title: event.target.value })} />
+          </Field>
+          <Field label="Subtitle">
+            <Input value={fields.subtitle || ''} onChange={(event) => setFields({ ...fields, subtitle: event.target.value })} />
+          </Field>
+          <Field label="Full title" note="The long heading on the module page itself. Blank falls back to the title.">
+            <Input value={fields.fullTitle || ''} placeholder={fields.title} onChange={(event) => setFields({ ...fields, fullTitle: event.target.value })} />
+          </Field>
+          <Field label="Image URL">
+            <Input value={fields.imageUrl || ''} onChange={(event) => setFields({ ...fields, imageUrl: event.target.value })} />
+          </Field>
+          <Field label="Description" note="Shown on the module card in the learner's module list." className="col-span-full">
+            <Textarea rows={3} value={fields.description || ''} onChange={(event) => setFields({ ...fields, description: event.target.value })} />
+          </Field>
         </div>
-        <div className="admin-editor module-details-grid">
-          <label>Title<input value={fields.title || ''} onChange={(event) => setFields({ ...fields, title: event.target.value })} /></label>
-          <label>Subtitle<input value={fields.subtitle || ''} onChange={(event) => setFields({ ...fields, subtitle: event.target.value })} /></label>
-          <label>
-            Full title
-            <input value={fields.fullTitle || ''} placeholder={fields.title} onChange={(event) => setFields({ ...fields, fullTitle: event.target.value })} />
-            <small className="admin-field-note">The long heading on the module page itself. Blank falls back to the title.</small>
-          </label>
-          <label>Image URL<input value={fields.imageUrl || ''} onChange={(event) => setFields({ ...fields, imageUrl: event.target.value })} /></label>
-          <label className="module-details-wide">
-            Description
-            <textarea rows={3} value={fields.description || ''} onChange={(event) => setFields({ ...fields, description: event.target.value })} />
-            <small className="admin-field-note">Shown on the module card in the learner’s module list.</small>
-          </label>
-        </div>
-      </section>
+      </Panel>
 
-      <div className="module-editor-body">
-        <section className="admin-panel module-steps-panel">
-          <div className="admin-panel-heading">
-            <h2>Steps</h2>
-          </div>
-          <p className="admin-panel-note">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+        <Panel>
+          <PanelHeader>Steps</PanelHeader>
+          <PanelNote>
             Every step of this module, in the order learners see it. Built-in activities keep their hardcoded
             screens but can still be reordered or removed.
-          </p>
-          {loadState.loading && <p className="admin-panel-note">Loading steps...</p>}
-          {loadState.error && <p className="admin-panel-note">Steps could not be loaded: {loadState.error}</p>}
+          </PanelNote>
+          {loadState.loading && <PanelNote className="mt-2">Loading steps...</PanelNote>}
+          {loadState.error && <PanelNote className="mt-2">Steps could not be loaded: {loadState.error}</PanelNote>}
 
-          <ol className="course-list">
+          <ol className="m-0 mt-2 grid list-none gap-1.5 p-0">
             {steps.map((course, index) => (
-              <li key={course.id} className={course.id === selectedId ? 'is-selected' : ''}>
-                <button type="button" className="course-list-name" onClick={() => setSelectedId(course.id)}>
-                  <span className="course-list-index">{index + 1}</span>
-                  <span className="course-list-text">
-                    <strong>{course.title}</strong>
-                    <small>
-                      {KIND_LABELS[course.kind] || course.kind}
-                      {course.draft && ' - draft'}
-                      {!course.published && ' - unpublished'}
-                      {!course.builtIn && ' - custom'}
-                    </small>
+              <li key={course.id} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className={`grid flex-1 gap-0.5 rounded-lg border px-2 py-2 text-left transition ${
+                    course.id === selectedId ? 'border-accent bg-accent-soft' : 'border-transparent hover:bg-slate-100'
+                  }`}
+                  onClick={() => setSelectedId(course.id)}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span
+                      className={`inline-flex h-6 w-6 flex-none items-center justify-center rounded-full text-xs font-extrabold ${
+                        course.id === selectedId ? 'bg-accent text-white' : 'bg-slate-200 text-body'
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <strong className="line-clamp-2 block text-[13.5px] font-bold leading-snug text-ink">{course.title}</strong>
+                      <span className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted">
+                        {KIND_LABELS[course.kind] || course.kind}
+                        {course.draft && <Badge tone="warning">draft</Badge>}
+                        {!course.published && <Badge tone="danger">unpublished</Badge>}
+                        {!course.builtIn && <Badge tone="accent">custom</Badge>}
+                      </span>
+                    </span>
                   </span>
                 </button>
-                <span className="course-list-actions">
-                  <button type="button" title="Move up" onClick={() => moveStep(index, -1)} disabled={index === 0}>Up</button>
-                  <button type="button" title="Move down" onClick={() => moveStep(index, 1)} disabled={index === steps.length - 1}>Down</button>
+                <span className="flex flex-none flex-col gap-1">
+                  <Button size="sm" variant="secondary" title="Move up" onClick={() => moveStep(index, -1)} disabled={index === 0}>Up</Button>
+                  <Button size="sm" variant="secondary" title="Move down" onClick={() => moveStep(index, 1)} disabled={index === steps.length - 1}>Down</Button>
                 </span>
               </li>
             ))}
           </ol>
 
-          {!loadState.loading && steps.length === 0 && <p className="admin-panel-note">No steps in this module yet.</p>}
+          {!loadState.loading && steps.length === 0 && <PanelNote className="mt-2">No steps in this module yet.</PanelNote>}
 
-          <div className="course-create">
-            <label>
-              New step title
-              <input value={newTitle} placeholder="Narrow Aisle Turn" onChange={(event) => setNewTitle(event.target.value)} />
-            </label>
-            <label>
-              Step type
-              <select value={newKind} onChange={(event) => setNewKind(event.target.value)}>
+          <div className="mt-3 grid gap-2.5 border-t border-slate-200 pt-3">
+            <Field label="New step title">
+              <Input value={newTitle} placeholder="Narrow Aisle Turn" onChange={(event) => setNewTitle(event.target.value)} />
+            </Field>
+            <Field label="Step type">
+              <Select value={newKind} onChange={(event) => setNewKind(event.target.value)}>
                 {creatableKinds.map((value) => (
                   <option key={value} value={value}>{KIND_LABELS[value] || value}</option>
                 ))}
-              </select>
-            </label>
-            <button type="button" className="admin-save" onClick={createStep} disabled={!newTitle.trim()}>
-              Add step
-            </button>
+              </Select>
+            </Field>
+            <Button onClick={createStep} disabled={!newTitle.trim()}>Add step</Button>
           </div>
-        </section>
+        </Panel>
 
-        <section className="module-step-panel">{renderStepPanel()}</section>
+        <div className="grid gap-4">{renderStepPanel()}</div>
       </div>
     </div>
   )

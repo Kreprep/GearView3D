@@ -35,6 +35,15 @@ const demoUsers = [
 ]
 
 async function seedUsers() {
+  // SEED_DEMO_USERS gates the known-password demo accounts. Local dev keeps
+  // them on by default (.env.example); production (docker-compose.yml) sets
+  // it to false so admin@mail.com/admin123 doesn't come back on every boot.
+  if (process.env.SEED_DEMO_USERS === 'false') {
+    console.log('SEED_DEMO_USERS=false - skipping demo user seed')
+    return
+  }
+  console.log('SEED_DEMO_USERS!=false - seeding demo users')
+
   for (const user of demoUsers) {
     await prisma.user.upsert({
       where: { email: user.email },

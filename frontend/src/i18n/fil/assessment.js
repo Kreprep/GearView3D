@@ -1,0 +1,45 @@
+export default {
+  'assessment.pageTitle': 'Pagsusuri sa {equipment}',
+  'assessment.back': 'Bumalik sa mga module',
+  'assessment.heading': '{equipment} - Huling pagsusuri',
+  'assessment.kicker': 'Pagbabalik-tanaw sa progreso',
+  'assessment.status.complete': 'Natapos ang prototype module',
+  'assessment.status.inProgress': 'Nagpapatuloy pa ang training',
+  'assessment.intro': 'Binubuod ng pahinang ito ang progreso ng nag-aaral sa GearView3D para sa thesis demonstration. Ang completion badge ay para lamang sa pagtatapos ng prototype module at hindi nangangahulugang opisyal na sertipikasyon ng TESDA.',
+  'assessment.learnerFallback': 'Nag-aaral',
+  'assessment.noEmail': 'Walang nakatalang email',
+
+  'assessment.stat.overall': 'Kabuuan',
+  'assessment.stat.modules': 'Mga module',
+  'assessment.stat.parts': 'Pagkilala sa mga parte',
+
+  'assessment.modules.heading': 'Pagsusuri sa module',
+  'assessment.modules.loading': 'Naglo-load ng mga module...',
+  'assessment.modules.empty': 'Wala pang module.',
+  'assessment.modules.row': '{module}: {completed}/{total} na checklist item, pagsusulit {quiz}',
+  'assessment.modules.rowNoChecklist': '{module}: walang checklist item, pagsusulit {quiz}',
+  'assessment.quiz.notAttempted': 'hindi pa sinasagutan',
+  'assessment.quiz.scored': '{score}/{total}',
+
+  'assessment.parts.heading': 'Pagsusuri sa mga parte',
+  'assessment.parts.loading': 'Naglo-load ng mga parte...',
+  'assessment.parts.viewedCount': '{viewed} sa {total} na parte ang natingnan.',
+  'assessment.parts.row': '{part}: {state}',
+  'assessment.parts.viewed': 'natingnan na',
+  'assessment.parts.notViewed': 'hindi pa natingnan',
+
+  'assessment.scores.heading': 'Mga puntos sa pagsusulit',
+  'assessment.scores.empty': 'Wala pang naka-save na sagot sa pagsusulit.',
+  'assessment.scores.row': '{module}: {score}/{total} ({percentage}%)',
+
+  'assessment.next.heading': 'Inirerekomendang susunod na gawin',
+  'assessment.next.ready': 'Handa na para sa pagsusuri ng instructor o thesis demo.',
+  'assessment.next.parts': 'Balikan ang natitirang mga parte sa 3D model.',
+  'assessment.next.modules': 'Ituloy ang mga training module at checklist.',
+  'assessment.next.partsQuiz': 'Pagsusulit sa mga parte: {result}.',
+  'assessment.next.partsQuizScored': '{score}/{total} ({percentage}%)',
+
+  'assessment.badge': 'Natapos ang training sa GearView3D',
+  'assessment.action.modules': 'Balikan ang mga training module',
+  'assessment.action.parts': 'Balikan ang pagkilala sa mga parte',
+}

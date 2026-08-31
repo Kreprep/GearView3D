@@ -1,4 +1,5 @@
 import MarkdownContent from './MarkdownContent'
+import { useT } from '../i18n'
 import { SUMMARY_COUNTER_LABELS } from '../data/courseDefaults'
 import { isStepComplete } from '../lib/simulationProgress'
 
@@ -8,6 +9,7 @@ import { isStepComplete } from '../lib/simulationProgress'
 // ({ body, completeMessage, incompleteMessage, counters }).
 
 function ModuleSummary({ content, steps, gradedStepIds, simulation }) {
+  const t = useT()
   const counters = (content?.counters || []).filter((key) => SUMMARY_COUNTER_LABELS[key])
 
   return (
@@ -20,7 +22,7 @@ function ModuleSummary({ content, steps, gradedStepIds, simulation }) {
           return (
             <div key={stepId} className={done ? 'done' : ''}>
               <span>{steps.find((step) => step.id === stepId)?.title || stepId}</span>
-              <strong>{done ? 'Complete' : 'Open'}</strong>
+              <strong>{t(done ? 'module.summary.complete' : 'module.summary.open')}</strong>
             </div>
           )
         })}
@@ -34,8 +36,8 @@ function ModuleSummary({ content, steps, gradedStepIds, simulation }) {
 
       <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
         {simulation.complete
-          ? content?.completeMessage || 'All requirements are complete.'
-          : content?.incompleteMessage || 'Complete every graded step to finish this module.'}
+          ? content?.completeMessage || t('module.summary.allComplete')
+          : content?.incompleteMessage || t('module.summary.incomplete')}
       </p>
     </div>
   )

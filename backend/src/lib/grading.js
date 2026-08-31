@@ -7,6 +7,9 @@
 // the answer key and the score were under the learner's control.
 import { randomUUID } from 'node:crypto'
 import { prisma } from './prisma.js'
+import { migrateParts } from '../../../frontend/src/lib/migrateParts.js'
+
+export { migrateParts }
 
 // Answers arrive as the option text, which is what both quiz UIs already have
 // in hand. Comparison is trimmed so a stray space in an option label does not
@@ -76,8 +79,8 @@ export function intoModuleQuiz(moduleSlug) {
 
 // Parts-quiz attempts, newest first, under `parts.quizzes[equipmentId]` for
 // every equipment alike. Forklift's used to live at `parts.practiceAttempts`;
-// migration 20260814100000 moved them here, and `migrateParts` below folds in
-// any that a client still holds locally.
+// migration 20260814100000 moved them here, and migrateParts() folds in any
+// that a client still holds locally.
 export function intoPartsQuiz(equipmentId) {
   return (data, attempt) => {
     const parts = migrateParts(data.parts)
@@ -89,19 +92,5 @@ export function intoPartsQuiz(equipmentId) {
         quizzes: { ...parts.quizzes, [equipmentId]: [attempt, ...(parts.quizzes[equipmentId] || [])] },
       },
     }
-  }
-}
-
-// A client that has not reloaded since the migration can still push a snapshot
-// carrying the old key, which would otherwise silently drop those attempts.
-export function migrateParts(parts) {
-  const legacy = Array.isArray(parts?.practiceAttempts) ? parts.practiceAttempts : []
-  const quizzes = parts?.quizzes || {}
-
-  return {
-    viewedPartIds: parts?.viewedPartIds || [],
-    quizzes: legacy.length
-      ? { ...quizzes, forklift: [...(quizzes.forklift || []), ...legacy] }
-      : quizzes,
   }
 }

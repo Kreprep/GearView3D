@@ -1,4 +1,5 @@
 import MarkdownContent from './MarkdownContent'
+import { useT } from '../i18n'
 import './ModuleBriefing.css'
 
 // A briefing step is data, not code: `content` comes from the Course row an
@@ -10,13 +11,15 @@ import './ModuleBriefing.css'
 // GenericModulePage shows when the module first opens (see ScopeNoticeModal).
 
 export function BriefingScene({ content }) {
+  const t = useT()
+
   const image = content?.image
   const sceneBody = content?.sceneBody
 
   if (!image && !sceneBody) {
     return (
       <div className="module-briefing-scene is-empty">
-        <p>This briefing has no reference image or panel text yet.</p>
+        <p>{t('module.briefing.empty')}</p>
       </div>
     )
   }
@@ -30,6 +33,8 @@ export function BriefingScene({ content }) {
 }
 
 export function BriefingTask({ content, module }) {
+  const t = useT()
+
   // Rows seeded before the syllabus became editable have no `syllabus` object,
   // so each field falls back to the static module definition.
   const syllabus = {
@@ -44,10 +49,10 @@ export function BriefingTask({ content, module }) {
     <div className="load-task-stack">
       {showSyllabus && (
         <div className="reference-card">
-          {syllabus.location && <p><strong>Syllabus Location:</strong> {syllabus.location}</p>}
-          {syllabus.unitCode && <p><strong>Unit Code:</strong> {syllabus.unitCode}</p>}
-          {syllabus.element && <p><strong>Element:</strong> {syllabus.element}</p>}
-          {syllabus.pageReferences && <p><strong>Page References:</strong> {syllabus.pageReferences}</p>}
+          {syllabus.location && <p><strong>{t('module.syllabus.location')}</strong> {syllabus.location}</p>}
+          {syllabus.unitCode && <p><strong>{t('module.syllabus.unitCode')}</strong> {syllabus.unitCode}</p>}
+          {syllabus.element && <p><strong>{t('module.syllabus.element')}</strong> {syllabus.element}</p>}
+          {syllabus.pageReferences && <p><strong>{t('module.syllabus.pageReferences')}</strong> {syllabus.pageReferences}</p>}
         </div>
       )}
       <MarkdownContent className="module-briefing-body">{content?.body}</MarkdownContent>

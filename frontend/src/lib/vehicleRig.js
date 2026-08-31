@@ -1,4 +1,5 @@
 import { Box3, Group, Matrix4, Mesh, Vector3 } from 'three'
+import { clamp } from './math.js'
 import { DEFAULT_RIG } from '../data/vehicleProfile.js'
 
 // Shared rig builder, used by the driving simulation and the interactive
@@ -10,10 +11,6 @@ import { DEFAULT_RIG } from '../data/vehicleProfile.js'
 export const WHEEL_NODE_NAMES = DEFAULT_RIG.wheels
 export const REAR_WHEEL_KEYS = ['RL', 'RR']
 export const WHEEL_RADIUS_FALLBACK = 0.07
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max)
-}
 
 // The GLB exports every forklift part as a SkinnedMesh bound to a 3-bone rig
 // that we never animate. In three.js 'attached' bind mode a SkinnedMesh ignores
@@ -151,6 +148,6 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
 
   const rig = { wheels, mastLift, carriageLift, tiltPivot, forkTipOffset, forkReach }
   root.userData.__vehicleRig = rig
-  if (typeof window !== 'undefined') window.__vehicleRig = rig
+  if (import.meta.env.DEV && typeof window !== 'undefined') window.__vehicleRig = rig
   return rig
 }

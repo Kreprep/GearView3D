@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   BarChart3,
@@ -17,6 +17,13 @@ import ModuleListAdmin from './components/admin/ModuleListAdmin'
 import QuizAdmin from './components/admin/QuizAdmin'
 import ReportsPanel from './components/admin/ReportsPanel'
 import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
+import { Button } from './components/ui/button'
+import { Panel, PanelHeader, PanelNote } from './components/ui/panel'
+import { Field } from './components/ui/field'
+import { Input, Textarea, Select, Checkbox } from './components/ui/input'
+import { Toolbar } from './components/ui/toolbar'
+import { Stat, Meter } from './components/ui/stat'
+import { Toast } from './components/ui/toast'
 import { usePageTitle } from './hooks/usePageTitle'
 import { describeActivity, formatRelativeTime } from './lib/adminActivity'
 import {
@@ -32,7 +39,6 @@ import {
   adminUpdateUser,
 } from './lib/api'
 import { adminModuleRoute, routes } from './lib/router'
-import './AdminDashboard.css'
 
 // The three sections every equipment has under Training Content. Paths stay
 // equipment-agnostic; which equipment's data fills them is tracked by
@@ -58,18 +64,79 @@ const ADMIN_SECTION_LABELS = Object.fromEntries(
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+// The shape of adminListContent()'s response - used both as the initial state
+// (nothing has loaded yet) and as the base a fetch's response is spread over,
+// so a field the current backend doesn't send still renders as an empty list
+// instead of undefined.
+const EMPTY_ADMIN_CONTENT = {
+  equipment: [],
+  modules: [],
+  hotspotCategories: [],
+  checklists: [],
+  quizQuestions: [],
+  users: [],
+  progress: [],
+  activityLogs: [],
+}
+
+// Shared shell for every tab body: centred, capped width, responsive padding.
+// `twoCol` gives panels a two-column desktop layout (Panel's `wide` prop then
+// spans both) - single-column tabs (Overview, the module list, the module
+// editor) omit it.
+const CONTENT_WRAP = 'mx-auto grid w-full max-w-[1680px] grid-cols-1 gap-5 px-5 py-6 md:px-8 md:py-7'
+const TWO_COL = 'md:grid-cols-2'
+
+const NAV_TAB_CLASSES = (active) =>
+  `inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-bold transition ${
+    active ? 'bg-accent text-white' : 'text-muted hover:bg-white hover:text-ink'
+  }`
+
+const SUBNAV_TAB_CLASSES = (active) =>
+  `inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-bold transition ${
+    active ? 'bg-accent-soft text-accent-strong' : 'text-muted hover:bg-slate-100 hover:text-ink'
+  }`
+
+// Local draft so typing a category name doesn't PATCH on every keystroke -
+// commits once, on blur or Enter, only when the label actually changed.
+function CategoryRow({ category, onRename, onDelete }) {
+  const [draft, setDraft] = useState(category.label)
+  // Adjusted during render rather than in an effect, so an external label
+  // change (the server's response to a rename, or switching equipment)
+  // takes effect in the same render instead of flashing the stale value
+  // for one paint - see https://react.dev/learn/you-might-not-need-an-effect.
+  const [syncedLabel, setSyncedLabel] = useState(category.label)
+  if (category.label !== syncedLabel) {
+    setSyncedLabel(category.label)
+    setDraft(category.label)
+  }
+
+  const commit = () => {
+    const trimmed = draft.trim()
+    if (trimmed && trimmed !== category.label) {
+      onRename(category, trimmed)
+    } else {
+      setDraft(category.label)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2.5">
+      <Input
+        className="flex-1"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.target.blur()
+        }}
+      />
+      <Button variant="danger" size="sm" onClick={() => onDelete(category)}>Delete</Button>
+    </div>
+  )
+}
+
 function AdminDashboard({ user, onBack, path, onNavigate }) {
-  const [content, setContent] = useState({
-    equipment: [],
-    modules: [],
-    hotspotCategories: [],
-    checklists: [],
-    quizQuestions: [],
-    users: [],
-    progress: [],
-    activityLogs: [],
-    localOnly: true,
-  })
+  const [content, setContent] = useState(EMPTY_ADMIN_CONTENT)
   const [editingEquipment, setEditingEquipment] = useState(null)
   // Which equipment's section is expanded in the nav - the sub-tab paths are
   // shared by every equipment, so this (not the URL) decides whose
@@ -82,6 +149,9 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [newEquipmentTitle, setNewEquipmentTitle] = useState('')
   const [newUser, setNewUser] = useState({ email: '', fullName: '', role: 'TRAINEE', password: '' })
   const [saveMessage, setSaveMessage] = useState('')
+  const [contentLoading, setContentLoading] = useState(true)
+  const [contentError, setContentError] = useState(null)
+  const saveMessageTimer = useRef(null)
   // Captured once rather than read live, so computing "recent" activity stays
   // a pure function of state/props during render.
   const [loadedAt] = useState(() => Date.now())
@@ -126,10 +196,13 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   // module the Forklift's sibling modules, model and categories.
   const editingModuleEquipment = useMemo(() => {
     const equipmentId = moduleBySlug[editingModuleSlug]?.equipmentId || activeEquipmentId
+    const equipment = content.equipment.find((item) => item.id === equipmentId)
 
     return {
       id: equipmentId,
-      modelUrl: content.equipment.find((item) => item.id === equipmentId)?.modelUrl,
+      modelUrl: equipment?.modelUrl,
+      modelScale: equipment?.modelScale,
+      modelOffsetY: equipment?.modelOffsetY,
       modules: content.modules.filter((module) => module.equipmentId === equipmentId),
       categories: content.hotspotCategories.filter((category) => category.equipmentId === equipmentId),
     }
@@ -176,29 +249,27 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const recentActivity = useMemo(() => content.activityLogs.slice(0, 8), [content.activityLogs])
 
   useEffect(() => {
-    adminListContent().then((data) => {
-      setContent({
-        equipment: [],
-        modules: [],
-        hotspotCategories: [],
-        checklists: [],
-        quizQuestions: [],
-        users: [],
-        progress: [],
-        activityLogs: [],
-        localOnly: true,
-        ...data,
+    adminListContent()
+      .then((data) => {
+        setContent({ ...EMPTY_ADMIN_CONTENT, ...data })
+        setEditingEquipment((current) => current || data.equipment?.[0] || null)
+        // First row in sortOrder, whatever it is - the dashboard should open on
+        // real content rather than on a named equipment that may not exist.
+        setActiveEquipmentId((current) => current || data.equipment?.[0]?.id || null)
+        setContentLoading(false)
       })
-      setEditingEquipment((current) => current || data.equipment?.[0] || null)
-      // First row in sortOrder, whatever it is - the dashboard should open on
-      // real content rather than on a named equipment that may not exist.
-      setActiveEquipmentId((current) => current || data.equipment?.[0]?.id || null)
-    })
+      .catch((err) => {
+        setContentError(err.message)
+        setContentLoading(false)
+      })
   }, [])
+
+  useEffect(() => () => clearTimeout(saveMessageTimer.current), [])
 
   const refreshMessage = (message) => {
     setSaveMessage(message)
-    window.setTimeout(() => setSaveMessage(''), 2400)
+    clearTimeout(saveMessageTimer.current)
+    saveMessageTimer.current = window.setTimeout(() => setSaveMessage(''), 2400)
   }
 
   // Category rows are short labels with no learner-visible body, so they save
@@ -317,476 +388,491 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   }
 
   return (
-    <div className="admin-dashboard">
-      <header className="admin-header">
-        <div>
-          <p className="admin-kicker">GearView3D Admin</p>
-          <h1>Content Management</h1>
-          <p>Signed in as {user?.email}</p>
-        </div>
-        <div className="admin-actions">
-          <button className="back-button" onClick={onBack}>Back to App</button>
-        </div>
-      </header>
+    <div className="min-h-svh bg-bg text-left text-ink">
+      <div className="sticky top-0 z-20">
+        <header className="flex flex-wrap items-start justify-between gap-4.5 border-b border-border bg-panel px-8 py-4">
+          <div>
+            <p className="m-0 text-[13px] font-semibold text-accent-strong">GearView3D Admin</p>
+            <h1 className="my-1 text-[22px] font-extrabold text-ink">Content Management</h1>
+            <p className="m-0 text-[13px] text-muted">Signed in as {user?.email}</p>
+          </div>
+          <div className="flex flex-none gap-2.5 pt-0.5">
+            <Button variant="secondary" onClick={onBack}>Back to App</Button>
+          </div>
+        </header>
 
-      <nav className="admin-tabs" aria-label="Admin sections">
-        <button
-          className={activePath === routes.admin ? 'active' : ''}
-          onClick={() => onNavigate(routes.admin)}
-        >
-          <LayoutGrid size={16} />
-          Overview
-        </button>
-        <button
-          className={isEquipmentSection ? 'active' : ''}
-          onClick={() => openEquipmentSection(activeEquipmentId)}
-        >
-          <Truck size={16} />
-          Training Content
-        </button>
-        {trailingTabs.map(([tabPath, label, Icon]) => (
-          <button
-            key={tabPath}
-            className={activePath === tabPath ? 'active' : ''}
-            onClick={() => onNavigate(tabPath)}
-          >
-            <Icon size={16} />
-            {label}
+        <nav className="flex flex-wrap gap-1 border-b border-border bg-slate-100 px-8 py-2" aria-label="Admin sections">
+          <button className={NAV_TAB_CLASSES(activePath === routes.admin)} onClick={() => onNavigate(routes.admin)}>
+            <LayoutGrid size={16} />
+            Overview
           </button>
-        ))}
-      </nav>
-
-      {isEquipmentSection && (
-        <nav className="admin-equipment-picker" aria-label="Equipment">
-          {content.equipment.map((equipment) => (
-            <button
-              key={equipment.id}
-              className={activeEquipmentId === equipment.id ? 'active' : ''}
-              onClick={() => openEquipmentSection(equipment.id)}
-            >
-              <Truck size={15} />
-              {equipment.title}
-            </button>
-          ))}
-          <span className="admin-equipment-add">
-            <input
-              value={newEquipmentTitle}
-              placeholder="New equipment"
-              onChange={(event) => setNewEquipmentTitle(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Enter') handleAddEquipment() }}
-            />
-            <button onClick={handleAddEquipment} disabled={!newEquipmentTitle.trim()}>Add</button>
-          </span>
-        </nav>
-      )}
-
-      {isEquipmentSection && (
-        <nav className="admin-subtabs" aria-label={`${content.equipment.find((item) => item.id === activeEquipmentId)?.title || ''} content sections`}>
-          {equipmentContentTabs.map(([tabPath, label, Icon]) => (
-            <button
-              key={tabPath}
-              className={activePath === tabPath ? 'active' : ''}
-              onClick={() => onNavigate(tabPath)}
-            >
+          <button className={NAV_TAB_CLASSES(isEquipmentSection)} onClick={() => openEquipmentSection(activeEquipmentId)}>
+            <Truck size={16} />
+            Training Content
+          </button>
+          {trailingTabs.map(([tabPath, label, Icon]) => (
+            <button key={tabPath} className={NAV_TAB_CLASSES(activePath === tabPath)} onClick={() => onNavigate(tabPath)}>
               <Icon size={16} />
               {label}
             </button>
           ))}
         </nav>
-      )}
 
-      {content.localOnly && (
-        <div className="admin-alert">
-          Frontend-only prototype mode is active. Admin changes are saved in this browser's localStorage.
+        {isEquipmentSection && (
+          <nav className="flex flex-wrap gap-1.5 border-b border-border bg-bg px-8 py-2.5" aria-label="Equipment">
+            {content.equipment.map((equipment) => (
+              <button
+                key={equipment.id}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-extrabold transition ${
+                  activeEquipmentId === equipment.id
+                    ? 'border-accent bg-accent text-white'
+                    : 'border-slate-300 bg-panel text-body hover:border-accent'
+                }`}
+                onClick={() => openEquipmentSection(equipment.id)}
+              >
+                <Truck size={15} />
+                {equipment.title}
+              </button>
+            ))}
+            <span className="ml-auto inline-flex items-center gap-1.5">
+              <Input
+                className="w-40"
+                value={newEquipmentTitle}
+                placeholder="New equipment"
+                onChange={(event) => setNewEquipmentTitle(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Enter') handleAddEquipment() }}
+              />
+              <Button size="sm" variant="secondary" onClick={handleAddEquipment} disabled={!newEquipmentTitle.trim()}>Add</Button>
+            </span>
+          </nav>
+        )}
+
+        {isEquipmentSection && (
+          <nav
+            className="flex flex-wrap gap-1 border-b border-border bg-panel px-8 py-1.5 md:pl-[52px]"
+            aria-label={`${content.equipment.find((item) => item.id === activeEquipmentId)?.title || ''} content sections`}
+          >
+            {equipmentContentTabs.map(([tabPath, label, Icon]) => (
+              <button key={tabPath} className={SUBNAV_TAB_CLASSES(activePath === tabPath)} onClick={() => onNavigate(tabPath)}>
+                <Icon size={16} />
+                {label}
+              </button>
+            ))}
+          </nav>
+        )}
+      </div>
+
+      {contentError && (
+        <div className="mx-auto mt-4.5 w-[min(1680px,100%)] rounded-xl border border-amber-300 bg-amber-50 px-8 py-3 text-amber-800">
+          Admin content could not be loaded: {contentError}
         </div>
       )}
 
-      {saveMessage && <div className="admin-save-message">{saveMessage}</div>}
+      <Toast>{saveMessage}</Toast>
 
-      {activePath === routes.admin && (
-        <main className="overview-grid">
-          <div className="overview-stat-row">
-            {[
-              [UsersIcon, 'Learners', traineeCount],
-              [TrendingUp, 'Average completion', `${averageCompletion}%`],
-              [Layers, 'Modules published', content.modules.length],
-              [Activity, 'Activity, last 7 days', recentActivityCount],
-            ].map(([Icon, label, value]) => (
-              <section key={label} className="overview-stat-card">
-                <span className="overview-stat-icon"><Icon size={20} /></span>
-                <div>
-                  <strong>{value}</strong>
-                  <p>{label}</p>
-                </div>
-              </section>
-            ))}
-          </div>
-
-          <section className="admin-panel">
-            <h2>Completion by module</h2>
-            {moduleCompletion.length === 0 && <p className="admin-panel-note">No learner progress recorded yet.</p>}
-            <div className="overview-meter-list">
-              {moduleCompletion.map((entry) => (
-                <div key={entry.slug} className="overview-meter-row">
-                  <span className="overview-meter-label">{entry.title}</span>
-                  <div className="overview-meter-track">
-                    <div className="overview-meter-fill" style={{ width: `${entry.average}%` }} />
-                  </div>
-                  <span className="overview-meter-value">{entry.average}%</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="admin-panel">
-            <h2>Recent activity</h2>
-            {recentActivity.length === 0 && <p className="admin-panel-note">No learner activity recorded yet.</p>}
-            <ul className="overview-activity-list">
-              {recentActivity.map((entry) => (
-                <li key={entry.id}>
-                  <span>{describeActivity(entry, moduleTitleBySlug[entry.detail])}</span>
-                  <time>{formatRelativeTime(entry.createdAt)}</time>
-                </li>
-              ))}
-            </ul>
-          </section>
+      {contentLoading ? (
+        <main className={CONTENT_WRAP}>
+          <PanelNote>Loading admin content...</PanelNote>
         </main>
-      )}
-
-      {activePath === routes.adminModules && activeEquipmentId && (
-        <main className="admin-grid">
-          <ModuleListAdmin
-            key={activeEquipmentId}
-            equipmentId={activeEquipmentId}
-            modules={activeEquipmentModules}
-            onModulesChanged={(modules) => setContent((current) => ({
-              ...current,
-              modules: [
-                ...current.modules.filter((module) => !modules.some((entry) => entry.id === module.id)),
-                ...modules,
-              ].filter((module) => module.equipmentId !== activeEquipmentId || modules.some((entry) => entry.id === module.id)),
-            }))}
-            onOpenModule={(module) => onNavigate(adminModuleRoute(module.slug))}
-            onMessage={refreshMessage}
-          />
-        </main>
-      )}
-
-      {editingModuleSlug && (
-        <main className="admin-grid admin-grid-single">
-          {moduleBySlug[editingModuleSlug] ? (
-            <ModuleEditor
-              key={editingModuleSlug}
-              module={moduleBySlug[editingModuleSlug]}
-              equipmentId={editingModuleEquipment.id}
-              modelUrl={editingModuleEquipment.modelUrl}
-              modelScale={editingModuleEquipment.modelScale}
-              modelOffsetY={editingModuleEquipment.modelOffsetY}
-              equipmentModules={editingModuleEquipment.modules}
-              checklists={content.checklists}
-              hotspotCategories={editingModuleEquipment.categories}
-              quizQuestions={content.quizQuestions}
-              onModuleChanged={(module) => setContent((current) => ({
-                ...current,
-                modules: current.modules.map((entry) => (entry.id === module.id ? module : entry)),
-              }))}
-              onChecklistsChanged={(checklists) => setContent((current) => ({ ...current, checklists }))}
-              onQuizQuestionsChanged={(quizQuestions) => setContent((current) => ({ ...current, quizQuestions }))}
-              onMessage={refreshMessage}
-              onBack={() => onNavigate(routes.adminModules)}
-            />
-          ) : (
-            <section className="admin-panel wide-panel">
-              <p className="admin-panel-note">That module no longer exists.</p>
-              <button className="admin-save" onClick={() => onNavigate(routes.adminModules)}>Back to modules</button>
-            </section>
-          )}
-        </main>
-      )}
-
-      {activePath === routes.adminParts && !hasModelForActiveEquipment && (
-        <main className="admin-grid">
-          <section className="admin-panel wide-panel">
-            <h2>Parts Identification</h2>
-            <p className="admin-panel-note">This equipment has no 3D model configured yet, so there is nothing to place part hotspots on.</p>
-          </section>
-        </main>
-      )}
-
-      {activePath === routes.adminParts && hasModelForActiveEquipment && (
-        <main className="admin-grid">
-          <section className="admin-panel wide-panel">
-            <h2>Parts Identification</h2>
-            <p className="admin-panel-note">
-              Click a point on the 3D model to place a part&apos;s marker, or drag an existing marker to move it.
-              Edits are saved as a draft; learners keep the published position and text until you press Publish.
-            </p>
-            <HotspotAdmin
-              key={activeEquipmentId}
-              equipmentId={activeEquipmentId}
-              modelUrl={activeEquipment?.modelUrl}
-              modelScale={activeEquipment?.modelScale}
-              modelOffsetY={activeEquipment?.modelOffsetY}
-              categories={activeEquipmentCategories}
-              surface="parts"
-              onMessage={refreshMessage}
-            />
-          </section>
-
-          <section className="admin-panel admin-editor">
-            <h2>Part Categories</h2>
-            <p className="admin-panel-note">The filter chips above the parts list on the learner page. A category still used by a part cannot be deleted.</p>
-            {activeEquipmentCategories.map((category) => (
-              <div key={category.id} className="admin-row-actions">
-                <input value={category.label} onChange={(event) => handleRenameCategory(category, event.target.value)} />
-                <button onClick={() => handleDeleteCategory(category)}>Delete</button>
+      ) : (
+        <>
+          {activePath === routes.admin && (
+            <main className={CONTENT_WRAP}>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <Stat icon={UsersIcon} value={traineeCount} label="Learners" />
+                <Stat icon={TrendingUp} value={`${averageCompletion}%`} label="Average completion" />
+                <Stat icon={Layers} value={content.modules.length} label="Modules published" />
+                <Stat icon={Activity} value={recentActivityCount} label="Activity, last 7 days" />
               </div>
-            ))}
-            <label>
-              New category
-              <input value={newCategory} onChange={(event) => setNewCategory(event.target.value)} />
-            </label>
-            <button className="admin-save" onClick={handleAddCategory} disabled={!newCategory.trim()}>Add category</button>
-          </section>
 
-          <section className="admin-panel wide-panel">
-            <h2>Parts Quiz</h2>
-            <QuizAdmin
-              key={activeEquipmentId}
-              scope={{ context: 'parts', equipmentId: activeEquipmentId }}
-              questions={content.quizQuestions}
-              onQuestionsChanged={(quizQuestions) => setContent((current) => ({ ...current, quizQuestions }))}
-              onMessage={refreshMessage}
-              note="The quiz step of this equipment's Parts Identification page. Scores feed its parts percentage."
-            />
-          </section>
-
-        </main>
-      )}
-
-      {activePath === routes.adminSettings && (
-        <main className="admin-grid">
-          <section className="admin-panel admin-editor">
-            <h2>Equipment Card</h2>
-            <p className="admin-panel-note">The catalog card on the home screen (image, title, description, availability) plus the 3D model this equipment uses.</p>
-            {editingEquipment ? (
-              <>
-                <label>Title<input value={editingEquipment.title} onChange={(event) => setEditingEquipment({ ...editingEquipment, title: event.target.value })} /></label>
-                <label>Description<textarea value={editingEquipment.description} onChange={(event) => setEditingEquipment({ ...editingEquipment, description: event.target.value })} /></label>
-                <label>
-                  Catalog image URL
-                  <input
-                    value={editingEquipment.imageUrl || ''}
-                    placeholder="/images/backhoe-card.png"
-                    onChange={(event) => setEditingEquipment({ ...editingEquipment, imageUrl: event.target.value })}
-                  />
-                  <small className="admin-field-note">
-                    The picture on this equipment&apos;s catalogue card. Drop the file in
-                    {' '}<code>frontend/public/images/</code> and point at it as <code>/images/your-file.png</code>, or paste
-                    any image URL. Left blank, the card shows a plain panel - there is no default picture.
-                  </small>
-                </label>
-                <div className="equipment-image-preview">
-                  {editingEquipment.imageUrl ? (
-                    <img
-                      src={editingEquipment.imageUrl}
-                      alt=""
-                      onError={(event) => { event.currentTarget.dataset.broken = 'true' }}
-                      onLoad={(event) => { delete event.currentTarget.dataset.broken }}
-                    />
-                  ) : (
-                    <span>No image set</span>
-                  )}
+              <Panel>
+                <PanelHeader>Completion by module</PanelHeader>
+                {moduleCompletion.length === 0 && <PanelNote>No learner progress recorded yet.</PanelNote>}
+                <div className="grid gap-3">
+                  {moduleCompletion.map((entry) => (
+                    <Meter key={entry.slug} label={entry.title} value={entry.average} />
+                  ))}
                 </div>
-                <label>Model URL<input value={editingEquipment.modelUrl || ''} placeholder="/models/backhoe.glb" onChange={(event) => setEditingEquipment({ ...editingEquipment, modelUrl: event.target.value })} /></label>
-                <p className="admin-panel-note">Turns on the Parts Identification hotspot editor and the learner-facing identification page for this equipment.</p>
-                <label>
-                  Model scale
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={editingEquipment.modelScale ?? ''}
-                    placeholder="1"
-                    onChange={(event) => setEditingEquipment({
-                      ...editingEquipment,
-                      modelScale: event.target.value === '' ? null : Number(event.target.value),
-                    })}
-                  />
-                </label>
-                <p className="admin-panel-note">
-                  Multiplier applied to this model everywhere it renders (Parts Identification, Walk-Around markers,
-                  the placement stage below). Forklift.glb is the scale baseline - use &quot;Show scale reference&quot; below
-                  to compare this model against it, an average adult (1.7 m) and a cardboard box, live as you edit the
-                  scale. Leave blank for 1x. Changing this after hotspots are placed moves the model without moving
-                  their markers, so set the scale first, then place or re-check markers.
-                </p>
-                <label>
-                  Model height offset
-                  <input
-                    type="number"
-                    step="0.005"
-                    value={editingEquipment.modelOffsetY ?? ''}
-                    placeholder="0"
-                    onChange={(event) => setEditingEquipment({
-                      ...editingEquipment,
-                      modelOffsetY: event.target.value === '' ? null : Number(event.target.value),
-                    })}
-                  />
-                </label>
-                <p className="admin-panel-note">
-                  Nudges the model up (positive) or down (negative) after the viewer stands it on the floor. Only needed
-                  when the model&apos;s lowest point is not its wheels - backhoe.glb&apos;s buckets hang below its tyres, so
-                  grounding it leaves the tyres in the air. Measured in the same units as the scene, after the scale
-                  above, so set the scale first. Leave blank for none, and nudge in small steps against the preview.
-                </p>
-                {editingEquipment.modelUrl && (
-                  <div className="equipment-scale-preview">
-                    <HotspotViewer
-                      key={editingEquipment.id}
-                      modelUrl={editingEquipment.modelUrl}
-                      modelScale={editingEquipment.modelScale}
-                      modelOffsetY={editingEquipment.modelOffsetY}
-                      isAdmin
+              </Panel>
+
+              <Panel>
+                <PanelHeader>Recent activity</PanelHeader>
+                {recentActivity.length === 0 && <PanelNote>No learner activity recorded yet.</PanelNote>}
+                <ul className="m-0 grid list-none gap-0.5 p-0">
+                  {recentActivity.map((entry) => (
+                    <li key={entry.id} className="flex items-baseline justify-between gap-4 border-t border-slate-200 py-2.5 text-[13.5px] text-body first:border-t-0">
+                      <span>{describeActivity(entry, moduleTitleBySlug[entry.detail])}</span>
+                      <time className="flex-none text-xs font-semibold text-muted">{formatRelativeTime(entry.createdAt)}</time>
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+            </main>
+          )}
+
+          {activePath === routes.adminModules && activeEquipmentId && (
+            <main className={CONTENT_WRAP}>
+              <ModuleListAdmin
+                key={activeEquipmentId}
+                equipmentId={activeEquipmentId}
+                modules={activeEquipmentModules}
+                onModulesChanged={(modules) => setContent((current) => ({
+                  ...current,
+                  modules: [
+                    ...current.modules.filter((module) => !modules.some((entry) => entry.id === module.id)),
+                    ...modules,
+                  ].filter((module) => module.equipmentId !== activeEquipmentId || modules.some((entry) => entry.id === module.id)),
+                }))}
+                onOpenModule={(module) => onNavigate(adminModuleRoute(module.slug))}
+                onMessage={refreshMessage}
+              />
+            </main>
+          )}
+
+          {editingModuleSlug && (
+            <main className={CONTENT_WRAP}>
+              {moduleBySlug[editingModuleSlug] ? (
+                <ModuleEditor
+                  key={editingModuleSlug}
+                  module={moduleBySlug[editingModuleSlug]}
+                  equipmentId={editingModuleEquipment.id}
+                  modelUrl={editingModuleEquipment.modelUrl}
+                  modelScale={editingModuleEquipment.modelScale}
+                  modelOffsetY={editingModuleEquipment.modelOffsetY}
+                  equipmentModules={editingModuleEquipment.modules}
+                  checklists={content.checklists}
+                  hotspotCategories={editingModuleEquipment.categories}
+                  quizQuestions={content.quizQuestions}
+                  onModuleChanged={(module) => setContent((current) => ({
+                    ...current,
+                    modules: current.modules.map((entry) => (entry.id === module.id ? module : entry)),
+                  }))}
+                  onChecklistsChanged={(checklists) => setContent((current) => ({ ...current, checklists }))}
+                  onQuizQuestionsChanged={(quizQuestions) => setContent((current) => ({ ...current, quizQuestions }))}
+                  onMessage={refreshMessage}
+                  onBack={() => onNavigate(routes.adminModules)}
+                />
+              ) : (
+                <Panel wide>
+                  <PanelNote>That module no longer exists.</PanelNote>
+                  <Toolbar>
+                    <Button onClick={() => onNavigate(routes.adminModules)}>Back to modules</Button>
+                  </Toolbar>
+                </Panel>
+              )}
+            </main>
+          )}
+
+          {activePath === routes.adminParts && !hasModelForActiveEquipment && (
+            <main className={`${CONTENT_WRAP} ${TWO_COL}`}>
+              <Panel wide>
+                <PanelHeader>Parts Identification</PanelHeader>
+                <PanelNote>This equipment has no 3D model configured yet, so there is nothing to place part hotspots on.</PanelNote>
+              </Panel>
+            </main>
+          )}
+
+          {activePath === routes.adminParts && hasModelForActiveEquipment && (
+            <main className={`${CONTENT_WRAP} ${TWO_COL}`}>
+              <Panel wide>
+                <PanelHeader>Parts Identification</PanelHeader>
+                <PanelNote>
+                  Click a point on the 3D model to place a part&apos;s marker, or drag an existing marker to move it.
+                  Edits are saved as a draft; learners keep the published position and text until you press Publish.
+                </PanelNote>
+                <HotspotAdmin
+                  key={activeEquipmentId}
+                  equipmentId={activeEquipmentId}
+                  modelUrl={activeEquipment?.modelUrl}
+                  modelScale={activeEquipment?.modelScale}
+                  modelOffsetY={activeEquipment?.modelOffsetY}
+                  categories={activeEquipmentCategories}
+                  surface="parts"
+                  onMessage={refreshMessage}
+                />
+              </Panel>
+
+              <Panel>
+                <PanelHeader>Part Categories</PanelHeader>
+                <PanelNote>The filter chips above the parts list on the learner page. A category still used by a part cannot be deleted.</PanelNote>
+                <div className="mt-3 grid gap-2.5">
+                  {activeEquipmentCategories.map((category) => (
+                    <CategoryRow
+                      key={category.id}
+                      category={category}
+                      onRename={handleRenameCategory}
+                      onDelete={handleDeleteCategory}
                     />
+                  ))}
+                </div>
+                <Field label="New category" className="mt-3.5">
+                  <Input value={newCategory} onChange={(event) => setNewCategory(event.target.value)} />
+                </Field>
+                <Toolbar>
+                  <Button onClick={handleAddCategory} disabled={!newCategory.trim()}>Add category</Button>
+                </Toolbar>
+              </Panel>
+
+              <Panel wide>
+                <PanelHeader>Parts Quiz</PanelHeader>
+                <QuizAdmin
+                  key={activeEquipmentId}
+                  scope={{ context: 'parts', equipmentId: activeEquipmentId }}
+                  questions={content.quizQuestions}
+                  onQuestionsChanged={(quizQuestions) => setContent((current) => ({ ...current, quizQuestions }))}
+                  onMessage={refreshMessage}
+                  note="The quiz step of this equipment's Parts Identification page. Scores feed its parts percentage."
+                />
+              </Panel>
+            </main>
+          )}
+
+          {activePath === routes.adminSettings && (
+            <main className={`${CONTENT_WRAP} ${TWO_COL}`}>
+              <Panel>
+                <PanelHeader>Equipment Card</PanelHeader>
+                <PanelNote>The catalog card on the home screen (image, title, description, availability) plus the 3D model this equipment uses.</PanelNote>
+                {editingEquipment ? (
+                  <div className="mt-3.5 grid gap-3.5">
+                    <Field label="Title">
+                      <Input value={editingEquipment.title} onChange={(event) => setEditingEquipment({ ...editingEquipment, title: event.target.value })} />
+                    </Field>
+                    <Field label="Description">
+                      <Textarea value={editingEquipment.description} onChange={(event) => setEditingEquipment({ ...editingEquipment, description: event.target.value })} />
+                    </Field>
+                    <Field
+                      label="Catalog image URL"
+                      note={<>The picture on this equipment&apos;s catalogue card. Drop the file in <code>frontend/public/images/</code> and point at it as <code>/images/your-file.png</code>, or paste any image URL. Left blank, the card shows a plain panel - there is no default picture.</>}
+                    >
+                      <Input
+                        value={editingEquipment.imageUrl || ''}
+                        placeholder="/images/backhoe-card.png"
+                        onChange={(event) => setEditingEquipment({ ...editingEquipment, imageUrl: event.target.value })}
+                      />
+                    </Field>
+                    <div className="flex h-[150px] items-center justify-center overflow-hidden rounded-lg border border-border bg-ink">
+                      {editingEquipment.imageUrl ? (
+                        <img
+                          className="h-full w-full object-cover data-[broken=true]:object-contain data-[broken=true]:opacity-40"
+                          src={editingEquipment.imageUrl}
+                          alt=""
+                          onError={(event) => { event.currentTarget.dataset.broken = 'true' }}
+                          onLoad={(event) => { delete event.currentTarget.dataset.broken }}
+                        />
+                      ) : (
+                        <span className="text-sm text-slate-400">No image set</span>
+                      )}
+                    </div>
+                    <Field label="Model URL" note="Turns on the Parts Identification hotspot editor and the learner-facing identification page for this equipment.">
+                      <Input value={editingEquipment.modelUrl || ''} placeholder="/models/backhoe.glb" onChange={(event) => setEditingEquipment({ ...editingEquipment, modelUrl: event.target.value })} />
+                    </Field>
+                    <Field
+                      label="Model scale"
+                      note={
+                        <>
+                          Multiplier applied to this model everywhere it renders (Parts Identification, Walk-Around
+                          markers, the placement stage below). Forklift.glb is the scale baseline - use &quot;Show
+                          scale reference&quot; below to compare this model against it, an average adult (1.7 m) and a
+                          cardboard box, live as you edit the scale. Leave blank for 1x. Changing this after hotspots
+                          are placed moves the model without moving their markers, so set the scale first, then place
+                          or re-check markers.
+                        </>
+                      }
+                    >
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editingEquipment.modelScale ?? ''}
+                        placeholder="1"
+                        onChange={(event) => setEditingEquipment({
+                          ...editingEquipment,
+                          modelScale: event.target.value === '' ? null : Number(event.target.value),
+                        })}
+                      />
+                    </Field>
+                    <Field
+                      label="Model height offset"
+                      note={
+                        <>
+                          Nudges the model up (positive) or down (negative) after the viewer stands it on the floor.
+                          Only needed when the model&apos;s lowest point is not its wheels - backhoe.glb&apos;s buckets
+                          hang below its tyres, so grounding it leaves the tyres in the air. Measured in the same units
+                          as the scene, after the scale above, so set the scale first. Leave blank for none, and nudge
+                          in small steps against the preview.
+                        </>
+                      }
+                    >
+                      <Input
+                        type="number"
+                        step="0.005"
+                        value={editingEquipment.modelOffsetY ?? ''}
+                        placeholder="0"
+                        onChange={(event) => setEditingEquipment({
+                          ...editingEquipment,
+                          modelOffsetY: event.target.value === '' ? null : Number(event.target.value),
+                        })}
+                      />
+                    </Field>
+                    {editingEquipment.modelUrl && (
+                      <div className="min-h-[420px] w-full">
+                        <HotspotViewer
+                          key={editingEquipment.id}
+                          modelUrl={editingEquipment.modelUrl}
+                          modelScale={editingEquipment.modelScale}
+                          modelOffsetY={editingEquipment.modelOffsetY}
+                          isAdmin
+                        />
+                      </div>
+                    )}
+                    <Checkbox
+                      label="Available for training"
+                      checked={editingEquipment.available !== false}
+                      onChange={(event) => setEditingEquipment({ ...editingEquipment, available: event.target.checked })}
+                    />
+                    <PanelNote>Unchecked renders the catalog card as a non-interactive &quot;Coming Soon&quot; placeholder.</PanelNote>
+                    <Toolbar>
+                      <Button onClick={handleSaveEquipment}>Save equipment card</Button>
+                      <Button variant="danger" onClick={() => handleDeleteEquipment(editingEquipment)}>Delete equipment</Button>
+                    </Toolbar>
+                    <PanelNote>Deleting is refused while the equipment still has modules, hotspots or quiz questions.</PanelNote>
                   </div>
-                )}
-                <label className="admin-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={editingEquipment.available !== false}
-                    onChange={(event) => setEditingEquipment({ ...editingEquipment, available: event.target.checked })}
-                  />
-                  Available for training
-                </label>
-                <p className="admin-panel-note">Unchecked renders the catalog card as a non-interactive &quot;Coming Soon&quot; placeholder.</p>
-                <div className="admin-row-actions">
-                  <button className="admin-save" onClick={handleSaveEquipment}>Save equipment card</button>
-                  <button onClick={() => handleDeleteEquipment(editingEquipment)}>Delete equipment</button>
-                </div>
-                <p className="admin-panel-note">Deleting is refused while the equipment still has modules, hotspots or quiz questions.</p>
-              </>
-            ) : <p>No equipment card available.</p>}
-          </section>
-          <section className="admin-panel admin-editor">
-            <h2>Hub Content</h2>
-            <HubContentEditor
-              key={activeEquipment?.id || 'none'}
-              equipment={activeEquipment}
-              moduleTitles={activeEquipmentModules.map((module) => module.subtitle || module.title)}
-              hasPartsPage={hasModelForActiveEquipment}
-              onSaved={(equipment) => {
-                setContent((current) => ({
-                  ...current,
-                  equipment: current.equipment.map((item) => (item.id === equipment.id ? equipment : item)),
-                }))
-                setEditingEquipment((current) => (current?.id === equipment.id ? equipment : current))
-              }}
-              onMessage={refreshMessage}
-            />
-          </section>
-          <section className="admin-panel admin-editor wide-panel">
-            <h2>Driving Simulation</h2>
-            <VehicleProfileEditor
-              key={activeEquipment?.id || 'none'}
-              equipment={activeEquipment}
-              onSaved={(equipment) => {
-                setContent((current) => ({
-                  ...current,
-                  equipment: current.equipment.map((item) => (item.id === equipment.id ? equipment : item)),
-                }))
-                setEditingEquipment((current) => (current?.id === equipment.id ? equipment : current))
-              }}
-              onMessage={refreshMessage}
-            />
-          </section>
-        </main>
-      )}
+                ) : <p className="mt-3.5 text-sm text-body">No equipment card available.</p>}
+              </Panel>
+              <Panel>
+                <PanelHeader>Hub Content</PanelHeader>
+                <HubContentEditor
+                  key={activeEquipment?.id || 'none'}
+                  equipment={activeEquipment}
+                  moduleTitles={activeEquipmentModules.map((module) => module.subtitle || module.title)}
+                  hasPartsPage={hasModelForActiveEquipment}
+                  onSaved={(equipment) => {
+                    setContent((current) => ({
+                      ...current,
+                      equipment: current.equipment.map((item) => (item.id === equipment.id ? equipment : item)),
+                    }))
+                    setEditingEquipment((current) => (current?.id === equipment.id ? equipment : current))
+                  }}
+                  onMessage={refreshMessage}
+                />
+              </Panel>
+              <Panel wide>
+                <PanelHeader>Driving Simulation</PanelHeader>
+                <VehicleProfileEditor
+                  key={activeEquipment?.id || 'none'}
+                  equipment={activeEquipment}
+                  onSaved={(equipment) => {
+                    setContent((current) => ({
+                      ...current,
+                      equipment: current.equipment.map((item) => (item.id === equipment.id ? equipment : item)),
+                    }))
+                    setEditingEquipment((current) => (current?.id === equipment.id ? equipment : current))
+                  }}
+                  onMessage={refreshMessage}
+                />
+              </Panel>
+            </main>
+          )}
 
-      {activePath === routes.adminUsers && (
-        <main className="admin-grid">
-          <section className="admin-panel wide-panel">
-            <h2>Users</h2>
-            {content.users.map((learner) => (
-              <article key={learner.id} className={`admin-list-item ${editingUser?.id === learner.id ? 'is-editing' : ''}`}>
-                <h3>{learner.fullName}</h3>
-                <p>{learner.email} - {learner.role}</p>
-                <div className="admin-row-actions">
-                  <button onClick={() => setEditingUser({ ...learner, password: '' })}>Edit</button>
-                  {learner.id !== user.id && (
-                    <button onClick={() => handleDeleteUser(learner.id)}>Delete</button>
-                  )}
+          {activePath === routes.adminUsers && (
+            <main className={`${CONTENT_WRAP} ${TWO_COL}`}>
+              <Panel wide>
+                <PanelHeader>Users</PanelHeader>
+                <div className="grid gap-0.5">
+                  {content.users.map((learner) => (
+                    <article
+                      key={learner.id}
+                      className={`-mx-2.5 rounded-lg px-2.5 py-3 transition first:border-t-0 border-t ${
+                        editingUser?.id === learner.id
+                          ? 'border-t-transparent bg-accent-soft [&+article]:border-t-transparent'
+                          : 'border-t-slate-200'
+                      }`}
+                    >
+                      <h3 className="m-0 mb-1.5 text-sm font-extrabold text-ink">{learner.fullName}</h3>
+                      <p className="text-[13px] text-muted">{learner.email} - {learner.role}</p>
+                      <Toolbar>
+                        <Button size="sm" variant="secondary" onClick={() => setEditingUser({ ...learner, password: '' })}>Edit</Button>
+                        {learner.id !== user.id && (
+                          <Button size="sm" variant="danger" onClick={() => handleDeleteUser(learner.id)}>Delete</Button>
+                        )}
+                      </Toolbar>
+                    </article>
+                  ))}
                 </div>
-              </article>
-            ))}
-          </section>
-          <section className="admin-panel admin-editor">
-            <h2>New user</h2>
-            <label>
-              Full name
-              <input value={newUser.fullName} onChange={(event) => setNewUser({ ...newUser, fullName: event.target.value })} />
-            </label>
-            <label>
-              Email
-              <input value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} />
-            </label>
-            <label>
-              Password
-              <input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} />
-            </label>
-            <label>
-              Role
-              <select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
-                <option value="TRAINEE">Trainee</option>
-                <option value="ADMIN">Admin</option>
-              </select>
-            </label>
-            <button className="admin-save" onClick={handleCreateUser}>Create user</button>
-          </section>
-          <section className="admin-panel admin-editor">
-            <h2>Edit user</h2>
-            {editingUser ? (
-              <>
-                <label>Full name<input value={editingUser.fullName} onChange={(event) => setEditingUser({ ...editingUser, fullName: event.target.value })} /></label>
-                <label>Email<input value={editingUser.email} onChange={(event) => setEditingUser({ ...editingUser, email: event.target.value })} /></label>
-                <label>
-                  New password
-                  <input
-                    type="password"
-                    value={editingUser.password}
-                    placeholder="Leave blank to keep the current password"
-                    onChange={(event) => setEditingUser({ ...editingUser, password: event.target.value })}
-                  />
-                </label>
-                <label>
-                  Role
-                  <select
-                    value={editingUser.role}
-                    disabled={editingUser.id === user.id}
-                    onChange={(event) => setEditingUser({ ...editingUser, role: event.target.value })}
-                  >
-                    <option value="TRAINEE">Trainee</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                </label>
-                {editingUser.id === user.id && <p className="admin-panel-note">You cannot change your own role.</p>}
-                <button className="admin-save" onClick={handleSaveUser}>Save user</button>
-              </>
-            ) : <p>Select a user to edit.</p>}
-          </section>
-        </main>
-      )}
+              </Panel>
+              <Panel>
+                <PanelHeader>New user</PanelHeader>
+                <div className="grid gap-3.5">
+                  <Field label="Full name">
+                    <Input value={newUser.fullName} onChange={(event) => setNewUser({ ...newUser, fullName: event.target.value })} />
+                  </Field>
+                  <Field label="Email">
+                    <Input value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} />
+                  </Field>
+                  <Field label="Password">
+                    <Input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} />
+                  </Field>
+                  <Field label="Role">
+                    <Select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
+                      <option value="TRAINEE">Trainee</option>
+                      <option value="ADMIN">Admin</option>
+                    </Select>
+                  </Field>
+                  <Toolbar>
+                    <Button onClick={handleCreateUser}>Create user</Button>
+                  </Toolbar>
+                </div>
+              </Panel>
+              <Panel>
+                <PanelHeader>Edit user</PanelHeader>
+                {editingUser ? (
+                  <div className="mt-3.5 grid gap-3.5">
+                    <Field label="Full name">
+                      <Input value={editingUser.fullName} onChange={(event) => setEditingUser({ ...editingUser, fullName: event.target.value })} />
+                    </Field>
+                    <Field label="Email">
+                      <Input value={editingUser.email} onChange={(event) => setEditingUser({ ...editingUser, email: event.target.value })} />
+                    </Field>
+                    <Field label="New password">
+                      <Input
+                        type="password"
+                        value={editingUser.password}
+                        placeholder="Leave blank to keep the current password"
+                        onChange={(event) => setEditingUser({ ...editingUser, password: event.target.value })}
+                      />
+                    </Field>
+                    <Field label="Role">
+                      <Select
+                        value={editingUser.role}
+                        disabled={editingUser.id === user.id}
+                        onChange={(event) => setEditingUser({ ...editingUser, role: event.target.value })}
+                      >
+                        <option value="TRAINEE">Trainee</option>
+                        <option value="ADMIN">Admin</option>
+                      </Select>
+                    </Field>
+                    {editingUser.id === user.id && <PanelNote>You cannot change your own role.</PanelNote>}
+                    <Toolbar>
+                      <Button onClick={handleSaveUser}>Save user</Button>
+                    </Toolbar>
+                  </div>
+                ) : <p className="mt-3.5 text-sm text-body">Select a user to edit.</p>}
+              </Panel>
+            </main>
+          )}
 
-      {activePath === routes.adminReports && (
-        <main className="admin-grid">
-          <ReportsPanel
-            equipment={content.equipment}
-            modules={content.modules}
-            users={content.users}
-            progress={content.progress}
-            activityLogs={content.activityLogs}
-          />
-        </main>
+          {activePath === routes.adminReports && (
+            <main className={CONTENT_WRAP}>
+              <ReportsPanel
+                equipment={content.equipment}
+                modules={content.modules}
+                users={content.users}
+                progress={content.progress}
+                activityLogs={content.activityLogs}
+              />
+            </main>
+          )}
+        </>
       )}
     </div>
   )

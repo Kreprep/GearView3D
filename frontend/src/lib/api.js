@@ -6,7 +6,10 @@
 // vite.config.js), so no base URL configuration is needed. Set VITE_API_URL
 // only when the API is hosted somewhere else entirely.
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api'
+// Optional chaining so this file can be imported under plain Node (the test
+// runner has no Vite, so `import.meta.env` itself is undefined there) without
+// changing behavior under Vite, which always defines it.
+const API_BASE = import.meta.env?.VITE_API_URL || '/api'
 
 let authToken = localStorage.getItem('gearview_token')
 
@@ -56,12 +59,6 @@ export async function loginUser(credentials) {
 
 export async function signupUser(credentials) {
   return request('/auth/signup', { method: 'POST', body: credentials })
-}
-
-// Checked before the "Forgot password?" flow opens its email draft, so a
-// mistyped address gets caught instead of silently going nowhere.
-export async function checkEmailExists(email) {
-  return request(`/auth/check-email?email=${encodeURIComponent(email)}`)
 }
 
 export async function getCurrentUser() {
@@ -241,8 +238,9 @@ export async function adminDeleteUser(userId) {
 // Courses carry large geometry blobs, so they are fetched separately from
 // adminListContent() rather than bundled into it.
 
-export async function adminListCourses() {
-  return request('/admin/courses')
+export async function adminListCourses(moduleSlug) {
+  const query = moduleSlug ? `?module=${encodeURIComponent(moduleSlug)}` : ''
+  return request(`/admin/courses${query}`)
 }
 
 export async function adminCreateCourse(payload) {

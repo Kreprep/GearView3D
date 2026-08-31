@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAdminAction } from '../../hooks/useAdminAction'
 import HotspotViewer from '../HotspotViewer'
 import {
   adminCreateHotspot,
@@ -11,7 +12,12 @@ import {
   adminSaveHotspotDraft,
 } from '../../lib/api'
 import { walkAroundDefectOverlays } from '../../data/viewerHotspots'
-import './HotspotAdmin.css'
+import { Button } from '../ui/button'
+import { Panel, PanelHeader, PanelNote } from '../ui/panel'
+import { Field } from '../ui/field'
+import { Input, Textarea, Select, Checkbox } from '../ui/input'
+import { Toolbar } from '../ui/toolbar'
+import { Badge } from '../ui/badge'
 
 // The one editor for every marker on every equipment's model. A hotspot is one
 // physical component, and `inParts` / `inWalkAround` say which surfaces show
@@ -73,7 +79,6 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
   const [draft, setDraft] = useState(null)
   const [dirty, setDirty] = useState(false)
   const [placing, setPlacing] = useState(false)
-  const [busy, setBusy] = useState(false)
   const [newLabel, setNewLabel] = useState('')
   const [showAll, setShowAll] = useState(false)
 
@@ -127,24 +132,13 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
     setHotspots((current) => current.map((entry) => (entry.id === hotspot.id ? hotspot : entry)))
   }
 
-  const run = async (action, message, { resync = false } = {}) => {
-    setBusy(true)
-    try {
-      const result = await action()
-      if (result?.hotspot) {
-        replace(result.hotspot)
-        setDirty(false)
-        if (resync) setDraft(draftOf(result.hotspot))
-      }
-      if (message) onMessage(message)
-      return result
-    } catch (err) {
-      onMessage(err.message)
-      return null
-    } finally {
-      setBusy(false)
+  const { busy, run } = useAdminAction(onMessage, (result, { resync = false } = {}) => {
+    if (result?.hotspot) {
+      replace(result.hotspot)
+      setDirty(false)
+      if (resync) setDraft(draftOf(result.hotspot))
     }
-  }
+  })
 
   const saveDraft = () => run(() => adminSaveHotspotDraft(selectedId, draft), 'Draft saved.')
 
@@ -214,8 +208,8 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
     }
   }
 
-  if (loadState.loading) return <p className="admin-panel-note">Loading hotspots...</p>
-  if (loadState.error) return <p className="admin-panel-note">Hotspots could not be loaded: {loadState.error}</p>
+  if (loadState.loading) return <PanelNote>Loading hotspots...</PanelNote>
+  if (loadState.error) return <PanelNote>Hotspots could not be loaded: {loadState.error}</PanelNote>
 
   // Every placed marker is on the model, not just the selected one: placing a
   // spot is a judgement about where it sits relative to its neighbours. The
@@ -251,88 +245,98 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
   }
 
   return (
-    <div className="hotspot-admin-body">
-      <section className="admin-panel hotspot-list-panel">
-        <h2>Hotspots</h2>
-        <p className="admin-panel-note">
+    <div className="grid items-start gap-4 [grid-template-columns:minmax(240px,300px)_minmax(0,1fr)] max-[1000px]:grid-cols-1">
+      <Panel className="sticky top-3">
+        <PanelHeader>Hotspots</PanelHeader>
+        <PanelNote>
           Every labelled point on this equipment&apos;s model. One hotspot is one component - tick the surfaces it
           appears on rather than adding it twice.
-        </p>
+        </PanelNote>
 
-        <ol className="hotspot-list">
+        <ol className="m-0 mt-2.5 grid list-none gap-1.5 p-0">
           {visible.map((row) => {
             const index = sorted.indexOf(row)
             return (
-              <li key={row.id} className={row.id === selectedId ? 'is-selected' : ''}>
-                <button type="button" className="hotspot-list-name" onClick={() => select(row)}>
-                  <strong>{(row.draft ? { ...row, ...row.draft } : row).label}</strong>
-                  <small>{summaryOf(row)}</small>
+              <li
+                key={row.id}
+                className={`flex items-center gap-1.5 rounded-lg border px-0.5 ${
+                  row.id === selectedId ? 'border-accent bg-accent-soft' : 'border-transparent'
+                }`}
+              >
+                <button type="button" className="grid flex-1 gap-0.5 rounded-lg px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => select(row)}>
+                  <strong className="text-[13.5px] font-bold leading-snug text-ink">{(row.draft ? { ...row, ...row.draft } : row).label}</strong>
+                  <small className="text-xs text-muted">{summaryOf(row)}</small>
                 </button>
-                <span className="hotspot-list-actions">
-                  <button type="button" title="Move up" onClick={() => move(index, -1)} disabled={index === 0}>Up</button>
-                  <button type="button" title="Move down" onClick={() => move(index, 1)} disabled={index === sorted.length - 1}>Down</button>
+                <span className="flex flex-none gap-1">
+                  <Button type="button" size="sm" variant="secondary" title="Move up" onClick={() => move(index, -1)} disabled={index === 0}>Up</Button>
+                  <Button type="button" size="sm" variant="secondary" title="Move down" onClick={() => move(index, 1)} disabled={index === sorted.length - 1}>Down</Button>
                 </span>
               </li>
             )
           })}
         </ol>
 
-        {visible.length === 0 && <p className="admin-panel-note">No hotspots yet.</p>}
+        {visible.length === 0 && <PanelNote className="mt-2">No hotspots yet.</PanelNote>}
 
         {hidden > 0 && (
-          <button type="button" className="admin-btn admin-btn-sm" onClick={() => setShowAll(true)}>
+          <Button type="button" size="sm" variant="secondary" className="mt-2.5" onClick={() => setShowAll(true)}>
             Show {hidden} more not on this page
-          </button>
+          </Button>
         )}
         {showAll && surface && (
-          <button type="button" className="admin-btn admin-btn-sm" onClick={() => setShowAll(false)}>
+          <Button type="button" size="sm" variant="secondary" className="mt-2.5" onClick={() => setShowAll(false)}>
             Show only this page&apos;s hotspots
-          </button>
+          </Button>
         )}
 
-        <div className="hotspot-create">
-          <label>
-            New hotspot label
-            <input value={newLabel} placeholder="Tilt Cylinder" onChange={(event) => setNewLabel(event.target.value)} />
-          </label>
-          <button type="button" className="admin-save" onClick={create} disabled={!newLabel.trim() || busy}>
+        <div className="mt-3 grid gap-2.5 border-t border-slate-200 pt-3">
+          <Field label="New hotspot label">
+            <Input value={newLabel} placeholder="Tilt Cylinder" onChange={(event) => setNewLabel(event.target.value)} />
+          </Field>
+          <Button type="button" onClick={create} disabled={!newLabel.trim() || busy}>
             Add hotspot
-          </button>
+          </Button>
         </div>
-      </section>
+      </Panel>
 
-      <section className="hotspot-editor-panel">
+      <div className="min-w-0">
         {!draft ? (
-          <p className="admin-panel-note">Select a hotspot to reposition or edit it, or add a new one.</p>
+          <PanelNote>Select a hotspot to reposition or edit it, or add a new one.</PanelNote>
         ) : (
-          <div className="hotspot-editor">
-            <header className="hotspot-editor-bar">
+          <div className="grid gap-4">
+            <header className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-panel p-4">
               <div>
-                <h2>{draft.label}</h2>
-                <p className="hotspot-editor-id">
+                <h2 className="m-0 text-[18px] font-extrabold text-ink">{draft.label}</h2>
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-muted">
                   {selectedId}
-                  {stored?.draft && <span className="hotspot-badge draft">Unpublished draft</span>}
-                  {!stored?.published && <span className="hotspot-badge unpublished">Not visible to learners</span>}
-                  {dirty && <span className="hotspot-badge dirty">Unsaved changes</span>}
+                  {stored?.draft && <Badge tone="warning">Unpublished draft</Badge>}
+                  {!stored?.published && <Badge tone="neutral">Not visible to learners</Badge>}
+                  {dirty && <Badge tone="danger">Unsaved changes</Badge>}
                 </p>
               </div>
-              <div className="hotspot-editor-actions">
-                <button type="button" onClick={saveDraft} disabled={busy}>Save draft</button>
-                <button type="button" className="admin-save" onClick={publish} disabled={busy}>Publish</button>
-                {stored?.draft && <button type="button" onClick={revert} disabled={busy}>Discard draft</button>}
-                {stored?.builtIn && <button type="button" onClick={reset} disabled={busy}>Reset to default</button>}
-                <button type="button" className="hotspot-danger" onClick={remove} disabled={busy}>Delete hotspot</button>
-              </div>
+              <Toolbar className="mt-0">
+                <Button type="button" variant="secondary" onClick={saveDraft} disabled={busy}>Save draft</Button>
+                <Button type="button" onClick={publish} disabled={busy}>Publish</Button>
+                {stored?.draft && <Button type="button" variant="secondary" onClick={revert} disabled={busy}>Discard draft</Button>}
+                {stored?.builtIn && <Button type="button" variant="secondary" onClick={reset} disabled={busy}>Reset to default</Button>}
+                <Button type="button" variant="danger" onClick={remove} disabled={busy}>Delete hotspot</Button>
+              </Toolbar>
             </header>
 
-            <div className="hotspot-editor-body">
-              <section className="hotspot-editor-viewer">
+            <div className="grid items-start gap-4 [grid-template-columns:minmax(0,1fr)_minmax(300px,380px)] max-[1100px]:grid-cols-1">
+              <section className="grid min-w-0 gap-2.5">
                 {draft.position ? (
                   <>
-                    <button type="button" className={placing ? 'is-active' : ''} onClick={() => setPlacing((value) => !value)}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={placing ? 'default' : 'secondary'}
+                      className="justify-self-start"
+                      onClick={() => setPlacing((value) => !value)}
+                    >
                       {placing ? 'Cancel placement' : 'Place hotspot'}
-                    </button>
-                    <div className="hotspot-editor-stage">
+                    </Button>
+                    <div className="min-h-[480px] w-full">
                       <HotspotViewer
                         modelUrl={modelUrl}
                         modelScale={modelScale}
@@ -347,179 +351,142 @@ function HotspotAdmin({ equipmentId, modelUrl, modelScale, modelOffsetY, categor
                         onDragHotspot={handleMarkerDrag}
                       />
                     </div>
-                    <p className="admin-panel-note">
+                    <PanelNote>
                       Every placed hotspot is marked on the model. Click a marker to edit it, drag the selected one to
                       move it, or use Place hotspot to click a new spot. Position:{' '}
                       {draft.position.map((value) => Number(value).toFixed(3)).join(', ')}
-                    </p>
+                    </PanelNote>
                   </>
                 ) : (
                   <>
-                    <p className="admin-panel-note">
+                    <PanelNote>
                       This is a detail card with no marker of its own - a check that describes something the model has
                       no separate point for. Give it a position to put it on the model.
-                    </p>
-                    <button type="button" onClick={() => setField({ position: DEFAULT_POSITION })}>
+                    </PanelNote>
+                    <Button type="button" size="sm" variant="secondary" className="justify-self-start" onClick={() => setField({ position: DEFAULT_POSITION })}>
                       Add a marker
-                    </button>
+                    </Button>
                   </>
                 )}
               </section>
 
-              <section className="admin-panel hotspot-editor-fields">
-                <label>
-                  Label
-                  <input value={draft.label} onChange={(event) => setField({ label: event.target.value })} />
-                </label>
+              <Panel className="grid content-start gap-2.5">
+                <Field label="Label">
+                  <Input value={draft.label} onChange={(event) => setField({ label: event.target.value })} />
+                </Field>
 
-                <fieldset className="hotspot-scenario-fieldset">
-                  <legend>Shown on</legend>
-                  <label className="hotspot-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={draft.inParts}
-                      onChange={(event) => setField({ inParts: event.target.checked })}
-                    />
-                    Parts Identification
-                  </label>
-                  <label className="hotspot-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={draft.inWalkAround}
-                      onChange={(event) => setField({ inWalkAround: event.target.checked })}
-                    />
-                    Walk-around inspection
-                  </label>
+                <fieldset className="m-0 grid gap-1.5 rounded-lg border border-border p-2.5">
+                  <legend className="px-1 text-xs font-bold text-body">Shown on</legend>
+                  <Checkbox label="Parts Identification" checked={draft.inParts} onChange={(event) => setField({ inParts: event.target.checked })} />
+                  <Checkbox label="Walk-around inspection" checked={draft.inWalkAround} onChange={(event) => setField({ inWalkAround: event.target.checked })} />
                 </fieldset>
 
-                <h3>Detail card</h3>
-                <p className="admin-panel-note">Shown when this marker is clicked, on every surface it appears on.</p>
-                <label>
-                  Title
-                  <input value={draft.title} placeholder={draft.label} onChange={(event) => setField({ title: event.target.value })} />
-                </label>
-                <label>
-                  Subtitle
-                  <input value={draft.subtitle} onChange={(event) => setField({ subtitle: event.target.value })} />
-                </label>
-                <label>
-                  Reference image URL
-                  <input value={draft.image} placeholder="/images/forks.png" onChange={(event) => setField({ image: event.target.value })} />
-                </label>
-                <label>
-                  Description (Markdown)
-                  <textarea rows={10} value={draft.description} onChange={(event) => setField({ description: event.target.value })} />
-                </label>
-                <p className="admin-panel-note">
+                <h3 className="m-0 mt-1 text-sm font-extrabold text-ink">Detail card</h3>
+                <PanelNote>Shown when this marker is clicked, on every surface it appears on.</PanelNote>
+                <Field label="Title">
+                  <Input value={draft.title} placeholder={draft.label} onChange={(event) => setField({ title: event.target.value })} />
+                </Field>
+                <Field label="Subtitle">
+                  <Input value={draft.subtitle} onChange={(event) => setField({ subtitle: event.target.value })} />
+                </Field>
+                <Field label="Reference image URL">
+                  <Input value={draft.image} placeholder="/images/forks.png" onChange={(event) => setField({ image: event.target.value })} />
+                </Field>
+                <Field label="Description (Markdown)">
+                  <Textarea rows={10} value={draft.description} onChange={(event) => setField({ description: event.target.value })} />
+                </Field>
+                <PanelNote>
                   Supports markdown: **bold**, - bullet points, 1. numbered lists, and inline images via
                   ![alt](/images/example.png).
-                </p>
+                </PanelNote>
 
                 {draft.inParts && (
                   <>
-                    <h3>Parts Identification</h3>
-                    <label>
-                      Category
-                      <input
+                    <h3 className="m-0 mt-1 text-sm font-extrabold text-ink">Parts Identification</h3>
+                    <Field label="Category">
+                      <Input
                         value={draft.category}
                         list="hotspot-category-options"
                         onChange={(event) => setField({ category: event.target.value })}
                       />
-                    </label>
+                    </Field>
                     <datalist id="hotspot-category-options">
                       {categories.map((category) => (
                         <option key={category.id} value={category.label} />
                       ))}
                     </datalist>
-                    <label>
-                      Function
-                      <textarea rows={3} value={draft.functionText} onChange={(event) => setField({ functionText: event.target.value })} />
-                    </label>
-                    <label>
-                      Inspection reminder
-                      <textarea rows={2} value={draft.inspectionReminder} onChange={(event) => setField({ inspectionReminder: event.target.value })} />
-                    </label>
-                    <label>
-                      Safety note
-                      <textarea rows={2} value={draft.safetyNote} onChange={(event) => setField({ safetyNote: event.target.value })} />
-                    </label>
-                    <label>
-                      Related module
-                      <input value={draft.relatedModule} onChange={(event) => setField({ relatedModule: event.target.value })} />
-                    </label>
+                    <Field label="Function">
+                      <Textarea rows={3} value={draft.functionText} onChange={(event) => setField({ functionText: event.target.value })} />
+                    </Field>
+                    <Field label="Inspection reminder">
+                      <Textarea rows={2} value={draft.inspectionReminder} onChange={(event) => setField({ inspectionReminder: event.target.value })} />
+                    </Field>
+                    <Field label="Safety note">
+                      <Textarea rows={2} value={draft.safetyNote} onChange={(event) => setField({ safetyNote: event.target.value })} />
+                    </Field>
+                    <Field label="Related module">
+                      <Input value={draft.relatedModule} onChange={(event) => setField({ relatedModule: event.target.value })} />
+                    </Field>
                   </>
                 )}
 
                 {draft.inWalkAround && (
                   <>
-                    <h3>Walk-around inspection</h3>
-                    <p className="admin-panel-note">
+                    <h3 className="m-0 mt-1 text-sm font-extrabold text-ink">Walk-around inspection</h3>
+                    <PanelNote>
                       This marker&apos;s position, phase visibility and defect-overlay reaction. It does
                       <strong> not</strong> decide which checks a step grades or their pass/fail text - that&apos;s
                       the step&apos;s own Walk-around content panel, matched to this marker by id.
-                    </p>
-                    <label>
-                      Inspection grouping
-                      <input value={draft.inspectCategory} onChange={(event) => setField({ inspectCategory: event.target.value })} />
-                      <small className="admin-field-note">
-                        Separate from the parts category above, because the same component is grouped differently when
-                        it is being inspected.
-                      </small>
-                    </label>
-                    <label>
-                      Engine phase
-                      <select value={draft.state} onChange={(event) => setField({ state: event.target.value })}>
+                    </PanelNote>
+                    <Field
+                      label="Inspection grouping"
+                      note="Separate from the parts category above, because the same component is grouped differently when it is being inspected."
+                    >
+                      <Input value={draft.inspectCategory} onChange={(event) => setField({ inspectCategory: event.target.value })} />
+                    </Field>
+                    <Field
+                      label="Engine phase"
+                      note="Which walk-around phase shows this marker. Every phase is right for equipment that does not model engine states."
+                    >
+                      <Select value={draft.state} onChange={(event) => setField({ state: event.target.value })}>
                         {STATE_OPTIONS.map(([value, text]) => (
                           <option key={value} value={value}>{text}</option>
                         ))}
-                      </select>
-                      <small className="admin-field-note">
-                        Which walk-around phase shows this marker. Every phase is right for equipment that does not
-                        model engine states.
-                      </small>
-                    </label>
-                    <label>
-                      Marker fallback text
-                      <textarea rows={3} value={draft.inspect} onChange={(event) => setField({ inspect: event.target.value })} />
-                      <small className="admin-field-note">
-                        Shown when this marker is clicked outside of an engine-off check - as an engine-on device
-                        test's description, or when the marker has no matching check at all. An engine-off check's
-                        own &quot;What to inspect&quot; text (in the step&apos;s Walk-around content panel) is what
-                        the learner sees for that check.
-                      </small>
-                    </label>
-                    <label>
-                      Safe feedback
-                      <textarea rows={2} value={draft.safeFeedback} onChange={(event) => setField({ safeFeedback: event.target.value })} />
-                    </label>
-                    <label>
-                      Unsafe feedback
-                      <textarea rows={2} value={draft.unsafeFeedback} onChange={(event) => setField({ unsafeFeedback: event.target.value })} />
-                      <small className="admin-field-note">
-                        Safe/unsafe feedback only fire from the defect-recognition step below, when this marker&apos;s
-                        visual state matches one of the checked scenarios.
-                      </small>
-                    </label>
-                    <fieldset className="hotspot-scenario-fieldset">
-                      <legend>Defect scenarios that make this hotspot unsafe</legend>
+                      </Select>
+                    </Field>
+                    <Field
+                      label="Marker fallback text"
+                      note="Shown when this marker is clicked outside of an engine-off check - as an engine-on device test's description, or when the marker has no matching check at all. An engine-off check's own &quot;What to inspect&quot; text (in the step's Walk-around content panel) is what the learner sees for that check."
+                    >
+                      <Textarea rows={3} value={draft.inspect} onChange={(event) => setField({ inspect: event.target.value })} />
+                    </Field>
+                    <Field label="Safe feedback">
+                      <Textarea rows={2} value={draft.safeFeedback} onChange={(event) => setField({ safeFeedback: event.target.value })} />
+                    </Field>
+                    <Field
+                      label="Unsafe feedback"
+                      note="Safe/unsafe feedback only fire from the defect-recognition step below, when this marker's visual state matches one of the checked scenarios."
+                    >
+                      <Textarea rows={2} value={draft.unsafeFeedback} onChange={(event) => setField({ unsafeFeedback: event.target.value })} />
+                    </Field>
+                    <fieldset className="m-0 grid gap-1.5 rounded-lg border border-border p-2.5">
+                      <legend className="px-1 text-xs font-bold text-body">Defect scenarios that make this hotspot unsafe</legend>
                       {walkAroundDefectOverlays.map((overlay) => (
-                        <label key={overlay.id} className="hotspot-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={draft.unsafeScenarios.includes(overlay.scenario)}
-                            onChange={() => toggleScenario(overlay.scenario)}
-                          />
-                          {overlay.label}
-                        </label>
+                        <Checkbox
+                          key={overlay.id}
+                          label={overlay.label}
+                          checked={draft.unsafeScenarios.includes(overlay.scenario)}
+                          onChange={() => toggleScenario(overlay.scenario)}
+                        />
                       ))}
                     </fieldset>
                   </>
                 )}
-              </section>
+              </Panel>
             </div>
           </div>
         )}
-      </section>
+      </div>
     </div>
   )
 }
