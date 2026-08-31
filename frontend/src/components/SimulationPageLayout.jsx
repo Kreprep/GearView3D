@@ -1,4 +1,5 @@
 import { useT } from '../i18n'
+import LanguageToggle from './LanguageToggle'
 import './SimulationPageLayout.css'
 
 // The outer chrome every full-width simulation page shares: sticky header with
@@ -36,6 +37,9 @@ function SimulationPageLayout({
             {subtitle && <h2>{subtitle}</h2>}
           </div>
         )}
+        {/* These pages replace PageLayout, so they never mount AppHeader and
+            had no way to switch language once a learner was inside a module. */}
+        <LanguageToggle className="ml-auto" />
       </header>
 
       <main className="wide-simulation-content">{children}</main>
