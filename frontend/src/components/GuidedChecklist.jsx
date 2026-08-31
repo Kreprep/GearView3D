@@ -44,16 +44,19 @@ function GuidedChecklist({ moduleSlug, title }) {
   )
   const completionPercentage = items.length ? Math.round((completedCount / items.length) * 100) : 0
 
+  // `updateChecklist` writes progress, which dispatches the change event the
+  // module page is subscribed to - a parent setState. React may call a state
+  // updater during a render, so doing that inside one warns ("cannot update a
+  // component while rendering a different component") and runs the write twice
+  // under StrictMode. Build the next map from the rendered state instead and
+  // keep the updater out of it.
   const toggleItem = (itemId) => {
-    setChecked((current) => {
-      const next = {
-        ...current,
-        [itemId]: !current[itemId],
-      }
-      const completedItems = Object.keys(next).filter((key) => next[key])
-      updateChecklist(moduleSlug, completedItems)
-      return next
-    })
+    const next = {
+      ...checked,
+      [itemId]: !checked[itemId],
+    }
+    setChecked(next)
+    updateChecklist(moduleSlug, Object.keys(next).filter((key) => next[key]))
   }
 
   return (
