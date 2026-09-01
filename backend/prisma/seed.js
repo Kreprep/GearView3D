@@ -76,6 +76,11 @@ async function seedEquipment() {
   }
 }
 
+const SUPERSEDED_MODULE_IMAGE_URLS = new Set([
+  '/images/modules/post-operation.png',
+  '/images/modules/pallet-testing.png',
+])
+
 async function seedModules() {
   for (const [index, module] of trainingModules.entries()) {
     const existing = await prisma.module.findUnique({ where: { id: module.id } })
@@ -104,6 +109,22 @@ async function seedModules() {
       await prisma.module.update({
         where: { id: module.id },
         data: { fullTitle: module.fullTitle || module.title },
+      })
+    }
+
+    // Cache-busting an image every visitor already cached wrongly. Modules 3
+    // and 4 named artwork that was not in the repo until 2026-09-01, and until
+    // then nginx answered those URLs with the SPA shell as a 200 text/html
+    // (see the =404 rule in frontend/nginx.conf, which stops it recurring).
+    // Browsers cached that HTML under the image URL, so shipping the real PNG
+    // does not reach anyone who visited first - no server-side change evicts
+    // a cached entry, only a URL they have never requested. The stock URLs now
+    // carry ?v=2, and a row still holding the exact superseded value is moved
+    // to it; a row an admin has since edited does not match, so it is untouched.
+    if (SUPERSEDED_MODULE_IMAGE_URLS.has(existing.imageUrl) && module.imageUrl) {
+      await prisma.module.update({
+        where: { id: module.id },
+        data: { imageUrl: module.imageUrl },
       })
     }
   }
