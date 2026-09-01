@@ -97,15 +97,14 @@ async function seedModules() {
       continue
     }
 
-    // fullTitle and imageUrl are newer than the rows themselves, so a row that
-    // predates either gets the default filled in. Anything an admin has typed
-    // is left alone, because only an empty value is replaced.
-    const backfill = {}
-    if (!existing.fullTitle) backfill.fullTitle = module.fullTitle || module.title
-    if (!existing.imageUrl && module.imageUrl) backfill.imageUrl = module.imageUrl
-
-    if (Object.keys(backfill).length) {
-      await prisma.module.update({ where: { id: module.id }, data: backfill })
+    // fullTitle is newer than the rows themselves, so a row that predates it
+    // gets the default filled in. Anything an admin has typed is left alone,
+    // because only an empty value is replaced.
+    if (!existing.fullTitle) {
+      await prisma.module.update({
+        where: { id: module.id },
+        data: { fullTitle: module.fullTitle || module.title },
+      })
     }
   }
 }
