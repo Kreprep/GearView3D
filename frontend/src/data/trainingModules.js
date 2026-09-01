@@ -144,7 +144,7 @@ export const equipmentUsageModules = [
     title: 'Post-Operation and Secure Parking',
     fullTitle: 'Post-Operation and Secure Parking',
     subtitle: 'Secure Parking',
-    imageUrl: '/images/modules/post-operation.png',
+    imageUrl: '/images/modules/post-operation.png?v=2',
     description:
       'Park the forklift inside a painted bay on a cone-lined route, then secure it: fork lowering, neutral controls, brake engagement, power off, and reporting. Hitting a cone fails the parking attempt.',
     syllabusLocation: 'Section 2',
@@ -196,7 +196,7 @@ export const equipmentUsageModules = [
     title: 'Pallet Handling Assessment',
     fullTitle: 'Pallet Handling Assessment (Load Safety)',
     subtitle: 'Load Safety',
-    imageUrl: '/images/modules/pallet-testing.png',
+    imageUrl: '/images/modules/pallet-testing.png?v=2',
     description:
       'Apply load-handling judgment under fail conditions: respect rated capacity, avoid traffic cones, and brake smoothly so the load stays on the forks. Overloading, collisions, and sudden stops fail the attempt.',
     syllabusLocation: 'Section 2',
