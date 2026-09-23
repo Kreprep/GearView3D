@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAdminAction } from '../../hooks/useAdminAction'
+import { useLanguage } from '../../i18n'
+import { resolveVehicleProfile } from '../../lib/vehicleProfile'
 import DrivingSimulationViewer from '../DrivingSimulationViewer'
 import {
   adminDeleteCourse,
@@ -78,7 +80,11 @@ function draftOf(course) {
   }
 }
 
-function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourseDeleted, onMessage }) {
+// `equipment` is the module's own equipment row: the 3D preview drives its
+// vehicle, as the learner will. Without it every course previewed as a forklift.
+function CourseEditor({ course, equipment = null, equipmentModules = [], onCourseChanged, onCourseDeleted, onMessage }) {
+  const language = useLanguage()
+  const vehicleProfile = useMemo(() => resolveVehicleProfile(equipment, language), [equipment, language])
   const [draft, setDraft] = useState(() => draftOf(course))
   const [selectedKeys, setSelectedKeys] = useState([])
   const [tool, setTool] = useState(null)
@@ -593,7 +599,7 @@ function CourseEditor({ course, equipmentModules = [], onCourseChanged, onCourse
               <>
                 <Button type="button" size="sm" variant="secondary" onClick={() => setPreviewSeed((seed) => seed + 1)}>Reload preview</Button>
                 <div className="min-h-[420px] w-full">
-                  <DrivingSimulationViewer course={previewCourse} isAdmin />
+                  <DrivingSimulationViewer profile={vehicleProfile} course={previewCourse} isAdmin />
                 </div>
                 <PanelNote>
                   The preview uses the unsaved draft. Reload it after moving objects to drive the new layout.

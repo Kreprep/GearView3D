@@ -53,6 +53,9 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
   }
 
   const overrideCount = Object.keys(draft).length
+  // Only forklift.glb has a coded footprint; any other model's is measured off
+  // its own outline when the scene loads (see resolveVehicleProfile).
+  const footprintPlaceholder = (value) => (value === undefined ? 'Measured from the model' : String(value))
 
   return (
     <>
@@ -95,7 +98,7 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
               type="number"
               step="0.01"
               value={draft.footprint?.halfWidth ?? ''}
-              placeholder={String(resolved.footprint.halfWidth)}
+              placeholder={footprintPlaceholder(resolved.footprint.halfWidth)}
               onChange={(event) => setFootprint({ halfWidth: event.target.value === '' ? undefined : Number(event.target.value) })}
             />
           </Field>
@@ -104,12 +107,14 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
               type="number"
               step="0.01"
               value={draft.footprint?.halfLength ?? ''}
-              placeholder={String(resolved.footprint.halfLength)}
+              placeholder={footprintPlaceholder(resolved.footprint.halfLength)}
               onChange={(event) => setFootprint({ halfLength: event.target.value === '' ? undefined : Number(event.target.value) })}
             />
           </Field>
           <PanelNote className="col-span-full">
-            Used for cone and wall collision. Too small and the vehicle clips through; too large and it fails on
+            Used for cone and wall collision. Blank measures the model&apos;s whole outline at its model scale, except
+            forklift.glb, whose default is its body without the forks. A vehicle with forks needs the body only, or
+            the tines cannot slide under a pallet. Too small and the vehicle clips through; too large and it fails on
             clearances a real one would make.
           </PanelNote>
         </fieldset>
