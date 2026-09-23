@@ -1,7 +1,7 @@
-import { Box3 } from 'three'
-import { DEFAULT_VEHICLE_MODEL_URL } from '../../data/vehicleProfile'
-import { PALLET_FALLBACK_FOOTPRINT } from '../../data/palletProfile'
-import { RACK_MODEL_SCALE, RACK_MODEL_URL } from '../../data/rackProfile'
+import { Box3, Matrix4 } from 'three'
+import { DEFAULT_FOOTPRINT, DEFAULT_VEHICLE_MODEL_URL } from '../../data/vehicleProfile.js'
+import { PALLET_FALLBACK_FOOTPRINT } from '../../data/palletProfile.js'
+import { RACK_MODEL_SCALE, RACK_MODEL_URL } from '../../data/rackProfile.js'
 
 export const DEFAULT_MODEL_URL = DEFAULT_VEHICLE_MODEL_URL
 
@@ -64,4 +64,59 @@ export function modelFootprint(url, scene) {
     : { ...PALLET_FALLBACK_FOOTPRINT }
   footprintCache.set(url, footprint)
   return footprint
+}
+
+const toRoot = new Matrix4()
+const meshToRoot = new Matrix4()
+const meshBox = new Box3()
+
+// A model's bounds in its own space, as authored. Taken mesh by mesh relative
+// to the root rather than with Box3.setFromObject, because once the model is in
+// the scene its world matrix carries the vehicle's position and heading - and
+// an axis-aligned box around a turned vehicle is wider than the vehicle.
+function authoredBounds(model) {
+  model.updateWorldMatrix(true, true)
+  toRoot.copy(model.matrixWorld).invert().premultiply(model.matrix)
+
+  const box = new Box3()
+  model.traverse((object) => {
+    if (!object.isMesh) return
+    // A skinned mesh's own box is taken through its skinning, as it renders;
+    // its geometry's box is the unskinned rest data.
+    if (object.isSkinnedMesh) {
+      object.computeBoundingBox()
+      meshBox.copy(object.boundingBox)
+    } else {
+      if (!object.geometry.boundingBox) object.geometry.computeBoundingBox()
+      meshBox.copy(object.geometry.boundingBox)
+    }
+    box.union(meshBox.applyMatrix4(meshToRoot.multiplyMatrices(toRoot, object.matrixWorld)))
+  })
+  return box
+}
+
+// Where the driving scene stands a vehicle model, and the body half-extents it
+// measures off it. `placement` comes from the vehicle profile (lib/
+// vehicleProfile.js): null for forklift.glb, which is drawn as authored and
+// keeps its coded footprint, since its box also takes in the forks.
+export function fitVehicleModel(model, placement) {
+  if (!placement) return { scale: 1, position: [0, 0, 0] }
+
+  const { scale, offsetY } = placement
+  const box = authoredBounds(model)
+  if (box.isEmpty()) return { scale, position: [0, offsetY, 0], ...DEFAULT_FOOTPRINT }
+
+  return {
+    scale,
+    // Centred on the vehicle's origin - the point it steers about and its
+    // collision rectangle is centred on - and stood on the floor, the same fit
+    // drei's <Center top> gives it in the hotspot viewer.
+    position: [
+      -((box.min.x + box.max.x) / 2) * scale,
+      -box.min.y * scale + offsetY,
+      -((box.min.z + box.max.z) / 2) * scale,
+    ],
+    halfWidth: ((box.max.x - box.min.x) / 2) * scale,
+    halfLength: ((box.max.z - box.min.z) / 2) * scale,
+  }
 }

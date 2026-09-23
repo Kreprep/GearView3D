@@ -28,6 +28,7 @@ const KIND_LABELS = {
 // renders them rather than in tabs of their own.
 function ModuleEditor({
   module,
+  equipment,
   equipmentId,
   modelUrl,
   modelScale,
@@ -133,6 +134,7 @@ function ModuleEditor({
       <CourseEditor
         key={selected.id}
         course={selected}
+        equipment={equipment}
         equipmentModules={equipmentModules}
         onCourseChanged={(course) => setCourses((current) => current.map((entry) => (entry.id === course.id ? course : entry)))}
         onCourseDeleted={(courseId) => { setCourses((current) => current.filter((entry) => entry.id !== courseId)); setSelectedId(null) }}

@@ -16,6 +16,24 @@ function mergeMessages(defaults, overrides) {
   return merged
 }
 
+// How the driving scene stands a model up. forklift.glb is drawn as authored,
+// because every coded default in data/vehicleProfile.js - footprint, mast foot,
+// seat - is measured against it at its own origin and scale; null says so. Any
+// other model is placed the way the hotspot viewer places it: centred and stood
+// on the floor by its bounding box (lib/driving/models.js fitVehicleModel),
+// then scaled and nudged by Equipment.modelScale / modelOffsetY. Those are set
+// against the equipment's own model in Equipment Settings, so they only apply
+// when that is the model being drawn.
+function modelPlacement(url, equipment) {
+  if (url === DEFAULT_VEHICLE_MODEL_URL) return null
+  const ownModel = Boolean(equipment?.modelUrl) && url === equipment.modelUrl
+  const scale = Number(equipment?.modelScale)
+  return {
+    scale: ownModel && scale > 0 ? scale : 1,
+    offsetY: ownModel ? Number(equipment.modelOffsetY) || 0 : 0,
+  }
+}
+
 export function resolveVehicleProfile(equipment, lang = DEFAULT_LANGUAGE) {
   const defaults = defaultVehicleProfile(lang)
   const overrides = equipment?.simConfig || {}
@@ -42,7 +60,14 @@ export function resolveVehicleProfile(equipment, lang = DEFAULT_LANGUAGE) {
   // still gets a drivable course rather than an empty scene.
   profile.modelUrl = overrides.modelUrl || equipment?.modelUrl || DEFAULT_VEHICLE_MODEL_URL
   profile.parkedModelUrl = overrides.parkedModelUrl || profile.modelUrl
+  profile.placement = modelPlacement(profile.modelUrl, equipment)
+  profile.parkedPlacement = modelPlacement(profile.parkedModelUrl, equipment)
   profile.hasForks = overrides.hasForks !== undefined ? Boolean(overrides.hasForks) : defaults.hasForks
+
+  // The coded footprint is forklift.glb's body, so it means nothing for another
+  // model. That one is measured off its own outline in the scene instead, and
+  // only the half-extents an admin set are kept here to override the measure.
+  if (profile.placement) profile.footprint = { ...(overrides.footprint || {}) }
 
   // Fork controls are hidden entirely on a vehicle without them.
   profile.keyLegend = profile.keyLegend.filter((entry) => profile.hasForks || !entry.forks)

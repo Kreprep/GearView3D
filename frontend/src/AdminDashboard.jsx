@@ -200,6 +200,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
 
     return {
       id: equipmentId,
+      record: equipment || null,
       modelUrl: equipment?.modelUrl,
       modelScale: equipment?.modelScale,
       modelOffsetY: equipment?.modelOffsetY,
@@ -535,6 +536,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 <ModuleEditor
                   key={editingModuleSlug}
                   module={moduleBySlug[editingModuleSlug]}
+                  equipment={editingModuleEquipment.record}
                   equipmentId={editingModuleEquipment.id}
                   modelUrl={editingModuleEquipment.modelUrl}
                   modelScale={editingModuleEquipment.modelScale}
@@ -671,11 +673,12 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                       note={
                         <>
                           Multiplier applied to this model everywhere it renders (Parts Identification, Walk-Around
-                          markers, the placement stage below). Forklift.glb is the scale baseline - use &quot;Show
-                          scale reference&quot; below to compare this model against it, an average adult (1.7 m) and a
-                          cardboard box, live as you edit the scale. Leave blank for 1x. Changing this after hotspots
-                          are placed moves the model without moving their markers, so set the scale first, then place
-                          or re-check markers.
+                          markers, Driving Course steps, the placement stage below). Forklift.glb is the scale
+                          baseline - use &quot;Show scale reference&quot; below to compare this model against it, an
+                          average adult (1.7 m) and a cardboard box, live as you edit the scale. Leave blank for 1x.
+                          Changing this after hotspots are placed moves the model without moving their markers, so set
+                          the scale first, then place or re-check markers. Forklift.glb itself always drives at 1x,
+                          because its driving defaults are measured at that size.
                         </>
                       }
                     >

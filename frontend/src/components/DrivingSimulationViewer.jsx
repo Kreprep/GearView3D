@@ -17,6 +17,7 @@ import {
   CARGO_BOX_STACK_MODEL_URL,
   CONE_MODEL_URL,
   DEFAULT_MODEL_URL,
+  fitVehicleModel,
   PALLET_MODEL_HEAVY_URL,
   PALLET_MODEL_LIGHT_URL,
   PALLET_MODEL_MEDIUM_URL,
@@ -43,8 +44,8 @@ import { ParkingBayMarker } from './driving/ParkingBayMarker'
 import { DrivingLoadingPanel } from './driving/DrivingLoadingPanel'
 import './DrivingSimulationViewer.css'
 
-// The forklift's own numbers, used whenever no profile is passed (the admin
-// preview, mostly). resolveVehicleProfile() fills these in per equipment.
+// The forklift's own numbers, used whenever no profile is passed.
+// resolveVehicleProfile() fills these in per equipment.
 const DEFAULT_PROFILE = resolveVehicleProfile(null)
 
 function DrivingScene({
@@ -71,8 +72,11 @@ function DrivingScene({
 }) {
   const { scene } = useGLTF(profile.modelUrl)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
-  const halfWidth = profile.footprint.halfWidth
-  const halfLength = profile.footprint.halfLength
+  // Scale and floor offset for the model, plus the outline it measures for a
+  // profile with no coded footprint - anything but forklift.glb.
+  const fit = useMemo(() => fitVehicleModel(forklift, profile.placement), [forklift, profile.placement])
+  const halfWidth = profile.footprint.halfWidth ?? fit.halfWidth
+  const halfLength = profile.footprint.halfLength ?? fit.halfLength
   const { camera, gl } = useThree()
   const checkpoints = course.checkpoints || []
   const { halfWidth: groundHalfWidth, minZ: courseMinZ, maxZ: courseMaxZ } = useMemo(
@@ -392,7 +396,11 @@ function DrivingScene({
       ))}
 
       {course.decorations && (
-        <CourseDecorations decorations={course.decorations} parkedModelUrl={profile.parkedModelUrl} />
+        <CourseDecorations
+          decorations={course.decorations}
+          parkedModelUrl={profile.parkedModelUrl}
+          parkedPlacement={profile.parkedPlacement}
+        />
       )}
       {liveCones.length > 0 && <ObstacleCones obstacles={liveCones} coneRefs={coneRefs} />}
       {racks.length > 0 && <CourseRacks racks={racks} />}
@@ -430,7 +438,9 @@ function DrivingScene({
       <group ref={forkliftGroupRef}>
         <group ref={tipPivotRef} position={[0, TIP_PIVOT_Y, TIP_PIVOT_Z]}>
           <group position={[0, -TIP_PIVOT_Y, -TIP_PIVOT_Z]}>
-            <primitive object={forklift} />
+            <group position={fit.position} scale={fit.scale}>
+              <primitive object={forklift} />
+            </group>
           </group>
         </group>
       </group>
