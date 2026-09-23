@@ -25,6 +25,7 @@ export default {
   'login.error.passwordMismatch': 'Hindi magkatugma ang dalawang password.',
   'login.error.signInFailed': 'Hindi nakapag-sign in.',
   'login.error.signUpFailed': 'Hindi nagawa ang account.',
+  'login.notice.sessionExpired': 'Nag-expire na ang iyong session. Mag-sign in ulit para magpatuloy.',
   'login.reset.subject': 'Kahilingan sa pag-reset ng GearView3D password',
   'login.reset.body':
     'Magandang araw,\n\nPaki-reset po ang password ng aking GearView3D account.\n\nMaraming salamat.',

@@ -28,7 +28,7 @@ function buildResetMailto(email, t) {
 // its job before a trainee has read anything - which is why it sits in the
 // plate band here rather than only in AppHeader, which this page has neither
 // room nor a session for.
-function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
+function LoginPage({ onLogin, onSignup, loginError, setLoginError, sessionExpired = false }) {
   const t = useT()
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [email, setEmail] = useState('')
@@ -144,7 +144,11 @@ function LoginPage({ onLogin, onSignup, loginError, setLoginError }) {
           </div>
 
           <form className="grid gap-4" onSubmit={handleSubmit}>
-            {message && <PageState tone="error" span={false}>{message}</PageState>}
+            {/* The expiry notice shares the region and yields to an error, so
+                a failed retry never stacks two boxes. */}
+            {message
+              ? <PageState tone="error" span={false}>{message}</PageState>
+              : sessionExpired && <PageState span={false}>{t('login.notice.sessionExpired')}</PageState>}
 
             <label className={fieldLabel} htmlFor="email">
               {t('login.field.email')}

@@ -8,7 +8,7 @@ import ModuleListPage from './ModuleListPage'
 import GenericAssessmentPage from './GenericAssessmentPage'
 import AdminDashboard from './AdminDashboard'
 import NotFoundPage from './NotFoundPage'
-import { getCurrentUser, loginUser, signupUser, setAuthToken } from './lib/api'
+import { getCurrentUser, loginUser, signupUser, setAuthToken, subscribeToSessionExpiry } from './lib/api'
 import {
   hydrateChecklistCounts,
   hydrateProgressFromServer,
@@ -19,6 +19,16 @@ import { useMediaQuery } from './hooks/useMediaQuery'
 import DesktopOnlyNotice, { DESKTOP_MEDIA_QUERY } from './components/DesktopOnlyNotice'
 import './App.css'
 
+// What signing out clears outside React state, whether the learner chose to or
+// the server refused their token. The server copy of their progress is
+// untouched and comes back on the next sign-in.
+function clearStoredSession() {
+  localStorage.removeItem('gearview_token')
+  localStorage.removeItem('gearview_user')
+  setAuthToken(null)
+  resetStoredProgress()
+}
+
 function App() {
   const [path, setPath] = useState(() => normalizePath(window.location.pathname))
   const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(localStorage.getItem('gearview_token')))
@@ -27,12 +37,26 @@ function App() {
     return saved ? JSON.parse(saved) : null
   })
   const [loginError, setLoginError] = useState('')
+  // Set when the server ended the session rather than the learner, so the
+  // sign-in page can say why they are looking at it.
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   useEffect(() => {
     const syncPath = () => setPath(normalizePath(window.location.pathname))
     window.addEventListener('popstate', syncPath)
     return () => window.removeEventListener('popstate', syncPath)
   }, [])
+
+  // Any request the server refuses with 401 lands here, from whichever page
+  // made it. The checklist-counts fetch below runs on every load, so a dead
+  // token is caught whatever page opens first.
+  useEffect(() => subscribeToSessionExpiry(() => {
+    clearStoredSession()
+    setUser(null)
+    setIsLoggedIn(false)
+    setSessionExpired(true)
+    goTo(routes.login, { replace: true })
+  }), [])
 
   // The denominators progress percentages divide by are content, not user data,
   // so they are refreshed on every load rather than only on login - the
@@ -92,6 +116,7 @@ function App() {
     setAuthToken(auth.token)
     setUser(auth.user)
     setIsLoggedIn(true)
+    setSessionExpired(false)
     hydrateProgressFromServer().catch(() => {})
     navigate(routes.catalog, { replace: true })
   }
@@ -107,12 +132,10 @@ function App() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('gearview_token')
-    localStorage.removeItem('gearview_user')
-    setAuthToken(null)
-    resetStoredProgress()
+    clearStoredSession()
     setIsLoggedIn(false)
     setUser(null)
+    setSessionExpired(false)
     navigate(routes.login, { replace: true })
   }
 
@@ -123,6 +146,7 @@ function App() {
         onSignup={handleSignup}
         loginError={loginError}
         setLoginError={setLoginError}
+        sessionExpired={sessionExpired}
       />
     )
   }
