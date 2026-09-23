@@ -32,17 +32,30 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Missing authentication token' })
   }
 
+  // Read before the try, so a missing JWT_SECRET is a 500 rather than every
+  // token reading as invalid.
+  const secret = jwtSecret()
+
+  let payload
   try {
-    const payload = jwt.verify(token, jwtSecret())
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } })
-    if (!user) {
-      return res.status(401).json({ error: 'Account no longer exists' })
-    }
-    req.user = user
-    next()
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired token' })
+    payload = jwt.verify(token, secret)
+  } catch (error) {
+    // Told apart because the causes differ: an expired token is TOKEN_LIFETIME
+    // running out, while one refused before then was signed with a JWT_SECRET
+    // the server no longer has.
+    const message = error.name === 'TokenExpiredError' ? 'Session expired' : 'Invalid token'
+    return res.status(401).json({ error: message })
   }
+
+  // Outside the try on purpose. The client signs the learner out on any 401
+  // (lib/api.js), so a database hiccup here must surface as a 500 rather than
+  // be reported as a bad token.
+  const user = await prisma.user.findUnique({ where: { id: payload.sub } })
+  if (!user) {
+    return res.status(401).json({ error: 'Account no longer exists' })
+  }
+  req.user = user
+  next()
 }
 
 export function requireAdmin(req, res, next) {

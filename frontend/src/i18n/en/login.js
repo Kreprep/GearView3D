@@ -25,6 +25,7 @@ export default {
   'login.error.passwordMismatch': 'The two passwords do not match.',
   'login.error.signInFailed': 'Could not sign in.',
   'login.error.signUpFailed': 'Could not create the account.',
+  'login.notice.sessionExpired': 'Your session has expired. Sign in again to continue.',
   // The reset mailto draft is learner-visible text, so it is translated too.
   // The RESET_RECIPIENTS addresses are not - they are not copy.
   'login.reset.subject': 'GearView3D password reset request',

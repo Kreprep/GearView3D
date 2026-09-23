@@ -17,13 +17,28 @@ export function setAuthToken(token) {
   authToken = token || null
 }
 
+// Fired when the server refuses the token this client is signed in with - it
+// expired, JWT_SECRET changed, or the account was deleted. App.jsx signs the
+// learner out on it. Without it nothing noticed: a cached user skips the
+// session check on load, so the app stayed on its signed-in pages with every
+// request failing "Invalid or expired token".
+const SESSION_EXPIRED_EVENT = 'gearview-session-expired'
+
+export function subscribeToSessionExpiry(listener) {
+  window.addEventListener(SESSION_EXPIRED_EVENT, listener)
+  return () => window.removeEventListener(SESSION_EXPIRED_EVENT, listener)
+}
+
 async function request(path, { method = 'GET', body } = {}) {
+  // Kept so the 401 check below judges the token this request carried, not
+  // whatever the client holds by the time the response lands.
+  const sentToken = authToken
   const headers = {}
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json'
   }
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`
+  if (sentToken) {
+    headers.Authorization = `Bearer ${sentToken}`
   }
 
   let response
@@ -45,6 +60,14 @@ async function request(path, { method = 'GET', body } = {}) {
   }
 
   if (!response.ok) {
+    // Only a refusal of the token still in use ends the session: the login
+    // form's 401 carries no token, and one landing after the learner has signed
+    // back in is about the token they replaced. Dropping it here also means the
+    // other requests in flight report it once, not once each.
+    if (response.status === 401 && sentToken && sentToken === authToken) {
+      authToken = null
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
+    }
     throw new Error(data?.error || `Request failed (${response.status})`)
   }
 
