@@ -5,11 +5,8 @@
 // builds it has no React and no catalog.
 export default {
   'driving.task.parking': 'Drive to the marked bay, straighten up between the lines, stop completely, lower the forks with F, then switch the engine off with E.',
-  'driving.task.parkingNoForks': 'Drive to the marked bay, straighten up between the lines, stop completely, then switch the engine off with E.',
   'driving.task.pallet': 'Line up square with the pallet and drive the lowered forks all the way in, raise it with R, tilt the mast back with T to secure it, carry it to the drop zone, lower with F until it rests on the ground, tilt forward with G to let it off the forks, then reverse away.',
-  'driving.task.palletNoForks': 'Line up with the load, lift it with R, carry it to the drop zone, lower it with F until it rests on the ground, then reverse away to release it.',
   'driving.task.racking': 'Drive the lowered forks all the way into the pallet, raise it with R above the target shelf, tilt back with T to carry it there, stop square in front of the bay, lower with F until the load rests on the shelf, then tilt forward with G to set it down.',
-  'driving.task.rackingNoForks': 'Lift the load with R to the target shelf height, then drive it into the rack and hold steady to set it in place.',
   // The only plural in the driving copy. Filipino does not inflect after a
   // numeral, so both variants exist there with the same text.
   'driving.task.checkpoints.one': 'Drive through {count} checkpoint in order to finish this step.',

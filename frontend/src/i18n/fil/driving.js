@@ -1,10 +1,7 @@
 export default {
   'driving.task.parking': 'Magmaneho papunta sa markadong bay, ituwid sa gitna ng mga linya, huminto nang tuluyan, ibaba ang forks gamit ang F, tapos patayin ang makina gamit ang E.',
-  'driving.task.parkingNoForks': 'Magmaneho papunta sa markadong bay, ituwid sa gitna ng mga linya, huminto nang tuluyan, tapos patayin ang makina gamit ang E.',
   'driving.task.pallet': 'Iharap nang tuwid sa pallet at ipasok nang buo ang nakababang forks, itaas gamit ang R, ihilig ang mast paatras gamit ang T para masiguro, dalhin sa drop zone, ibaba gamit ang F hanggang dumapo sa lupa, ihilig paharap gamit ang G para bitawan, tapos umatras.',
-  'driving.task.palletNoForks': 'Iharap sa karga, buhatin gamit ang R, dalhin sa drop zone, ibaba gamit ang F hanggang dumapo sa lupa, tapos umatras para bitawan.',
   'driving.task.racking': 'Ipasok nang buo ang nakababang forks sa pallet, itaas gamit ang R sa itaas ng target na shelf, ihilig paatras gamit ang T para dalhin, huminto nang tuwid sa harap ng bay, ibaba gamit ang F hanggang dumapo ang karga sa shelf, tapos ihilig paharap gamit ang G para ibaba ito.',
-  'driving.task.rackingNoForks': 'Itaas ang karga gamit ang R sa taas ng target na shelf, tapos ipasok ito sa rack at panatilihing steady para mailagay.',
   'driving.task.checkpoints.one': 'Dumaan sa {count} checkpoint ayon sa pagkakasunod-sunod para matapos ang hakbang na ito.',
   'driving.task.checkpoints.other': 'Dumaan sa {count} checkpoint ayon sa pagkakasunod-sunod para matapos ang hakbang na ito.',
   'driving.task.free': 'Pindutin ang E para paandarin ang makina at matapos ang hakbang na ito.',

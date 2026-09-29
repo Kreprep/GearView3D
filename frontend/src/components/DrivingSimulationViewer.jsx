@@ -12,12 +12,11 @@ import { resolveCourseBounds } from '../lib/courseGoals'
 import { resolveVehicleProfile } from '../lib/vehicleProfile'
 import { TILT_RELEASE_ANGLE } from '../data/palletProfile'
 import { DECOR_RACK_KINDS, RACK_FOOTPRINT, RACK_MODEL_URL } from '../data/rackProfile'
+import { EQUIPMENT_MODEL_URL } from '../data/equipment'
 import {
   CARGO_BOX_MODEL_URL,
   CARGO_BOX_STACK_MODEL_URL,
   CONE_MODEL_URL,
-  DEFAULT_MODEL_URL,
-  fitVehicleModel,
   PALLET_MODEL_HEAVY_URL,
   PALLET_MODEL_LIGHT_URL,
   PALLET_MODEL_MEDIUM_URL,
@@ -44,8 +43,8 @@ import { ParkingBayMarker } from './driving/ParkingBayMarker'
 import { DrivingLoadingPanel } from './driving/DrivingLoadingPanel'
 import './DrivingSimulationViewer.css'
 
-// The forklift's own numbers, used whenever no profile is passed.
-// resolveVehicleProfile() fills these in per equipment.
+// The coded forklift numbers, used whenever no profile is passed.
+// resolveVehicleProfile() lays the Equipment row's overrides over them.
 const DEFAULT_PROFILE = resolveVehicleProfile(null)
 
 function DrivingScene({
@@ -70,13 +69,9 @@ function DrivingScene({
   firstPerson,
   camAdjustedRef,
 }) {
-  const { scene } = useGLTF(profile.modelUrl)
+  const { scene } = useGLTF(EQUIPMENT_MODEL_URL)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
-  // Scale and floor offset for the model, plus the outline it measures for a
-  // profile with no coded footprint - anything but forklift.glb.
-  const fit = useMemo(() => fitVehicleModel(forklift, profile.placement), [forklift, profile.placement])
-  const halfWidth = profile.footprint.halfWidth ?? fit.halfWidth
-  const halfLength = profile.footprint.halfLength ?? fit.halfLength
+  const { halfWidth, halfLength } = profile.footprint
   const { camera, gl } = useThree()
   const checkpoints = course.checkpoints || []
   const { halfWidth: groundHalfWidth, minZ: courseMinZ, maxZ: courseMaxZ } = useMemo(
@@ -396,11 +391,7 @@ function DrivingScene({
       ))}
 
       {course.decorations && (
-        <CourseDecorations
-          decorations={course.decorations}
-          parkedModelUrl={profile.parkedModelUrl}
-          parkedPlacement={profile.parkedPlacement}
-        />
+        <CourseDecorations decorations={course.decorations} />
       )}
       {liveCones.length > 0 && <ObstacleCones obstacles={liveCones} coneRefs={coneRefs} />}
       {racks.length > 0 && <CourseRacks racks={racks} />}
@@ -438,9 +429,7 @@ function DrivingScene({
       <group ref={forkliftGroupRef}>
         <group ref={tipPivotRef} position={[0, TIP_PIVOT_Y, TIP_PIVOT_Z]}>
           <group position={[0, -TIP_PIVOT_Y, -TIP_PIVOT_Z]}>
-            <group position={fit.position} scale={fit.scale}>
-              <primitive object={forklift} />
-            </group>
+            <primitive object={forklift} />
           </group>
         </group>
       </group>
@@ -558,10 +547,10 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
           {/* How far the forks are in, and which way the mast is leaning. Both
               decide whether a load stays put, so the learner has to be able to
               read them without guessing from the model. */}
-          {hasPallet && profile.hasForks && gripState !== 'none' && (
+          {hasPallet && gripState !== 'none' && (
             <span className={`driving-grip-badge ${gripState}`}>{t(GRIP_LABEL_KEYS[gripState])}</span>
           )}
-          {hasPallet && profile.hasForks && (
+          {hasPallet && (
             <span className={`driving-tilt-badge ${tiltState} ${palletState === 'carried' && tiltState !== 'back' ? 'warn' : ''}`}>
               {t(TILT_LABEL_KEYS[tiltState])}
             </span>
@@ -681,7 +670,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
       <div className="driving-hud-bottom">
         <p className="driving-hud-help">
           {engineOn
-            ? `Hold W to accelerate, S to brake or reverse, A / D to steer${profile.hasForks ? ', R / F to raise or lower the forks, T / G to tilt the mast back or forward' : ''}.`
+            ? 'Hold W to accelerate, S to brake or reverse, A / D to steer, R / F to raise or lower the forks, T / G to tilt the mast back or forward.'
             : 'Press E to start the engine.'}
           {firstPerson && ' Click and drag the scene to look around.'}
         </p>
@@ -698,10 +687,9 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   )
 }
 
-// `profile` is the equipment's vehicle profile (lib/vehicleProfile.js): model,
-// rig node names, body footprint, HUD captions and fail messages. Omitted, it
-// falls back to the forklift defaults - which is also what an equipment with no
-// model of its own gets, so a driving step is never an empty scene.
+// `profile` is the resolved vehicle profile (lib/vehicleProfile.js): body
+// footprint, rig, HUD captions and fail messages. Omitted, it falls back to the
+// coded forklift defaults.
 export default function DrivingSimulationViewer({ profile = DEFAULT_PROFILE, course, onEvent, className = '', isAdmin = false }) {
   const [resetSeed, setResetSeed] = useState(0)
 
@@ -718,7 +706,7 @@ export default function DrivingSimulationViewer({ profile = DEFAULT_PROFILE, cou
   )
 }
 
-useGLTF.preload(DEFAULT_MODEL_URL)
+useGLTF.preload(EQUIPMENT_MODEL_URL)
 useGLTF.preload(CONE_MODEL_URL)
 useGLTF.preload(PALLET_MODEL_LIGHT_URL)
 useGLTF.preload(PALLET_MODEL_MEDIUM_URL)
