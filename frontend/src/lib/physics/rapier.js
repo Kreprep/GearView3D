@@ -1,0 +1,23 @@
+// Loads the Rapier physics engine once, on first use.
+//
+// The -compat build embeds its WASM as base64, so this works unchanged under
+// Vite and under node --test, with no bundler plugin. The dynamic import
+// keeps it (about 2 MB) in its own chunk that only pages with a driving step
+// download.
+let rapierPromise = null
+
+export function loadRapier() {
+  if (!rapierPromise) {
+    rapierPromise = import('@dimforge/rapier3d-compat')
+      .then(async ({ default: RAPIER }) => {
+        await RAPIER.init()
+        return RAPIER
+      })
+      .catch((error) => {
+        // Let a later call retry, e.g. after a failed chunk download.
+        rapierPromise = null
+        throw error
+      })
+  }
+  return rapierPromise
+}
