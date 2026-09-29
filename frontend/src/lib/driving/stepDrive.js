@@ -1,58 +1,64 @@
-import { clamp } from '../math'
-import { ACCEL, BRAKE_DECEL, DRAG, MAX_REVERSE_SPEED, MAX_SPEED, REVERSE_ACCEL, STOP_SPEED_EPSILON, TURN_RATE } from './constants'
+import { clamp } from '../math.js'
+import { ACCEL, BRAKE_DECEL, DRAG, MAX_REVERSE_SPEED, MAX_SPEED, REVERSE_ACCEL, STOP_SPEED_EPSILON, TURN_RATE } from './constants.js'
 
-// Reads the held keys and integrates speed/heading/intended-next-position for
-// this frame. Writes ctx.frame.{keys, controlsLocked, turnInput, prevSpeed,
-// forwardX, forwardZ, nextX, nextZ} for the steps that follow (stepCollision
-// resolves nextX/nextZ against obstacles before it reaches posRef).
-export function stepDrive(ctx, dt) {
-  const { keysRef, failedRef, prevSpeedRef, speedRef, engineOnRef, headingRef, posRef, groundHalfWidth, courseMinZ, courseMaxZ, frame } = ctx
+// Integrates speed and heading from the operator controls and works out the
+// intended next position. Writes state.frame.{controls, controlsLocked,
+// turnInput, prevSpeed, forwardX, forwardZ, nextX, nextZ} for the steps that
+// follow (stepCollisionBody resolves nextX/nextZ against obstacles before it
+// reaches the truck's position).
+//
+// Throttle, brake and the direction lever are read the way the keyboard used
+// to drive them (lib/driving/keyboardSource.js): throttle in F accelerates
+// toward full forward speed, brake slows a moving truck, throttle in R
+// reverses. At full input these are the original digital rates exactly.
+export function stepDrive(state, world, controls, dt) {
+  const { truck, frame } = state
+  const { groundHalfWidth, courseMinZ, courseMaxZ } = world
 
-  const keys = keysRef.current
-  const controlsLocked = failedRef.current
-  const turnInput = controlsLocked ? 0 : (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
-  const prevSpeed = prevSpeedRef.current
+  const controlsLocked = state.failed
+  const turnInput = controlsLocked ? 0 : controls.steer
+  const prevSpeed = truck.prevSpeed
 
   if (controlsLocked) {
-    if (speedRef.current > 0) {
-      speedRef.current = Math.max(speedRef.current - BRAKE_DECEL * dt, 0)
-    } else if (speedRef.current < 0) {
-      speedRef.current = Math.min(speedRef.current + BRAKE_DECEL * dt, 0)
+    if (truck.speed > 0) {
+      truck.speed = Math.max(truck.speed - BRAKE_DECEL * dt, 0)
+    } else if (truck.speed < 0) {
+      truck.speed = Math.min(truck.speed + BRAKE_DECEL * dt, 0)
     }
-  } else if (engineOnRef.current) {
-    if (keys.forward) {
-      speedRef.current = Math.min(speedRef.current + ACCEL * dt, MAX_SPEED)
-    } else if (keys.back) {
-      speedRef.current = speedRef.current > STOP_SPEED_EPSILON
-        ? Math.max(speedRef.current - BRAKE_DECEL * dt, 0)
-        : Math.max(speedRef.current - REVERSE_ACCEL * dt, -MAX_REVERSE_SPEED)
-    } else if (speedRef.current > 0) {
-      speedRef.current = Math.max(speedRef.current - DRAG * dt, 0)
-    } else if (speedRef.current < 0) {
-      speedRef.current = Math.min(speedRef.current + DRAG * dt, 0)
+  } else if (truck.engineOn) {
+    if (controls.direction === 'F' && controls.throttle > 0) {
+      truck.speed = Math.min(truck.speed + ACCEL * controls.throttle * dt, MAX_SPEED)
+    } else if (controls.brake > 0 && Math.abs(truck.speed) > STOP_SPEED_EPSILON) {
+      truck.speed = truck.speed > 0
+        ? Math.max(truck.speed - BRAKE_DECEL * controls.brake * dt, 0)
+        : Math.min(truck.speed + BRAKE_DECEL * controls.brake * dt, 0)
+    } else if (controls.direction === 'R' && controls.throttle > 0) {
+      truck.speed = Math.max(truck.speed - REVERSE_ACCEL * controls.throttle * dt, -MAX_REVERSE_SPEED)
+    } else if (truck.speed > 0) {
+      truck.speed = Math.max(truck.speed - DRAG * dt, 0)
+    } else if (truck.speed < 0) {
+      truck.speed = Math.min(truck.speed + DRAG * dt, 0)
     }
 
-    if (Math.abs(speedRef.current) > STOP_SPEED_EPSILON) {
-      const turnScale = clamp(Math.abs(speedRef.current) / MAX_SPEED, 0.35, 1) * Math.sign(speedRef.current)
-      headingRef.current += turnInput * TURN_RATE * dt * turnScale
+    if (Math.abs(truck.speed) > STOP_SPEED_EPSILON) {
+      const turnScale = clamp(Math.abs(truck.speed) / MAX_SPEED, 0.35, 1) * Math.sign(truck.speed)
+      truck.heading += turnInput * TURN_RATE * dt * turnScale
     }
-  } else if (speedRef.current > 0) {
-    speedRef.current = Math.max(speedRef.current - DRAG * dt, 0)
-  } else if (speedRef.current < 0) {
-    speedRef.current = Math.min(speedRef.current + DRAG * dt, 0)
+  } else if (truck.speed > 0) {
+    truck.speed = Math.max(truck.speed - DRAG * dt, 0)
+  } else if (truck.speed < 0) {
+    truck.speed = Math.min(truck.speed + DRAG * dt, 0)
   }
 
-  const forwardX = Math.sin(headingRef.current)
-  const forwardZ = Math.cos(headingRef.current)
-  const nextX = clamp(posRef.current.x + forwardX * speedRef.current * dt, -groundHalfWidth, groundHalfWidth)
-  const nextZ = clamp(posRef.current.z + forwardZ * speedRef.current * dt, courseMinZ, courseMaxZ)
+  const forwardX = Math.sin(truck.heading)
+  const forwardZ = Math.cos(truck.heading)
 
-  frame.keys = keys
+  frame.controls = controls
   frame.controlsLocked = controlsLocked
   frame.turnInput = turnInput
   frame.prevSpeed = prevSpeed
   frame.forwardX = forwardX
   frame.forwardZ = forwardZ
-  frame.nextX = nextX
-  frame.nextZ = nextZ
+  frame.nextX = clamp(truck.x + forwardX * truck.speed * dt, -groundHalfWidth, groundHalfWidth)
+  frame.nextZ = clamp(truck.z + forwardZ * truck.speed * dt, courseMinZ, courseMaxZ)
 }

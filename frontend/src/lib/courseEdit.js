@@ -4,7 +4,7 @@
 // selectable items, so items are addressed by a `key` of the form
 // "<list>:<index>" or the singleton's own name.
 
-import { DECOR_RACK_KINDS, DECOR_RACK_LABELS } from '../data/rackProfile'
+import { DECOR_RACK_KINDS, DECOR_RACK_LABELS } from '../data/rackProfile.js'
 
 const SINGLETON_KEYS = ['start', 'dropZone', 'parkingBay']
 

@@ -1,42 +1,27 @@
-import { REAR_WHEEL_KEYS } from '../vehicleRig'
-import { FORK_MAX_HEIGHT, FORK_SPEED, MAST_LIFT_RATIO, MAX_STEER_ANGLE, STEER_DAMP, STEER_SIGN, TILT_MAX_ANGLE, TILT_SPEED } from './constants'
+import { FORK_MAX_HEIGHT, FORK_SPEED, MAX_STEER_ANGLE, STEER_DAMP, STEER_SIGN, TILT_MAX_ANGLE, TILT_SPEED } from './constants.js'
 
-// Procedural part animation: wheel roll, rear-wheel steering, fork lift, mast
-// tilt. Must run before stepPallet, which reads the carriage/tilt-pivot world
-// transform this writes (forkHeightRef/tiltAngleRef feed captureGrip/applyGrip
-// there).
-export function stepForks(ctx, dt) {
-  const { rigRef, speedRef, engineOnRef, steerAngleRef, forkHeightRef, tiltAngleRef, frame } = ctx
-  const { keys, controlsLocked, turnInput } = frame
+// Wheel roll, rear-wheel steering, fork lift and mast tilt, as state. syncView
+// copies them onto the rig nodes. Must run before stepPallet, which builds the
+// carriage pose (forkPose.js) from the fork height and tilt this writes.
+export function stepForks(state, dt) {
+  const { truck, forks, frame } = state
+  const { controls, controlsLocked, turnInput } = frame
 
-  const rig = rigRef.current
-  if (!rig) return
+  truck.wheelTravel += truck.speed * dt
 
-  Object.values(rig.wheels).forEach((wheel) => {
-    wheel.spin.rotation.x += (speedRef.current / wheel.radius) * dt
-  })
+  const steerTarget = truck.engineOn && !controlsLocked ? turnInput * MAX_STEER_ANGLE * STEER_SIGN : 0
+  truck.steer += (steerTarget - truck.steer) * Math.min(STEER_DAMP * dt, 1)
 
-  const steerTarget = engineOnRef.current && !controlsLocked ? turnInput * MAX_STEER_ANGLE * STEER_SIGN : 0
-  steerAngleRef.current += (steerTarget - steerAngleRef.current) * Math.min(STEER_DAMP * dt, 1)
-  REAR_WHEEL_KEYS.forEach((key) => {
-    if (rig.wheels[key]?.steer) rig.wheels[key].steer.rotation.y = steerAngleRef.current
-  })
-
-  if (engineOnRef.current && !controlsLocked) {
-    if (keys.raise) {
-      forkHeightRef.current = Math.min(forkHeightRef.current + FORK_SPEED * dt, FORK_MAX_HEIGHT)
-    } else if (keys.lower) {
-      forkHeightRef.current = Math.max(forkHeightRef.current - FORK_SPEED * dt, 0)
+  if (truck.engineOn && !controlsLocked) {
+    if (controls.lift > 0) {
+      forks.height = Math.min(forks.height + FORK_SPEED * controls.lift * dt, FORK_MAX_HEIGHT)
+    } else if (controls.lift < 0) {
+      forks.height = Math.max(forks.height + FORK_SPEED * controls.lift * dt, 0)
     }
-    if (rig.tiltPivot) {
-      if (keys.tiltBack) {
-        tiltAngleRef.current = Math.max(tiltAngleRef.current - TILT_SPEED * dt, -TILT_MAX_ANGLE)
-      } else if (keys.tiltForward) {
-        tiltAngleRef.current = Math.min(tiltAngleRef.current + TILT_SPEED * dt, TILT_MAX_ANGLE)
-      }
+    if (controls.tilt < 0) {
+      forks.tilt = Math.max(forks.tilt + TILT_SPEED * controls.tilt * dt, -TILT_MAX_ANGLE)
+    } else if (controls.tilt > 0) {
+      forks.tilt = Math.min(forks.tilt + TILT_SPEED * controls.tilt * dt, TILT_MAX_ANGLE)
     }
   }
-  if (rig.carriageLift) rig.carriageLift.position.y = forkHeightRef.current
-  if (rig.mastLift) rig.mastLift.position.y = forkHeightRef.current * MAST_LIFT_RATIO
-  if (rig.tiltPivot) rig.tiltPivot.rotation.x = tiltAngleRef.current
 }

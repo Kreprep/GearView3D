@@ -3,10 +3,9 @@ import {
   LOAD_TIP_HEIGHT,
   LOAD_TIP_TILT_RATIO,
   LOAD_TIP_WEIGHT_RATIO,
-  PALLET_FALLBACK_FOOTPRINT,
   SLIP_FAIL_RATIO,
   TILT_RELEASE_ANGLE,
-} from '../../data/palletProfile'
+} from '../../data/palletProfile.js'
 import {
   RACK_FOOTPRINT,
   RACK_LEVEL_HEIGHTS,
@@ -15,15 +14,15 @@ import {
   RACK_PLACE_MAX_SPEED,
   RACK_SLOT_APPROACH_MARGIN,
   RACK_SLOT_HALF_WIDTH,
-} from '../../data/rackProfile'
-import { engagementRisk, evaluateForkEngagement, gripQuality, slipThisFrame } from '../loadPhysics'
-import { toRectLocal } from '../simCollision'
-import { triggerFail } from './stepFail'
+} from '../../data/rackProfile.js'
+import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
+import { engagementRisk, evaluateForkEngagement, gripQuality, slipThisFrame } from '../loadPhysics.js'
+import { toRectLocal } from '../simCollision.js'
+import { forkPose } from './forkPose.js'
+import { triggerFail } from './stepFail.js'
 import {
   CLEAR_DISTANCE,
   FORK_ENGAGE_HEIGHT,
-  FORK_REACH_FALLBACK,
-  FORK_TIP_OFFSET_FALLBACK,
   HIGH_TRAVEL_MIN_SPEED,
   LIFT_THRESHOLD,
   LOAD_GRAVITY,
@@ -37,7 +36,7 @@ import {
   SUDDEN_STOP_MIN_SPEED,
   TILT_MAX_ANGLE,
   TILT_SECURE_ANGLE,
-} from './constants'
+} from './constants.js'
 
 // Pallet pickup/carry/release. Still kinematic, no physics engine, but
 // lib/loadPhysics.js grades how far the forks actually went in and how
@@ -49,45 +48,41 @@ import {
 // setting a load onto its target shelf and setting it on the floor are the
 // same "landed + tilt forward" release gesture).
 //
-// Must run after stepForks (reads forkHeightRef/tiltAngleRef and the
-// carriage/tilt-pivot world transform it just animated) and after
-// stepCollisionBody (reads the committed posRef).
-export function stepPallet(ctx, dt) {
-  const {
-    pallets, palletSimRef, course, rigRef, posRef, headingRef, forkHeightRef, tiltAngleRef,
-    palletRefs, palletFootprintsRef, carriedIndexRef, failedRef, engineOnRef, racks,
-    gripQualityRef, deliveredCountRef, onPalletEvent, halfLength, speedRef,
-    gripLocalRef, palletEulerRef, gripQuatRef, carriageQuatRef, tipStateRef, frame,
-  } = ctx
+// Scratch maths objects, reused every step.
+const carriageMatrix = new Matrix4()
+const carriageInverse = new Matrix4()
+const carriageQuat = new Quaternion()
+const carriagePos = new Vector3()
+const carriageScale = new Vector3()
+const palletQuat = new Quaternion()
+const palletEuler = new Euler(0, 0, 0, 'YXZ')
+const gripWorld = new Vector3()
+
+function emitPalletEvent(state, event, nextState) {
+  state.hud.palletState = nextState
+  if (event.type === 'pallet-lifted') state.hud.carriedLoadKg = event.weightKg ?? null
+  if (event.type === 'pallet-dropped' || event.type === 'pallet-delivered') state.hud.carriedLoadKg = null
+  state.events.push({ type: 'pallet', event, nextState })
+}
+
+// Must run after stepForks (reads the fork height and tilt it just
+// integrated) and after stepCollisionBody (reads the committed position).
+export function stepPallet(state, world, dt) {
+  const { truck, forks, pallets, frame } = state
+  const { course, racks, halfLength, geometry } = world
   const { forwardX, forwardZ, turnInput, prevSpeed } = frame
 
   if (!pallets.length) return
 
-  if (!palletSimRef.current) {
-    palletSimRef.current = pallets.map(() => ({
-      state: 'ground',
-      engaged: false,
-      vx: 0,
-      vy: 0,
-      vz: 0,
-      risk: 0,
-      grip: null,
-      slipCause: null,
-      landed: false,
-      restY: 0,
-    }))
-  }
-
-  const rig = rigRef.current
   const capacity = typeof course.capacityKg === 'number' ? course.capacityKg : Infinity
   const failConditions = course.failConditions || {}
-  const attachOffset = rig?.forkTipOffset || FORK_TIP_OFFSET_FALLBACK
-  const attachReach = rig?.forkReach || FORK_REACH_FALLBACK
-  const tipX = posRef.current.x + forwardX * attachOffset
-  const tipZ = posRef.current.z + forwardZ * attachOffset
-  const decel = prevSpeed > SUDDEN_STOP_MIN_SPEED ? (prevSpeed - speedRef.current) / dt : 0
+  const attachOffset = geometry.forkTipOffset
+  const attachReach = geometry.forkReach
+  const tipX = truck.x + forwardX * attachOffset
+  const tipZ = truck.z + forwardZ * attachOffset
+  const decel = prevSpeed > SUDDEN_STOP_MIN_SPEED ? (prevSpeed - truck.speed) / dt : 0
   const brakingHard = decel > SUDDEN_STOP_DECEL
-  const turnLoad = Math.abs(turnInput) * Math.abs(speedRef.current)
+  const turnLoad = Math.abs(turnInput) * Math.abs(truck.speed)
   let liveQuality = 'none'
   // Racking blocks the truck body, so the fork tip can only ever reach a
   // little way past the rack's front face - and how far depends on the
@@ -101,53 +96,39 @@ export function stepPallet(ctx, dt) {
 
   // A carried pallet is pinned to the carriage rather than chased toward a
   // point in front of the truck: its pose is captured in the carriage's own
-  // local frame the moment it lifts, then replayed from that node's world
-  // matrix every frame. The carriage sits under the tilt pivot (see
-  // lib/vehicleRig.js), so one matrix already carries the truck's position
-  // and heading, the fork height and the mast tilt. The load therefore
-  // stays exactly where it was picked up - including a shallow or
-  // off-centre bite - and pitches with the mast, with no lag.
-  const carriage = rig?.carriageLift || null
+  // local frame the moment it lifts, then replayed from the carriage's world
+  // matrix every step. That matrix (forkPose.js) carries the truck's position
+  // and heading, the fork height and the mast tilt, so the load stays exactly
+  // where it was picked up - including a shallow or off-centre bite - and
+  // pitches with the mast, with no lag.
+  forkPose(state, geometry, carriageMatrix)
+  carriageMatrix.decompose(carriagePos, carriageQuat, carriageScale)
 
   const captureGrip = (pallet, engagement) => {
-    if (!carriage) return { local: null, quat: null, insertDepth: engagement.insertDepth, seatedDepth: engagement.seatedDepth }
-    carriage.updateWorldMatrix(true, false)
-    pallet.updateWorldMatrix(true, false)
-    carriage.getWorldQuaternion(carriageQuatRef.current)
-    const world = pallet.getWorldPosition(gripLocalRef.current)
+    const worldPos = gripWorld.copy(pallet.position)
     // Only the *bite* is captured - how far in along the tines and how far
     // off their centreline the pallet is. Its height is the tines
     // themselves: measure from the deck it is being picked off rather than
     // from wherever the forks have already lifted or pitched it to, or that
     // head start is baked into the grip and the load rides that far above
     // the tines for the rest of the carry.
-    world.y = 0
-    const local = carriage.worldToLocal(world).clone()
+    worldPos.y = 0
+    const local = worldPos.applyMatrix4(carriageInverse.copy(carriageMatrix).invert()).clone()
     // Undo however far the carriage has already lifted: lift travels along
     // the carriage's local +Y (up the tilted mast), so this is its exact
     // inverse, and leaves an offset that holds at any fork height.
-    local.y += forkHeightRef.current + PALLET_CARRY_Y
+    local.y += forks.height + PALLET_CARRY_Y
     return {
       local,
-      quat: carriageQuatRef.current.clone().invert().multiply(pallet.getWorldQuaternion(gripQuatRef.current)),
+      quat: carriageQuat.clone().invert().multiply(palletQuat.setFromEuler(pallet.rotation)),
       insertDepth: engagement.insertDepth,
       seatedDepth: engagement.seatedDepth,
     }
   }
 
   const applyGrip = (pallet, grip) => {
-    if (carriage && grip?.local) {
-      carriage.updateWorldMatrix(true, false)
-      carriage.getWorldQuaternion(carriageQuatRef.current)
-      pallet.position.copy(grip.local).applyMatrix4(carriage.matrixWorld)
-      pallet.quaternion.copy(carriageQuatRef.current).multiply(grip.quat)
-      return
-    }
-    // No carriage node in this vehicle's rig: pin the load to the fork tip
-    // point instead. Same result minus lift and tilt, neither of which such
-    // a model animates anyway.
-    pallet.position.set(tipX, forkHeightRef.current + PALLET_CARRY_Y, tipZ)
-    pallet.rotation.set(0, headingRef.current, 0)
+    pallet.position.copy(grip.local).applyMatrix4(carriageMatrix)
+    pallet.rotation.setFromQuaternion(palletQuat.copy(carriageQuat).multiply(grip.quat))
   }
 
   // A load resting on the floor or a shelf is held up by that surface, not
@@ -155,15 +136,15 @@ export function stepPallet(ctx, dt) {
   // *back* - tilting forward would drive its far edge through the deck -
   // and rises just enough to keep its near edge on the surface as it does.
   const settleLoad = (pallet, surfaceY, halfDepth, pitch) => {
-    palletEulerRef.current.setFromQuaternion(pallet.quaternion, 'YXZ')
-    const yaw = palletEulerRef.current.y
+    palletEuler.setFromQuaternion(palletQuat.setFromEuler(pallet.rotation), 'YXZ')
+    const yaw = palletEuler.y
     pallet.rotation.order = 'YXZ'
     pallet.rotation.set(pitch, yaw, 0)
     pallet.position.y = surfaceY + halfDepth * Math.sin(-pitch)
   }
 
   // How much of the mast's tilt a supported load actually shows.
-  const restingPitch = () => Math.min(tiltAngleRef.current, 0)
+  const restingPitch = () => Math.min(forks.tilt, 0)
 
   // What is under a carried load: the shelf it is lined up with, or the
   // floor. Only a level the load has already been raised above counts, so
@@ -179,36 +160,38 @@ export function stepPallet(ctx, dt) {
     return best
   }
 
-  const dropLoad = (pallet, sim, reason, launchSpeed) => {
+  const dropLoad = (sim, reason, launchSpeed) => {
     sim.state = 'falling'
     sim.grip = null
     sim.engaged = false
-    carriedIndexRef.current = -1
+    state.carriedIndex = -1
     sim.vx = forwardX * launchSpeed
     sim.vz = forwardZ * launchSpeed
     sim.vy = 0.1
-    triggerFail(ctx, reason)
+    triggerFail(state, reason)
   }
 
-  pallets.forEach((palletDef, i) => {
-    const pallet = palletRefs.current[i]
-    const sim = palletSimRef.current[i]
-    if (!pallet || !sim) return
-    const palletHalf = palletFootprintsRef.current[i] || PALLET_FALLBACK_FOOTPRINT
+  // Each entry in state.pallets is both a pallet's pose (position, rotation)
+  // and its carry state, so `pallet` and `sim` below are the same object; the
+  // two names keep the rules readable.
+  pallets.forEach((pallet, i) => {
+    const sim = pallet
+    const palletDef = pallet.def
+    const palletHalf = pallet.footprint
 
-    if ((sim.state === 'ground' || sim.state === 'released') && carriedIndexRef.current === -1 && !failedRef.current) {
+    if ((sim.state === 'ground' || sim.state === 'released') && state.carriedIndex === -1 && !state.failed) {
       const engagement = evaluateForkEngagement({
         palletX: pallet.position.x,
         palletZ: pallet.position.z,
         palletRot: pallet.rotation.y,
         palletHalf,
-        vehicleX: posRef.current.x,
-        vehicleZ: posRef.current.z,
-        heading: headingRef.current,
+        vehicleX: truck.x,
+        vehicleZ: truck.z,
+        heading: truck.heading,
         forkTipOffset: attachOffset,
         forkReach: attachReach,
       })
-      const forksDown = forkHeightRef.current <= FORK_ENGAGE_HEIGHT
+      const forksDown = forks.height <= FORK_ENGAGE_HEIGHT
 
       // Engagement latches: the forks have to go in with the carriage down,
       // but raising them from there must not undo it - the learner passes
@@ -235,28 +218,28 @@ export function stepPallet(ctx, dt) {
         // Raising the carriage lifts it, and tilting back rolls its outer
         // edge up off the floor - which is exactly why an operator tilts
         // back before travelling, so it has to be visible here.
-        settleLoad(pallet, forkHeightRef.current + PALLET_CARRY_Y, palletHalf.halfDepth, restingPitch())
+        settleLoad(pallet, forks.height + PALLET_CARRY_Y, palletHalf.halfDepth, restingPitch())
       } else if (engagement.canEnter && forksDown && engagement.insertDepth > 0) {
         liveQuality = 'shallow'
       }
 
-      if (sim.engaged && engineOnRef.current) {
+      if (sim.engaged && truck.engineOn) {
         const overweight = (palletDef.weightKg ?? 0) > capacity
-        if (failConditions.overload && overweight && forkHeightRef.current >= OVERLOAD_TIP_HEIGHT) {
+        if (failConditions.overload && overweight && forks.height >= OVERLOAD_TIP_HEIGHT) {
           // Overload: the truck pitches forward and throws the load off.
           sim.engaged = false
           sim.state = 'falling'
-          sim.vx = forwardX * (Math.abs(speedRef.current) + 0.5)
-          sim.vz = forwardZ * (Math.abs(speedRef.current) + 0.5)
+          sim.vx = forwardX * (Math.abs(truck.speed) + 0.5)
+          sim.vz = forwardZ * (Math.abs(truck.speed) + 0.5)
           sim.vy = 0.35
-          tipStateRef.current.active = true
-          triggerFail(ctx, 'overload')
-        } else if (!overweight && forkHeightRef.current >= LIFT_THRESHOLD) {
+          state.tip.active = true
+          triggerFail(state, 'overload')
+        } else if (!overweight && forks.height >= LIFT_THRESHOLD) {
           sim.engaged = false
           sim.state = 'carried'
           sim.slipCause = null
-          carriedIndexRef.current = i
-          onPalletEvent({ type: 'pallet-lifted', palletId: palletDef.id, weightKg: palletDef.weightKg }, 'carried')
+          state.carriedIndex = i
+          emitPalletEvent(state, { type: 'pallet-lifted', palletId: palletDef.id, weightKg: palletDef.weightKg }, 'carried')
         }
       }
     } else if (sim.state === 'carried') {
@@ -280,7 +263,7 @@ export function stepPallet(ctx, dt) {
       if (targetRack && targetHeight != null) {
         const slot = toRectLocal(tipX, tipZ, { x: targetRack.position[0], z: targetRack.position[2], rotation: rackRot })
         inSlotRect = Math.abs(slot.x) <= RACK_SLOT_HALF_WIDTH && Math.abs(slot.z) <= slotReach
-        atTargetSlot = inSlotRect && Math.abs(forkHeightRef.current - targetHeight) <= RACK_LEVEL_TOLERANCE
+        atTargetSlot = inSlotRect && Math.abs(forks.height - targetHeight) <= RACK_LEVEL_TOLERANCE
       }
 
       // Lined up at the target shelf, tilting forward is the correct move -
@@ -288,36 +271,36 @@ export function stepPallet(ctx, dt) {
       // whenever the tip-over rule is on.
       const tipsForward =
         failConditions.loadTipping &&
-        !failedRef.current &&
+        !state.failed &&
         !atTargetSlot &&
         !sim.landed &&
-        forkHeightRef.current > LOAD_TIP_HEIGHT &&
-        tiltAngleRef.current >= TILT_MAX_ANGLE * LOAD_TIP_TILT_RATIO &&
+        forks.height > LOAD_TIP_HEIGHT &&
+        forks.tilt >= TILT_MAX_ANGLE * LOAD_TIP_TILT_RATIO &&
         (palletDef.weightKg ?? 0) > capacity * LOAD_TIP_WEIGHT_RATIO
 
       if (tipsForward) {
         // A heavy load, high up and tilted forward, puts the combined
         // centre of gravity past the front wheels.
-        tipStateRef.current.active = true
-        dropLoad(pallet, sim, 'load-tipping', Math.abs(speedRef.current) + 0.4)
+        state.tip.active = true
+        dropLoad(sim, 'load-tipping', Math.abs(truck.speed) + 0.4)
       } else if (
         failConditions.highTravel &&
-        !failedRef.current &&
-        Math.abs(speedRef.current) > HIGH_TRAVEL_MIN_SPEED &&
-        forkHeightRef.current > SAFE_TRAVEL_HEIGHT
+        !state.failed &&
+        Math.abs(truck.speed) > HIGH_TRAVEL_MIN_SPEED &&
+        forks.height > SAFE_TRAVEL_HEIGHT
       ) {
         // Driving at speed with the forks raised above standard travel
         // height: unsafe practice, not a physical spill - fail in place.
-        triggerFail(ctx, 'high-travel')
+        triggerFail(state, 'high-travel')
       } else {
         // A partially engaged load creeps out along the tines when the
         // truck is braked hard, swung round or carried with the mast not
         // tilted back. A load seated to the carriage and square has risk 0
         // and never moves, which is the habit the step is teaching.
-        if (!failedRef.current && sim.grip && !sim.landed) {
+        if (!state.failed && sim.grip && !sim.landed) {
           const { slip, cause } = slipThisFrame({
             risk: sim.risk,
-            tiltAngle: tiltAngleRef.current,
+            tiltAngle: forks.tilt,
             tiltSecureAngle: TILT_SECURE_ANGLE,
             decel: brakingHard ? decel : 0,
             turnLoad,
@@ -335,8 +318,8 @@ export function stepPallet(ctx, dt) {
 
         const depthRatio = sim.grip?.seatedDepth > 0 ? sim.grip.insertDepth / sim.grip.seatedDepth : 1
 
-        if (!failedRef.current && sim.grip && depthRatio < SLIP_FAIL_RATIO) {
-          dropLoad(pallet, sim, sim.slipCause || 'load-dropped', Math.max(Math.abs(prevSpeed), 0.35) * 1.15)
+        if (!state.failed && sim.grip && depthRatio < SLIP_FAIL_RATIO) {
+          dropLoad(sim, sim.slipCause || 'load-dropped', Math.max(Math.abs(prevSpeed), 0.35) * 1.15)
         } else {
           applyGrip(pallet, sim.grip)
 
@@ -359,15 +342,15 @@ export function stepPallet(ctx, dt) {
             sim.restY = surfaceY
             settleLoad(pallet, surfaceY, palletHalf.halfDepth, restingPitch())
 
-            const tiltedForward = tiltAngleRef.current >= TILT_RELEASE_ANGLE
+            const tiltedForward = forks.tilt >= TILT_RELEASE_ANGLE
             const onTargetShelf = targetHeight != null && Math.abs(surfaceY - targetHeight) < 1e-3
-            const steady = !onTargetShelf || Math.abs(speedRef.current) <= RACK_PLACE_MAX_SPEED
+            const steady = !onTargetShelf || Math.abs(truck.speed) <= RACK_PLACE_MAX_SPEED
 
-            if (tiltedForward && steady && !failedRef.current) {
+            if (tiltedForward && steady && !state.failed) {
               sim.grip = null
               sim.engaged = false
               sim.landed = false
-              carriedIndexRef.current = -1
+              state.carriedIndex = -1
               settleLoad(pallet, surfaceY, palletHalf.halfDepth, 0)
 
               if (onTargetShelf) {
@@ -378,19 +361,20 @@ export function stepPallet(ctx, dt) {
                 sim.state = 'delivered'
                 pallet.position.set(targetRack.position[0], targetHeight, targetRack.position[2])
                 pallet.rotation.set(0, rackRot, 0)
-                deliveredCountRef.current += 1
-                onPalletEvent(
+                state.deliveredCount += 1
+                emitPalletEvent(
+                  state,
                   {
                     type: 'pallet-delivered',
                     palletId: palletDef.id,
                     weightKg: palletDef.weightKg,
-                    deliveredCount: deliveredCountRef.current,
+                    deliveredCount: state.deliveredCount,
                   },
                   'delivered',
                 )
               } else {
                 sim.state = 'released'
-                onPalletEvent({ type: 'pallet-dropped', palletId: palletDef.id }, 'released')
+                emitPalletEvent(state, { type: 'pallet-dropped', palletId: palletDef.id }, 'released')
               }
             }
           }
@@ -410,7 +394,7 @@ export function stepPallet(ctx, dt) {
       }
     }
 
-    if (sim.state === 'released' && course.dropZone && !failedRef.current) {
+    if (sim.state === 'released' && course.dropZone && !state.failed) {
       const inZone = Math.hypot(
         pallet.position.x - course.dropZone.position[0],
         pallet.position.z - course.dropZone.position[2],
@@ -418,13 +402,14 @@ export function stepPallet(ctx, dt) {
       const cleared = Math.hypot(pallet.position.x - tipX, pallet.position.z - tipZ) >= CLEAR_DISTANCE
       if (inZone && cleared) {
         sim.state = 'delivered'
-        deliveredCountRef.current += 1
-        onPalletEvent(
+        state.deliveredCount += 1
+        emitPalletEvent(
+          state,
           {
             type: 'pallet-delivered',
             palletId: palletDef.id,
             weightKg: palletDef.weightKg,
-            deliveredCount: deliveredCountRef.current,
+            deliveredCount: state.deliveredCount,
           },
           'delivered',
         )
@@ -432,5 +417,5 @@ export function stepPallet(ctx, dt) {
     }
   })
 
-  gripQualityRef.current = liveQuality
+  state.grip = liveQuality
 }

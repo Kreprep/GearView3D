@@ -1,17 +1,16 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Grid, OrbitControls, useGLTF } from '@react-three/drei'
-import { DoubleSide, Vector3 } from 'three'
+import { DoubleSide } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Compass, Eye, RotateCcw, Locate } from 'lucide-react'
 import { useT } from '../i18n'
 import { buildVehicleRig } from '../lib/vehicleRig'
 import { clamp } from '../lib/math'
-import { decorationType } from '../lib/courseEdit'
 import { resolveCourseBounds } from '../lib/courseGoals'
 import { resolveVehicleProfile } from '../lib/vehicleProfile'
 import { TILT_RELEASE_ANGLE } from '../data/palletProfile'
-import { DECOR_RACK_KINDS, RACK_FOOTPRINT, RACK_MODEL_URL } from '../data/rackProfile'
+import { RACK_MODEL_URL } from '../data/rackProfile'
 import { EQUIPMENT_MODEL_URL } from '../data/equipment'
 import {
   CARGO_BOX_MODEL_URL,
@@ -21,16 +20,17 @@ import {
   PALLET_MODEL_LIGHT_URL,
   PALLET_MODEL_MEDIUM_URL,
 } from '../lib/driving/models'
-import { FORK_MAX_HEIGHT, GRIP_LABEL_KEYS, LOOK_MAX_PITCH, LOOK_SENSITIVITY, PALLET_STATE_LABEL_KEYS, TILT_LABEL_KEYS, TILT_MAX_ANGLE, TIP_PIVOT_Y, TIP_PIVOT_Z, tiltStateName } from '../lib/driving/constants'
-import { stepDrive } from '../lib/driving/stepDrive'
-import { stepCollisionBody, stepCollisionHazards } from '../lib/driving/stepCollision'
-import { stepForks } from '../lib/driving/stepForks'
-import { stepFail } from '../lib/driving/stepFail'
-import { stepPallet } from '../lib/driving/stepPallet'
-import { stepCheckpoints, stepParking } from '../lib/driving/stepGoals'
+import { GRIP_LABEL_KEYS, LOOK_MAX_PITCH, LOOK_SENSITIVITY, PALLET_STATE_LABEL_KEYS, TILT_LABEL_KEYS, TIP_PIVOT_Y, TIP_PIVOT_Z, tiltStateName } from '../lib/driving/constants'
+import { createKeyActiveTracker, mergeControls, neutralControls } from '../lib/driving/controls'
+import { rigGeometryMismatches } from '../lib/driving/rigGeometry'
+import { createSimCore } from '../lib/driving/simCore'
+import { createSimLoop } from '../lib/driving/simLoop'
+import { capturePose, createPoseBuffer, syncView } from '../lib/driving/syncView'
+import { createTelemetryStore, TELEMETRY_INTERVAL } from '../lib/driving/telemetry'
 import { stepCamera } from '../lib/driving/stepCamera'
 import { useDrivingInput } from '../hooks/useDrivingInput'
 import { useDrivingSceneRefs } from '../hooks/useDrivingSceneRefs'
+import { useTelemetry } from '../hooks/useTelemetry'
 import { PathBreadcrumbs } from './driving/PathBreadcrumbs'
 import { CheckpointMarker } from './driving/CheckpointMarker'
 import { CourseDecorations } from './driving/CourseDecorations'
@@ -47,83 +47,72 @@ import './DrivingSimulationViewer.css'
 // resolveVehicleProfile() lays the Equipment row's overrides over them.
 const DEFAULT_PROFILE = resolveVehicleProfile(null)
 
-function DrivingScene({
-  profile,
-  course,
-  forkliftGroupRef,
-  posRef,
-  headingRef,
-  speedRef,
-  engineOnRef,
-  keysRef,
-  checkpointIndex,
-  checkpointIndexRef,
-  onAdvanceCheckpoint,
-  onHudSample,
-  palletState,
-  onPalletEvent,
-  onFail,
-  parked,
-  onParkingUpdate,
-  freeCam,
-  firstPerson,
-  camAdjustedRef,
-}) {
+// What the HUD shows, published by the frame loop into the telemetry store
+// (lib/driving/telemetry.js) rather than set as React state every frame.
+function telemetrySnapshot(state, course) {
+  return {
+    engineOn: state.truck.engineOn,
+    speed: Math.round(Math.abs(state.truck.speed) * 20),
+    grip: state.grip,
+    tilt: tiltStateName(state.forks.tilt, TILT_RELEASE_ANGLE),
+    checkpointIndex: state.checkpointIndex,
+    palletState: state.hud.palletState,
+    carriedLoadKg: state.hud.carriedLoadKg,
+    // A catalog key, set by lib/driving/stepGoals.js. Before the first sim
+    // step it has not been worked out yet.
+    parkingStatus: state.parking.status || (course.parkingBay ? 'driving.parking.enterBay' : null),
+    parked: state.parking.parked,
+  }
+}
+
+function DrivingScene({ profile, course, core, telemetry, keyboard, onSimEvent, onKeyActive, freeCam, firstPerson, camAdjustedRef }) {
   const { scene } = useGLTF(EQUIPMENT_MODEL_URL)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
-  const { halfWidth, halfLength } = profile.footprint
   const { camera, gl } = useThree()
   const checkpoints = course.checkpoints || []
   const { halfWidth: groundHalfWidth, minZ: courseMinZ, maxZ: courseMaxZ } = useMemo(
     () => resolveCourseBounds(course),
     [course],
   )
-  const pallets = useMemo(() => course.pallets || (course.pallet ? [course.pallet] : []), [course])
-  const racks = useMemo(() => course.racks || [], [course])
-  // Every rendered cone is a live collider, whether authored under
-  // `obstacles` or as a `decorations` lane/gate marker - a cone is a hazard
-  // regardless of which list placed it.
-  const liveCones = useMemo(
-    () => [...(course.obstacles || []), ...(course.decorations || []).filter((item) => item.type === 'cone')],
-    [course],
-  )
-  const liveWalls = useMemo(
-    () => (course.decorations || []).filter((item) => item.type === 'wall' || decorationType(item) === 'vehicle'),
-    [course],
-  )
-  // Racking is solid, functional and decorative alike, so both lists become
-  // the same kind of oriented rectangle for the collision test.
-  const rackColliders = useMemo(
-    () =>
-      [...racks, ...(course.decorations || []).filter((item) => DECOR_RACK_KINDS.includes(item.type))].map((item) => ({
-        x: item.position[0],
-        z: item.position[2],
-        rotation: item.rotation || 0,
-        halfX: RACK_FOOTPRINT.halfWidth,
-        halfZ: RACK_FOOTPRINT.halfDepth,
-      })),
-    [racks, course],
-  )
+  const { pallets, racks, liveCones } = core.world
+  const checkpointIndex = useTelemetry(telemetry, (snapshot) => snapshot.checkpointIndex)
+  const palletState = useTelemetry(telemetry, (snapshot) => snapshot.palletState)
+  const parked = useTelemetry(telemetry, (snapshot) => snapshot.parked)
 
-  const {
-    rigRef, vehicleOrbitRef, seatWorldRef, seatLookRef, lookYawRef, lookPitchRef, orbitTargetRef, prevOrbitTargetRef, orbitDeltaRef,
-    hudAccumRef, backRef, desiredCamRef, lookTargetRef,
-    forkHeightRef, tiltAngleRef, steerAngleRef, palletRefs, palletSimRef, palletFootprintsRef,
-    bodyRectRef, palletRectRef, gripLocalRef, palletEulerRef, gripQuatRef, carriageQuatRef,
-    gripQualityRef, carriedIndexRef, deliveredCountRef, prevSpeedRef, failedRef,
-    tipPivotRef, tipStateRef, coneRefs, coneSimRef, coneAxisRef, coneQuatRef,
-    onFailRef, parkedRef, parkingStatusRef, onParkingUpdateRef,
-  } = useDrivingSceneRefs({ onFail, onParkingUpdate })
-  // Reused every frame rather than reallocated - the steps below write their
-  // per-frame scratch (forwardX/nextX/controlsLocked/...) onto this and read
-  // it back off each other in the same order the original single useFrame
-  // computed them in.
-  const frameRef = useRef({})
+  const refs = useDrivingSceneRefs()
+  const { rigRef, truckGroupRef, tipPivotRef, palletObjectsRef, coneObjectsRef, vehicleOrbitRef, lookYawRef, lookPitchRef } = refs
   const sunLightRef = useRef()
   const sunTargetRef = useRef()
+  const telemetryClockRef = useRef(0)
+
+  // The fixed-step loop. Each step first records the pose it starts from, so
+  // syncView can interpolate the render between the last two steps.
+  const [sim] = useState(() => {
+    const prevPose = capturePose(core.state, createPoseBuffer())
+    const keyTracker = createKeyActiveTracker()
+    let lastControls = neutralControls()
+    const loop = createSimLoop((dt) => {
+      capturePose(core.state, prevPose)
+      lastControls = mergeControls([keyboard.read(core.state)])
+      core.step(dt, lastControls)
+    })
+    return {
+      prevPose,
+      loop,
+      // The keysUsed adapter: the old keyboard letters, reported once per
+      // press, for free-practice completion code.
+      freshKeys: () => keyTracker.update(lastControls, keyboard.drainLetters()),
+    }
+  })
 
   useEffect(() => {
     rigRef.current = buildVehicleRig(forklift, profile.rig)
+    if (import.meta.env.DEV) {
+      const mismatches = rigGeometryMismatches(rigRef.current)
+      if (mismatches.length) {
+        console.warn('forklift.glb no longer matches lib/driving/rigGeometry.js - re-measure it:', mismatches)
+      }
+    }
   }, [forklift, profile.rig, rigRef])
 
   // light.target defaults to an Object3D that isn't in the scene graph, so its
@@ -154,29 +143,21 @@ function DrivingScene({
     })
   }, [forklift])
 
-  // Nose, middle and tail of the body, along its own centreline: the points
-  // the wall check samples. Derived from the footprint so a profile with a
-  // different body length samples its own ends, not the forklift's.
-  const bodySampleOffsets = useMemo(() => [halfLength, 0, -halfLength], [halfLength])
-
-  // Dev-only test hook: warp truck/fork state directly instead of faking held
+  // Dev-only test hooks: warp truck/fork state directly instead of faking held
   // keys, so browser-automation checks can reach a course's pallets/cones
-  // without fighting acceleration/drag timing. Mirrors window.__drivingDebug.
+  // without fighting acceleration/drag timing, and read the state back.
   useEffect(() => {
-    if (!import.meta.env.DEV) return
+    if (!import.meta.env.DEV) return undefined
     window.__drivingDebugSet = (patch = {}) => {
-      if (typeof patch.x === 'number') posRef.current.x = patch.x
-      if (typeof patch.z === 'number') posRef.current.z = patch.z
-      if (typeof patch.heading === 'number') headingRef.current = patch.heading
-      if (typeof patch.speed === 'number') speedRef.current = patch.speed
-      if (typeof patch.forkHeight === 'number') forkHeightRef.current = clamp(patch.forkHeight, 0, FORK_MAX_HEIGHT)
-      if (typeof patch.tilt === 'number') tiltAngleRef.current = clamp(patch.tilt, -TILT_MAX_ANGLE, TILT_MAX_ANGLE)
-      if (typeof patch.engineOn === 'boolean') engineOnRef.current = patch.engineOn
+      core.debugSet(patch)
+      // A warp is not motion: don't smear the render across it.
+      capturePose(core.state, sim.prevPose)
     }
     return () => {
       delete window.__drivingDebugSet
+      delete window.__drivingDebug
     }
-  }, [posRef, headingRef, speedRef, engineOnRef, forkHeightRef, tiltAngleRef])
+  }, [core, sim])
 
   // Recentre the look-around offset every time first-person is (re-)entered,
   // same idea as the chase-cam's "Reset Camera" button - a leftover look
@@ -230,81 +211,35 @@ function DrivingScene({
   }, [firstPerson, gl, lookYawRef, lookPitchRef])
 
   useFrame((_, rawDelta) => {
-    const dt = Math.min(rawDelta, 0.05)
+    keyboard.drainCommands().forEach((command) => core.command(command))
+    const { alpha } = sim.loop.advance(rawDelta)
 
-    const ctx = {
-      profile, course, checkpoints, pallets, racks, liveCones, liveWalls, rackColliders,
-      halfWidth, halfLength, bodySampleOffsets,
-      groundHalfWidth, courseMinZ, courseMaxZ,
-      camera, freeCam, firstPerson,
-      forkliftGroupRef, posRef, headingRef, speedRef, engineOnRef, keysRef, checkpointIndexRef,
-      rigRef, forkHeightRef, tiltAngleRef, steerAngleRef,
-      palletRefs, palletSimRef, palletFootprintsRef,
-      bodyRectRef, palletRectRef, gripLocalRef, palletEulerRef, gripQuatRef, carriageQuatRef,
-      gripQualityRef, carriedIndexRef, deliveredCountRef, prevSpeedRef, failedRef,
-      tipPivotRef, tipStateRef,
-      coneRefs, coneSimRef, coneAxisRef, coneQuatRef,
-      onFailRef, parkedRef, parkingStatusRef, onParkingUpdateRef,
-      hudAccumRef, backRef, desiredCamRef, lookTargetRef,
-      seatWorldRef, seatLookRef, lookYawRef, lookPitchRef, orbitTargetRef, prevOrbitTargetRef, orbitDeltaRef,
-      vehicleOrbitRef, camAdjustedRef,
-      onAdvanceCheckpoint, onHudSample, onPalletEvent,
-      frame: frameRef.current,
-    }
+    const events = core.drainEvents()
+    events.forEach(onSimEvent)
+    sim.freshKeys().forEach(onKeyActive)
 
-    stepDrive(ctx, dt)
-    stepCollisionBody(ctx)
-    stepForks(ctx, dt)
-    // Tip-over animation continues here, one step before whatever set
-    // tip.active this frame (stepPallet, below) - matches the original
-    // single useFrame's ordering, where the pallet block ran after the tip
-    // animation too, so a fail that starts the tip only shows its first
-    // degree of pitch on the next frame. Imperceptible at 60fps and doesn't
-    // change any pass/fail grading, which already happened via triggerFail.
-    stepFail(ctx, dt)
-    stepCollisionHazards(ctx, dt)
-    stepCheckpoints(ctx)
-    stepPallet(ctx, dt)
-    stepParking(ctx)
+    const pose = syncView(
+      {
+        truckGroup: truckGroupRef.current,
+        tipPivot: tipPivotRef.current,
+        rig: rigRef.current,
+        palletObjects: palletObjectsRef.current,
+        coneObjects: coneObjectsRef.current,
+      },
+      core.state,
+      sim.prevPose,
+      alpha,
+      core.world,
+    )
+    stepCamera({ ...refs, profile, camera, freeCam, firstPerson, camAdjustedRef }, pose, rawDelta)
 
-    prevSpeedRef.current = speedRef.current
+    if (import.meta.env.DEV) window.__drivingDebug = core.debugSnapshot()
 
-    if (import.meta.env.DEV && typeof window !== 'undefined') {
-      window.__drivingDebug = {
-        x: posRef.current.x,
-        z: posRef.current.z,
-        heading: headingRef.current,
-        speed: speedRef.current,
-        forkHeight: forkHeightRef.current,
-        tilt: tiltAngleRef.current,
-        steer: steerAngleRef.current,
-        grip: gripQualityRef.current,
-        palletStates: palletSimRef.current?.map((sim) => sim.state) || [],
-        palletRisks: palletSimRef.current?.map((sim) => sim.risk) || [],
-        palletInsertDepths: palletSimRef.current?.map((sim) => sim.grip?.insertDepth ?? null) || [],
-        palletHeights: palletRefs.current.map((pallet) => pallet?.position.y ?? null),
-        palletLanded: palletSimRef.current?.map((sim) => Boolean(sim.landed)) || [],
-        carriedIndex: carriedIndexRef.current,
-        deliveredCount: deliveredCountRef.current,
-        failed: failedRef.current,
-        tipAngle: tipStateRef.current.angle,
-        parkingStatus: parkingStatusRef.current,
-        parked: parkedRef.current,
-      }
-    }
-
-    stepCamera(ctx, dt)
-
-    // One throttled sample feeds every live HUD readout - the frame loop must
-    // never setState per frame.
-    hudAccumRef.current += dt
-    if (hudAccumRef.current >= 0.12) {
-      hudAccumRef.current = 0
-      onHudSample({
-        speed: Math.round(Math.abs(speedRef.current) * 20),
-        grip: gripQualityRef.current,
-        tilt: tiltStateName(tiltAngleRef.current, TILT_RELEASE_ANGLE),
-      })
+    // The HUD refreshes at TELEMETRY_HZ, and at once when something happened.
+    telemetryClockRef.current += rawDelta
+    if (events.length || telemetryClockRef.current >= TELEMETRY_INTERVAL) {
+      telemetryClockRef.current = 0
+      telemetry.publish(telemetrySnapshot(core.state, course))
     }
   })
 
@@ -393,7 +328,7 @@ function DrivingScene({
       {course.decorations && (
         <CourseDecorations decorations={course.decorations} />
       )}
-      {liveCones.length > 0 && <ObstacleCones obstacles={liveCones} coneRefs={coneRefs} />}
+      {liveCones.length > 0 && <ObstacleCones obstacles={liveCones} coneRefs={coneObjectsRef} />}
       {racks.length > 0 && <CourseRacks racks={racks} />}
       {pallets
         .filter((palletDef) => palletDef.targetRack && palletDef.targetLevel)
@@ -415,18 +350,16 @@ function DrivingScene({
           key={palletDef.id || index}
           pallet={palletDef}
           palletRef={(el) => {
-            palletRefs.current[index] = el
+            palletObjectsRef.current[index] = el
           }}
-          onMeasure={(footprint) => {
-            palletFootprintsRef.current[index] = footprint
-          }}
+          onMeasure={(footprint) => core.setPalletFootprint(index, footprint)}
           overweight={typeof course.capacityKg === 'number' && (palletDef.weightKg ?? 0) > course.capacityKg}
         />
       ))}
       {course.dropZone && <DropZoneMarker zone={course.dropZone} delivered={palletState === 'delivered'} />}
       {course.parkingBay && <ParkingBayMarker bay={course.parkingBay} parked={parked} />}
 
-      <group ref={forkliftGroupRef}>
+      <group ref={truckGroupRef}>
         <group ref={tipPivotRef} position={[0, TIP_PIVOT_Y, TIP_PIVOT_Z]}>
           <group position={[0, -TIP_PIVOT_Y, -TIP_PIVOT_Z]}>
             <primitive object={forklift} />
@@ -456,54 +389,53 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   const [freeCam, setFreeCam] = useState(false)
   const [firstPerson, setFirstPerson] = useState(false)
   const camAdjustedRef = useRef(false)
-  const start = course.start || { position: [0, 0, 0], heading: 0 }
-  const forkliftGroupRef = useRef(null)
-  const posRef = useRef(new Vector3(start.position[0], start.position[1] ?? 0, start.position[2]))
-  const headingRef = useRef(start.heading || 0)
-  const speedRef = useRef(0)
-  const engineOnRef = useRef(false)
-  const checkpointIndexRef = useRef(0)
-
-  const [engineOn, setEngineOn] = useState(false)
-  const [checkpointIndex, setCheckpointIndex] = useState(0)
   const t = useT()
-  const [hudSpeed, setHudSpeed] = useState(0)
-  const [gripState, setGripState] = useState('none')
-  const [tiltState, setTiltState] = useState('level')
-  const [palletState, setPalletState] = useState('ground')
-  const [carriedLoad, setCarriedLoad] = useState(null)
+
+  // One attempt: the component is keyed on the course and a reset counter, so
+  // "Reset Attempt" builds a fresh core.
+  const [core] = useState(() => createSimCore(course, profile))
+  const [telemetry] = useState(() => createTelemetryStore(telemetrySnapshot(core.state, course)))
+  const { source: keyboard, pressed } = useDrivingInput()
   const [failInfo, setFailInfo] = useState(null)
-  const failInfoRef = useRef(null)
-  // A catalog key, set by lib/driving/stepGoals.js from inside useFrame.
-  const [parkingStatus, setParkingStatus] = useState(course.parkingBay ? 'driving.parking.enterBay' : null)
-  const [parked, setParked] = useState(false)
+
+  useEffect(() => {
+    core.setProfile(profile)
+  }, [core, profile])
+
+  const hud = useTelemetry(telemetry, (snapshot) => snapshot)
+  const { engineOn, speed: hudSpeed, grip: gripState, tilt: tiltState, checkpointIndex, palletState, carriedLoadKg: carriedLoad, parkingStatus, parked } = hud
 
   const onEventRef = useRef(onEvent)
   useEffect(() => {
     onEventRef.current = onEvent
   }, [onEvent])
 
-  const toggleEngine = () => {
-    if (failInfoRef.current) return
-    const next = !engineOnRef.current
-    engineOnRef.current = next
-    setEngineOn(next)
-    onEventRef.current?.({ type: next ? 'engine-on' : 'engine-off' })
+  // The core's events, turned into the viewer's own event vocabulary
+  // (hooks/useDrivingController.jsx), which is unchanged. They are raised
+  // from inside the frame loop, so they reach the page on the next tick.
+  const emit = (event) => setTimeout(() => onEventRef.current?.(event), 0)
+  const handleSimEvent = (event) => {
+    if (event.type === 'engine') {
+      emit({ type: event.on ? 'engine-on' : 'engine-off' })
+    } else if (event.type === 'fail') {
+      const info = profile.failMessages[event.reason] || { title: 'Attempt Failed', message: 'Reset the attempt and try again.' }
+      setFailInfo({ reason: event.reason, ...info })
+      emit({ type: 'sim-failed', reason: event.reason, title: info.title, message: info.message })
+    } else if (event.type === 'checkpoint') {
+      const { checkpoint, isLast } = event
+      emit({
+        type: isLast ? 'course-complete' : 'checkpoint',
+        id: checkpoint.id,
+        label: checkpoint.label,
+        message: checkpoint.completeMessage,
+      })
+    } else if (event.type === 'pallet') {
+      emit(event.event)
+    } else if (event.type === 'parking' && event.isParked) {
+      emit({ type: 'parking-complete' })
+    }
   }
-
-  const handleFail = (reason) => {
-    const info = profile.failMessages[reason] || { title: 'Attempt Failed', message: 'Reset the attempt and try again.' }
-    failInfoRef.current = { reason, ...info }
-    setFailInfo({ reason, ...info })
-    setCarriedLoad(null)
-    setTimeout(() => onEventRef.current?.({ type: 'sim-failed', reason, title: info.title, message: info.message }), 0)
-  }
-
-  const handleKeyActive = (key) => {
-    onEventRef.current?.({ type: 'key-active', key })
-  }
-
-  const { keysRef, pressed } = useDrivingInput(toggleEngine, handleKeyActive)
+  const handleKeyActive = (key) => emit({ type: 'key-active', key })
 
   const checkpoints = course.checkpoints || []
   // Stored courses always use `pallets`; the singular `pallet` is the older
@@ -608,46 +540,11 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
           <DrivingScene
             profile={profile}
             course={course}
-            forkliftGroupRef={forkliftGroupRef}
-            posRef={posRef}
-            headingRef={headingRef}
-            speedRef={speedRef}
-            engineOnRef={engineOnRef}
-            keysRef={keysRef}
-            checkpointIndex={checkpointIndex}
-            checkpointIndexRef={checkpointIndexRef}
-            onAdvanceCheckpoint={(idx, checkpoint, isLast) => {
-              checkpointIndexRef.current = idx + 1
-              setCheckpointIndex(idx + 1)
-              const event = {
-                type: isLast ? 'course-complete' : 'checkpoint',
-                id: checkpoint.id,
-                label: checkpoint.label,
-                message: checkpoint.completeMessage,
-              }
-              setTimeout(() => onEventRef.current?.(event), 0)
-            }}
-            onHudSample={({ speed, grip, tilt }) => {
-              setHudSpeed(speed)
-              setGripState(grip)
-              setTiltState(tilt)
-            }}
-            palletState={palletState}
-            onPalletEvent={(event, nextState) => {
-              setPalletState(nextState)
-              if (event.type === 'pallet-lifted') setCarriedLoad(event.weightKg ?? null)
-              if (event.type === 'pallet-dropped' || event.type === 'pallet-delivered') setCarriedLoad(null)
-              setTimeout(() => onEventRef.current?.(event), 0)
-            }}
-            onFail={handleFail}
-            parked={parked}
-            onParkingUpdate={(status, isParked) => {
-              setParkingStatus(status)
-              if (isParked) {
-                setParked(true)
-                setTimeout(() => onEventRef.current?.({ type: 'parking-complete' }), 0)
-              }
-            }}
+            core={core}
+            telemetry={telemetry}
+            keyboard={keyboard}
+            onSimEvent={handleSimEvent}
+            onKeyActive={handleKeyActive}
             freeCam={freeCam}
             firstPerson={firstPerson}
             camAdjustedRef={camAdjustedRef}
