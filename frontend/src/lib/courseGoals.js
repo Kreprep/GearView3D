@@ -36,28 +36,18 @@ export function courseGoalType(course) {
 // Default learner-facing instruction for a course whose step has no bespoke
 // copy - notably any step an admin adds in the course editor.
 //
-// `profile` is the equipment's vehicle profile (lib/vehicleProfile.js). Fork
-// steps are only described when the vehicle has forks, because `hasForks:
-// false` also hides the R/F keys from the HUD - telling a learner to press a
-// key that is not on screen is worse than saying nothing. A pallet course on a
-// forkless vehicle still completes the same way; only the wording changes.
 // Returns the catalog key for this course's task copy plus the values it
 // needs, rather than the sentence itself: this file is imported by
 // backend/src/lib/courses.js (for validateCourse), so it must not pull the i18n
 // catalog into the Node process. The caller translates.
-//
-// The fork branch is not decoration - the HUD already hides the R/F keys for a
-// forkless vehicle, so describing a key that is not on screen would be wrong.
-export function courseTaskKey(course, profile) {
-  const hasForks = profile?.hasForks !== false
-
+export function courseTaskKey(course) {
   switch (courseGoalType(course)) {
     case 'parking':
-      return { key: hasForks ? 'driving.task.parking' : 'driving.task.parkingNoForks' }
+      return { key: 'driving.task.parking' }
     case 'pallet':
-      return { key: hasForks ? 'driving.task.pallet' : 'driving.task.palletNoForks' }
+      return { key: 'driving.task.pallet' }
     case 'racking':
-      return { key: hasForks ? 'driving.task.racking' : 'driving.task.rackingNoForks' }
+      return { key: 'driving.task.racking' }
     case 'checkpoints':
       return {
         key: 'driving.task.checkpoints',

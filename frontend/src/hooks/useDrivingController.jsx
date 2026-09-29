@@ -19,7 +19,7 @@ function unique(items) {
 // admin-authored rule evaluated asynchronously in a Worker (see
 // lib/customCompletion.js). Tracked per step id, so more than one
 // free-practice step can exist in a module.
-export function useDrivingController({ moduleSlug, courseById, simulation, gradedStepIds, saveSimulation, markStepComplete, updateSimulation, vehicleProfile }) {
+export function useDrivingController({ moduleSlug, courseById, simulation, gradedStepIds, saveSimulation, markStepComplete, updateSimulation }) {
   const [lastFail, setLastFail] = useState(null)
   const t = useT()
 
@@ -92,7 +92,7 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
       )
     }
 
-    const task = courseTaskKey(course, vehicleProfile)
+    const task = courseTaskKey(course)
 
     return (
       <div className="load-task-stack">

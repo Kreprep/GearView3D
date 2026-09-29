@@ -36,11 +36,9 @@ const ENGINE_ON_CAMERA = { position: [1.05, 0.82, 0.95], fov: 46, minDistance: 0
 // driving, checklist, quiz, activity, summary), so the only module page left
 // outside it is Forklift's hardcoded Walk-Around Check.
 //
-// `driving`-kind steps render through DrivingSimulationViewer with this
-// equipment's vehicle profile (model, rig node names, footprint, HUD copy,
-// fail messages - see lib/vehicleProfile.js). An equipment with no model of
-// its own falls back to forklift.glb, so a driving step is never an empty
-// scene; one whose model has no rig nodes simply drives as a solid body.
+// `driving`-kind steps render through DrivingSimulationViewer with the
+// forklift's vehicle profile (footprint, seat, HUD copy, fail messages - see
+// lib/vehicleProfile.js).
 //
 // Per-step-kind behaviour lives in three controller hooks rather than here:
 // useWalkAroundController (inspection markers, checks/gauges/scenarios),
@@ -73,19 +71,18 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   // module skips the request entirely.
   const hasWalkAround = steps.some((step) => step.kind === 'walk-around')
 
-  // Walk-around and driving steps both need the equipment row - the first for
-  // its model, the second for its vehicle profile.
+  // Driving steps need the equipment row for its vehicle profile overrides.
   const hasDriving = steps.some((step) => step.kind === 'driving')
 
   useEffect(() => {
-    if (!hasWalkAround && !hasDriving) return undefined
+    if (!hasDriving) return undefined
 
     getEquipment()
       .then((rows) => setEquipmentRecord(rows.find((row) => row.id === equipmentId) || null))
       .catch(() => {})
 
     return undefined
-  }, [hasWalkAround, hasDriving, equipmentId])
+  }, [hasDriving, equipmentId])
 
   // Keyed on language too: the profile carries the HUD legend and the fail
   // messages, so a toggle has to rebuild it.
@@ -174,7 +171,6 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     saveSimulation,
     markStepComplete,
     updateSimulation,
-    vehicleProfile,
   })
   const { handleDrivingEvent, renderDrivingTask } = drivingController
 
@@ -226,9 +222,6 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
         <WalkAroundScene
           data={step.walkAround}
           hotspots={hotspots}
-          modelUrl={equipmentRecord?.modelUrl || undefined}
-          modelScale={equipmentRecord?.modelScale}
-          modelOffsetY={equipmentRecord?.modelOffsetY}
           state={phaseStateFor(simulation, step.id)}
           engineStarted={simulation.engineStarted}
           activeScenarioId={scenarioIdFor(step)}

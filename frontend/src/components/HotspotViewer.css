@@ -202,18 +202,6 @@
   opacity: 1;
 }
 
-.scale-reference-label {
-  display: inline-block;
-  white-space: nowrap;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.85);
-  color: #f8fafc;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 8px;
-  pointer-events: none;
-}
-
 .viewer-tire-warning strong {
   display: inline-flex;
   width: 22px;

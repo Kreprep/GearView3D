@@ -15,11 +15,10 @@ import {
 } from '@react-three/drei'
 import { Compass, Eye, Maximize, RotateCcw, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { EQUIPMENT_MODEL_URL } from '../data/equipment'
 import { partsHotspots } from '../lib/trainingData'
 import { CameraFocus, ViewerErrorBoundary, ViewerLoadingPanel } from './viewer/ViewerShared'
 import { useClonedScene } from './viewer/useClonedScene'
-
-const DEFAULT_MODEL_URL = '/models/forklift.glb'
 
 function AutoFit({ resetToken }) {
   const bounds = useBounds()
@@ -31,8 +30,8 @@ function AutoFit({ resetToken }) {
   return null
 }
 
-function EquipmentModel({ modelUrl, modelScale, wireframe }) {
-  const model = useClonedScene(modelUrl)
+function EquipmentModel({ wireframe }) {
+  const model = useClonedScene(EQUIPMENT_MODEL_URL)
 
   useEffect(() => {
     model.traverse((object) => {
@@ -50,7 +49,7 @@ function EquipmentModel({ modelUrl, modelScale, wireframe }) {
     })
   }, [model, wireframe])
 
-  return <primitive object={model} scale={modelScale || 1} />
+  return <primitive object={model} />
 }
 
 function HotspotPin({ hotspot, selected, onSelect, hotspotRefs }) {
@@ -130,9 +129,6 @@ function FallbackForkliftScene({ freeCam }) {
 }
 
 function ForkliftScene({
-  modelUrl,
-  modelScale,
-  modelOffsetY,
   hotspots,
   overlaysEnabled,
   selectedId,
@@ -154,15 +150,12 @@ function ForkliftScene({
 
       <Bounds fit clip margin={1.25}>
         <AutoFit resetToken={resetToken} />
-        {/* Center measures only when cacheKey changes, never on child updates -
-            without the key a model or scale that arrives after mount (equipment
-            row loads async) keeps the previous model's grounding offset.
-
-            `position` lands on Center's outermost group, above the centering
-            transform, so the height nudge survives the next measurement. */}
-        <Center position={[0, modelOffsetY || 0, 0]} top cacheKey={`${modelUrl}:${modelScale || 1}`}>
+        {/* Center measures once, when cacheKey first sets, never on child
+            updates - the model never swaps after mount, and toggling
+            wireframe must not re-ground it. */}
+        <Center top cacheKey={EQUIPMENT_MODEL_URL}>
           <group rotation={[0, -0.18, 0]}>
-            <EquipmentModel modelUrl={modelUrl} modelScale={modelScale} wireframe={wireframe} />
+            <EquipmentModel wireframe={wireframe} />
             {overlaysEnabled &&
               hotspots.map((hotspot) => (
                 <HotspotPin
@@ -211,9 +204,6 @@ function ForkliftScene({
  * the surrounding chrome (objectives/steps/current-task overlays).
  */
 export default function PartsViewport({
-  modelUrl = DEFAULT_MODEL_URL,
-  modelScale = 1,
-  modelOffsetY = 0,
   hotspots = partsHotspots,
   selectedHotspotId,
   onHotspotSelect,
@@ -230,7 +220,7 @@ export default function PartsViewport({
   useEffect(() => {
     let active = true
 
-    fetch(modelUrl, { cache: 'no-store' })
+    fetch(EQUIPMENT_MODEL_URL, { cache: 'no-store' })
       .then((response) => {
         if (active) {
           setModelReady(response.ok)
@@ -245,7 +235,7 @@ export default function PartsViewport({
     return () => {
       active = false
     }
-  }, [modelUrl])
+  }, [])
 
   const enterFullscreen = async () => {
     if (!containerRef.current || document.fullscreenElement) return
@@ -259,9 +249,6 @@ export default function PartsViewport({
 
   const Scene = modelReady ? (
     <ForkliftScene
-      modelUrl={modelUrl}
-      modelScale={modelScale}
-      modelOffsetY={modelOffsetY}
       hotspots={hotspots}
       overlaysEnabled={overlaysEnabled}
       selectedId={selectedHotspotId}
@@ -308,7 +295,7 @@ export default function PartsViewport({
         Drag to rotate - Scroll to zoom - Right-drag to pan
       </div>
 
-      <ViewerErrorBoundary modelUrl={modelUrl}>
+      <ViewerErrorBoundary modelUrl={EQUIPMENT_MODEL_URL}>
         <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
           <Suspense fallback={<ViewerLoadingPanel />}>{Scene}</Suspense>
         </Canvas>

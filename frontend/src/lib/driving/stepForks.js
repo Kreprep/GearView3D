@@ -6,7 +6,7 @@ import { FORK_MAX_HEIGHT, FORK_SPEED, MAST_LIFT_RATIO, MAX_STEER_ANGLE, STEER_DA
 // transform this writes (forkHeightRef/tiltAngleRef feed captureGrip/applyGrip
 // there).
 export function stepForks(ctx, dt) {
-  const { rigRef, speedRef, engineOnRef, steerAngleRef, forkHeightRef, tiltAngleRef, profile, frame } = ctx
+  const { rigRef, speedRef, engineOnRef, steerAngleRef, forkHeightRef, tiltAngleRef, frame } = ctx
   const { keys, controlsLocked, turnInput } = frame
 
   const rig = rigRef.current
@@ -28,7 +28,7 @@ export function stepForks(ctx, dt) {
     } else if (keys.lower) {
       forkHeightRef.current = Math.max(forkHeightRef.current - FORK_SPEED * dt, 0)
     }
-    if (profile.hasForks && rig.tiltPivot) {
+    if (rig.tiltPivot) {
       if (keys.tiltBack) {
         tiltAngleRef.current = Math.max(tiltAngleRef.current - TILT_SPEED * dt, -TILT_MAX_ANGLE)
       } else if (keys.tiltForward) {

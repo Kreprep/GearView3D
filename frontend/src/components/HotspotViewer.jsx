@@ -15,20 +15,17 @@ import {
   useGLTF,
 } from '@react-three/drei'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import * as THREE from 'three'
-import { Compass, Eye, Maximize, RotateCcw, Ruler } from 'lucide-react'
+import { Compass, Eye, Maximize, RotateCcw } from 'lucide-react'
+import { EQUIPMENT_MODEL_URL } from '../data/equipment'
 import { buildVehicleRig, REAR_WHEEL_KEYS } from '../lib/vehicleRig'
 import { CameraFocus, ViewerErrorBoundary, ViewerLoadingPanel } from './viewer/ViewerShared'
 import './HotspotViewer.css'
 
-const DEFAULT_MODEL_URL = '/models/forklift.glb'
-
 // ---------------------------------------------------------------------------
 // Floor tuning - safe to edit by hand.
 //
-// `<Center top>` grounds the model at y = 0, and the scale-reference objects
-// are built to stand at y = 0 too, so these are all relative to the wheels
-// touching the floor.
+// `<Center top>` grounds the model at y = 0, so these are all relative to the
+// wheels touching the floor.
 // ---------------------------------------------------------------------------
 
 /** Height of the floor. Keep at 0: anything lower and every model visibly
@@ -114,8 +111,8 @@ function smoothstep(x) {
   return clamped * clamped * (3 - 2 * clamped)
 }
 
-function EquipmentModel({ modelUrl, modelScale, scenario, deviceEffect, adminEditMode, onSurfaceDown, onSurfaceMove, onSurfaceUp }) {
-  const { scene } = useGLTF(modelUrl)
+function EquipmentModel({ scenario, deviceEffect, adminEditMode, onSurfaceDown, onSurfaceMove, onSurfaceUp }) {
+  const { scene } = useGLTF(EQUIPMENT_MODEL_URL)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const rigRef = useRef(null)
   const moveGroupRef = useRef(null)
@@ -126,7 +123,7 @@ function EquipmentModel({ modelUrl, modelScale, scenario, deviceEffect, adminEdi
   // passive one: the parent <Center> measures the model in its own layout
   // effect, and child layout effects run first — so the measure sees the
   // de-skinned meshes with their true on-screen pose, not the raw skinned
-  // bbox (wrong by the hidden bone offset on some models).
+  // bbox (wrong by forklift.glb's hidden bone offset).
   React.useLayoutEffect(() => {
     rigRef.current = buildVehicleRig(forklift)
   }, [forklift])
@@ -225,152 +222,13 @@ function EquipmentModel({ modelUrl, modelScale, scenario, deviceEffect, adminEdi
   })
 
   return (
-    <group ref={moveGroupRef} scale={modelScale || 1}>
+    <group ref={moveGroupRef}>
       <primitive
         object={forklift}
         onPointerDown={adminEditMode ? onSurfaceDown : undefined}
         onPointerMove={adminEditMode ? onSurfaceMove : undefined}
         onPointerUp={adminEditMode ? onSurfaceUp : undefined}
       />
-    </group>
-  )
-}
-
-/**
- * Known-good reference objects the admin can toggle on beside the equipment
- * model, so a mis-scaled GLB (a common problem: authoring software using cm
- * or mixed units) is obvious at a glance rather than guessed at. Forklift.glb
- * is the scale baseline every equipment model is judged against - it renders
- * at its native size, no scale applied. The human figure is a plain capsule
- * mannequin (no GLB asset exists for one), sized to read as a bit shorter
- * than the forklift baseline rather than to a literal real-world metre
- * figure - forklift.glb's own native scale is not true-to-life (its actual
- * modeled height comes out under 1.7m), so a true 1.7m figure would render
- * taller than the forklift and read as backwards. The box reuses
- * cardboard-box's driving-course scale (0.25), already calibrated to
- * real-world metres there.
- */
-const REFERENCE_HUMAN_HEIGHT = 0.40
-const REFERENCE_BOX_SCALE = 0.25
-const REFERENCE_BOX_URL = '/models/cardboard-box.glb'
-
-function ReferenceLabel({ height, children }) {
-  return (
-    <Html center position={[0, height + 0.12, 0]} distanceFactor={2.4}>
-      <span className="scale-reference-label">{children}</span>
-    </Html>
-  )
-}
-
-/** Bottom- and centre-aligns a cloned GLB scene so it stands on the floor
- *  regardless of how its own pivot was authored - the same trust-nothing
- *  approach that motivated this feature in the first place. */
-function useGroundedClone(url, scale) {
-  const { scene } = useGLTF(url)
-  return useMemo(() => {
-    const clone = cloneSkeleton(scene)
-    clone.scale.setScalar(scale)
-    clone.updateWorldMatrix(true, true)
-    const box = new THREE.Box3().setFromObject(clone)
-    clone.position.x -= (box.min.x + box.max.x) / 2
-    clone.position.z -= (box.min.z + box.max.z) / 2
-    clone.position.y -= box.min.y
-    return clone
-  }, [scene, scale])
-}
-
-function ReferenceBox({ x }) {
-  const clone = useGroundedClone(REFERENCE_BOX_URL, REFERENCE_BOX_SCALE)
-  return (
-    <group position={[x, 0, 0]}>
-      <primitive object={clone} />
-      <ReferenceLabel height={REFERENCE_BOX_SCALE}>Cardboard box</ReferenceLabel>
-    </group>
-  )
-}
-
-/**
- * Forklift.glb's parts are SkinnedMesh, rigidly bound to a bone whose node
- * transform carries a hidden offset that skinning cancels at render time (see
- * EquipmentModel above and buildVehicleRig's own comments) - a naive
- * `Box3.setFromObject` on the raw clone reads that uncancelled offset and
- * reports the model floating about 0.65 units above where it actually
- * renders. `buildVehicleRig` de-skins the same way EquipmentModel does,
- * which is what makes the ground alignment correct; skip useGroundedClone's
- * generic bbox approach for this one model.
- */
-function ReferenceForklift({ x }) {
-  const { scene } = useGLTF(DEFAULT_MODEL_URL)
-  // The rig is built during render rather than in an effect: <Center> measures
-  // in its own layout effect, so anything that changes the geometry has to have
-  // happened before that or Center grounds the still-skinned clone wildly
-  // wrong. De-skinning here also makes the model's real height knowable, which
-  // the label needs - a hardcoded offset floats it above the overhead guard.
-  const { clone, labelHeight } = useMemo(() => {
-    const next = cloneSkeleton(scene)
-    buildVehicleRig(next)
-    next.updateWorldMatrix(true, true)
-    // Precise (per-vertex), because forklift.glb's meshes carry morph targets
-    // and the cheap bounding-box path inflates the model to more than twice its
-    // real height. <Center> measures precisely too, so this is the same number
-    // it grounds against.
-    const box = new THREE.Box3().setFromObject(next, true)
-    return { clone: next, labelHeight: box.max.y - box.min.y }
-  }, [scene])
-
-  useEffect(() => {
-    clone.traverse((object) => {
-      if (!object.isMesh) return
-      const wasArray = Array.isArray(object.material)
-      const materials = wasArray ? object.material : [object.material]
-      const cloned = materials.map((material) => {
-        const next = material.clone()
-        next.transparent = true
-        next.opacity = 0.35
-        next.depthWrite = false
-        return next
-      })
-      object.material = wasArray ? cloned : cloned[0]
-    })
-  }, [clone])
-
-  return (
-    <group position={[x, 0, 0]}>
-      <Center top cacheKey={DEFAULT_MODEL_URL}>
-        <primitive object={clone} />
-      </Center>
-      <ReferenceLabel height={labelHeight}>Forklift (baseline)</ReferenceLabel>
-    </group>
-  )
-}
-
-function ReferenceHuman({ x }) {
-  const headRadius = 0.075
-  const bodyRadius = 0.1
-  const bodyLength = REFERENCE_HUMAN_HEIGHT - headRadius * 2 - bodyRadius * 2
-  return (
-    <group position={[x, 0, 0]}>
-      <mesh position={[0, bodyRadius + bodyLength / 2, 0]}>
-        <capsuleGeometry args={[bodyRadius, bodyLength, 4, 12]} />
-        <meshStandardMaterial color="#f59e0b" transparent opacity={0.55} roughness={0.6} />
-      </mesh>
-      <mesh position={[0, REFERENCE_HUMAN_HEIGHT - headRadius, 0]}>
-        <sphereGeometry args={[headRadius, 16, 16]} />
-        <meshStandardMaterial color="#f59e0b" transparent opacity={0.55} roughness={0.6} />
-      </mesh>
-      <ReferenceLabel height={REFERENCE_HUMAN_HEIGHT}>Average adult</ReferenceLabel>
-    </group>
-  )
-}
-
-/** Row of scale references beside the model. Spacing is generous and fixed
- *  rather than derived from the model's own (possibly wrong) bounding box. */
-function ScaleReference() {
-  return (
-    <group>
-      <ReferenceForklift x={-0.9} />
-      <ReferenceHuman x={0.5} />
-      <ReferenceBox x={0.9} />
     </group>
   )
 }
@@ -505,16 +363,12 @@ function MarkerOverlay({ id, position, label, feedback, onScenarioAction }) {
 }
 
 function InteractiveScene({
-  modelUrl,
-  modelScale,
-  modelOffsetY,
   scenario,
   hotspots,
   defectOverlays,
   selectedHotspotId,
   resetToken,
   showHotspots,
-  showScaleReference,
   cameraPreset,
   deviceEffect,
   freeCam,
@@ -576,21 +430,12 @@ function InteractiveScene({
 
       <Bounds fit clip margin={1.25}>
         <ViewReset cameraPreset={cameraPreset} controlsRef={controlsRef} resetToken={resetToken} />
-        {showScaleReference && <ScaleReference />}
-        {/* Center measures only when cacheKey changes, never on child updates -
-            without the key it keeps the offset computed for the model/scale it
-            mounted with (often the forklift default while the equipment row is
-            still loading), leaving the swapped-in model floating or buried.
-
-            `position` lands on Center's outermost group, above the centering
-            transform it computes, so the height nudge shifts the grounded model
-            instead of being cancelled by the next measurement. It deliberately
-            does not move the scale references, which stand on the floor. */}
-        <Center top cacheKey={`${modelUrl}:${modelScale || 1}`} position={[0, modelOffsetY || 0, 0]}>
+        {/* Center measures once, when cacheKey first sets, never on child
+            updates - which is right, because the model never swaps after
+            mount and the device-demo animations must not re-ground it. */}
+        <Center top cacheKey={EQUIPMENT_MODEL_URL}>
           <group ref={rigGroupRef} rotation={[0, -0.18, 0]}>
             <EquipmentModel
-              modelUrl={modelUrl}
-              modelScale={modelScale}
               scenario={scenario}
               deviceEffect={deviceEffect}
               adminEditMode={adminEditMode}
@@ -708,9 +553,6 @@ export default function HotspotViewer({
   onResetView,
   selectedHotspotId: controlledHotspotId,
   deviceEffect,
-  modelUrl = DEFAULT_MODEL_URL,
-  modelScale = 1,
-  modelOffsetY = 0,
   className = '',
   isAdmin = false,
   adminEditMode = false,
@@ -721,7 +563,6 @@ export default function HotspotViewer({
   const containerRef = useRef(null)
   const [resetToken, setResetToken] = useState(0)
   const [showHotspots, setShowHotspots] = useState(true)
-  const [showScaleReference, setShowScaleReference] = useState(false)
   const [freeCam, setFreeCam] = useState(false)
   const [internalHotspotId, setInternalHotspotId] = useState(null)
   // Memoized so ViewReset's effect doesn't re-run (and re-snap the camera) on
@@ -747,13 +588,6 @@ export default function HotspotViewer({
   const resetView = () => {
     setInternalHotspotId(null)
     onResetView?.()
-    setResetToken((value) => value + 1)
-  }
-
-  // Toggling reference objects changes what Bounds needs to frame, so refit
-  // the camera the same way Reset does.
-  const toggleScaleReference = () => {
-    setShowScaleReference((value) => !value)
     setResetToken((value) => value + 1)
   }
 
@@ -787,31 +621,18 @@ export default function HotspotViewer({
               <Compass size={16} /> Free Cam {freeCam ? 'On' : 'Off'}
             </button>
           )}
-          {isAdmin && (
-            <button
-              type="button"
-              className={showScaleReference ? 'is-active' : ''}
-              onClick={toggleScaleReference}
-            >
-              <Ruler size={16} /> {showScaleReference ? 'Hide' : 'Show'} scale reference
-            </button>
-          )}
         </div>
 
-        <ViewerErrorBoundary modelUrl={modelUrl}>
+        <ViewerErrorBoundary modelUrl={EQUIPMENT_MODEL_URL}>
           <Canvas shadows dpr={[1, 1.35]} camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}>
             <Suspense fallback={<ViewerLoadingPanel label="Loading training view" />}>
               <InteractiveScene
-                modelUrl={modelUrl}
-                modelScale={modelScale}
-                modelOffsetY={modelOffsetY}
                 scenario={scenario}
                 hotspots={hotspots}
                 defectOverlays={defectOverlays}
                 selectedHotspotId={activeSelectedHotspotId}
                 resetToken={resetToken}
                 showHotspots={showHotspots}
-                showScaleReference={showScaleReference}
                 cameraPreset={cameraPreset}
                 deviceEffect={deviceEffect}
                 freeCam={freeCam}
@@ -839,4 +660,4 @@ export default function HotspotViewer({
   )
 }
 
-useGLTF.preload(DEFAULT_MODEL_URL)
+useGLTF.preload(EQUIPMENT_MODEL_URL)

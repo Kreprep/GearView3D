@@ -6,7 +6,7 @@ import { DecorRack } from './DecorRack'
 // Renders decorative course furniture. Cones are not handled here - they're
 // unified with course.obstacles into `liveCones` so every rendered cone is a
 // live collider (see stepCollision.js), rendered once via <ObstacleCones>.
-export function CourseDecorations({ decorations, parkedModelUrl, parkedPlacement = null }) {
+export function CourseDecorations({ decorations }) {
   return (
     <group>
       {decorations.map((item, index) => {
@@ -29,8 +29,6 @@ export function CourseDecorations({ decorations, parkedModelUrl, parkedPlacement
           return (
             <ParkedVehicle
               key={index}
-              modelUrl={parkedModelUrl}
-              placement={parkedPlacement}
               position={[item.position[0], item.position[1] ?? 0, item.position[2]]}
               rotation={item.rotation}
             />

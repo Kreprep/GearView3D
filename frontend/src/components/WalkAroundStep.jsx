@@ -20,9 +20,6 @@ import './WalkAroundStep.css'
 export function WalkAroundScene({
   data,
   hotspots,
-  modelUrl,
-  modelScale,
-  modelOffsetY,
   state,
   engineStarted,
   activeScenarioId,
@@ -56,9 +53,6 @@ export function WalkAroundScene({
         activeHotspots={visibleHotspotIds(data, hotspots, { engineOffComplete, engineStarted })}
         hotspots={hotspots}
         defectOverlays={defectOverlays}
-        modelUrl={modelUrl}
-        modelScale={modelScale}
-        modelOffsetY={modelOffsetY}
         cameraPreset={cameraPreset}
         onHotspotSelect={onHotspotSelect}
         onResetView={onResetView}

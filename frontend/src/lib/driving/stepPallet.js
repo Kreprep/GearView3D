@@ -55,7 +55,7 @@ import {
 export function stepPallet(ctx, dt) {
   const {
     pallets, palletSimRef, course, rigRef, posRef, headingRef, forkHeightRef, tiltAngleRef,
-    palletRefs, palletFootprintsRef, carriedIndexRef, failedRef, engineOnRef, racks, profile,
+    palletRefs, palletFootprintsRef, carriedIndexRef, failedRef, engineOnRef, racks,
     gripQualityRef, deliveredCountRef, onPalletEvent, halfLength, speedRef,
     gripLocalRef, palletEulerRef, gripQuatRef, carriageQuatRef, tipStateRef, frame,
   } = ctx
@@ -93,7 +93,8 @@ export function stepPallet(ctx, dt) {
   // little way past the rack's front face - and how far depends on the
   // vehicle, since a short fork on a long body reaches less. Derive the
   // depth the slot accepts from that geometry rather than trusting a fixed
-  // margin, or a vehicle profile with a shorter fork could never deliver.
+  // margin, or a body footprint tuned longer in Equipment Settings could
+  // never deliver.
   const slotReach =
     RACK_FOOTPRINT.halfDepth +
     Math.max(RACK_SLOT_APPROACH_MARGIN, halfLength + RACK_HIT_MARGIN - attachOffset + 0.05)
@@ -290,7 +291,6 @@ export function stepPallet(ctx, dt) {
         !failedRef.current &&
         !atTargetSlot &&
         !sim.landed &&
-        profile.hasForks &&
         forkHeightRef.current > LOAD_TIP_HEIGHT &&
         tiltAngleRef.current >= TILT_MAX_ANGLE * LOAD_TIP_TILT_RATIO &&
         (palletDef.weightKg ?? 0) > capacity * LOAD_TIP_WEIGHT_RATIO
@@ -359,7 +359,7 @@ export function stepPallet(ctx, dt) {
             sim.restY = surfaceY
             settleLoad(pallet, surfaceY, palletHalf.halfDepth, restingPitch())
 
-            const tiltedForward = !profile.hasForks || tiltAngleRef.current >= TILT_RELEASE_ANGLE
+            const tiltedForward = tiltAngleRef.current >= TILT_RELEASE_ANGLE
             const onTargetShelf = targetHeight != null && Math.abs(surfaceY - targetHeight) < 1e-3
             const steady = !onTargetShelf || Math.abs(speedRef.current) <= RACK_PLACE_MAX_SPEED
 

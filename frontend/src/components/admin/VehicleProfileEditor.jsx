@@ -6,13 +6,28 @@ import { adminUpdateEquipment } from '../../lib/api'
 import { Button } from '../ui/button'
 import { PanelNote } from '../ui/panel'
 import { Field } from '../ui/field'
-import { Input, Checkbox } from '../ui/input'
+import { Input } from '../ui/input'
 import { Toolbar } from '../ui/toolbar'
 
 const FIELDSET_CLASSES = 'm-0 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] items-start gap-3 rounded-xl border border-border bg-slate-50 p-4'
 const LEGEND_CLASSES = 'px-1 text-[13px] font-bold text-body'
 
-// Editor for Equipment.simConfig - how this equipment drives in a `driving`
+// The simConfig keys resolveVehicleProfile() still reads. The draft starts from
+// these alone, so saving drops anything a row kept from before the app was
+// narrowed to the forklift (model URLs, `hasForks`, rig node names) instead of
+// writing it back. keyLegend and failMessages have no fields here but are
+// still honoured, so they are carried through untouched.
+function editableOverrides(simConfig) {
+  const overrides = {}
+  if (!simConfig) return overrides
+  if (simConfig.footprint) overrides.footprint = simConfig.footprint
+  if (simConfig.rig?.cabin) overrides.rig = { cabin: simConfig.rig.cabin }
+  if (simConfig.keyLegend) overrides.keyLegend = simConfig.keyLegend
+  if (simConfig.failMessages) overrides.failMessages = simConfig.failMessages
+  return overrides
+}
+
+// Editor for Equipment.simConfig - how the forklift drives in a `driving`
 // step. Only overrides are stored, so a blank field keeps the coded default
 // shown as its placeholder, exactly like the hub content editor.
 //
@@ -21,22 +36,18 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
   // The placeholders show the coded defaults, so they follow the dashboard's
   // language. simConfig overrides themselves stay single-language.
   const language = useLanguage()
-  const [draft, setDraft] = useState(() => equipment?.simConfig || {})
+  const [draft, setDraft] = useState(() => editableOverrides(equipment?.simConfig))
   const [saving, setSaving] = useState(false)
 
   if (!equipment) return <PanelNote>Select an equipment first.</PanelNote>
 
   const defaults = defaultVehicleProfile(language)
   const resolved = resolveVehicleProfile(equipment, language)
-  const setField = (patch) => setDraft({ ...draft, ...patch })
-  const setRig = (patch) => setField({ rig: { ...(draft.rig || {}), ...patch } })
-  const setWheels = (patch) => setRig({ wheels: { ...(draft.rig?.wheels || {}), ...patch } })
-  const setFootprint = (patch) => setField({ footprint: { ...(draft.footprint || {}), ...patch } })
+  const setFootprint = (patch) => setDraft({ ...draft, footprint: { ...(draft.footprint || {}), ...patch } })
   const setSeatAxis = (axis, value) => {
-    const current = draft.rig?.cabin?.seatOffset ?? resolved.rig.cabin.seatOffset
-    const next = [...current]
+    const next = [...(draft.rig?.cabin?.seatOffset ?? resolved.rig.cabin.seatOffset)]
     next[axis] = value
-    setRig({ cabin: { ...(draft.rig?.cabin || {}), seatOffset: next } })
+    setDraft({ ...draft, rig: { cabin: { ...(draft.rig?.cabin || {}), seatOffset: next } } })
   }
 
   const save = async () => {
@@ -53,44 +64,14 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
   }
 
   const overrideCount = Object.keys(draft).length
-  // Only forklift.glb has a coded footprint; any other model's is measured off
-  // its own outline when the scene loads (see resolveVehicleProfile).
-  const footprintPlaceholder = (value) => (value === undefined ? 'Measured from the model' : String(value))
 
   return (
     <>
       <PanelNote>
-        How this equipment behaves in a Driving Course step. Leave a field blank to use the default in its
-        placeholder. An equipment with no model of its own drives the forklift model; one whose model has none of
-        the rig node names below still drives, just without spinning wheels or a moving mast.
+        How the forklift behaves in a Driving Course step. Leave a field blank to use the default in its placeholder.
       </PanelNote>
 
       <div className="mt-3 grid gap-3.5">
-        <fieldset className={FIELDSET_CLASSES}>
-          <legend className={LEGEND_CLASSES}>Vehicle</legend>
-          <Field label="Driving model URL">
-            <Input
-              value={draft.modelUrl || ''}
-              placeholder={resolved.modelUrl}
-              onChange={(event) => setField({ modelUrl: event.target.value })}
-            />
-          </Field>
-          <Field label="Parked-obstacle model URL">
-            <Input
-              value={draft.parkedModelUrl || ''}
-              placeholder={resolved.parkedModelUrl}
-              onChange={(event) => setField({ parkedModelUrl: event.target.value })}
-            />
-          </Field>
-          <Checkbox
-            label="This vehicle has forks"
-            className="col-span-full"
-            checked={draft.hasForks !== undefined ? Boolean(draft.hasForks) : defaults.hasForks}
-            onChange={(event) => setField({ hasForks: event.target.checked })}
-          />
-          <PanelNote className="col-span-full">Unchecked hides the raise/lower keys from the HUD legend and help line.</PanelNote>
-        </fieldset>
-
         <fieldset className={FIELDSET_CLASSES}>
           <legend className={LEGEND_CLASSES}>Body footprint (metres, half-extents)</legend>
           <Field label="Half width">
@@ -98,7 +79,7 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
               type="number"
               step="0.01"
               value={draft.footprint?.halfWidth ?? ''}
-              placeholder={footprintPlaceholder(resolved.footprint.halfWidth)}
+              placeholder={String(defaults.footprint.halfWidth)}
               onChange={(event) => setFootprint({ halfWidth: event.target.value === '' ? undefined : Number(event.target.value) })}
             />
           </Field>
@@ -107,36 +88,15 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
               type="number"
               step="0.01"
               value={draft.footprint?.halfLength ?? ''}
-              placeholder={footprintPlaceholder(resolved.footprint.halfLength)}
+              placeholder={String(defaults.footprint.halfLength)}
               onChange={(event) => setFootprint({ halfLength: event.target.value === '' ? undefined : Number(event.target.value) })}
             />
           </Field>
           <PanelNote className="col-span-full">
-            Used for cone and wall collision. Blank measures the model&apos;s whole outline at its model scale, except
-            forklift.glb, whose default is its body without the forks. A vehicle with forks needs the body only, or
-            the tines cannot slide under a pallet. Too small and the vehicle clips through; too large and it fails on
-            clearances a real one would make.
+            Used for cone, wall, rack and pallet collision. The default is the forklift&apos;s body without the forks,
+            which have to stay outside it or the tines cannot slide under a pallet. Too small and the forklift clips
+            through; too large and it fails on clearances a real one would make.
           </PanelNote>
-        </fieldset>
-
-        <fieldset className={FIELDSET_CLASSES}>
-          <legend className={LEGEND_CLASSES}>Rig node names (from the GLB)</legend>
-          {['FL', 'FR', 'RL', 'RR'].map((wheel) => (
-            <Field key={wheel} label={`${wheel} wheel`}>
-              <Input
-                value={draft.rig?.wheels?.[wheel] || ''}
-                placeholder={resolved.rig.wheels[wheel]}
-                onChange={(event) => setWheels({ [wheel]: event.target.value })}
-              />
-            </Field>
-          ))}
-          <Field label="Mast node">
-            <Input value={draft.rig?.mast || ''} placeholder={resolved.rig.mast} onChange={(event) => setRig({ mast: event.target.value })} />
-          </Field>
-          <Field label="Lift carriage node">
-            <Input value={draft.rig?.carriage || ''} placeholder={resolved.rig.carriage} onChange={(event) => setRig({ carriage: event.target.value })} />
-          </Field>
-          <PanelNote className="col-span-full">A name that does not exist in the model is skipped rather than failing the scene.</PanelNote>
         </fieldset>
 
         <fieldset className={FIELDSET_CLASSES}>
@@ -164,7 +124,7 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
         <Button variant="secondary" onClick={() => setDraft({})} disabled={overrideCount === 0}>Reset to default</Button>
       </Toolbar>
       <PanelNote>
-        {overrideCount === 0 ? 'No overrides - this equipment drives with the default profile.' : `${overrideCount} group(s) overridden.`}
+        {overrideCount === 0 ? 'No overrides - the forklift drives with the default profile.' : `${overrideCount} group(s) overridden.`}
       </PanelNote>
     </>
   )

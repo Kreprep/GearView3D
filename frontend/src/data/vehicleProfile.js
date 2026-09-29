@@ -1,17 +1,12 @@
 import { translate } from '../i18n/translate.js'
 
-// How an equipment drives in DrivingSimulationViewer.
+// How the forklift drives in DrivingSimulationViewer.
 //
-// Every value here is a *default*, measured from forklift.glb. `Equipment.
-// simConfig` stores only what an admin overrode, the same rule as the hub copy
-// in hubContent.js, so improving a default still reaches every equipment that
+// Every value here is a *default*, measured from forklift.glb
+// (EQUIPMENT_MODEL_URL in equipment.js). `Equipment.simConfig` stores only the
+// body footprint and first-person seat an admin overrode, the same rule as the
+// hub copy in hubContent.js, so improving a default still reaches a row that
 // never touched it.
-//
-// A model with none of the rig nodes below still drives - the rig builder
-// skips what it cannot find, so the vehicle moves, steers and collides as one
-// solid body, just without spinning wheels or a moving mast.
-
-export const DEFAULT_VEHICLE_MODEL_URL = '/models/forklift.glb'
 
 // Half-extents of the body used for cone, wall, rack and pallet collision, in
 // metres, along the vehicle's local X (width) and Z (length).
@@ -32,13 +27,12 @@ export const DEFAULT_RIG = {
   carriage: 'Lift_Carriage',
   mastFoot: [0, 0.024, 0.246],
   // Approximate operator eye point, local to the vehicle (x: side, y: up, z:
-  // forward) - what the first-person camera sits at. Tune per equipment in
-  // the Vehicle Profile editor if a model's cab sits somewhere else.
+  // forward) - what the first-person camera sits at. Tunable in the Driving
+  // Simulation section of Equipment Settings.
   cabin: { seatOffset: [0, 0.40, -0.15] },
 }
 
-// The HUD key legend. `forks: true` on a row means it is only shown when the
-// vehicle actually has forks.
+// The HUD key legend.
 export function defaultKeyLegend(lang) {
   return [
     { key: 'w', caption: translate(lang, 'driving.key.accelerate') },
@@ -46,10 +40,10 @@ export function defaultKeyLegend(lang) {
     { key: 's', caption: translate(lang, 'driving.key.brake') },
     { key: 'd', caption: translate(lang, 'driving.key.steerRight') },
     { key: 'e', caption: translate(lang, 'driving.key.engine') },
-    { key: 'r', caption: translate(lang, 'driving.key.raiseForks'), forks: true },
-    { key: 'f', caption: translate(lang, 'driving.key.lowerForks'), forks: true },
-    { key: 't', caption: translate(lang, 'driving.key.tiltBack'), forks: true },
-    { key: 'g', caption: translate(lang, 'driving.key.tiltForward'), forks: true },
+    { key: 'r', caption: translate(lang, 'driving.key.raiseForks') },
+    { key: 'f', caption: translate(lang, 'driving.key.lowerForks') },
+    { key: 't', caption: translate(lang, 'driving.key.tiltBack') },
+    { key: 'g', caption: translate(lang, 'driving.key.tiltForward') },
   ]
 }
 
@@ -100,11 +94,6 @@ export function defaultFailMessages(lang) {
 
 export function defaultVehicleProfile(lang) {
   return {
-    // Blank means "use the equipment's own modelUrl, then forklift.glb".
-    modelUrl: '',
-    // The model dropped in as a parked obstacle on a course.
-    parkedModelUrl: '',
-    hasForks: true,
     footprint: { ...DEFAULT_FOOTPRINT },
     rig: { ...DEFAULT_RIG, wheels: { ...DEFAULT_RIG.wheels } },
     keyLegend: defaultKeyLegend(lang),

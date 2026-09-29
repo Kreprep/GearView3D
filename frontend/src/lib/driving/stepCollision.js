@@ -34,7 +34,7 @@ export function stepCollisionBody(ctx) {
   const {
     bodyRectRef, headingRef, halfWidth, halfLength, posRef, rackColliders, speedRef,
     pallets, rigRef, palletRefs, palletSimRef, palletFootprintsRef, palletRectRef,
-    profile, forkHeightRef, forkliftGroupRef, frame,
+    forkHeightRef, forkliftGroupRef, frame,
   } = ctx
   const { nextX, nextZ } = frame
 
@@ -104,8 +104,7 @@ export function stepCollisionBody(ctx) {
         forkTipOffset: tipOffset,
         forkReach: tipReach,
       })
-      const forksEntering =
-        profile.hasForks && engagement.canEnter && forkHeightRef.current <= FORK_ENGAGE_HEIGHT
+      const forksEntering = engagement.canEnter && forkHeightRef.current <= FORK_ENGAGE_HEIGHT
 
       if (forksEntering && engagement.insertDepth < engagement.seatedDepth) continue
 

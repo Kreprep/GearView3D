@@ -36,10 +36,8 @@ export const PLACEABLE_KINDS = [
 ]
 
 // The parked-obstacle kind was called 'forklift' until migration
-// 20260814110000, even though its model comes from the equipment's
-// `simConfig.parkedModelUrl` - so a Backhoe course dropped in a backhoe
-// labelled "forklift". Read stored decorations through this so a row the
-// migration missed still renders and still collides.
+// 20260814110000 renamed it 'vehicle'. Read stored decorations through this
+// so a row the migration missed still renders and still collides.
 export function decorationType(item) {
   return item?.type === 'forklift' ? 'vehicle' : item?.type
 }
