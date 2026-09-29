@@ -26,6 +26,18 @@ export const DEFAULT_RIG = {
   mast: 'Mast',
   carriage: 'Lift_Carriage',
   mastFoot: [0, 0.024, 0.246],
+  // The steering wheel, split out of Forklift_Body by
+  // scripts/split-steering-wheel.mjs. It turns about the ring's normal (the
+  // column's axis, tilted 28 degrees toward the seat) through the ring's
+  // centre. Measured in Blender on 2026-09-30.
+  steeringWheel: { node: 'Steering_Wheel', centre: [0, 0.3197, 0.0672], axis: [0, 0.8804, -0.4743] },
+  // The hydraulic levers to the operator's right, innermost first: lift, then
+  // tilt (Lever_R, an attachment lever, has nothing to drive). Each rocks
+  // fore and aft about the model's X axis through the base of its stem.
+  levers: {
+    lift: { node: 'Lever_L', base: [-0.049, 0.2672, 0.1302] },
+    tilt: { node: 'Lever_M', base: [-0.0639, 0.2672, 0.1302] },
+  },
   // Approximate operator eye point, local to the vehicle (x: side, y: up, z:
   // forward) - what the first-person camera sits at. Tunable in the Driving
   // Simulation section of Equipment Settings.

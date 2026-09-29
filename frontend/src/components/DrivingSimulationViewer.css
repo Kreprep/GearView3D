@@ -53,9 +53,8 @@
   gap: var(--space-2);
 }
 
-.driving-engine-badge,
-.driving-speed-badge,
 .driving-checkpoint-badge {
+  white-space: nowrap;
   border-radius: var(--radius-sm);
   padding: var(--ctl-pad-y) var(--ctl-pad-x);
   font-weight: 700;
@@ -65,21 +64,14 @@
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-.driving-engine-badge.on {
-  background: rgba(22, 163, 74, 0.85);
-  border-color: rgba(187, 247, 208, 0.5);
-}
-
-.driving-engine-badge.off {
-  background: rgba(220, 38, 38, 0.75);
-  border-color: rgba(254, 202, 202, 0.5);
-}
-
 .driving-checkpoint-badge {
   background: rgba(8, 145, 178, 0.75);
 }
 
+/* A size container, so the operator dashboard can stack its panels when the
+   band between the module shell's overlay lanes is narrow. */
 .driving-hud-bottom {
+  container: driving-hud / inline-size;
   position: absolute;
   left: var(--space-3);
   right: var(--space-3);
@@ -90,6 +82,22 @@
   align-items: center;
   gap: var(--space-2);
   pointer-events: none;
+}
+
+/* Camera modes as one segmented group, each with its number key. */
+.driving-camera-modes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.driving-camera-shortcut {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.4em;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: var(--fs-2xs);
 }
 
 .driving-hud-actions {
@@ -120,14 +128,6 @@
 .driving-reset-button.is-active {
   background: #0891b2;
   border-color: #22d3ee;
-}
-
-.driving-keys {
-  display: flex;
-  max-width: 100%;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--ctl-gap);
 }
 
 .driving-key-wrap {
@@ -196,45 +196,8 @@
   background: rgba(8, 145, 178, 0.82);
 }
 
-.driving-load-badge {
-  border-radius: var(--radius-sm);
-  padding: var(--ctl-pad-y) var(--ctl-pad-x);
-  font-weight: 700;
-  font-size: var(--fs-sm);
-  color: #f8fafc;
-  background: rgba(21, 128, 61, 0.78);
-}
-
-.driving-load-badge.over {
-  background: rgba(185, 28, 28, 0.85);
-}
-
-/* Fork engagement quality and mast tilt. Both decide whether a load stays on
-   the forks, so they read as traffic lights: green is safe to travel with,
-   amber is the state that loses the load. */
-.driving-grip-badge,
-.driving-tilt-badge {
-  border-radius: var(--radius-sm);
-  padding: var(--ctl-pad-y) var(--ctl-pad-x);
-  font-weight: 700;
-  font-size: var(--fs-sm);
-  color: #f8fafc;
-  background: rgba(51, 65, 85, 0.82);
-}
-
-.driving-grip-badge.secure,
-.driving-tilt-badge.back {
-  background: rgba(21, 128, 61, 0.82);
-}
-
-.driving-grip-badge.partial,
-.driving-grip-badge.shallow,
-.driving-tilt-badge.warn {
-  color: #1c1917;
-  background: rgba(217, 119, 6, 0.9);
-}
-
 .driving-parking-badge {
+  white-space: nowrap;
   border-radius: var(--radius-sm);
   padding: var(--ctl-pad-y) var(--ctl-pad-x);
   font-weight: 700;

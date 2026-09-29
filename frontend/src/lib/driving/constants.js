@@ -98,6 +98,15 @@ export const PARKING_ALIGN_TOLERANCE = 0.26
 export const PARKING_SPEED_EPSILON = 0.03
 export const PARKING_FORK_MAX = 0.02
 
+// syncView: the cab controls. The steering wheel turns this far at full
+// steering lock each way - fewer turns than a real truck's (about two), so
+// keyboard steering doesn't blur the wheel; Phase 4 maps a real wheel's
+// rotation. The hydraulic levers rock LEVER_THROW at full input, easing
+// toward it at LEVER_DAMP per second.
+export const STEERING_WHEEL_LOCK = Math.PI * 1.25
+export const LEVER_THROW = 0.35
+export const LEVER_DAMP = 14
+
 // stepCamera: first-person mouse-drag look-around. Yaw is unclamped (looking
 // over your shoulder is normal); pitch is clamped short of straight up/down
 // so lookAt never flips.
@@ -111,19 +120,13 @@ export const PALLET_STATE_LABEL_KEYS = {
   delivered: 'driving.hud.pallet.delivered',
 }
 
-// How well the forks are in, as the learner sees it. 'shallow' is lined up
-// with a pallet but not far enough in to lift it; 'none' means no pallet is
-// engaged at all, and hides the badge.
+// How well the forks are in, as the learner sees it on the dashboard.
+// 'shallow' is lined up with a pallet but not far enough in to lift it;
+// 'none' means no pallet is engaged at all, and hides the reading.
 export const GRIP_LABEL_KEYS = {
   shallow: 'driving.hud.grip.shallow',
   partial: 'driving.hud.grip.partial',
   secure: 'driving.hud.grip.secure',
-}
-
-export const TILT_LABEL_KEYS = {
-  back: 'driving.hud.tilt.back',
-  level: 'driving.hud.tilt.level',
-  forward: 'driving.hud.tilt.forward',
 }
 
 // TILT_RELEASE_ANGLE comes from data/palletProfile.js (shared with

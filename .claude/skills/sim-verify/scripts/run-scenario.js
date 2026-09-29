@@ -116,6 +116,11 @@ async (page) => {
   const scenario = SCENARIOS[SCENARIO]
   if (!scenario) return JSON.stringify({ error: `Unknown scenario "${SCENARIO}"`, scenarios: Object.keys(SCENARIOS) })
 
+  // Chrome throttles a window that other windows cover (Blender, an editor)
+  // to a frame or two a second, and the fixed-step sim then crawls: holds
+  // time out with the truck barely moved. Keep the tab in front.
+  await page.bringToFront()
+
   const consoleErrors = []
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text().slice(0, 300))

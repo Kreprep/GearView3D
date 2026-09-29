@@ -116,6 +116,19 @@ export function stepCollisionBody(state, world) {
   }
 }
 
+// A wall's or parked vehicle's rect (world.liveWalls entry), written into
+// `rect`: a wall is thickness x length, and a parked vehicle has the truck's
+// own footprint, since it is the same model.
+export function wallRectInto(rect, wall, world) {
+  const isVehicle = decorationType(wall) === 'vehicle'
+  rect.x = wall.position[0]
+  rect.z = wall.position[2]
+  rect.rotation = wall.rotation || 0
+  rect.halfX = isVehicle ? world.halfWidth : WALL_HALF_THICKNESS
+  rect.halfZ = isVehicle ? world.halfLength : (wall.length || 3) / 2
+  return rect
+}
+
 // Cone and wall/vehicle hits, checked against the truck's committed position.
 // Cones are exact point-vs-oriented-rectangle (cone position against the
 // truck's own footprint) - the same technique the wall check uses, rather
@@ -124,7 +137,7 @@ export function stepCollisionBody(state, world) {
 // Always on - a cone is a hazard however the course authored it.
 export function stepCollisionHazards(state, world, dt) {
   const { truck, cones, frame } = state
-  const { liveCones, liveWalls, halfWidth, halfLength, bodySampleOffsets, scratch } = world
+  const { liveCones, liveWalls, bodySampleOffsets, scratch } = world
   const { forwardX, forwardZ } = frame
   const body = scratch.bodyRect
 
@@ -158,11 +171,7 @@ export function stepCollisionHazards(state, world, dt) {
     const wallRect = scratch.otherRect
     wallLoop: for (const wall of liveWalls) {
       const isVehicle = decorationType(wall) === 'vehicle'
-      wallRect.x = wall.position[0]
-      wallRect.z = wall.position[2]
-      wallRect.rotation = wall.rotation || 0
-      wallRect.halfX = isVehicle ? halfWidth : WALL_HALF_THICKNESS
-      wallRect.halfZ = isVehicle ? halfLength : (wall.length || 3) / 2
+      wallRectInto(wallRect, wall, world)
       for (const offset of bodySampleOffsets) {
         const sampleX = truck.x + forwardX * offset
         const sampleZ = truck.z + forwardZ * offset

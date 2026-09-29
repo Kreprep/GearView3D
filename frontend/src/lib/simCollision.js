@@ -43,6 +43,18 @@ export function distanceToOrientedRect(px, pz, rect) {
   return Math.hypot(edgeX, edgeZ)
 }
 
+// The point of the rect (edge or interior) nearest to a point, in world
+// space. For a point outside the rect it lies on the rect's edge.
+export function closestPointOnOrientedRect(px, pz, rect) {
+  const local = toRectLocal(px, pz, rect)
+  const lx = clamp(local.x, -rect.halfX, rect.halfX)
+  const lz = clamp(local.z, -rect.halfZ, rect.halfZ)
+  const cos = Math.cos(rect.rotation || 0)
+  const sin = Math.sin(rect.rotation || 0)
+  // Inverse of toRectLocal.
+  return { x: rect.x + lx * cos + lz * sin, z: rect.z - lx * sin + lz * cos }
+}
+
 // The rect's four corners in world space.
 function rectCorners(rect) {
   const cos = Math.cos(rect.rotation || 0)
@@ -109,4 +121,31 @@ export function orientedRectOverlap(a, b, margin = 0) {
 
 export function orientedRectsOverlap(a, b, margin = 0) {
   return orientedRectOverlap(a, b, margin) !== null
+}
+
+// The gap between two rects and where it is: `{ distance, x, z, otherX,
+// otherZ }`, with (x, z) the nearest point on `a` and (otherX, otherZ) the
+// nearest point on `b`. Two convex polygons that don't touch are closest
+// between a corner of one and the edge of the other, so checking every corner
+// against the other rect finds it. Overlapping rects are 0 apart; the point
+// on `a` is then the one nearest b's centre, so a caller can still tell which
+// side of `a` the overlap is on.
+export function rectRectClosest(a, b) {
+  if (orientedRectsOverlap(a, b)) {
+    const point = closestPointOnOrientedRect(b.x, b.z, a)
+    return { distance: 0, x: point.x, z: point.z, otherX: b.x, otherZ: b.z }
+  }
+
+  let best = null
+  const consider = (onA, onB) => {
+    const distance = Math.hypot(onB.x - onA.x, onB.z - onA.z)
+    if (!best || distance < best.distance) best = { distance, x: onA.x, z: onA.z, otherX: onB.x, otherZ: onB.z }
+  }
+  for (const [cx, cz] of rectCorners(b)) consider(closestPointOnOrientedRect(cx, cz, a), { x: cx, z: cz })
+  for (const [cx, cz] of rectCorners(a)) consider({ x: cx, z: cz }, closestPointOnOrientedRect(cx, cz, b))
+  return best
+}
+
+export function rectRectDistance(a, b) {
+  return rectRectClosest(a, b).distance
 }

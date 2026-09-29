@@ -145,7 +145,31 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
     }
   }
 
-  const rig = { wheels, mastLift, carriageLift, tiltPivot, forkTipOffset, forkReach }
+  // Cab controls: the steering wheel turns about its column, and the lift and
+  // tilt levers rock about their bases. Each gets a pivot group at its
+  // measured point, with the turning axis expressed in the pivot's parent
+  // frame, so the frame loop only sets an angle. A model without the node
+  // simply has no pivot.
+  const pivotAt = (mesh, pointWorld, axisWorld) => {
+    const parent = mesh.parent
+    const pivot = new Group()
+    pivot.position.copy(parent.worldToLocal(new Vector3(...pointWorld)))
+    parent.add(pivot)
+    pivot.updateMatrixWorld(true)
+    pivot.attach(mesh)
+    const axis = new Vector3(...axisWorld).transformDirection(new Matrix4().copy(parent.matrixWorld).invert())
+    return { pivot, axis, angle: 0 }
+  }
+  const steeringConfig = rigConfig?.steeringWheel || DEFAULT_RIG.steeringWheel
+  const steeringMesh = root.getObjectByName(steeringConfig.node)
+  const steeringWheel = steeringMesh ? pivotAt(steeringMesh, steeringConfig.centre, steeringConfig.axis) : null
+  const levers = {}
+  Object.entries(rigConfig?.levers || DEFAULT_RIG.levers).forEach(([input, { node, base }]) => {
+    const mesh = root.getObjectByName(node)
+    if (mesh) levers[input] = pivotAt(mesh, base, [1, 0, 0])
+  })
+
+  const rig = { wheels, mastLift, carriageLift, tiltPivot, steeringWheel, levers, forkTipOffset, forkReach }
   root.userData.__vehicleRig = rig
   if (import.meta.env.DEV && typeof window !== 'undefined') window.__vehicleRig = rig
   return rig
