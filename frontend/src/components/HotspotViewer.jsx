@@ -624,7 +624,7 @@ export default function HotspotViewer({
         </div>
 
         <ViewerErrorBoundary modelUrl={EQUIPMENT_MODEL_URL}>
-          <Canvas shadows dpr={[1, 1.35]} camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}>
+          <Canvas shadows="percentage" dpr={[1, 1.35]} camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}>
             <Suspense fallback={<ViewerLoadingPanel label="Loading training view" />}>
               <InteractiveScene
                 scenario={scenario}
