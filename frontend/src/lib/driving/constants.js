@@ -1,7 +1,8 @@
 // Tuning constants for the driving simulation's kinematic "physics" (no
-// physics engine - see DrivingScene's useFrame, split across stepDrive.js /
-// stepCollision.js / stepForks.js / stepPallet.js / stepFail.js /
-// stepGoals.js). Grouped by which step reads them.
+// physics engine yet). The headless core (simCore.js) runs the steps that read
+// them - stepDrive.js / stepCollision.js / stepForks.js / stepPallet.js /
+// stepFail.js / stepGoals.js - at a fixed step (simLoop.js). Grouped by which
+// step reads them. New constants are written in real units via units.js.
 
 // stepDrive: speed and heading integration.
 export const MAX_SPEED = 1.5
@@ -27,8 +28,6 @@ export const STEER_DAMP = 8
 export const FORK_MAX_HEIGHT = 0.8
 export const FORK_SPEED = 0.6
 export const MAST_LIFT_RATIO = 0.5
-export const FORK_TIP_OFFSET_FALLBACK = 0.6
-export const FORK_REACH_FALLBACK = 0.36
 
 // Mast tilt: rotation.x on the rig's tiltPivot (see buildVehicleRig). Negative
 // tilts the mast top back toward the operator (secures a carried load),

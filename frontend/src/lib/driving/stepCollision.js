@@ -1,23 +1,20 @@
-import { PALLET_FALLBACK_FOOTPRINT } from '../../data/palletProfile'
-import { RACK_STRIKE_SPEED } from '../../data/rackProfile'
-import { evaluateForkEngagement } from '../loadPhysics'
-import { distanceToOrientedRect, orientedRectOverlap, pointInOrientedRect } from '../simCollision'
-import { decorationType } from '../courseEdit'
-import { triggerFail } from './stepFail'
+import { RACK_STRIKE_SPEED } from '../../data/rackProfile.js'
+import { evaluateForkEngagement } from '../loadPhysics.js'
+import { distanceToOrientedRect, orientedRectOverlap, pointInOrientedRect } from '../simCollision.js'
+import { decorationType } from '../courseEdit.js'
+import { triggerFail } from './stepFail.js'
 import {
   CONE_FALL_ANGLE,
   CONE_FALL_SPEED,
   CONE_MIN_HIT_SPEED,
   CONE_RADIUS,
   FORK_ENGAGE_HEIGHT,
-  FORK_REACH_FALLBACK,
-  FORK_TIP_OFFSET_FALLBACK,
   PALLET_NUDGE_MAX,
   PALLET_SOLID_MAX_Y,
   RACK_HIT_MARGIN,
   WALL_HALF_THICKNESS,
   WALL_HIT_MARGIN,
-} from './constants'
+} from './constants.js'
 
 // Solid objects stop the truck rather than let it drive through. Racking also
 // fails the attempt - it is structure, and only the forks belong inside a
@@ -27,21 +24,17 @@ import {
 // when the truck hits it off-square.
 //
 // Resolves stepDrive's intended nextX/nextZ against rack and pallet-as-
-// obstacle collision, commits the result to posRef, and syncs the visible
-// forklift group. Must run before stepForks/stepFail/stepPallet, which read
-// the committed position.
-export function stepCollisionBody(ctx) {
-  const {
-    bodyRectRef, headingRef, halfWidth, halfLength, posRef, rackColliders, speedRef,
-    pallets, rigRef, palletRefs, palletSimRef, palletFootprintsRef, palletRectRef,
-    forkHeightRef, forkliftGroupRef, frame,
-  } = ctx
+// obstacle collision and commits the result to the truck's position. Must run
+// before stepForks/stepFail/stepPallet, which read the committed position.
+export function stepCollisionBody(state, world) {
+  const { truck, forks, pallets, frame } = state
+  const { halfWidth, halfLength, rackColliders, geometry, scratch } = world
   const { nextX, nextZ } = frame
 
-  const body = bodyRectRef.current
+  const body = scratch.bodyRect
   body.x = nextX
   body.z = nextZ
-  body.rotation = headingRef.current
+  body.rotation = truck.heading
   body.halfX = halfWidth
   body.halfZ = halfLength
 
@@ -53,8 +46,8 @@ export function stepCollisionBody(ctx) {
   const worsensOverlap = (rect, margin = 0) => {
     const next = orientedRectOverlap(body, rect, margin)
     if (!next) return null
-    body.x = posRef.current.x
-    body.z = posRef.current.z
+    body.x = truck.x
+    body.z = truck.z
     const now = orientedRectOverlap(body, rect, margin)
     body.x = nextX
     body.z = nextZ
@@ -69,21 +62,18 @@ export function stepCollisionBody(ctx) {
     // Placing a load on a shelf puts the truck's nose at the rack's face on
     // purpose, so touching it while creeping only stops the truck. Above
     // RACK_STRIKE_SPEED it is a strike, and racking is structure.
-    if (Math.abs(speedRef.current) > RACK_STRIKE_SPEED) triggerFail(ctx, 'rack')
+    if (Math.abs(truck.speed) > RACK_STRIKE_SPEED) triggerFail(state, 'rack')
     break
   }
 
-  if (!blocked && pallets.length) {
-    const tipOffset = rigRef.current?.forkTipOffset || FORK_TIP_OFFSET_FALLBACK
-    const tipReach = rigRef.current?.forkReach || FORK_REACH_FALLBACK
-    for (let i = 0; i < pallets.length; i += 1) {
-      const pallet = palletRefs.current[i]
-      if (!pallet || palletSimRef.current?.[i]?.state === 'carried') continue
+  if (!blocked) {
+    for (const pallet of pallets) {
+      if (pallet.state === 'carried') continue
       // A pallet up on a shelf, or still in the air, is not in the way.
       if (pallet.position.y > PALLET_SOLID_MAX_Y) continue
 
-      const palletHalf = palletFootprintsRef.current[i] || PALLET_FALLBACK_FOOTPRINT
-      const rect = palletRectRef.current
+      const palletHalf = pallet.footprint
+      const rect = scratch.otherRect
       rect.x = pallet.position.x
       rect.z = pallet.position.z
       rect.rotation = pallet.rotation.y
@@ -100,11 +90,11 @@ export function stepCollisionBody(ctx) {
         palletHalf,
         vehicleX: nextX,
         vehicleZ: nextZ,
-        heading: headingRef.current,
-        forkTipOffset: tipOffset,
-        forkReach: tipReach,
+        heading: truck.heading,
+        forkTipOffset: geometry.forkTipOffset,
+        forkReach: geometry.forkReach,
       })
-      const forksEntering = engagement.canEnter && forkHeightRef.current <= FORK_ENGAGE_HEIGHT
+      const forksEntering = engagement.canEnter && forks.height <= FORK_ENGAGE_HEIGHT
 
       if (forksEntering && engagement.insertDepth < engagement.seatedDepth) continue
 
@@ -119,15 +109,10 @@ export function stepCollisionBody(ctx) {
   }
 
   if (blocked) {
-    speedRef.current = 0
+    truck.speed = 0
   } else {
-    posRef.current.x = nextX
-    posRef.current.z = nextZ
-  }
-
-  if (forkliftGroupRef.current) {
-    forkliftGroupRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z)
-    forkliftGroupRef.current.rotation.y = headingRef.current
+    truck.x = nextX
+    truck.z = nextZ
   }
 }
 
@@ -137,52 +122,40 @@ export function stepCollisionBody(ctx) {
 // than approximating the body as fixed-radius circles along the centreline,
 // which overshot right at each sample point but left gaps between them.
 // Always on - a cone is a hazard however the course authored it.
-export function stepCollisionHazards(ctx, dt) {
-  const {
-    liveCones, failedRef, speedRef, posRef, bodyRectRef, coneSimRef, coneRefs, coneAxisRef, coneQuatRef,
-    liveWalls, palletRectRef, halfWidth, halfLength, bodySampleOffsets, frame,
-  } = ctx
+export function stepCollisionHazards(state, world, dt) {
+  const { truck, cones, frame } = state
+  const { liveCones, liveWalls, halfWidth, halfLength, bodySampleOffsets, scratch } = world
   const { forwardX, forwardZ } = frame
-  const body = bodyRectRef.current
+  const body = scratch.bodyRect
 
-  if (liveCones.length && !failedRef.current && Math.abs(speedRef.current) > CONE_MIN_HIT_SPEED) {
-    if (!coneSimRef.current) coneSimRef.current = liveCones.map(() => ({ hit: false, angle: 0, dirX: 0, dirZ: 1 }))
-    const coneSims = coneSimRef.current
-    body.x = posRef.current.x
-    body.z = posRef.current.z
-    for (let i = 0; i < liveCones.length && !failedRef.current; i += 1) {
+  if (liveCones.length && !state.failed && Math.abs(truck.speed) > CONE_MIN_HIT_SPEED) {
+    body.x = truck.x
+    body.z = truck.z
+    for (let i = 0; i < liveCones.length && !state.failed; i += 1) {
       const cone = liveCones[i]
-      if (coneSims[i].hit) continue
-      const dx = cone.position[0] - posRef.current.x
-      const dz = cone.position[2] - posRef.current.z
+      if (cones[i].hit) continue
+      const dx = cone.position[0] - truck.x
+      const dz = cone.position[2] - truck.z
       if (distanceToOrientedRect(cone.position[0], cone.position[2], body) <= CONE_RADIUS) {
         const len = Math.hypot(dx, dz) || 1
-        coneSims[i] = { hit: true, angle: 0, dirX: dx / len, dirZ: dz / len }
-        triggerFail(ctx, 'cone')
+        cones[i] = { hit: true, angle: 0, dirX: dx / len, dirZ: dz / len }
+        triggerFail(state, 'cone')
       }
     }
   }
 
-  // Animate knocked-over cones (keeps running after the fail freeze).
-  if (coneSimRef.current && liveCones.length) {
-    coneSimRef.current.forEach((sim, i) => {
-      if (!sim.hit || sim.angle >= CONE_FALL_ANGLE) return
-      sim.angle = Math.min(sim.angle + CONE_FALL_SPEED * dt * Math.max(0.15, 1 - sim.angle / CONE_FALL_ANGLE), CONE_FALL_ANGLE)
-      const group = coneRefs.current[i]
-      if (!group) return
-      coneAxisRef.current.set(sim.dirZ, 0, -sim.dirX)
-      coneQuatRef.current.setFromAxisAngle(coneAxisRef.current, sim.angle)
-      group.quaternion.copy(coneQuatRef.current)
-      group.position.x = liveCones[i].position[0] + sim.dirX * sim.angle * 0.12
-      group.position.z = liveCones[i].position[2] + sim.dirZ * sim.angle * 0.12
-    })
-  }
+  // Knocked-over cones keep falling after the fail freeze. syncView turns
+  // the angle and direction into the cone's pose.
+  cones.forEach((sim) => {
+    if (!sim.hit || sim.angle >= CONE_FALL_ANGLE) return
+    sim.angle = Math.min(sim.angle + CONE_FALL_SPEED * dt * Math.max(0.15, 1 - sim.angle / CONE_FALL_ANGLE), CONE_FALL_ANGLE)
+  })
 
   // Wall/vehicle collision: sample the same body points against every
   // decoration's oriented rectangle (thickness x length, or a parked
   // vehicle's footprint). Immovable, so a hit just fails the attempt.
-  if (liveWalls.length && !failedRef.current && Math.abs(speedRef.current) > CONE_MIN_HIT_SPEED) {
-    const wallRect = palletRectRef.current
+  if (liveWalls.length && !state.failed && Math.abs(truck.speed) > CONE_MIN_HIT_SPEED) {
+    const wallRect = scratch.otherRect
     wallLoop: for (const wall of liveWalls) {
       const isVehicle = decorationType(wall) === 'vehicle'
       wallRect.x = wall.position[0]
@@ -191,10 +164,10 @@ export function stepCollisionHazards(ctx, dt) {
       wallRect.halfX = isVehicle ? halfWidth : WALL_HALF_THICKNESS
       wallRect.halfZ = isVehicle ? halfLength : (wall.length || 3) / 2
       for (const offset of bodySampleOffsets) {
-        const sampleX = posRef.current.x + forwardX * offset
-        const sampleZ = posRef.current.z + forwardZ * offset
+        const sampleX = truck.x + forwardX * offset
+        const sampleZ = truck.z + forwardZ * offset
         if (pointInOrientedRect(sampleX, sampleZ, wallRect, WALL_HIT_MARGIN)) {
-          triggerFail(ctx, isVehicle ? 'vehicle' : 'wall')
+          triggerFail(state, isVehicle ? 'vehicle' : 'wall')
           break wallLoop
         }
       }
