@@ -131,7 +131,7 @@ export const partCategories = [
 // Seed rows for the HotspotCategory table. The id is the value stored on
 // Hotspot.category, so it stays the category's original name even if an admin
 // later renames the label.
-export function buildDefaultHotspotCategories(equipmentId = 'forklift') {
-  return partCategories.map((label, index) => ({ id: label, equipmentId, label, sortOrder: index + 1 }))
+export function buildDefaultHotspotCategories() {
+  return partCategories.map((label, index) => ({ id: label, label, sortOrder: index + 1 }))
 }
 

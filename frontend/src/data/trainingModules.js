@@ -1,36 +1,3 @@
-export const forkliftEquipment = {
-  id: 'forklift',
-  title: 'Forklift',
-  description: 'Learn safe forklift familiarization through guided lessons and a labeled 3D model.',
-  modelUrl: '/models/forklift.glb',
-  imageUrl: '/images/forklift-card.png',
-  available: true,
-}
-
-// Equipment types the catalogue advertises but cannot train yet. They are rows
-// like the forklift, marked unavailable, so the "Coming Soon" cards are content
-// rather than a hardcoded list on ModulesPage.
-export const comingSoonEquipment = [
-  {
-    id: 'backhoe',
-    title: 'Backhoe Loader',
-    description: 'Heavy equipment training model. Coming soon.',
-    modelUrl: '',
-    imageUrl: '',
-    available: false,
-  },
-  {
-    id: 'crane',
-    title: 'Mobile Crane',
-    description: 'Heavy equipment training model. Coming soon.',
-    modelUrl: '',
-    imageUrl: '',
-    available: false,
-  },
-]
-
-export const allEquipment = [forkliftEquipment, ...comingSoonEquipment]
-
 export const equipmentUsageModules = [
   {
     id: 1,

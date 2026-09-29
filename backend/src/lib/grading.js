@@ -55,7 +55,7 @@ export function buildAttempt({ score, total, percentage }) {
 // debounced push carries the attempt instead of overwriting it.
 export async function appendAttempt(userId, attempt, place) {
   const snapshot = await prisma.progressSnapshot.findUnique({ where: { userId } })
-  const data = snapshot?.data || { version: 1, checklists: {}, parts: { viewedPartIds: [], quizzes: {} }, quizzes: {}, simulations: {} }
+  const data = snapshot?.data || { version: 1, checklists: {}, parts: { viewedPartIds: [], quizAttempts: [] }, quizzes: {}, simulations: {} }
   const next = place(data, attempt)
 
   await prisma.progressSnapshot.upsert({
@@ -77,20 +77,16 @@ export function intoModuleQuiz(moduleSlug) {
   })
 }
 
-// Parts-quiz attempts, newest first, under `parts.quizzes[equipmentId]` for
-// every equipment alike. Forklift's used to live at `parts.practiceAttempts`;
-// migration 20260814100000 moved them here, and migrateParts() folds in any
-// that a client still holds locally.
-export function intoPartsQuiz(equipmentId) {
+// Parts-quiz attempts, newest first, under `parts.quizAttempts`. The stored
+// document may still be in an older shape a stale client pushed, so it goes
+// through migrateParts() before the new attempt is prepended.
+export function intoPartsQuiz() {
   return (data, attempt) => {
     const parts = migrateParts(data.parts)
 
     return {
       ...data,
-      parts: {
-        ...parts,
-        quizzes: { ...parts.quizzes, [equipmentId]: [attempt, ...(parts.quizzes[equipmentId] || [])] },
-      },
+      parts: { ...parts, quizAttempts: [attempt, ...parts.quizAttempts] },
     }
   }
 }

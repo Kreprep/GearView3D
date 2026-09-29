@@ -45,32 +45,31 @@ test('intoModuleQuiz prepends onto an existing list for the same module', () => 
   assert.deepEqual(next.quizzes['load-handling'], [{ id: 'new' }, { id: 'old' }])
 })
 
-test('intoPartsQuiz prepends newest-first under parts.quizzes[equipmentId]', () => {
-  const place = intoPartsQuiz('backhoe')
-  const data = { parts: { viewedPartIds: ['a'], quizzes: { forklift: [{ id: 'fk' }] } } }
+test('intoPartsQuiz prepends newest-first under parts.quizAttempts', () => {
+  const place = intoPartsQuiz()
+  const data = { parts: { viewedPartIds: ['a'], quizAttempts: [{ id: 'old' }] } }
   const next = place(data, { id: 'new' })
 
-  assert.deepEqual(next.parts.quizzes.backhoe, [{ id: 'new' }])
-  assert.deepEqual(next.parts.quizzes.forklift, [{ id: 'fk' }])
-  assert.deepEqual(next.parts.viewedPartIds, ['a'])
+  assert.deepEqual(next.parts, { viewedPartIds: ['a'], quizAttempts: [{ id: 'new' }, { id: 'old' }] })
 })
 
-test('intoPartsQuiz folds legacy practiceAttempts into forklift before appending', () => {
-  const place = intoPartsQuiz('forklift')
-  const data = { parts: { practiceAttempts: [{ id: 'legacy' }], quizzes: {} } }
+test('intoPartsQuiz folds legacy shapes in before prepending the new attempt', () => {
+  const place = intoPartsQuiz()
+  const data = {
+    parts: {
+      viewedPartIds: [],
+      quizzes: { forklift: [{ id: 'fk' }], backhoe: [{ id: 'bh' }] },
+      practiceAttempts: [{ id: 'legacy' }],
+    },
+  }
   const next = place(data, { id: 'new' })
 
-  assert.deepEqual(next.parts.quizzes.forklift, [{ id: 'new' }, { id: 'legacy' }])
+  assert.deepEqual(next.parts.quizAttempts, [{ id: 'new' }, { id: 'fk' }, { id: 'legacy' }])
+  assert.equal(next.parts.quizzes, undefined)
   assert.equal(next.parts.practiceAttempts, undefined)
 })
 
-test('migrateParts is a no-op when there is no legacy data', () => {
-  const parts = { viewedPartIds: ['x'], quizzes: { forklift: [{ id: 'a' }] } }
-  const result = migrateParts(parts)
-  assert.deepEqual(result, parts)
-})
-
-test('migrateParts handles a completely empty/undefined parts object', () => {
-  const result = migrateParts(undefined)
-  assert.deepEqual(result, { viewedPartIds: [], quizzes: {} })
+test('intoPartsQuiz starts a list on a snapshot with no parts at all', () => {
+  const next = intoPartsQuiz()({}, { id: 'new' })
+  assert.deepEqual(next.parts, { viewedPartIds: [], quizAttempts: [{ id: 'new' }] })
 })

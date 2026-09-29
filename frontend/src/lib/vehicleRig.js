@@ -3,10 +3,9 @@ import { clamp } from './math.js'
 import { DEFAULT_RIG } from '../data/vehicleProfile.js'
 
 // Shared rig builder, used by the driving simulation and the interactive
-// walk-around viewer. Node names come from the equipment's vehicle profile
-// (data/vehicleProfile.js), defaulting to forklift.glb's - a model with none
-// of them still builds a rig, just an empty one, so the vehicle drives as a
-// solid body instead of throwing.
+// walk-around viewer. Node names are forklift.glb's own (DEFAULT_RIG in
+// data/vehicleProfile.js); a node the model lacks is skipped rather than
+// throwing.
 
 export const WHEEL_NODE_NAMES = DEFAULT_RIG.wheels
 export const REAR_WHEEL_KEYS = ['RL', 'RR']

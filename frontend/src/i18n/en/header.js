@@ -1,6 +1,6 @@
 export default {
   'header.mainNavigation': 'Main navigation',
-  'header.nav.catalog': 'Equipment Selection',
+  'header.nav.home': 'Training',
   'header.nav.survey': 'GearView3D Survey',
   'header.nav.admin': 'Admin',
   'header.logout': 'Logout',

@@ -6,6 +6,7 @@ import { useProgress } from './hooks/useProgress'
 import { usePageTitle } from './hooks/usePageTitle'
 import { useLanguage, useT } from './i18n'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
+import { moduleRoute } from './lib/router'
 import PageLayout from './components/PageLayout'
 import { StatusBadge } from './components/ui/badge'
 import { Button } from './components/ui/button'
@@ -13,15 +14,11 @@ import { Card, CardMedia } from './components/ui/card'
 import { PageState } from './components/ui/pageState'
 import { ProgressBar } from './components/ui/progress'
 
-// /training/:equipmentId/modules - the module picker sitting between the hub
-// and a module's guided simulation, for every equipment. Cards come straight
-// from the Module rows, so an admin adding a module adds a card here with no
-// code change.
-function ModuleListPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
-  // Tagged with the equipmentId it was loaded for, so a prop change reads as
-  // loading without a synchronous setState in the effect body - same pattern
-  // as useModuleCourses.js.
-  const [loaded, setLoaded] = useState({ equipmentId: null, equipment: null, modules: [], error: null })
+// /training/modules - the module picker sitting between the hub and a
+// module's guided simulation. Cards come straight from the Module rows, so an
+// admin adding a module adds a card here with no code change.
+function ModuleListPage({ user, onLogout, onBack, onNavigate }) {
+  const [loaded, setLoaded] = useState({ done: false, equipment: null, modules: [], error: null })
   const { summary } = useProgress()
   const t = useT()
   const language = useLanguage()
@@ -29,35 +26,27 @@ function ModuleListPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getEquipment(), getTrainingModules(equipmentId)])
-      .then(([equipmentRows, moduleRows]) => {
+    Promise.all([getEquipment(), getTrainingModules()])
+      .then(([equipmentRow, moduleRows]) => {
         if (cancelled) return
-        setLoaded({
-          equipmentId,
-          equipment: equipmentRows.find((item) => item.id === equipmentId) || null,
-          modules: moduleRows,
-          error: null,
-        })
+        setLoaded({ done: true, equipment: equipmentRow, modules: moduleRows, error: null })
       })
       .catch((err) => {
         if (cancelled) return
-        setLoaded({ equipmentId, equipment: null, modules: [], error: err.message })
+        setLoaded({ done: true, equipment: null, modules: [], error: err.message })
       })
 
     return () => {
       cancelled = true
     }
-  }, [equipmentId])
+  }, [])
 
-  const fresh = loaded.equipmentId === equipmentId
-  const loading = !fresh
-  const equipment = fresh ? loaded.equipment : null
-  const modules = fresh ? loaded.modules : []
-  const error = fresh ? loaded.error : null
+  const { equipment, modules, error } = loaded
+  const loading = !loaded.done
 
   const equipmentTitle = equipment?.title || 'Equipment'
   usePageTitle(t('moduleList.pageTitle', { equipment: equipmentTitle }))
-  const openModule = (module) => onNavigate(`/training/${equipmentId}/modules/${module.slug}`)
+  const openModule = (module) => onNavigate(moduleRoute(module.slug))
 
   const copy = resolveHubContent(equipment, hubContentContext({
     equipmentTitle,

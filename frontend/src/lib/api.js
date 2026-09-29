@@ -90,46 +90,39 @@ export async function getCurrentUser() {
 
 // --- Content ---
 
+// The one Equipment row: { id, title, imageUrl, content, simConfig }.
 export async function getEquipment() {
   return request('/content/equipment')
 }
 
-// `equipmentId` scopes the result to one equipment's modules (used by an
-// equipment hub page listing only its own modules); omitted returns every
-// module - fine for callers that just look up one known module by its
-// globally-unique slug.
-export async function getTrainingModules(equipmentId) {
-  return request(equipmentId ? `/content/modules?equipment=${encodeURIComponent(equipmentId)}` : '/content/modules')
+export async function getTrainingModules() {
+  return request('/content/modules')
 }
 
-// One equipment's published markers, in sortOrder. `surface` narrows them to
-// the page asking - 'parts' for Parts Identification, 'walk-around' for an
-// inspection step - since one row can appear on both.
-export async function getHotspots(equipmentId, surface) {
-  const query = new URLSearchParams({ equipment: equipmentId })
-  if (surface) query.set('surface', surface)
-  return request(`/content/hotspots?${query}`)
+// The published markers, in sortOrder. `surface` narrows them to the page
+// asking - 'parts' for Parts Identification, 'walk-around' for an inspection
+// step - since one row can appear on both.
+export async function getHotspots(surface) {
+  return request(surface ? `/content/hotspots?surface=${encodeURIComponent(surface)}` : '/content/hotspots')
 }
 
 // The detail cards, keyed by hotspot id. Separate from getHotspots because it
 // also carries cards for ids with no marker of their own.
-export async function getHotspotDetails(equipmentId) {
-  return request(`/content/hotspot-details?equipment=${encodeURIComponent(equipmentId)}`)
+export async function getHotspotDetails() {
+  return request('/content/hotspot-details')
 }
 
-export async function getHotspotCategories(equipmentId) {
-  return request(`/content/hotspot-categories?equipment=${encodeURIComponent(equipmentId)}`)
+export async function getHotspotCategories() {
+  return request('/content/hotspot-categories')
 }
 
-// Every quiz - a module's quiz step and an equipment's parts quiz - comes from
-// the same endpoint, scoped by one of:
+// Every quiz - a module's quiz step and the parts quiz - comes from the same
+// endpoint, scoped by one of:
 //   { module: 'load-handling' }
-//   { equipment: 'forklift', context: 'parts' }
+//   { context: 'parts' }
 function quizQuery(scope) {
   return new URLSearchParams(
-    scope.context === 'parts'
-      ? { equipment: scope.equipment, context: 'parts' }
-      : { module: scope.module },
+    scope.context === 'parts' ? { context: 'parts' } : { module: scope.module },
   ).toString()
 }
 
@@ -188,24 +181,16 @@ export async function adminDeleteHotspotCategory(categoryId) {
   return request(`/admin/hotspot-categories/${encodeURIComponent(categoryId)}`, { method: 'DELETE' })
 }
 
-export async function adminCreateEquipment(payload) {
-  return request('/admin/equipment', { method: 'POST', body: payload })
-}
-
-export async function adminDeleteEquipment(equipmentId) {
-  return request(`/admin/equipment/${encodeURIComponent(equipmentId)}`, { method: 'DELETE' })
-}
-
-export async function adminUpdateEquipment(equipmentId, payload) {
-  return request(`/admin/equipment/${encodeURIComponent(equipmentId)}`, { method: 'PATCH', body: payload })
+export async function adminUpdateEquipment(payload) {
+  return request('/admin/equipment', { method: 'PATCH', body: payload })
 }
 
 export async function adminCreateModule(payload) {
   return request('/admin/modules', { method: 'POST', body: payload })
 }
 
-export async function adminReorderModules(equipmentId, ids) {
-  return request('/admin/modules/reorder', { method: 'POST', body: { equipmentId, ids } })
+export async function adminReorderModules(ids) {
+  return request('/admin/modules/reorder', { method: 'POST', body: { ids } })
 }
 
 export async function adminUpdateModule(moduleId, payload) {
@@ -229,8 +214,8 @@ export async function adminDeleteChecklistItem(itemId) {
 }
 
 // Quiz questions, module and parts alike - one table, saved immediately (no
-// draft). A parts question needs { equipmentId, context: 'parts' }; a module
-// question needs { moduleId }.
+// draft). A parts question needs { context: 'parts' }; a module question
+// needs { moduleId }.
 export async function adminCreateQuizQuestion(payload) {
   return request('/admin/quiz-questions', { method: 'POST', body: payload })
 }
@@ -297,12 +282,12 @@ export async function adminDeleteCourse(courseId) {
 }
 
 // --- Admin: hotspot editor ---
-// One set of calls for every marker on every equipment, whichever surface it
-// appears on. Edits save as a draft; learners keep seeing the published
-// position and text until adminPublishHotspot().
+// One set of calls for every marker, whichever surface it appears on. Edits
+// save as a draft; learners keep seeing the published position and text until
+// adminPublishHotspot().
 
-export async function adminListHotspots(equipmentId) {
-  return request(`/admin/hotspots?equipment=${encodeURIComponent(equipmentId)}`)
+export async function adminListHotspots() {
+  return request('/admin/hotspots')
 }
 
 export async function adminCreateHotspot(payload) {
@@ -325,8 +310,8 @@ export async function adminResetHotspot(hotspotId) {
   return request(`/admin/hotspots/${encodeURIComponent(hotspotId)}/reset`, { method: 'POST' })
 }
 
-export async function adminReorderHotspots(equipmentId, ids) {
-  return request('/admin/hotspots/reorder', { method: 'POST', body: { equipmentId, ids } })
+export async function adminReorderHotspots(ids) {
+  return request('/admin/hotspots/reorder', { method: 'POST', body: { ids } })
 }
 
 export async function adminDeleteHotspot(hotspotId) {

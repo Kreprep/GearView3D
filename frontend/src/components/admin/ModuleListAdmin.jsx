@@ -7,10 +7,10 @@ import { Field } from '../ui/field'
 import { Input } from '../ui/input'
 import { Toolbar } from '../ui/toolbar'
 
-// The ordered module list for one equipment: open, reorder, delete, add.
+// The ordered module list: open, reorder, delete, add.
 // Opening a module hands off to ModuleEditor, which is where its steps,
 // checklist items and quiz questions are edited.
-function ModuleListAdmin({ equipmentId, modules, onModulesChanged, onOpenModule, onMessage }) {
+function ModuleListAdmin({ modules, onModulesChanged, onOpenModule, onMessage }) {
   const [newTitle, setNewTitle] = useState('')
   const { run } = useAdminAction(onMessage)
 
@@ -25,7 +25,7 @@ function ModuleListAdmin({ equipmentId, modules, onModulesChanged, onOpenModule,
     reordered.splice(target, 0, entry)
 
     const result = await run(
-      () => adminReorderModules(equipmentId, reordered.map((module) => module.id)),
+      () => adminReorderModules(reordered.map((module) => module.id)),
       null,
     )
     if (result) onModulesChanged(result.modules)
@@ -34,7 +34,7 @@ function ModuleListAdmin({ equipmentId, modules, onModulesChanged, onOpenModule,
   const addModule = async () => {
     if (!newTitle.trim()) return
     const result = await run(
-      () => adminCreateModule({ equipmentId, title: newTitle.trim() }),
+      () => adminCreateModule({ title: newTitle.trim() }),
       'Module created with a blank Read Up step.',
     )
     if (!result) return
@@ -55,7 +55,7 @@ function ModuleListAdmin({ equipmentId, modules, onModulesChanged, onOpenModule,
       <Panel>
         <PanelHeader>Training Modules</PanelHeader>
         <PanelNote>
-          The cards learners see on this equipment&apos;s module list, in this order. Open one to edit its steps,
+          The cards learners see on the module list, in this order. Open one to edit its steps,
           checklist items and quiz questions.
         </PanelNote>
 
@@ -73,7 +73,7 @@ function ModuleListAdmin({ equipmentId, modules, onModulesChanged, onOpenModule,
             </article>
           ))}
         </div>
-        {ordered.length === 0 && <PanelNote className="mt-2">No modules for this equipment yet.</PanelNote>}
+        {ordered.length === 0 && <PanelNote className="mt-2">No modules yet.</PanelNote>}
       </Panel>
 
       <Panel>

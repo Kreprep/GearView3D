@@ -1,5 +1,4 @@
-// The learner pages' card surface: the catalog's equipment cards, the module
-// list's module cards, the hub's numbered path rows, and the dark operator
+// The learner pages' card surface: the module list's module cards, the hub's numbered path rows, and the dark operator
 // plate the hub hero and the login band are built from.
 const TONE_CLASSES = {
   light: 'border-border bg-panel text-body',
@@ -67,10 +66,9 @@ export function Card({
   )
 }
 
-// The photo band on a catalog / module card. Replaces the gradient expression
-// ModulesPage and ModuleListPage each built byte-identically inline - the
-// scrim is what keeps overlaid text legible against an arbitrary admin-supplied
-// photo, so it is not optional styling.
+// The photo band on a module card. The scrim is what keeps overlaid text
+// legible against an arbitrary admin-supplied photo, so it is not optional
+// styling.
 export function CardMedia({ src, height = 150, overlay = true, className = '', children }) {
   const scrim = 'linear-gradient(180deg, rgba(8, 15, 28, 0.55), rgba(8, 15, 28, 0.78))'
 

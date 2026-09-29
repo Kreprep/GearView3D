@@ -1,4 +1,4 @@
-import { ClipboardList, LayoutGrid, LogOut, ShieldCheck } from 'lucide-react'
+import { ClipboardList, GraduationCap, LogOut, ShieldCheck } from 'lucide-react'
 import { routes } from '../lib/router'
 import { useT } from '../i18n'
 import LanguageToggle from './LanguageToggle'
@@ -17,14 +17,14 @@ function AppHeader({ user, onLogout, onNavigate }) {
 
   return (
     <header className="app-header">
-      <button className="brand-button" onClick={() => onNavigate(routes.catalog)}>
+      <button className="brand-button" onClick={() => onNavigate(routes.home)}>
         <span className="brand-title">GearView3D</span>
       </button>
 
       <nav className="header-nav" aria-label={t('header.mainNavigation')}>
-        <button className="nav-link" onClick={() => onNavigate(routes.catalog)}>
-          <LayoutGrid size={16} />
-          {t('header.nav.catalog')}
+        <button className="nav-link" onClick={() => onNavigate(routes.home)}>
+          <GraduationCap size={16} />
+          {t('header.nav.home')}
         </button>
         <a
           className="nav-link"

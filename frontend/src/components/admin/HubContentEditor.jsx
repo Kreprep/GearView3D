@@ -9,8 +9,8 @@ import { Field } from '../ui/field'
 import { Input, Textarea } from '../ui/input'
 import { Toolbar } from '../ui/toolbar'
 
-// Field editor for Equipment.content - the copy on this equipment's training
-// hub and module list. Every input is optional: the placeholder shows the
+// Field editor for Equipment.content - the copy on the training hub and
+// module list. Every input is optional: the placeholder shows the
 // coded default that renders when the field is left blank, and clearing a
 // field is how an admin goes back to that default.
 //
@@ -20,9 +20,8 @@ import { Toolbar } from '../ui/toolbar'
 // deliberately NOT the app's language toggle: which copy an admin is editing
 // and which language the dashboard is showing them are different questions.
 //
-// Mount this with key={equipment.id} - the draft is seeded from the row once,
-// so switching equipment has to remount rather than resync (which would also
-// throw away unsaved edits on every refetch).
+// The draft is seeded from the row once, on mount, so a refetch never throws
+// away unsaved edits.
 function HubContentEditor({ equipment, moduleTitles = [], hasPartsPage = false, onSaved, onMessage }) {
   const [draft, setDraft] = useState(() => equipment?.content || {})
   const [language, setLanguage] = useState(DEFAULT_LANGUAGE)
@@ -37,7 +36,7 @@ function HubContentEditor({ equipment, moduleTitles = [], hasPartsPage = false, 
     [equipment, hasPartsPage, moduleTitles],
   )
 
-  if (!equipment) return <PanelNote>Select an equipment to edit its hub copy.</PanelNote>
+  if (!equipment) return <PanelNote>The equipment row has not been seeded, so there is no hub copy to edit.</PanelNote>
 
   const isDefaultLanguage = language === DEFAULT_LANGUAGE
   const languageName = LANGUAGES.find((entry) => entry.code === language)?.name || language
@@ -61,7 +60,7 @@ function HubContentEditor({ equipment, moduleTitles = [], hasPartsPage = false, 
   const save = async () => {
     setSaving(true)
     try {
-      const result = await adminUpdateEquipment(equipment.id, { content: draft })
+      const result = await adminUpdateEquipment({ content: draft })
       onSaved?.(result.equipment)
       onMessage?.('Hub content saved.')
     } finally {
@@ -72,8 +71,8 @@ function HubContentEditor({ equipment, moduleTitles = [], hasPartsPage = false, 
   return (
     <>
       <PanelNote>
-        Copy shown on {equipment.title}&apos;s training hub and module list. Leave a field blank to use the
-        default in the placeholder. <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">{'{equipment}'}</code>{' '}
+        Copy shown on the training hub and module list. Leave a field blank to use the default in the
+        placeholder. <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">{'{equipment}'}</code>{' '}
         and <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">{'{learner}'}</code> are replaced with the
         equipment title and the signed-in learner&apos;s name.
       </PanelNote>

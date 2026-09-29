@@ -100,16 +100,14 @@ Learner progress is saved per account in the database, so the same login shows t
 Admin routes (log in as the admin account):
 
 - `/admin` — overview: learner count, average completion, per-module completion, recent activity
-- **Training Content** — pick an equipment (or add one with the box beside the picker), then one of three sections:
-  - `/admin/modules` — that equipment's modules: Edit, Move up, Move down, Delete, Add module
+- **Training Content** — three sections:
+  - `/admin/modules` — the training modules: Edit, Move up, Move down, Delete, Add module
   - `/admin/modules/:slug` — the **Module Editor**: the module's card fields plus its ordered steps (Read Up, Driving Course, Walk Around, Checklist, Quiz, Built-in Activity, Completion Summary). Selecting a step edits it in place — a driving step gets the 3D map, a walk-around step its inspection checks / gauges / device tests / defect scenarios plus the same 3D hotspot editor, scoped to the markers it shows, a checklist step its items, a quiz step its questions
   - `/admin/parts` — the hotspot list beside the 3D model: add a hotspot, click the model to place its marker or drag one to move it, edit its detail card (Markdown + reference image), then Publish. Every placed hotspot is marked on the model at once, so you can place one against its neighbours. Each hotspot is ticked for the surfaces it appears on — Parts Identification, walk-around inspection, or both — so a component that is both is edited once, not twice. Also part categories and the parts quiz
-  - `/admin/settings` — the catalog card (title, description, availability, and the **catalog image**: drop a file in `frontend/public/images/` and point the field at `/images/your-file.png`, or paste any image URL — a live preview sits under the field, and left blank the card shows a plain panel rather than another equipment's picture), the **Driving Simulation** profile (body footprint and first-person seat) and the **Hub content** (the copy on that equipment's training hub and module list; leave a field blank to use the default). Equipment is also deleted here, once its content is gone
-
-Adding a new equipment needs no code change: create it, give it modules, then tick Available - the catalogue card goes live once it has training behind it.
+  - `/admin/settings` — **Equipment Settings**: the equipment title (what `{equipment}` resolves to in the hub copy) and the **hub artwork image** (the line drawing etched into the training hub's header plate: drop a file in `frontend/public/images/` and point the field at `/images/your-file.png`, or paste any image URL), the **Hub content** (the copy on the training hub and module list; leave a field blank to use the default) and the **Driving Simulation** profile (body footprint and first-person seat)
 - `/admin/users`, `/admin/reports` — learners, progress, CSV export
 
-Hotspots and course steps use **Save draft / Publish**: learners keep seeing the published version until you press Publish, and Discard draft throws the pending edit away. Modules, the equipment cards, hub content, part categories, checklists and quiz questions save immediately.
+Hotspots and course steps use **Save draft / Publish**: learners keep seeing the published version until you press Publish, and Discard draft throws the pending edit away. Modules, the equipment settings, hub content, part categories, checklists and quiz questions save immediately.
 
 Admin edits are saved in PostgreSQL through the API and are visible to everyone using the same backend.
 
@@ -131,7 +129,7 @@ npm run content:import          # updates and creates
 npm run content:import -- --prune   # also deletes steps missing from the file
 ```
 
-Unlike `npm run seed`, the import **overwrites** existing rows — that is how one person's edits reach everyone. It covers equipment, modules, hotspots, part categories, courses, checklists and quizzes; it never touches user accounts or learner progress, and unpublished drafts stay local to whoever made them.
+Unlike `npm run seed`, the import **overwrites** existing rows — that is how one person's edits reach everyone. It covers the equipment settings, modules, hotspots, part categories, courses, checklists and quizzes; it never touches user accounts or learner progress, and unpublished drafts stay local to whoever made them.
 
 Once everyone is pointed at one deployed backend (see below), none of this is needed — edits are shared the moment you press Publish.
 

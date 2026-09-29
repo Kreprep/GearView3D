@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../lib/auth.js'
 import { publishedCourse } from '../lib/courses.js'
+import { findEquipment } from '../lib/equipment.js'
 import { hotspotDetail, publishedHotspot } from '../lib/hotspots.js'
 import {
   appendAttempt,
@@ -18,45 +19,29 @@ const router = Router()
 // module/quiz/checklist content was fetchable by anyone with the URL.
 router.use(requireAuth)
 
-// `moduleCount` rides along because the catalogue decides whether a card is
-// clickable from whether the equipment actually has training behind it -
-// modules, or a model for its identification page - rather than from a
-// hardcoded allow-list.
+// The one Equipment row: title, hub artwork, hub copy and driving overrides.
 router.get('/equipment', async (req, res) => {
-  const [equipment, moduleCounts] = await Promise.all([
-    prisma.equipment.findMany({ orderBy: { sortOrder: 'asc' } }),
-    prisma.module.groupBy({ by: ['equipmentId'], _count: { _all: true } }),
-  ])
-
-  res.json(equipment.map((row) => ({
-    ...row,
-    moduleCount: moduleCounts.find((entry) => entry.equipmentId === row.id)?._count._all || 0,
-  })))
+  const equipment = await findEquipment()
+  if (!equipment) return res.status(404).json({ error: 'Equipment has not been seeded' })
+  res.json(equipment)
 })
 
-// `?equipment=` scopes to one equipment's modules (used by a hub page that
-// lists only its own modules); omitted returns every module unfiltered, since
-// slug is globally unique and callers that just look up one known module by
-// slug (useModuleRecord, the assessment page) never needed a filter.
 router.get('/modules', async (req, res) => {
-  const where = req.query.equipment ? { equipmentId: req.query.equipment } : {}
-  const modules = await prisma.module.findMany({ where, orderBy: { sortOrder: 'asc' } })
+  const modules = await prisma.module.findMany({ orderBy: { sortOrder: 'asc' } })
   res.json(modules)
 })
 
-// One equipment's published hotspots, optionally narrowed to the surface that
-// is asking:
+// The published hotspots, optionally narrowed to the surface that is asking:
 //
-//   GET /hotspots?equipment=forklift                 every marker it has
-//   GET /hotspots?equipment=forklift&surface=parts   its Parts Identification markers
-//   GET /hotspots?equipment=forklift&surface=walk-around   its inspection markers
+//   GET /hotspots                      every marker
+//   GET /hotspots?surface=parts        the Parts Identification markers
+//   GET /hotspots?surface=walk-around  the inspection markers
 //
 // Unplaced rows (created but never published) are held back from learners the
 // same way an unpublished course step is. `publishedHotspot` picks columns
 // explicitly, so a pending `draft` cannot ride along.
 router.get('/hotspots', async (req, res) => {
   const where = { published: true }
-  if (req.query.equipment) where.equipmentId = req.query.equipment
   if (req.query.surface === 'parts') where.inParts = true
   if (req.query.surface === 'walk-around') where.inWalkAround = true
 
@@ -68,16 +53,12 @@ router.get('/hotspots', async (req, res) => {
 // has always consumed. Detail-only rows (a card with no marker) are included,
 // which is the whole reason this is a separate call from /hotspots.
 router.get('/hotspot-details', async (req, res) => {
-  const where = { published: true }
-  if (req.query.equipment) where.equipmentId = req.query.equipment
-
-  const rows = await prisma.hotspot.findMany({ where })
+  const rows = await prisma.hotspot.findMany({ where: { published: true } })
   res.json(Object.fromEntries(rows.map((row) => [row.id, hotspotDetail(row)])))
 })
 
 router.get('/hotspot-categories', async (req, res) => {
-  const where = req.query.equipment ? { equipmentId: req.query.equipment } : {}
-  const categories = await prisma.hotspotCategory.findMany({ where, orderBy: { sortOrder: 'asc' } })
+  const categories = await prisma.hotspotCategory.findMany({ orderBy: { sortOrder: 'asc' } })
   res.json(categories)
 })
 
@@ -113,16 +94,15 @@ router.get('/checklists/:moduleSlug', async (req, res) => {
 
 // One endpoint for every quiz, module and parts alike:
 //
-//   GET /quizzes?module=<slug>                 a module's quiz step
-//   GET /quizzes?equipment=<id>&context=parts  that equipment's parts quiz
+//   GET /quizzes?module=<slug>     a module's quiz step
+//   GET /quizzes?context=parts     the Parts Identification quiz
 //
 // `answer` is deliberately absent from the response: the correct choice stays
 // on the server until the learner submits, and /quizzes/submit does the
 // scoring.
 async function quizScope(query = {}) {
   if (query.context === 'parts') {
-    if (!query.equipment) return null
-    return { where: { context: 'parts', equipmentId: query.equipment }, place: intoPartsQuiz(query.equipment) }
+    return { where: { context: 'parts' }, place: intoPartsQuiz() }
   }
 
   const module = await prisma.module.findUnique({ where: { slug: query.module || '' } })

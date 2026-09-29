@@ -1,16 +1,17 @@
 import { translate } from '../i18n/translate.js'
 
-// The editable copy on an equipment's training hub (/training/:equipmentId)
-// and module list (/training/:equipmentId/modules).
+// The editable copy on the training hub (/training) and module list
+// (/training/modules).
 //
 // Every string here is a *default*. `Equipment.content` stores only what an
-// admin overrode, so a default improved in this file still reaches every
-// equipment that never touched it. Blank means "use the default" - which is
-// also how the admin editor clears a field back to stock.
+// admin overrode, so a default improved in this file still reaches every field
+// that was never touched. Blank means "use the default" - which is also how
+// the admin editor clears a field back to stock.
 //
 // Defaults are functions of the page's own context (equipment title, whether
-// it has a parts page, its module titles) *and* the learner's language, so a
-// new equipment reads correctly with no content row at all, in either language.
+// there is a parts page, the module titles) *and* the learner's language, so
+// the hub reads correctly with no content overrides at all, in either
+// language.
 // The strings themselves live in i18n/en/hubDefaults.js and its Filipino twin;
 // this file only decides which key a field reads and what it fills the tokens
 // with. Resolution + token substitution lives in lib/hubContent.js.

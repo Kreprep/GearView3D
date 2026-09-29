@@ -56,10 +56,9 @@ function hotspotDescription(hotspot) {
   ])
 }
 
-function blankHotspot(id, equipmentId) {
+function blankHotspot(id) {
   return {
     id,
-    equipmentId,
     label: '',
     position: null,
     sortOrder: 0,
@@ -84,11 +83,11 @@ function blankHotspot(id, equipmentId) {
   }
 }
 
-export function buildDefaultHotspots(equipmentId = 'forklift') {
+export function buildDefaultHotspots() {
   const rows = new Map()
 
   const rowFor = (id) => {
-    if (!rows.has(id)) rows.set(id, blankHotspot(id, equipmentId))
+    if (!rows.has(id)) rows.set(id, blankHotspot(id))
     return rows.get(id)
   }
 

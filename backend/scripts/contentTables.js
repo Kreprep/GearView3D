@@ -14,16 +14,16 @@ export const contentTables = [
   // `content` (the hub copy overrides) and `simConfig` (the vehicle profile)
   // travel with the row - they are published content, not drafts, so there is
   // nothing to omit here.
-  { model: 'equipment', label: 'Equipment', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
+  { model: 'equipment', label: 'Equipment', orderBy: [{ id: 'asc' }] },
   { model: 'module', label: 'Module', orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
-  { model: 'hotspotCategory', label: 'HotspotCategory', orderBy: [{ equipmentId: 'asc' }, { sortOrder: 'asc' }] },
-  // Every marker on every model, whichever surface shows it. `draft` is one
+  { model: 'hotspotCategory', label: 'HotspotCategory', orderBy: [{ sortOrder: 'asc' }] },
+  // Every marker on the model, whichever surface shows it. `draft` is one
   // admin's unfinished work and `updatedAt` is database-managed, so neither
   // travels - the same rule as Course below.
   {
     model: 'hotspot',
     label: 'Hotspot',
-    orderBy: [{ equipmentId: 'asc' }, { sortOrder: 'asc' }],
+    orderBy: [{ sortOrder: 'asc' }],
     omit: ['draft', 'updatedAt'],
     prunable: true,
   },
@@ -38,11 +38,11 @@ export const contentTables = [
   },
   { model: 'checklistItem', label: 'ChecklistItem', orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] },
   // Module quizzes and parts quizzes share this table; parts questions have a
-  // null moduleId, so ordering leads with equipment and context.
+  // null moduleId, so ordering leads with context.
   {
     model: 'quizQuestion',
     label: 'QuizQuestion',
-    orderBy: [{ equipmentId: 'asc' }, { context: 'asc' }, { sortOrder: 'asc' }],
+    orderBy: [{ context: 'asc' }, { sortOrder: 'asc' }],
     prunable: true,
   },
 ]

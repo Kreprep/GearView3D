@@ -63,9 +63,8 @@ export function isPhaseComplete(data, state, engineStarted) {
   return false
 }
 
-// The hotspot a phase's markers come from. Forklift's WalkAroundHotspot rows
-// carry a `state` (engine-off / ignition / engine-on); an equipment reusing its
-// EquipmentHotspot rows has none, so every hotspot shows in every phase.
+// The hotspots a phase shows. A marker's `state` (engine-off / ignition /
+// engine-on) picks its phase; an empty one shows in every phase.
 export function visibleHotspotIds(data, hotspots, { engineOffComplete, engineStarted } = {}) {
   const phase = data?.phase
   if (phase === 'defect-test') return []

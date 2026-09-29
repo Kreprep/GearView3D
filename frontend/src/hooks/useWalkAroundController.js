@@ -17,8 +17,8 @@ function unique(items) {
 // Every walk-around phase (engine-off, engine-on, defect-test) grades itself
 // against its own row's data, so an inspection check or gauge an admin adds
 // is required and one they delete stops blocking completion.
-export function useWalkAroundController({ equipmentId, hasWalkAround, moduleSlug, steps, gradedStepIds, simulation, updateSimulation, changeStep }) {
-  const { hotspots, loading: hotspotsLoading, error: hotspotsError } = useInspectionHotspots(equipmentId, hasWalkAround)
+export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, gradedStepIds, simulation, updateSimulation, changeStep }) {
+  const { hotspots, loading: hotspotsLoading, error: hotspotsError } = useInspectionHotspots(hasWalkAround)
   const [partDetails, setPartDetails] = useState({})
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [focusedHotspotId, setFocusedHotspotId] = useState(null)
@@ -30,13 +30,13 @@ export function useWalkAroundController({ equipmentId, hasWalkAround, moduleSlug
   useEffect(() => {
     if (!hasWalkAround) return
 
-    getHotspotDetails(equipmentId)
+    getHotspotDetails()
       .then((details) => {
         setPartDetails(details)
         preloadImages(Object.values(details).map((detail) => detail.image))
       })
       .catch(() => {})
-  }, [hasWalkAround, equipmentId])
+  }, [hasWalkAround])
 
   useEffect(() => () => {
     clearTimeout(deviceEffectTimer.current)

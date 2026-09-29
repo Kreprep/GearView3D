@@ -23,6 +23,7 @@ import { useModuleRecord } from './hooks/useModuleRecord'
 import { usePageTitle } from './hooks/usePageTitle'
 import { useProgress } from './hooks/useProgress'
 import { moduleObjectives, nextModuleRoute } from './lib/moduleContent'
+import { routes } from './lib/router'
 import { buildSimulationState, isStepComplete, withStepComplete } from './lib/simulationProgress'
 import { equipmentUsageModules } from './lib/trainingData'
 import './GenericModulePage.css'
@@ -46,7 +47,7 @@ const ENGINE_ON_CAMERA = { position: [1.05, 0.82, 0.95], fov: 46, minDistance: 0
 // copy) and useActivityController (the two built-in Module 3 screens). This
 // component owns what every step kind shares - the simulation snapshot,
 // grading, step navigation - and wires the three together.
-function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }) {
+function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
   const t = useT()
   const language = useLanguage()
   const isAdmin = user?.role === 'ADMIN'
@@ -78,11 +79,11 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     if (!hasDriving) return undefined
 
     getEquipment()
-      .then((rows) => setEquipmentRecord(rows.find((row) => row.id === equipmentId) || null))
+      .then(setEquipmentRecord)
       .catch(() => {})
 
     return undefined
-  }, [hasDriving, equipmentId])
+  }, [hasDriving])
 
   // Keyed on language too: the profile carries the HUD legend and the fail
   // messages, so a toggle has to rebuild it.
@@ -139,7 +140,6 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   }
 
   const walkAroundController = useWalkAroundController({
-    equipmentId,
     hasWalkAround,
     moduleSlug,
     steps,
@@ -197,7 +197,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
     // return to the equipment's module list to pick the next one.
     clearTimeout(completeModuleTimer.current)
     completeModuleTimer.current = setTimeout(
-      () => onNavigate?.(nextModuleRoute(steps, equipmentId) || `/training/${equipmentId}/modules`),
+      () => onNavigate?.(nextModuleRoute(steps) || routes.modules),
       NEXT_MODULE_DELAY_MS,
     )
   }
@@ -334,7 +334,7 @@ function GenericModulePage({ equipmentId, moduleSlug, user, onBack, onNavigate }
   return (
     <>
       {showScopeNotice && (
-        <ScopeNoticeModal equipmentId={equipmentId} onDismiss={() => setShowScopeNotice(false)} />
+        <ScopeNoticeModal onDismiss={() => setShowScopeNotice(false)} />
       )}
       <SimulationPageLayout
         className="load-simulation-page"

@@ -12,7 +12,6 @@
 import commonEn from './en/common.js'
 import headerEn from './en/header.js'
 import loginEn from './en/login.js'
-import catalogEn from './en/catalog.js'
 import hubEn from './en/hub.js'
 import moduleListEn from './en/moduleList.js'
 import hubDefaultsEn from './en/hubDefaults.js'
@@ -27,7 +26,6 @@ import quizEn from './en/quiz.js'
 import commonFil from './fil/common.js'
 import headerFil from './fil/header.js'
 import loginFil from './fil/login.js'
-import catalogFil from './fil/catalog.js'
 import hubFil from './fil/hub.js'
 import moduleListFil from './fil/moduleList.js'
 import hubDefaultsFil from './fil/hubDefaults.js'
@@ -44,7 +42,6 @@ export const catalog = {
     ...commonEn,
     ...headerEn,
     ...loginEn,
-    ...catalogEn,
     ...hubEn,
     ...moduleListEn,
     ...hubDefaultsEn,
@@ -60,7 +57,6 @@ export const catalog = {
     ...commonFil,
     ...headerFil,
     ...loginFil,
-    ...catalogFil,
     ...hubFil,
     ...moduleListFil,
     ...hubDefaultsFil,

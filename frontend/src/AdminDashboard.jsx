@@ -9,6 +9,7 @@ import {
   Users as UsersIcon,
   Wrench,
 } from 'lucide-react'
+import EquipmentCardEditor from './components/admin/EquipmentCardEditor'
 import HubContentEditor from './components/admin/HubContentEditor'
 import ModuleEditor from './components/admin/ModuleEditor'
 import HotspotAdmin from './components/admin/HotspotAdmin'
@@ -19,35 +20,33 @@ import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
 import { Button } from './components/ui/button'
 import { Panel, PanelHeader, PanelNote } from './components/ui/panel'
 import { Field } from './components/ui/field'
-import { Input, Textarea, Select, Checkbox } from './components/ui/input'
+import { Input, Select } from './components/ui/input'
 import { Toolbar } from './components/ui/toolbar'
 import { Stat, Meter } from './components/ui/stat'
 import { Toast } from './components/ui/toast'
 import { usePageTitle } from './hooks/usePageTitle'
 import { describeActivity, formatRelativeTime } from './lib/adminActivity'
 import {
-  adminCreateEquipment,
   adminCreateHotspotCategory,
   adminCreateUser,
-  adminDeleteEquipment,
   adminDeleteHotspotCategory,
   adminDeleteUser,
   adminListContent,
-  adminUpdateEquipment,
   adminUpdateHotspotCategory,
   adminUpdateUser,
 } from './lib/api'
 import { adminModuleRoute, routes } from './lib/router'
 
-// The three sections every equipment has under Training Content. Paths stay
-// equipment-agnostic; which equipment's data fills them is tracked by
-// `activeEquipmentId` state instead. Steps, checklist items and quiz
+// The three sections under Training Content. Steps, checklist items and quiz
 // questions have no section of their own - they live inside a module.
-const equipmentContentTabs = [
+const trainingContentTabs = [
   [routes.adminModules, 'Modules', Layers],
   [routes.adminParts, 'Parts Identification', Wrench],
   [routes.adminSettings, 'Equipment Settings', Wrench],
 ]
+
+// Module-level so QuizAdmin gets one stable object.
+const PARTS_QUIZ_SCOPE = { context: 'parts' }
 
 const trailingTabs = [
   [routes.adminUsers, 'Users', UsersIcon],
@@ -58,17 +57,18 @@ const trailingTabs = [
 // "Admin Panel" for the tab title; the module editor's label comes from the
 // module being edited instead, since it has no static path of its own.
 const ADMIN_SECTION_LABELS = Object.fromEntries(
-  [...equipmentContentTabs, ...trailingTabs].map(([path, label]) => [path, label]),
+  [...trainingContentTabs, ...trailingTabs].map(([path, label]) => [path, label]),
 )
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
 // The shape of adminListContent()'s response - used both as the initial state
 // (nothing has loaded yet) and as the base a fetch's response is spread over,
-// so a field the current backend doesn't send still renders as an empty list
-// instead of undefined.
+// so a field the current backend doesn't send still renders as empty instead
+// of undefined.
 const EMPTY_ADMIN_CONTENT = {
-  equipment: [],
+  equipment: null,
+  partsHotspotCount: 0,
   modules: [],
   hotspotCategories: [],
   checklists: [],
@@ -100,8 +100,7 @@ const SUBNAV_TAB_CLASSES = (active) =>
 function CategoryRow({ category, onRename, onDelete }) {
   const [draft, setDraft] = useState(category.label)
   // Adjusted during render rather than in an effect, so an external label
-  // change (the server's response to a rename, or switching equipment)
-  // takes effect in the same render instead of flashing the stale value
+  // change (the server's response to a rename) takes effect in the same render instead of flashing the stale value
   // for one paint - see https://react.dev/learn/you-might-not-need-an-effect.
   const [syncedLabel, setSyncedLabel] = useState(category.label)
   if (category.label !== syncedLabel) {
@@ -136,16 +135,8 @@ function CategoryRow({ category, onRename, onDelete }) {
 
 function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [content, setContent] = useState(EMPTY_ADMIN_CONTENT)
-  const [editingEquipment, setEditingEquipment] = useState(null)
-  // Which equipment's section is expanded in the nav - the sub-tab paths are
-  // shared by every equipment, so this (not the URL) decides whose
-  // modules/parts/settings the tab bodies below show. Null until the first
-  // fetch picks the first equipment row: naming one here would make the
-  // dashboard wrong for a deployment that has no forklift.
-  const [activeEquipmentId, setActiveEquipmentId] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
   const [newCategory, setNewCategory] = useState('')
-  const [newEquipmentTitle, setNewEquipmentTitle] = useState('')
   const [newUser, setNewUser] = useState({ email: '', fullName: '', role: 'TRAINEE', password: '' })
   const [saveMessage, setSaveMessage] = useState('')
   const [contentLoading, setContentLoading] = useState(true)
@@ -161,8 +152,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const editingModuleSlug = activePath.startsWith(`${routes.adminModules}/`)
     ? activePath.slice(routes.adminModules.length + 1)
     : null
-  const isEquipmentSection =
-    equipmentContentTabs.some(([tabPath]) => tabPath === activePath) || Boolean(editingModuleSlug)
+  const isTrainingContentSection =
+    trainingContentTabs.some(([tabPath]) => tabPath === activePath) || Boolean(editingModuleSlug)
   const moduleTitleBySlug = useMemo(() => {
     return content.modules.reduce((map, module) => ({ ...map, [module.slug]: module.title || module.fullTitle }), {})
   }, [content.modules])
@@ -174,47 +165,12 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         ? `Admin Panel - ${ADMIN_SECTION_LABELS[activePath]}`
         : 'Admin Panel',
   )
-  // Every equipment shares the same seven tab paths - these are the slices
-  // of `content` scoped to whichever equipment section is currently open.
-  const activeEquipmentModules = useMemo(
-    () => content.modules.filter((module) => module.equipmentId === activeEquipmentId),
-    [content.modules, activeEquipmentId],
-  )
   const moduleBySlug = useMemo(
     () => content.modules.reduce((map, module) => ({ ...map, [module.slug]: module }), {}),
     [content.modules],
   )
-  const activeEquipment = content.equipment.find((item) => item.id === activeEquipmentId) || null
-  const activeEquipmentCategories = useMemo(
-    () => content.hotspotCategories.filter((category) => category.equipmentId === activeEquipmentId),
-    [content.hotspotCategories, activeEquipmentId],
-  )
-  // The Module Editor scopes to the *module's own* equipment, not the picker's.
-  // /admin/modules/:slug is a real URL an admin can land on directly, and
-  // `activeEquipmentId` is picker state - so scoping off it showed a Backhoe
-  // module the Forklift's sibling modules, model and categories.
-  const editingModuleEquipment = useMemo(() => {
-    const equipmentId = moduleBySlug[editingModuleSlug]?.equipmentId || activeEquipmentId
-    const equipment = content.equipment.find((item) => item.id === equipmentId)
-
-    return {
-      id: equipmentId,
-      record: equipment || null,
-      modules: content.modules.filter((module) => module.equipmentId === equipmentId),
-      categories: content.hotspotCategories.filter((category) => category.equipmentId === equipmentId),
-    }
-  }, [moduleBySlug, editingModuleSlug, activeEquipmentId, content.equipment, content.modules, content.hotspotCategories])
-  // A configured Model URL is what turns the Parts tab from a disabled note
-  // into the hotspot editor - there is nothing to place markers on without one.
-  const hasModelForActiveEquipment = Boolean(activeEquipment?.modelUrl)
-
-  // Switching sections clears whatever was selected under the old one, so a
-  // Backhoe screen never shows a stale Forklift module/checklist/quiz mid-edit.
-  const openEquipmentSection = (equipmentId) => {
-    setActiveEquipmentId(equipmentId)
-    setEditingEquipment(content.equipment.find((item) => item.id === equipmentId) || null)
-    onNavigate(routes.adminModules)
-  }
+  // The equipment row is replaced whole by whichever editor saved it.
+  const handleEquipmentSaved = (equipment) => setContent((current) => ({ ...current, equipment }))
 
   // The Overview tab is built entirely from data adminListContent() already
   // fetched (content.progress / content.activityLogs) - no extra API calls.
@@ -249,10 +205,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     adminListContent()
       .then((data) => {
         setContent({ ...EMPTY_ADMIN_CONTENT, ...data })
-        setEditingEquipment((current) => current || data.equipment?.[0] || null)
-        // First row in sortOrder, whatever it is - the dashboard should open on
-        // real content rather than on a named equipment that may not exist.
-        setActiveEquipmentId((current) => current || data.equipment?.[0]?.id || null)
         setContentLoading(false)
       })
       .catch((err) => {
@@ -274,7 +226,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const handleAddCategory = async () => {
     if (!newCategory.trim()) return
     try {
-      const result = await adminCreateHotspotCategory({ equipmentId: activeEquipmentId, label: newCategory.trim() })
+      const result = await adminCreateHotspotCategory({ label: newCategory.trim() })
       setContent((current) => ({ ...current, hotspotCategories: [...current.hotspotCategories, result.category] }))
       setNewCategory('')
       refreshMessage('Category added.')
@@ -302,47 +254,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     } catch (error) {
       refreshMessage(error.message)
     }
-  }
-
-  const handleAddEquipment = async () => {
-    if (!newEquipmentTitle.trim()) return
-    try {
-      const result = await adminCreateEquipment({ title: newEquipmentTitle.trim() })
-      setContent((current) => ({ ...current, equipment: [...current.equipment, result.equipment] }))
-      setNewEquipmentTitle('')
-      openEquipmentSection(result.equipment.id)
-      // openEquipmentSection reads `content.equipment`, which has not
-      // re-rendered with the new row yet, so the card editor is pointed at it
-      // directly.
-      setEditingEquipment(result.equipment)
-      refreshMessage('Equipment created. Add its modules and hotspots, then tick Available.')
-    } catch (error) {
-      refreshMessage(error.message)
-    }
-  }
-
-  const handleDeleteEquipment = async (equipment) => {
-    if (!window.confirm(`Delete "${equipment.title}"? Only an equipment with no content of its own can be deleted.`)) return
-    try {
-      await adminDeleteEquipment(equipment.id)
-      const remaining = content.equipment.filter((item) => item.id !== equipment.id)
-      setContent((current) => ({ ...current, equipment: remaining }))
-      if (remaining[0]) openEquipmentSection(remaining[0].id)
-      refreshMessage('Equipment deleted.')
-    } catch (error) {
-      refreshMessage(error.message)
-    }
-  }
-
-  const handleSaveEquipment = async () => {
-    if (!editingEquipment) return
-    const result = await adminUpdateEquipment(editingEquipment.id, editingEquipment)
-    setContent((current) => ({
-      ...current,
-      equipment: current.equipment.map((item) => (item.id === editingEquipment.id ? result.equipment : item)),
-    }))
-    setEditingEquipment(result.equipment)
-    refreshMessage('Equipment card changes saved.')
   }
 
   const handleCreateUser = async () => {
@@ -403,7 +314,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             <LayoutGrid size={16} />
             Overview
           </button>
-          <button className={NAV_TAB_CLASSES(isEquipmentSection)} onClick={() => openEquipmentSection(activeEquipmentId)}>
+          <button className={NAV_TAB_CLASSES(isTrainingContentSection)} onClick={() => onNavigate(routes.adminModules)}>
             <Truck size={16} />
             Training Content
           </button>
@@ -415,41 +326,12 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           ))}
         </nav>
 
-        {isEquipmentSection && (
-          <nav className="flex flex-wrap gap-1.5 border-b border-border bg-bg px-8 py-2.5" aria-label="Equipment">
-            {content.equipment.map((equipment) => (
-              <button
-                key={equipment.id}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-extrabold transition ${
-                  activeEquipmentId === equipment.id
-                    ? 'border-accent bg-accent text-white'
-                    : 'border-slate-300 bg-panel text-body hover:border-accent'
-                }`}
-                onClick={() => openEquipmentSection(equipment.id)}
-              >
-                <Truck size={15} />
-                {equipment.title}
-              </button>
-            ))}
-            <span className="ml-auto inline-flex items-center gap-1.5">
-              <Input
-                className="w-40"
-                value={newEquipmentTitle}
-                placeholder="New equipment"
-                onChange={(event) => setNewEquipmentTitle(event.target.value)}
-                onKeyDown={(event) => { if (event.key === 'Enter') handleAddEquipment() }}
-              />
-              <Button size="sm" variant="secondary" onClick={handleAddEquipment} disabled={!newEquipmentTitle.trim()}>Add</Button>
-            </span>
-          </nav>
-        )}
-
-        {isEquipmentSection && (
+        {isTrainingContentSection && (
           <nav
             className="flex flex-wrap gap-1 border-b border-border bg-panel px-8 py-1.5 md:pl-[52px]"
-            aria-label={`${content.equipment.find((item) => item.id === activeEquipmentId)?.title || ''} content sections`}
+            aria-label="Training content sections"
           >
-            {equipmentContentTabs.map(([tabPath, label, Icon]) => (
+            {trainingContentTabs.map(([tabPath, label, Icon]) => (
               <button key={tabPath} className={SUBNAV_TAB_CLASSES(activePath === tabPath)} onClick={() => onNavigate(tabPath)}>
                 <Icon size={16} />
                 {label}
@@ -507,19 +389,11 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             </main>
           )}
 
-          {activePath === routes.adminModules && activeEquipmentId && (
+          {activePath === routes.adminModules && (
             <main className={CONTENT_WRAP}>
               <ModuleListAdmin
-                key={activeEquipmentId}
-                equipmentId={activeEquipmentId}
-                modules={activeEquipmentModules}
-                onModulesChanged={(modules) => setContent((current) => ({
-                  ...current,
-                  modules: [
-                    ...current.modules.filter((module) => !modules.some((entry) => entry.id === module.id)),
-                    ...modules,
-                  ].filter((module) => module.equipmentId !== activeEquipmentId || modules.some((entry) => entry.id === module.id)),
-                }))}
+                modules={content.modules}
+                onModulesChanged={(modules) => setContent((current) => ({ ...current, modules }))}
                 onOpenModule={(module) => onNavigate(adminModuleRoute(module.slug))}
                 onMessage={refreshMessage}
               />
@@ -532,11 +406,10 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 <ModuleEditor
                   key={editingModuleSlug}
                   module={moduleBySlug[editingModuleSlug]}
-                  equipment={editingModuleEquipment.record}
-                  equipmentId={editingModuleEquipment.id}
-                  equipmentModules={editingModuleEquipment.modules}
+                  equipment={content.equipment}
+                  modules={content.modules}
                   checklists={content.checklists}
-                  hotspotCategories={editingModuleEquipment.categories}
+                  hotspotCategories={content.hotspotCategories}
                   quizQuestions={content.quizQuestions}
                   onModuleChanged={(module) => setContent((current) => ({
                     ...current,
@@ -558,16 +431,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             </main>
           )}
 
-          {activePath === routes.adminParts && !hasModelForActiveEquipment && (
-            <main className={`${CONTENT_WRAP} ${TWO_COL}`}>
-              <Panel wide>
-                <PanelHeader>Parts Identification</PanelHeader>
-                <PanelNote>This equipment has no 3D model configured yet, so there is nothing to place part hotspots on.</PanelNote>
-              </Panel>
-            </main>
-          )}
-
-          {activePath === routes.adminParts && hasModelForActiveEquipment && (
+          {activePath === routes.adminParts && (
             <main className={`${CONTENT_WRAP} ${TWO_COL}`}>
               <Panel wide>
                 <PanelHeader>Parts Identification</PanelHeader>
@@ -576,9 +440,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                   Edits are saved as a draft; learners keep the published position and text until you press Publish.
                 </PanelNote>
                 <HotspotAdmin
-                  key={activeEquipmentId}
-                  equipmentId={activeEquipmentId}
-                  categories={activeEquipmentCategories}
+                  categories={content.hotspotCategories}
                   surface="parts"
                   onMessage={refreshMessage}
                 />
@@ -588,7 +450,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                 <PanelHeader>Part Categories</PanelHeader>
                 <PanelNote>The filter chips above the parts list on the learner page. A category still used by a part cannot be deleted.</PanelNote>
                 <div className="mt-3 grid gap-2.5">
-                  {activeEquipmentCategories.map((category) => (
+                  {content.hotspotCategories.map((category) => (
                     <CategoryRow
                       key={category.id}
                       category={category}
@@ -608,12 +470,11 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
               <Panel wide>
                 <PanelHeader>Parts Quiz</PanelHeader>
                 <QuizAdmin
-                  key={activeEquipmentId}
-                  scope={{ context: 'parts', equipmentId: activeEquipmentId }}
+                  scope={PARTS_QUIZ_SCOPE}
                   questions={content.quizQuestions}
                   onQuestionsChanged={(quizQuestions) => setContent((current) => ({ ...current, quizQuestions }))}
                   onMessage={refreshMessage}
-                  note="The quiz step of this equipment's Parts Identification page. Scores feed its parts percentage."
+                  note="The quiz step of the Parts Identification page. Scores feed the parts percentage."
                 />
               </Panel>
             </main>
@@ -622,82 +483,28 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           {activePath === routes.adminSettings && (
             <main className={`${CONTENT_WRAP} ${TWO_COL}`}>
               <Panel>
-                <PanelHeader>Equipment Card</PanelHeader>
-                <PanelNote>The catalog card on the home screen (image, title, description, availability).</PanelNote>
-                {editingEquipment ? (
-                  <div className="mt-3.5 grid gap-3.5">
-                    <Field label="Title">
-                      <Input value={editingEquipment.title} onChange={(event) => setEditingEquipment({ ...editingEquipment, title: event.target.value })} />
-                    </Field>
-                    <Field label="Description">
-                      <Textarea value={editingEquipment.description} onChange={(event) => setEditingEquipment({ ...editingEquipment, description: event.target.value })} />
-                    </Field>
-                    <Field
-                      label="Catalog image URL"
-                      note={<>The picture on this equipment&apos;s catalogue card. Drop the file in <code>frontend/public/images/</code> and point at it as <code>/images/your-file.png</code>, or paste any image URL. Left blank, the card shows a plain panel - there is no default picture.</>}
-                    >
-                      <Input
-                        value={editingEquipment.imageUrl || ''}
-                        placeholder="/images/backhoe-card.png"
-                        onChange={(event) => setEditingEquipment({ ...editingEquipment, imageUrl: event.target.value })}
-                      />
-                    </Field>
-                    <div className="flex h-[150px] items-center justify-center overflow-hidden rounded-lg border border-border bg-ink">
-                      {editingEquipment.imageUrl ? (
-                        <img
-                          className="h-full w-full object-cover data-[broken=true]:object-contain data-[broken=true]:opacity-40"
-                          src={editingEquipment.imageUrl}
-                          alt=""
-                          onError={(event) => { event.currentTarget.dataset.broken = 'true' }}
-                          onLoad={(event) => { delete event.currentTarget.dataset.broken }}
-                        />
-                      ) : (
-                        <span className="text-sm text-slate-400">No image set</span>
-                      )}
-                    </div>
-                    <Checkbox
-                      label="Available for training"
-                      checked={editingEquipment.available !== false}
-                      onChange={(event) => setEditingEquipment({ ...editingEquipment, available: event.target.checked })}
-                    />
-                    <PanelNote>Unchecked renders the catalog card as a non-interactive &quot;Coming Soon&quot; placeholder.</PanelNote>
-                    <Toolbar>
-                      <Button onClick={handleSaveEquipment}>Save equipment card</Button>
-                      <Button variant="danger" onClick={() => handleDeleteEquipment(editingEquipment)}>Delete equipment</Button>
-                    </Toolbar>
-                    <PanelNote>Deleting is refused while the equipment still has modules, hotspots or quiz questions.</PanelNote>
-                  </div>
-                ) : <p className="mt-3.5 text-sm text-body">No equipment card available.</p>}
+                <PanelHeader>Equipment</PanelHeader>
+                <EquipmentCardEditor
+                  equipment={content.equipment}
+                  onSaved={handleEquipmentSaved}
+                  onMessage={refreshMessage}
+                />
               </Panel>
               <Panel>
                 <PanelHeader>Hub Content</PanelHeader>
                 <HubContentEditor
-                  key={activeEquipment?.id || 'none'}
-                  equipment={activeEquipment}
-                  moduleTitles={activeEquipmentModules.map((module) => module.subtitle || module.title)}
-                  hasPartsPage={hasModelForActiveEquipment}
-                  onSaved={(equipment) => {
-                    setContent((current) => ({
-                      ...current,
-                      equipment: current.equipment.map((item) => (item.id === equipment.id ? equipment : item)),
-                    }))
-                    setEditingEquipment((current) => (current?.id === equipment.id ? equipment : current))
-                  }}
+                  equipment={content.equipment}
+                  moduleTitles={content.modules.map((module) => module.subtitle || module.title)}
+                  hasPartsPage={content.partsHotspotCount > 0}
+                  onSaved={handleEquipmentSaved}
                   onMessage={refreshMessage}
                 />
               </Panel>
               <Panel wide>
                 <PanelHeader>Driving Simulation</PanelHeader>
                 <VehicleProfileEditor
-                  key={activeEquipment?.id || 'none'}
-                  equipment={activeEquipment}
-                  onSaved={(equipment) => {
-                    setContent((current) => ({
-                      ...current,
-                      equipment: current.equipment.map((item) => (item.id === equipment.id ? equipment : item)),
-                    }))
-                    setEditingEquipment((current) => (current?.id === equipment.id ? equipment : current))
-                  }}
+                  equipment={content.equipment}
+                  onSaved={handleEquipmentSaved}
                   onMessage={refreshMessage}
                 />
               </Panel>
@@ -794,7 +601,6 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           {activePath === routes.adminReports && (
             <main className={CONTENT_WRAP}>
               <ReportsPanel
-                equipment={content.equipment}
                 modules={content.modules}
                 users={content.users}
                 progress={content.progress}

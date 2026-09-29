@@ -6,6 +6,7 @@ import { useProgress } from './hooks/useProgress'
 import { usePageTitle } from './hooks/usePageTitle'
 import { useLanguage, useT } from './i18n'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
+import { routes } from './lib/router'
 import PageLayout from './components/PageLayout'
 import { StatusBadge } from './components/ui/badge'
 import { Button } from './components/ui/button'
@@ -16,7 +17,8 @@ import { ProgressBar } from './components/ui/progress'
 
 const SURVEY_URL = 'https://forms.gle/HhadFBkLaruZ7quK6'
 
-// The equipment's own catalog artwork, etched into the plate.
+// The hub artwork from Equipment Settings (Equipment.imageUrl), etched into
+// the plate.
 //
 // Those images are black technical line drawings on white - the parts-diagram
 // vernacular this whole tool is about. Inverting gives white lines on black,
@@ -124,15 +126,15 @@ function PathStep({ number, title, description, percent, showBar, cta, onOpen, s
   )
 }
 
-// Single hub for every equipment's /training/:equipmentId. It lists sections,
-// not modules: the Training Modules step opens /training/:equipmentId/modules
+// The training hub at /training - the app's home screen. It lists sections,
+// not modules: the Training Modules step opens /training/modules
 // (ModuleListPage), which is where the per-module cards live.
 //
 // The page is one operator plate - the dark stamped panel carrying who you are,
 // how far you are and the single Continue action - followed by a flat numbered
 // path. One bold thing, then discipline. All of its copy comes from
 // resolveHubContent(), so don't inline strings here.
-function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
+function TrainingHubPage({ user, onLogout, onNavigate }) {
   const [equipment, setEquipment] = useState(null)
   const [modules, setModules] = useState([])
   const [hotspots, setHotspots] = useState([])
@@ -148,16 +150,15 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
 
     Promise.all([
       getEquipment(),
-      getTrainingModules(equipmentId),
-      getHotspots(equipmentId, 'parts'),
-      // The parts quiz is optional - an equipment with no questions is not an
-      // error - so this one call swallows its own failure. The other three are
-      // the page.
-      getQuizQuestions({ equipment: equipmentId, context: 'parts' }).catch(() => []),
+      getTrainingModules(),
+      getHotspots('parts'),
+      // The parts quiz is optional - having no questions is not an error - so
+      // this one call swallows its own failure. The other three are the page.
+      getQuizQuestions({ context: 'parts' }).catch(() => []),
     ])
-      .then(([equipmentRows, moduleRows, hotspotRows, partsQuestions]) => {
+      .then(([equipmentRow, moduleRows, hotspotRows, partsQuestions]) => {
         if (cancelled) return
-        setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
+        setEquipment(equipmentRow)
         setModules(moduleRows)
         setHotspots(hotspotRows)
         setHasPartsQuiz(partsQuestions.length > 0)
@@ -176,27 +177,23 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
     return () => {
       cancelled = true
     }
-  }, [equipmentId])
+  }, [])
 
   const equipmentTitle = equipment?.title || 'Equipment'
   usePageTitle(t('hub.pageTitle', { equipment: equipmentTitle }))
-  // The parts page exists once the equipment has a model to show markers on.
-  const hasPartsPage = Boolean(equipment?.modelUrl)
-  const partsRoute = `/training/${equipmentId}/parts`
+  // The parts page exists once there is a published part marker to show -
+  // the same rule GenericAssessmentPage and the Hub Content editor use.
+  const hasPartsPage = hotspots.length > 0
   const partsProgress = getPartsProgress(
     summary.raw,
     hotspots.map((hotspot) => hotspot.id),
-    equipmentId,
     hasPartsQuiz,
   )
   const moduleSlugs = modules.map((module) => module.slug)
   const moduleProgress = getModulesProgress(summary.raw, moduleSlugs)
 
   const overall = getOverallProgress(summary.raw, moduleSlugs, hasPartsPage ? partsProgress : null)
-  const modulesRoute = `/training/${equipmentId}/modules`
-  const assessmentRoute = `/training/${equipmentId}/assessment`
-
-  const continueTarget = modules.length ? modulesRoute : hasPartsPage ? partsRoute : null
+  const continueTarget = modules.length ? routes.modules : hasPartsPage ? routes.parts : null
 
   const copy = resolveHubContent(equipment, hubContentContext({
     equipmentTitle,
@@ -215,8 +212,8 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
         ? copy.assessmentTitle
         : t('hub.plate.nextDone')
 
-  // Numbered at render time, so an equipment with no parts page reads 1, 2 -
-  // never 1, 3.
+  // Numbered at render time, so a hub with no parts page reads 1, 2 - never
+  // 1, 3.
   const steps = [
     modules.length > 0 && {
       id: 'modules',
@@ -225,7 +222,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
       percent: moduleProgress,
       showBar: true,
       cta: copy.modulesCta,
-      onOpen: () => onNavigate(modulesRoute),
+      onOpen: () => onNavigate(routes.modules),
     },
     hasPartsPage && {
       id: 'parts',
@@ -234,7 +231,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
       percent: partsProgress,
       showBar: true,
       cta: copy.partsCta,
-      onOpen: () => onNavigate(partsRoute),
+      onOpen: () => onNavigate(routes.parts),
     },
     {
       id: 'assessment',
@@ -245,7 +242,7 @@ function TrainingHubPage({ equipmentId, user, onLogout, onNavigate }) {
       // completion, so it carries no bar or status chip of its own.
       showBar: false,
       cta: copy.assessmentCta,
-      onOpen: () => onNavigate(assessmentRoute),
+      onOpen: () => onNavigate(routes.assessment),
     },
   ].filter(Boolean)
 

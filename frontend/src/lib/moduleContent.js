@@ -5,7 +5,7 @@
 // step's `content`. Both fall back to the static defaults in
 // `data/trainingModules.js` / the caller, so rows seeded before those fields
 // existed keep behaving exactly as they did.
-import { routes } from './router'
+import { moduleRoute, routes } from './router'
 
 export function briefingContent(steps = []) {
   return steps.find((step) => step.kind === 'briefing')?.content || null
@@ -26,44 +26,35 @@ export function moduleObjectives(steps, module) {
 }
 
 // `nextRoute` is a key, not a path, so a route that moves does not strand
-// saved content. Three kinds resolve, in this order:
+// saved content. Two kinds resolve:
 //
-//   'hub' | 'modules' | 'parts' | 'assessment'  - against the current equipment
-//   'module:<slug>'                             - that equipment's own module
-//   a key of `routes`                           - Forklift's named modules
+//   'hub' | 'modules' | 'parts' | 'assessment'  - a training page
+//   'module:<slug>'                             - one module
 //
-// The equipment-relative names win over the `routes` map on purpose: rows
-// seeded with `equipment` or `parts` used to resolve to a hardcoded Forklift
-// path, which was wrong for every other equipment and identical for Forklift.
-const EQUIPMENT_TARGETS = {
-  hub: (equipmentId) => `/training/${equipmentId}`,
-  modules: (equipmentId) => `/training/${equipmentId}/modules`,
-  // The key Forklift's summary rows were seeded with, for the module list.
-  equipment: (equipmentId) => `/training/${equipmentId}/modules`,
-  parts: (equipmentId) => `/training/${equipmentId}/parts`,
-  assessment: (equipmentId) => `/training/${equipmentId}/assessment`,
+// Stored keys were rewritten to this scheme by migration 20260814101000, so
+// anything else is unknown and resolves to null.
+const TARGETS = {
+  hub: routes.home,
+  modules: routes.modules,
+  parts: routes.parts,
+  assessment: routes.assessment,
 }
 
 export const MODULE_ROUTE_PREFIX = 'module:'
 
-export function resolveNextRoute(key, equipmentId) {
+export function resolveNextRoute(key) {
   if (!key) return null
 
   if (key.startsWith(MODULE_ROUTE_PREFIX)) {
     const slug = key.slice(MODULE_ROUTE_PREFIX.length)
-    return slug && equipmentId ? `/training/${equipmentId}/modules/${slug}` : null
+    return slug ? moduleRoute(slug) : null
   }
 
-  if (equipmentId && EQUIPMENT_TARGETS[key]) return EQUIPMENT_TARGETS[key](equipmentId)
-
-  return routes[key] || null
+  return TARGETS[key] || null
 }
 
 // An unknown key - a route that was renamed, or a row seeded before this field
 // existed - falls back to the module's built-in destination.
-export function nextModuleRoute(steps, equipmentId, fallbackKey) {
-  return (
-    resolveNextRoute(summaryContent(steps)?.nextRoute, equipmentId)
-    || resolveNextRoute(fallbackKey, equipmentId)
-  )
+export function nextModuleRoute(steps, fallbackKey) {
+  return resolveNextRoute(summaryContent(steps)?.nextRoute) || resolveNextRoute(fallbackKey)
 }

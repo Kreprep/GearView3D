@@ -4,15 +4,14 @@ import { getHotspots } from '../lib/api'
 const NO_HOTSPOTS = []
 const IDLE = { hotspots: NO_HOTSPOTS, loading: false, error: null }
 
-// The 3D markers a `walk-around` step shows: the equipment's hotspots that are
-// on the walk-around surface. A marker carries the engine `state` it belongs
-// to, or an empty one - which means it shows in every phase, and is what
-// equipment that does not model engine states uses.
+// The 3D markers a `walk-around` step shows: the hotspots on the walk-around
+// surface. A marker carries the engine `state` it belongs to, or an empty one
+// - which means it shows in every phase.
 //
 // Pages must hold off rendering the simulation shell until `loading` is false,
 // the same rule useModuleCourses documents. `enabled` is false for a module
 // with no walk-around step, which then never reports loading at all.
-export function useInspectionHotspots(equipmentId, enabled = true) {
+export function useInspectionHotspots(enabled = true) {
   const [loaded, setLoaded] = useState({ hotspots: NO_HOTSPOTS, loading: true, error: null })
 
   useEffect(() => {
@@ -20,7 +19,7 @@ export function useInspectionHotspots(equipmentId, enabled = true) {
 
     let cancelled = false
 
-    getHotspots(equipmentId, 'walk-around')
+    getHotspots('walk-around')
       .then((hotspots) => {
         if (!cancelled) setLoaded({ hotspots, loading: false, error: null })
       })
@@ -31,7 +30,7 @@ export function useInspectionHotspots(equipmentId, enabled = true) {
     return () => {
       cancelled = true
     }
-  }, [equipmentId, enabled])
+  }, [enabled])
 
   return enabled ? loaded : IDLE
 }
