@@ -1,12 +1,12 @@
 import { Quaternion, Vector3 } from 'three'
 import { REAR_WHEEL_KEYS } from '../vehicleRig.js'
-import { MAST_LIFT_RATIO } from './constants.js'
+import { LEVER_DAMP, LEVER_THROW, MAST_LIFT_RATIO, MAX_STEER_ANGLE, STEERING_WHEEL_LOCK } from './constants.js'
 
 // The only code that writes simulation state onto three.js objects
 // (docs/revisions/post-defense-plan.md, section 3.2). The sim steps own
 // SimState; once per rendered frame this copies it onto the truck group, the
-// tip pivot, the rig nodes (wheels, steering, mast, carriage), the pallet
-// groups and the cones.
+// tip pivot, the rig nodes (wheels, steering, mast, carriage, the cab's
+// steering wheel and hydraulic levers), the pallet groups and the cones.
 //
 // The sim runs at a fixed step (simLoop.js) while the display may refresh
 // faster, so the moving poses are interpolated between the previous step and
@@ -52,11 +52,19 @@ const palletQuat = new Quaternion()
 const coneAxis = new Vector3()
 const coneQuat = new Quaternion()
 
+// How far each hydraulic lever leans for the operator's input: pulled back
+// (toward the seat, a negative angle about +X) to raise and to tilt back.
+const LEVER_TARGETS = {
+  lift: (controls) => -controls.lift * LEVER_THROW,
+  tilt: (controls) => controls.tilt * LEVER_THROW,
+}
+
 // `view`: { truckGroup, tipPivot, rig, palletObjects[], coneObjects[] } -
 // any of them may be missing (not mounted yet) and is then skipped.
-// `world.liveCones` gives each cone's authored position.
+// `world.liveCones` gives each cone's authored position. `dt` is the render
+// delta, which eases the levers toward the input.
 // Returns the rendered truck pose, for the camera.
-export function syncView(view, state, prev, alpha, world) {
+export function syncView(view, state, prev, alpha, world, dt = 0) {
   const { truck, forks } = state
   const x = lerp(prev.x, truck.x, alpha)
   const y = lerp(prev.y, truck.y, alpha)
@@ -82,6 +90,20 @@ export function syncView(view, state, prev, alpha, world) {
     if (rig.carriageLift) rig.carriageLift.position.y = forkHeight
     if (rig.mastLift) rig.mastLift.position.y = forkHeight * MAST_LIFT_RATIO
     if (rig.tiltPivot) rig.tiltPivot.rotation.x = tilt
+    // Full rear-wheel lock (steer is negative for a left turn) turns the
+    // wheel STEERING_WHEEL_LOCK anticlockwise, as the operator sees it.
+    if (rig.steeringWheel) {
+      rig.steeringWheel.pivot.quaternion.setFromAxisAngle(rig.steeringWheel.axis, (-steer / MAX_STEER_ANGLE) * STEERING_WHEEL_LOCK)
+    }
+    // The levers follow the operator's hands, not the hydraulics, so they
+    // move with the engine off too. Before the first step there are no
+    // controls yet.
+    const controls = state.frame.controls
+    for (const [input, lever] of Object.entries(rig.levers || {})) {
+      const target = controls ? LEVER_TARGETS[input](controls) : 0
+      lever.angle += (target - lever.angle) * Math.min(LEVER_DAMP * dt, 1)
+      lever.pivot.quaternion.setFromAxisAngle(lever.axis, lever.angle)
+    }
   }
 
   state.pallets.forEach((pallet, index) => {

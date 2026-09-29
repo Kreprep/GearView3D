@@ -14,9 +14,7 @@ export function useDrivingSceneRefs() {
     palletObjectsRef: useRef([]),
     coneObjectsRef: useRef([]),
     vehicleOrbitRef: useRef(null),
-    // Camera.
-    seatWorldRef: useRef(new Vector3()),
-    seatLookRef: useRef(new Vector3()),
+    // Camera (lib/driving/stepCamera.js).
     // First-person look-around offset from the vehicle's own forward
     // direction (radians), driven by dragging the scene.
     lookYawRef: useRef(0),
@@ -24,7 +22,6 @@ export function useDrivingSceneRefs() {
     orbitTargetRef: useRef(new Vector3()),
     prevOrbitTargetRef: useRef(new Vector3()),
     orbitDeltaRef: useRef(new Vector3()),
-    backRef: useRef(new Vector3()),
     desiredCamRef: useRef(new Vector3()),
     lookTargetRef: useRef(new Vector3()),
   }

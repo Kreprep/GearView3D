@@ -294,7 +294,11 @@ test('rigGeometryMismatches flags a re-exported model', () => {
     forkTipOffset: FORKLIFT_RIG_GEOMETRY.forkTipOffset,
     forkReach: FORKLIFT_RIG_GEOMETRY.forkReach,
     wheels: { FL: { radius: FORKLIFT_RIG_GEOMETRY.wheelRadius.FL } },
+    steeringWheel: {},
+    levers: { lift: {}, tilt: {} },
   }
   assert.deepEqual(rigGeometryMismatches(rig), [])
   assert.equal(rigGeometryMismatches({ ...rig, forkTipOffset: 0.7 }).length, 1)
+  // The pre-Phase 3 model, with the steering wheel still part of the body.
+  assert.equal(rigGeometryMismatches({ ...rig, steeringWheel: null }).length, 1)
 })

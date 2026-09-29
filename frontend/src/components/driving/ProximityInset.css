@@ -1,0 +1,81 @@
+/* The proximity inset's frame. The canvas draws the inset into
+   .proximity-inset-view's box (InsetRenderer measures it every frame), so
+   CSS alone decides where the inset sits: it is the first item of
+   .driving-hud-bottom, which puts it at the right-hand end of the band
+   between the module shell's overlay lanes, stacked above the dashboard. */
+
+.proximity-inset {
+  position: relative;
+  align-self: flex-end;
+  width: clamp(128px, 11vw, 180px);
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
+.proximity-inset-view {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(103, 232, 249, 0.45);
+  box-shadow: 0 4px 14px rgba(2, 6, 23, 0.5);
+}
+
+.proximity-reading {
+  position: absolute;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #0f172a;
+  background: #cbd5e1;
+}
+
+.proximity-reading.notice {
+  background: #7dd3fc;
+}
+
+.proximity-reading.caution {
+  background: #fbbf24;
+}
+
+.proximity-reading.danger {
+  color: #ffffff;
+  background: #dc2626;
+}
+
+/* Heading-up: the truck's front is the top edge and its left the left edge. */
+.proximity-reading.front {
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.proximity-reading.rear {
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.proximity-reading.left {
+  top: 50%;
+  left: 4px;
+  transform: translateY(-50%);
+}
+
+.proximity-reading.right {
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+}
+
+.proximity-reading.rearLeft {
+  bottom: 22%;
+  left: 4px;
+}
+
+.proximity-reading.rearRight {
+  bottom: 22%;
+  right: 4px;
+}

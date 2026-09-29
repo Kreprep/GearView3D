@@ -1,3 +1,4 @@
+import { CAMERA_MODES } from './cameraModes.js'
 import { neutralControls } from './controls.js'
 import { STOP_SPEED_EPSILON } from './constants.js'
 
@@ -9,9 +10,25 @@ import { STOP_SPEED_EPSILON } from './constants.js'
 // lever automatically in F; S brakes while the truck is moving forward, then
 // reverses with R once it has (nearly) stopped. With neither held the lever
 // reads N. That automatic direction depends on the truck's speed, which is
-// why read() takes the sim state.
+// why read() takes the sim state. Once the learner has moved the dashboard's
+// direction lever, the lever says which way the truck goes and S is only the
+// brake, as on a real truck.
+//
+// Keys that are not held controls raise edge-triggered commands instead,
+// drained by the viewer: E the key switch, the camera keys, the inset, and
+// the cab switches (see VIEW_COMMAND_BY_KEY).
 
 export const DRIVING_KEYS = ['w', 'a', 's', 'd', 'e', 'r', 'f', 't', 'g']
+
+// One press, one command. `1`-`5` jump to a camera mode.
+export const VIEW_COMMAND_BY_KEY = {
+  c: 'cameraNext',
+  v: 'toggleInset',
+  h: 'horn',
+  b: 'seatbeltToggle',
+  ' ': 'parkingBrakeToggle',
+  ...Object.fromEntries(CAMERA_MODES.map((mode, index) => [String(index + 1), `camera:${mode}`])),
+}
 
 const HELD_BY_KEY = {
   w: 'forward',
@@ -45,6 +62,10 @@ export function createKeyboardSource() {
     // can preventDefault it.
     keyDown(rawKey, repeat = false) {
       const key = rawKey.toLowerCase()
+      if (VIEW_COMMAND_BY_KEY[key]) {
+        if (!repeat) commands.push(VIEW_COMMAND_BY_KEY[key])
+        return true
+      }
       if (!DRIVING_KEYS.includes(key)) return false
       if (key === 'e') {
         if (!repeat) commands.push('engineToggle')
@@ -81,10 +102,15 @@ export function createKeyboardSource() {
 
     // Held keys -> operator controls, given the truck's current speed. Kept
     // exactly as the old stepDrive branches read the keys: W wins over S,
-    // raise over lower, tilt-back over tilt-forward.
-    read(state) {
+    // raise over lower, tilt-back over tilt-forward. With `leverEngaged` the
+    // direction is left to the lever (the dashboard's), so W is the
+    // accelerator and S the brake pedal.
+    read(state, { leverEngaged = false } = {}) {
       const controls = neutralControls()
-      if (held.forward) {
+      if (leverEngaged) {
+        if (held.forward) controls.throttle = 1
+        else if (held.back) controls.brake = 1
+      } else if (held.forward) {
         controls.throttle = 1
         controls.direction = 'F'
       } else if (held.back) {

@@ -35,6 +35,10 @@ export function rigGeometryMismatches(rig, geometry = FORKLIFT_RIG_GEOMETRY) {
       mismatches.push(`${label}: coded ${coded}, model ${measured}`)
     }
   }
+  // The cab controls are optional to the rig builder, but forklift.glb has
+  // them since the Phase 3 steering-wheel split.
+  if (!rig.steeringWheel) mismatches.push('no Steering_Wheel node (run scripts/split-steering-wheel.mjs)')
+  if (!rig.levers?.lift || !rig.levers?.tilt) mismatches.push('lift or tilt lever node missing')
   compare('forkTipOffset', geometry.forkTipOffset, rig.forkTipOffset)
   compare('forkReach', geometry.forkReach, rig.forkReach)
   for (const [key, wheel] of Object.entries(rig.wheels || {})) {

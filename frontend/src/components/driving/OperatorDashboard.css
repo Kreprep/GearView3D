@@ -1,0 +1,319 @@
+/* The operator's instrument cluster: the "operator's plate" of the design
+   direction (CLAUDE.md) - the stamped dark ground, engraved cyan readouts,
+   and lamps in ISO 7010 colours. It sits in .driving-hud-bottom, which the
+   module shell insets between its overlay lanes and makes a size container,
+   so the panels stack when that band is narrow. */
+
+.operator-dashboard {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-3);
+  width: 100%;
+  max-width: 900px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  background: color-mix(in srgb, var(--surface-deep) 92%, transparent);
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.45);
+  color: #e2e8f0;
+  font-size: var(--fs-xs);
+}
+
+.operator-panel {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.operator-panel-meter {
+  justify-items: center;
+  padding-inline: var(--space-2);
+  border-inline: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+/* Narrow band (a 1024-1280 px screen inside the module shell): the three
+   panels stack, meter first. */
+@container driving-hud (max-width: 660px) {
+  .operator-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .operator-panel-meter {
+    order: -1;
+    padding-inline: 0;
+    border-inline: 0;
+  }
+
+  .operator-panel-controls,
+  .operator-panel-cab {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px var(--space-3);
+  }
+}
+
+/* --- Meter ---------------------------------------------------------------- */
+
+.operator-meter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+}
+
+.operator-readout {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+}
+
+.operator-readout-value {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--surface-deep-accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.operator-readout-value.small {
+  font-size: var(--fs-sm);
+}
+
+.operator-speed .operator-readout-value {
+  min-width: 2ch;
+  text-align: center;
+  font-size: var(--fs-xl);
+}
+
+.operator-readout-label {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.operator-readout.is-warning .operator-readout-value {
+  color: #fbbf24;
+}
+
+.operator-readout.is-danger .operator-readout-value {
+  color: #f87171;
+}
+
+.operator-direction {
+  display: inline-flex;
+  gap: 6px;
+  font-size: var(--fs-md);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #334155;
+}
+
+.operator-direction .is-lit {
+  color: var(--surface-deep-accent);
+  text-shadow: 0 0 8px rgba(103, 232, 249, 0.6);
+}
+
+/* --- Lamps and gauges --------------------------------------------------- */
+
+.operator-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px var(--space-3);
+}
+
+.operator-lamps {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.operator-lamp {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #334155;
+  background: #111c30;
+  border: 1px solid #1e293b;
+}
+
+.operator-lamp.danger.is-lit {
+  color: #fee2e2;
+  background: #dc2626;
+  border-color: #fecaca;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+}
+
+.operator-lamp.caution.is-lit {
+  color: #1c1917;
+  background: #f59e0b;
+  border-color: #fde68a;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
+}
+
+.operator-gauge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #94a3b8;
+}
+
+.operator-gauge-track {
+  position: relative;
+  width: 56px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+}
+
+.operator-gauge-track.fuel {
+  background: linear-gradient(90deg, #dc2626 0 15%, #334155 15% 100%);
+}
+
+.operator-gauge-track.temp {
+  background: linear-gradient(90deg, #1d4ed8 0 30%, #15803d 30% 75%, #dc2626 75% 100%);
+}
+
+.operator-gauge-needle {
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: #f8fafc;
+  transform: translateX(-50%);
+}
+
+.operator-hours {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #cbd5e1;
+}
+
+/* --- Controls ------------------------------------------------------------ */
+
+.operator-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.operator-group > legend {
+  width: 100%;
+  margin-bottom: 2px;
+  padding: 0;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.operator-toggles {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 4px;
+}
+
+.operator-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.operator-switch:hover {
+  border-color: rgba(103, 232, 249, 0.6);
+}
+
+.operator-switch:focus-visible {
+  outline: 2px solid var(--surface-deep-accent);
+  outline-offset: 1px;
+}
+
+.operator-switch.is-active {
+  background: #0891b2;
+  border-color: #22d3ee;
+  color: #ffffff;
+}
+
+.operator-levers {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.operator-drawer-toggle {
+  margin-left: auto;
+}
+
+.operator-lever {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.operator-lever-slot {
+  position: relative;
+  width: 6px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: #1e293b;
+  border: 1px solid #334155;
+}
+
+.operator-lever-knob {
+  position: absolute;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--surface-deep-accent);
+  transform: translate(-50%, -50%);
+  transition: top 80ms linear;
+}
+
+.operator-lever-label {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.operator-drawer {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ctl-gap);
+  padding-top: 6px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.operator-drawer .driving-key {
+  width: auto;
+  min-width: clamp(24px, 1.9vw, 32px);
+  padding: 0 6px;
+}
