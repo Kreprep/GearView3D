@@ -14,7 +14,7 @@ import { Toolbar } from '../ui/toolbar'
 // One quiz's questions. `scope` is the same shape the learner API takes:
 //
 //   { context: 'module', moduleId }         a module's quiz step
-//   { context: 'parts', equipmentId }       an equipment's parts quiz
+//   { context: 'parts' }                    the Parts Identification quiz
 //
 // Both are QuizQuestion rows and save immediately - there is no draft/publish
 // step for a prompt plus four options.
@@ -27,7 +27,7 @@ function normalize(options) {
 
 function inScope(question, scope) {
   return scope.context === 'parts'
-    ? question.context === 'parts' && question.equipmentId === scope.equipmentId
+    ? question.context === 'parts'
     : question.context !== 'parts' && String(question.moduleId) === String(scope.moduleId)
 }
 

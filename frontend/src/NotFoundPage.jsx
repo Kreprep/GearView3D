@@ -15,7 +15,7 @@ function NotFoundPage({ user, onLogout, onNavigate }) {
         <h1>{t('common.notFound.title')}</h1>
         <p>{t('common.notFound.body')}</p>
         <div className="not-found-actions">
-          <button onClick={() => onNavigate(routes.catalog)}>{t('common.notFound.action')}</button>
+          <button onClick={() => onNavigate(routes.home)}>{t('common.notFound.action')}</button>
         </div>
       </main>
     </div>

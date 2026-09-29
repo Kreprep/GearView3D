@@ -1,6 +1,5 @@
 export {
   equipmentUsageModules,
-  forkliftEquipment,
   moduleChecklists,
   trainingModules,
 } from '../data/trainingModules.js'

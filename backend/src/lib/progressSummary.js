@@ -2,6 +2,7 @@
 // frontend/src/lib/progressService.js (getModuleProgress): a
 // simulation-reported percentage wins, otherwise checklist completion is
 // averaged with the latest quiz score.
+import { migrateParts } from '../../../frontend/src/lib/migrateParts.js'
 
 export function moduleProgressFromSnapshot(snapshot, slug, checklistTotals) {
   const simulationProgress = snapshot?.simulations?.[slug]?.percentage
@@ -41,7 +42,6 @@ function moduleUpdatedAtFromSnapshot(snapshot, slug) {
 export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
   const progress = []
   const activityLogs = []
-  const moduleBySlug = Object.fromEntries(modules.map((module) => [module.slug, module]))
 
   for (const snapshot of snapshots) {
     const user = { id: snapshot.userId, email: snapshot.user.email, fullName: snapshot.user.fullName }
@@ -51,7 +51,6 @@ export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
       progress.push({
         id: `${snapshot.userId}-${module.slug}`,
         moduleSlug: module.slug,
-        equipmentId: module.equipmentId,
         progress: moduleProgressFromSnapshot(data, module.slug, checklistTotals),
         updatedAt: moduleUpdatedAtFromSnapshot(data, module.slug),
         user,
@@ -64,7 +63,6 @@ export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
           id: attempt.id,
           action: 'quiz_attempt',
           moduleSlug,
-          equipmentId: moduleBySlug[moduleSlug]?.equipmentId || null,
           detail: moduleSlug,
           createdAt: attempt.attemptedAt,
           user,
@@ -72,20 +70,17 @@ export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
       }
     }
 
-    // Every equipment's parts-quiz attempts, including the Forklift ones that
-    // used to sit under `parts.practiceAttempts` before migration 20260814100000.
-    for (const [equipmentId, attempts] of Object.entries(data.parts?.quizzes || {})) {
-      for (const attempt of attempts) {
-        activityLogs.push({
-          id: attempt.id,
-          action: 'parts_quiz_attempt',
-          moduleSlug: null,
-          equipmentId,
-          detail: `${equipmentId} ${attempt.score}/${attempt.total}`,
-          createdAt: attempt.attemptedAt,
-          user,
-        })
-      }
+    // Read through migrateParts(): PUT /api/progress stores the client payload
+    // as-is, so a stale tab can still have pushed an older parts shape.
+    for (const attempt of migrateParts(data.parts).quizAttempts) {
+      activityLogs.push({
+        id: attempt.id,
+        action: 'parts_quiz_attempt',
+        moduleSlug: null,
+        detail: `${attempt.score}/${attempt.total}`,
+        createdAt: attempt.attemptedAt,
+        user,
+      })
     }
   }
 

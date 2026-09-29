@@ -19,7 +19,7 @@ import { Input, Textarea, Select, Checkbox } from '../ui/input'
 import { Toolbar } from '../ui/toolbar'
 import { Badge } from '../ui/badge'
 
-// The one editor for every marker on every equipment's model. A hotspot is one
+// The one editor for every marker on the model. A hotspot is one
 // physical component, and `inParts` / `inWalkAround` say which surfaces show
 // it - so the forklift's mast is edited here once, not once as a part and
 // again as an inspection hotspot.
@@ -72,7 +72,7 @@ function onSurface(hotspot, surface) {
   return true
 }
 
-function HotspotAdmin({ equipmentId, categories = [], surface = null, onMessage }) {
+function HotspotAdmin({ categories = [], surface = null, onMessage }) {
   const [hotspots, setHotspots] = useState([])
   const [loadState, setLoadState] = useState({ loading: true, error: null })
   const [selectedId, setSelectedId] = useState(null)
@@ -85,7 +85,7 @@ function HotspotAdmin({ equipmentId, categories = [], surface = null, onMessage 
   useEffect(() => {
     let cancelled = false
 
-    adminListHotspots(equipmentId)
+    adminListHotspots()
       .then((data) => {
         if (cancelled) return
         setHotspots(data.hotspots)
@@ -99,7 +99,7 @@ function HotspotAdmin({ equipmentId, categories = [], surface = null, onMessage 
     return () => {
       cancelled = true
     }
-  }, [equipmentId])
+  }, [])
 
   const sorted = [...hotspots].sort((a, b) => a.sortOrder - b.sortOrder)
   const visible = showAll || !surface ? sorted : sorted.filter((row) => onSurface(row, surface))
@@ -175,7 +175,6 @@ function HotspotAdmin({ equipmentId, categories = [], surface = null, onMessage 
 
     const result = await run(
       () => adminCreateHotspot({
-        equipmentId,
         label: newLabel.trim(),
         position: DEFAULT_POSITION,
         inParts: surface !== 'walk-around',
@@ -201,7 +200,7 @@ function HotspotAdmin({ equipmentId, categories = [], surface = null, onMessage 
     reordered.splice(target, 0, entry)
 
     try {
-      const result = await adminReorderHotspots(equipmentId, reordered.map((row) => row.id))
+      const result = await adminReorderHotspots(reordered.map((row) => row.id))
       setHotspots(result.hotspots)
     } catch (err) {
       onMessage(err.message)
@@ -249,7 +248,7 @@ function HotspotAdmin({ equipmentId, categories = [], surface = null, onMessage 
       <Panel className="sticky top-3">
         <PanelHeader>Hotspots</PanelHeader>
         <PanelNote>
-          Every labelled point on this equipment&apos;s model. One hotspot is one component - tick the surfaces it
+          Every labelled point on the model. One hotspot is one component - tick the surfaces it
           appears on rather than adding it twice.
         </PanelNote>
 
@@ -443,7 +442,7 @@ function HotspotAdmin({ equipmentId, categories = [], surface = null, onMessage 
                     </Field>
                     <Field
                       label="Engine phase"
-                      note="Which walk-around phase shows this marker. Every phase is right for equipment that does not model engine states."
+                      note="Which walk-around phase shows this marker. Every phase shows it in all of them."
                     >
                       <Select value={draft.state} onChange={(event) => setField({ state: event.target.value })}>
                         {STATE_OPTIONS.map(([value, text]) => (

@@ -52,11 +52,10 @@ export const partsQuizQuestions = [
 ]
 
 // Seed rows for the QuizQuestion table. `context: 'parts'` and no module -
-// these belong to the equipment's parts page, not to a module's quiz step.
-export function buildDefaultPartsQuizQuestions(equipmentId = 'forklift') {
+// these belong to the Parts Identification page, not to a module's quiz step.
+export function buildDefaultPartsQuizQuestions() {
   return partsQuizQuestions.map((question, index) => ({
     id: question.id,
-    equipmentId,
     context: 'parts',
     moduleId: null,
     prompt: question.prompt,

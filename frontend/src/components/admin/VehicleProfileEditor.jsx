@@ -31,7 +31,7 @@ function editableOverrides(simConfig) {
 // step. Only overrides are stored, so a blank field keeps the coded default
 // shown as its placeholder, exactly like the hub content editor.
 //
-// Mount with key={equipment.id}: the draft is seeded from the row once.
+// The draft is seeded from the row once, on mount.
 function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
   // The placeholders show the coded defaults, so they follow the dashboard's
   // language. simConfig overrides themselves stay single-language.
@@ -39,7 +39,7 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
   const [draft, setDraft] = useState(() => editableOverrides(equipment?.simConfig))
   const [saving, setSaving] = useState(false)
 
-  if (!equipment) return <PanelNote>Select an equipment first.</PanelNote>
+  if (!equipment) return <PanelNote>The equipment row has not been seeded, so there is no profile to edit.</PanelNote>
 
   const defaults = defaultVehicleProfile(language)
   const resolved = resolveVehicleProfile(equipment, language)
@@ -53,7 +53,7 @@ function VehicleProfileEditor({ equipment, onSaved, onMessage }) {
   const save = async () => {
     setSaving(true)
     try {
-      const result = await adminUpdateEquipment(equipment.id, { simConfig: draft })
+      const result = await adminUpdateEquipment({ simConfig: draft })
       onSaved?.(result.equipment)
       onMessage?.('Vehicle profile saved.')
     } catch (error) {

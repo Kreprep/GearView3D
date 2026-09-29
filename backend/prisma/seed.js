@@ -5,7 +5,6 @@ import 'dotenv/config'
 import bcrypt from 'bcryptjs'
 import { PrismaClient } from '@prisma/client'
 import {
-  allEquipment,
   moduleChecklists,
   trainingModules,
 } from '../../frontend/src/data/trainingModules.js'
@@ -14,7 +13,8 @@ import { buildDefaultHotspotCategories } from '../../frontend/src/data/partsData
 // them; the seed is the only consumer.
 import { buildDefaultPartsQuizQuestions } from '../../frontend/src/data/partsQuizzes.js'
 import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
-import { buildDefaultCourses, emptyCourseContent } from '../../frontend/src/data/courseDefaults.js'
+import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
+import { EQUIPMENT_DEFAULTS } from '../../frontend/src/data/equipment.js'
 import { buildDefaultHotspots } from '../../frontend/src/data/hotspotDefaults.js'
 
 const prisma = new PrismaClient()
@@ -58,22 +58,13 @@ async function seedUsers() {
   }
 }
 
+// The one Equipment row - the forklift's title, hub artwork and overrides.
 async function seedEquipment() {
-  for (const [index, equipment] of allEquipment.entries()) {
-    await prisma.equipment.upsert({
-      where: { id: equipment.id },
-      update: {},
-      create: {
-        id: equipment.id,
-        title: equipment.title,
-        description: equipment.description,
-        modelUrl: equipment.modelUrl || '',
-        imageUrl: equipment.imageUrl || '',
-        sortOrder: index + 1,
-        available: equipment.available !== false,
-      },
-    })
-  }
+  await prisma.equipment.upsert({
+    where: { id: EQUIPMENT_DEFAULTS.id },
+    update: {},
+    create: { ...EQUIPMENT_DEFAULTS },
+  })
 }
 
 const SUPERSEDED_MODULE_IMAGE_URLS = new Set([
@@ -96,7 +87,6 @@ async function seedModules() {
           description: module.description || '',
           imageUrl: module.imageUrl || '',
           sortOrder: index + 1,
-          equipmentId: 'forklift',
         },
       })
       continue
@@ -130,74 +120,10 @@ async function seedModules() {
   }
 }
 
-// The one starter module every newly-added equipment type gets: a single
-// blank module with a single blank briefing step, so the catalog card has
-// somewhere to route to and the admin has something to open in the Module
-// Editor / Course editor rather than an empty list. Create-if-missing, same
-// as the rest of this file, so admin edits are never overwritten.
-const equipmentStarterModules = [
-  {
-    equipmentId: 'backhoe',
-    id: 5,
-    slug: 'backhoe-getting-started',
-    title: 'New Module',
-    subtitle: 'Getting Started',
-    description: 'A starting point for Backhoe Loader training content. Edit this module in the Module Editor to add your own steps.',
-  },
-]
-
-async function seedEquipmentStarterModules() {
-  for (const starter of equipmentStarterModules) {
-    const existingModule = await prisma.module.findUnique({ where: { id: starter.id } })
-
-    await prisma.module.upsert({
-      where: { id: starter.id },
-      update: {},
-      create: {
-        id: starter.id,
-        slug: starter.slug,
-        title: starter.title,
-        subtitle: starter.subtitle,
-        description: starter.description,
-        equipmentId: starter.equipmentId,
-        sortOrder: 1,
-      },
-    })
-
-    // subtitle/description are newer than this row, so a row seeded before
-    // they existed gets them backfilled here too - same as fullTitle in
-    // seedModules() above. Only an empty value is replaced.
-    if (existingModule && !existingModule.subtitle && !existingModule.description) {
-      await prisma.module.update({
-        where: { id: starter.id },
-        data: { subtitle: starter.subtitle, description: starter.description },
-      })
-    }
-
-    const briefingId = `${starter.slug}-briefing`
-    const existing = await prisma.course.findUnique({ where: { id: briefingId } })
-    if (existing) continue
-
-    await prisma.course.create({
-      data: {
-        id: briefingId,
-        moduleSlug: starter.slug,
-        sortOrder: 1,
-        kind: 'briefing',
-        title: 'Briefing',
-        content: emptyCourseContent('briefing'),
-        published: true,
-        builtIn: false,
-      },
-    })
-  }
-}
-
-// Forklift's stock markers - its parts, its inspection hotspots, and the
-// detail cards for both, which are one row each now. Every other equipment
-// starts with none; an admin places them in the dashboard.
+// The stock markers - the parts, the inspection hotspots, and the detail
+// cards for both, which are one row each.
 async function seedHotspots() {
-  for (const hotspot of buildDefaultHotspots('forklift')) {
+  for (const hotspot of buildDefaultHotspots()) {
     await prisma.hotspot.upsert({
       where: { id: hotspot.id },
       update: {},
@@ -207,7 +133,7 @@ async function seedHotspots() {
 }
 
 async function seedHotspotCategories() {
-  for (const category of buildDefaultHotspotCategories('forklift')) {
+  for (const category of buildDefaultHotspotCategories()) {
     await prisma.hotspotCategory.upsert({
       where: { id: category.id },
       update: {},
@@ -216,10 +142,9 @@ async function seedHotspotCategories() {
   }
 }
 
-// Forklift's parts quiz. Every other equipment starts with no parts
-// questions; an admin adds them in the dashboard.
+// The stock parts quiz.
 async function seedPartsQuizQuestions() {
-  for (const question of buildDefaultPartsQuizQuestions('forklift')) {
+  for (const question of buildDefaultPartsQuizQuestions()) {
     await prisma.quizQuestion.upsert({
       where: { id: question.id },
       update: {},
@@ -259,7 +184,6 @@ async function seedQuizQuestions() {
         update: {},
         create: {
           id: question.id,
-          equipmentId: module.equipmentId || 'forklift',
           context: 'module',
           moduleId: module.id,
           prompt: question.prompt,
@@ -302,7 +226,6 @@ async function main() {
   await seedUsers()
   await seedEquipment()
   await seedModules()
-  await seedEquipmentStarterModules()
   await seedHotspots()
   await seedHotspotCategories()
   await seedPartsQuizQuestions()

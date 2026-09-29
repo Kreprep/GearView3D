@@ -4,10 +4,8 @@ import { useT } from '../../i18n'
 // Draft / unpublished / custom status pills - the step list used to append
 // these as plain text (" - draft", " - unpublished", " - custom") - plus the
 // learner pages' status chips (READY / DONE / IN PROGRESS / NOT STARTED),
-// which were .status-pill* in four stylesheets. One of those, .status-pill-soon,
-// was applied at ModulesPage.jsx:106 but had no rule anywhere, so "Coming Soon"
-// rendered as an accidental unstyled grey; `todo` below is that tone made
-// deliberate.
+// which were .status-pill* in four stylesheets. `todo` below is the grey
+// "not started" tone.
 const TONE_CLASSES = {
   neutral: 'bg-slate-100 text-slate-600',
   accent: 'bg-accent-soft text-accent-strong',

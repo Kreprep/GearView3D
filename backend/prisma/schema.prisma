@@ -22,40 +22,30 @@ model User {
   createdAt    DateTime          @default(now())
 }
 
+// The one piece of equipment the app trains on - the forklift. A single row of
+// admin-editable configuration, not a dimension other tables are scoped by:
+// nothing references it. Seeded (create-if-missing) from
+// frontend/src/data/equipment.js. The 3D model is code there
+// (EQUIPMENT_MODEL_URL), not a column, because every hotspot position and
+// driving default is measured against that file.
 model Equipment {
-  id          String  @id
-  title       String
-  description String  @default("")
-  modelUrl    String  @default("")
-  // Uniform scale multiplier applied wherever this equipment's model renders
-  // (Parts Identification, Walk-Around markers, the admin placement stage).
-  // Null means 1x - most GLBs are already authored close to real-world metres,
-  // matching forklift.glb, which is the scale baseline every other model is
-  // sized against.
-  modelScale  Float?
-  // Vertical nudge applied after the viewer grounds the model, in scene units
-  // (so it is read against the already-scaled model). Null means no nudge.
-  // Viewers ground a model by its bounding box, which is only the wheels if
-  // nothing else hangs lower - backhoe.glb's buckets do, leaving its tyres
-  // above the floor. This is the admin's correction for that.
-  modelOffsetY Float?
-  imageUrl    String  @default("")
-  sortOrder   Int     @default(0)
-  // false renders the catalogue card as a non-interactive "Coming Soon"
-  // placeholder instead of a link into training.
-  available   Boolean @default(true)
-  // Admin overrides for the copy on this equipment's training hub and module
-  // list - see frontend/src/data/hubContent.js for the keys and their
-  // defaults. Holds *only* what an admin changed; a missing or blank key falls
-  // back to the coded default, so improving a default still reaches every
-  // equipment that never overrode it. No draft column: these are short labels,
-  // the same reason Module and ChecklistItem save immediately.
-  content     Json?
-  // Admin overrides for how this equipment drives in DrivingSimulationViewer -
-  // model, rig node names, body footprint, HUD key captions, fail messages.
-  // See frontend/src/data/vehicleProfile.js for the keys and their defaults;
-  // like `content`, it holds only what an admin changed.
-  simConfig   Json?
+  id        String @id
+  // Replaces {equipment} in hub copy and page titles.
+  title     String
+  // The line drawing etched into the training hub's header plate.
+  imageUrl  String @default("")
+  // Admin overrides for the copy on the training hub and module list - see
+  // frontend/src/data/hubContent.js for the keys and their defaults. Holds
+  // *only* what an admin changed; a missing or blank key falls back to the
+  // coded default, so improving a default still reaches a row that never
+  // overrode it. No draft column: these are short labels, the same reason
+  // Module and ChecklistItem save immediately.
+  content   Json?
+  // Admin overrides for how the forklift drives in DrivingSimulationViewer -
+  // body footprint and first-person seat. See
+  // frontend/src/data/vehicleProfile.js for the keys and their defaults; like
+  // `content`, it holds only what an admin changed.
+  simConfig Json?
 }
 
 model Module {
@@ -69,17 +59,11 @@ model Module {
   description    String          @default("")
   imageUrl       String          @default("")
   sortOrder      Int             @default(0)
-  // Which Equipment row this module belongs to. Loose reference (matches the
-  // Course.moduleSlug convention below) rather than a formal relation, so
-  // deleting an Equipment row never cascades into deleting its modules.
-  equipmentId    String          @default("forklift")
   checklistItems ChecklistItem[]
   quizQuestions  QuizQuestion[]
-
-  @@index([equipmentId])
 }
 
-// Every 3D marker on every equipment's model - one row per physical component,
+// Every 3D marker on the forklift model - one row per physical component,
 // whichever surfaces it appears on. This replaced four tables (Part,
 // PartDetail, WalkAroundHotspot, EquipmentHotspot) that each held their own
 // copy of the same components: the forklift's mast, forks, tires and three
@@ -103,20 +87,17 @@ model Module {
 //                  inspect, safeFeedback, unsafeFeedback, unsafeScenarios
 //
 // `state` is the engine phase a walk-around marker belongs to; empty means it
-// shows in every phase, which is what equipment with no engine-state modelling
-// uses. `unsafeScenarios` is an array of scenario ids matching
+// shows in every phase. `unsafeScenarios` is an array of scenario ids matching
 // `walkAroundDefectOverlays[].scenario` in frontend/src/data/viewerHotspots.js.
 //
 // Same published-columns + `draft` pattern as Course: the columns are what
 // learners see, `draft` is the admin's pending edit as a whole payload, and
 // `builtIn` rows have a baseline in frontend/src/data/hotspotDefaults.js they
-// can be reset to. Ids are globally unique rather than scoped per equipment,
-// because learner progress (`parts.viewedPartIds`) and walk-around step data
-// (`data.checks[].hotspot`) reference them bare; new rows are prefixed with
-// their equipment id to keep that true.
+// can be reset to. Learner progress (`parts.viewedPartIds`) and walk-around
+// step data (`data.checks[].hotspot`) reference ids bare, so an id is never
+// renamed once created.
 model Hotspot {
   id          String @id
-  equipmentId String
   label       String
   position    Json?
   sortOrder   Int    @default(0)
@@ -147,23 +128,18 @@ model Hotspot {
   published Boolean  @default(false)
   builtIn   Boolean  @default(false)
   updatedAt DateTime @updatedAt
-
-  @@index([equipmentId, sortOrder])
 }
 
-// The category filter chips on an equipment's Parts Identification page. `id`
-// is the value stored on Hotspot.category, so renaming a category means
-// editing its label, not its id.
+// The category filter chips on the Parts Identification page. `id` is the
+// value stored on Hotspot.category, so renaming a category means editing its
+// label, not its id.
 model HotspotCategory {
-  id          String @id
-  equipmentId String @default("forklift")
-  label       String
-  sortOrder   Int    @default(0)
-
-  @@index([equipmentId, sortOrder])
+  id        String @id
+  label     String
+  sortOrder Int    @default(0)
 }
 
-// One step of an equipment module (Modules 2-4), in `sortOrder`. Every step is
+// One step of a module, in `sortOrder`. Every step is
 // a row - there is no hardcoded step list left for these modules - and `kind`
 // picks how the page renders it:
 //
@@ -226,15 +202,14 @@ model ChecklistItem {
 //
 //   'module' - a step of that module's guided simulation; `moduleId` is set and
 //              attempts land in progress.quizzes[moduleSlug]
-//   'parts'  - the quiz step of that equipment's parts/hotspot page;
-//              `moduleId` is null
+//   'parts'  - the quiz step of the Parts Identification page; `moduleId` is
+//              null and attempts land in progress.parts.quizAttempts
 //
 // `options` is an array of plain strings and `answer` must be one of them.
 // No draft column: a prompt plus four options is short enough to save
 // immediately, the same call as Module and ChecklistItem.
 model QuizQuestion {
   id          String  @id
-  equipmentId String  @default("forklift")
   context     String  @default("module")
   module      Module? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   moduleId    Int?
@@ -242,8 +217,6 @@ model QuizQuestion {
   answer      String
   options     Json
   sortOrder   Int     @default(0)
-
-  @@index([equipmentId, context])
 }
 
 // One progress document per user, same JSON shape the frontend keeps in

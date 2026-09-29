@@ -6,9 +6,7 @@ import { buildDefaultHotspots, defaultHotspotFor } from '../../../frontend/src/d
 export { buildDefaultHotspots, defaultHotspotFor }
 
 // Everything an admin can edit, and therefore everything a draft may carry.
-// `equipmentId` is absent on purpose: a hotspot cannot be moved to another
-// equipment by editing it, since its id and the learner progress keyed on that
-// id belong to the equipment it was created under.
+// The id is absent on purpose: learner progress is keyed on it.
 export const hotspotDraftFields = [
   'label',
   'position',
@@ -37,7 +35,6 @@ export const hotspotDraftFields = [
 export function publishedHotspot(row) {
   return {
     id: row.id,
-    equipmentId: row.equipmentId,
     label: row.label,
     position: row.position,
     sortOrder: row.sortOrder,

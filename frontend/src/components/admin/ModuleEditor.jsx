@@ -29,8 +29,7 @@ const KIND_LABELS = {
 function ModuleEditor({
   module,
   equipment,
-  equipmentId,
-  equipmentModules,
+  modules,
   checklists,
   hotspotCategories,
   quizQuestions,
@@ -125,14 +124,14 @@ function ModuleEditor({
     }
 
     // Checklist, quiz and walk-around steps render rows that belong to the
-    // module or the equipment, so their panel is the step's own editor plus
+    // module or to the model, so their panel is the step's own editor plus
     // those rows.
     const stepEditor = () => (
       <CourseEditor
         key={selected.id}
         course={selected}
         equipment={equipment}
-        equipmentModules={equipmentModules}
+        modules={modules}
         onCourseChanged={(course) => setCourses((current) => current.map((entry) => (entry.id === course.id ? course : entry)))}
         onCourseDeleted={(courseId) => { setCourses((current) => current.filter((entry) => entry.id !== courseId)); setSelectedId(null) }}
         onMessage={onMessage}
@@ -153,7 +152,7 @@ function ModuleEditor({
       )
     }
 
-    // A walk-around step's markers are the equipment's hotspots, so they are
+    // A walk-around step's markers are rows of the one hotspot table, so they are
     // placed here, beside the checks that reference them. It is the same
     // editor Parts Identification uses, scoped to the walk-around surface - a
     // hotspot ticked for both surfaces is one row, edited in either place.
@@ -170,8 +169,6 @@ function ModuleEditor({
               hotspot, not a copy.
             </PanelNote>
             <HotspotAdmin
-              key={equipmentId}
-              equipmentId={equipmentId}
               categories={hotspotCategories}
               surface="walk-around"
               onMessage={onMessage}

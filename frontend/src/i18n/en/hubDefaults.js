@@ -1,5 +1,5 @@
 // The coded defaults behind HUB_CONTENT_FIELDS in data/hubContent.js. They live
-// in the catalog rather than in that file so an equipment with no admin override
+// in the catalog rather than in that file so a field with no admin override
 // reads in the learner's language; an override still wins over both.
 //
 // Two token layers meet here. A {token} the default() builder passes to

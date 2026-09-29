@@ -51,9 +51,8 @@ export async function hydrateProgressFromServer() {
 // source, refreshed from the API on login.
 //
 // There is no equivalent cache for hotspots. Every page that shows a parts
-// percentage has already fetched that equipment's hotspots to render them, so
-// it passes the ids in - which also means the denominator is that equipment's,
-// not a single global count.
+// percentage has already fetched the published hotspots to render them, so it
+// passes the ids in.
 let checklistCounts = readCachedChecklistCounts()
 
 function readCachedChecklistCounts() {
@@ -87,8 +86,8 @@ function emptyProgress() {
     checklists: {},
     parts: {
       viewedPartIds: [],
-      // Parts-quiz attempts keyed by equipment id, newest first.
-      quizzes: {},
+      // Parts-quiz attempts, newest first.
+      quizAttempts: [],
     },
     quizzes: {},
     simulations: {},
@@ -235,9 +234,9 @@ export function getModuleProgress(progress, moduleSlug) {
   return checklistCompletion.percentage
 }
 
-// Module, hotspot and overall percentages for any equipment. The caller passes
-// the module slugs and hotspot ids because both are data-driven - which is also
-// what makes these correct per equipment rather than per learner.
+// Module, hotspot and overall percentages. The caller passes the module slugs
+// and hotspot ids because both are data-driven: an admin adds and removes
+// them.
 export function getModulesProgress(progress, moduleSlugs) {
   if (!moduleSlugs.length) return 0
   return Math.round(
@@ -254,30 +253,30 @@ export function getHotspotProgress(progress, hotspotIds) {
   return Math.round((viewedCount / hotspotIds.length) * 100)
 }
 
-// Parts-quiz attempts for one equipment, newest first.
-export function getPartsQuizAttempts(progress, equipmentId) {
-  return progress.parts.quizzes?.[equipmentId] || []
+// Parts-quiz attempts, newest first.
+export function getPartsQuizAttempts(progress) {
+  return progress.parts.quizAttempts
 }
 
 // The latest attempt for either kind of quiz, given the same `scope` the Quiz
 // component and the API take.
 export function getLatestQuizAttempt(progress, scope) {
-  if (scope?.context === 'parts') return getPartsQuizAttempts(progress, scope.equipment)[0]
+  if (scope?.context === 'parts') return getPartsQuizAttempts(progress)[0]
   return progress.quizzes?.[scope?.module]?.[0]
 }
 
-// An equipment's Parts Identification percentage: hotspots viewed, averaged
-// with the latest parts-quiz score once that equipment has a quiz.
-export function getPartsProgress(progress, hotspotIds, equipmentId, hasQuiz = false) {
+// The Parts Identification percentage: hotspots viewed, averaged with the
+// latest parts-quiz score once the page has a quiz.
+export function getPartsProgress(progress, hotspotIds, hasQuiz = false) {
   const viewed = getHotspotProgress(progress, hotspotIds)
   if (!hasQuiz) return viewed
 
-  const latest = getPartsQuizAttempts(progress, equipmentId)[0]
+  const latest = getPartsQuizAttempts(progress)[0]
   return Math.round(viewed * 0.5 + (latest ? latest.percentage : 0) * 0.5)
 }
 
-// `partsPercentage` is what getPartsProgress() returned for the same
-// equipment, or null when it has no parts page to average in.
+// `partsPercentage` is what getPartsProgress() returned, or null when there
+// is no parts page to average in.
 export function getOverallProgress(progress, moduleSlugs, partsPercentage) {
   const moduleProgress = getModulesProgress(progress, moduleSlugs)
   if (partsPercentage === null || partsPercentage === undefined) return moduleProgress
@@ -286,12 +285,12 @@ export function getOverallProgress(progress, moduleSlugs, partsPercentage) {
 
 // The synchronous snapshot the UI reads.
 //
-// Nothing here is keyed by module slug or equipment on purpose. Anything that
-// would be - per-module progress, per-module checklist completion, a parts or
-// overall percentage - needs the list of modules or hotspot ids that page is
-// showing, and only the page has it. Pre-building those maps here is what made
-// them Forklift-only: they were keyed off a hardcoded four-slug list, so every
-// module an admin created reported "no checklist items" no matter what it had.
+// Nothing here is keyed by module slug on purpose. Anything that would be -
+// per-module progress, per-module checklist completion, a parts or overall
+// percentage - needs the list of modules or hotspot ids that page is showing,
+// and only the page has it. Pre-building those maps here keyed them off a
+// hardcoded four-slug list, so every module an admin created reported "no
+// checklist items" no matter what it had.
 // Call getModuleProgress / getChecklistCompletion / getPartsProgress /
 // getOverallProgress with the slugs and ids you already fetched instead.
 export function getProgressSummary(progress = getStoredProgress()) {

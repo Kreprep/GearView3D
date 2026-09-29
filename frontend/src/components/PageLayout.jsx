@@ -6,9 +6,9 @@ import './PageLayout.css'
  * instead of hand-rolling a header + wrapper div.
  *
  * Reference implementations (follow these, not older pages):
- * - Hub page: TrainingHubPage.jsx (operator plate + numbered path; the single
- *   hub shell for every equipment's /training/:equipmentId, forklift included)
- * - Card grid: ModulesPage.jsx (/catalog) and ModuleListPage.jsx
+ * - Hub page: TrainingHubPage.jsx (/training, the app's home screen: operator
+ *   plate + numbered path)
+ * - Card grid: ModuleListPage.jsx (/training/modules)
  * - Sub-page nested under a hub: GenericAssessmentPage.jsx
  *   (page-back-row + page-heading pattern, still plain CSS)
  * - Full-width simulation pages use SimulationPageLayout.jsx instead

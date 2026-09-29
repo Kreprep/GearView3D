@@ -12,17 +12,19 @@ import { getPartsProgress } from './lib/progressService'
 import { preloadImages } from './lib/imagePreload'
 import './PartsIdentificationPage.css'
 
-// Parts Identification for every equipment. It renders that equipment's
-// `inParts` hotspots: the category list on the left, the model in the middle,
-// and the same detail card the walk-around steps show, since a hotspot carries
-// its card with it.
+// Parts Identification. It renders the `inParts` hotspots: the category list
+// on the left, the model in the middle, and the same detail card the
+// walk-around steps show, since a hotspot carries its card with it.
 //
-// The quiz step only appears once that equipment has `context: 'parts'`
-// questions, so an equipment with none keeps the single-step page.
+// The quiz step only appears once there are `context: 'parts'` questions, so
+// with none the page keeps a single step.
 
 // Key records rather than sentences, resolved in the component where there is
 // a `t` to resolve them with - the shell wants a plain { title, instructions,
 // hint } step, so the mapping happens once at the call site.
+// Module-level so the Quiz component and the fetch get one stable object.
+const PARTS_QUIZ_SCOPE = { context: 'parts' }
+
 const EXPLORE_STEP_KEYS = {
   id: 'explore',
   title: 'parts.step.explore.title',
@@ -58,7 +60,7 @@ function buildDetail(hotspot) {
   }
 }
 
-function PartsIdentificationPage({ equipmentId, user, onBack }) {
+function PartsIdentificationPage({ user, onBack }) {
   const t = useT()
   const isAdmin = user?.role === 'ADMIN'
   const [equipment, setEquipment] = useState(null)
@@ -81,12 +83,12 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
 
     Promise.all([
       getEquipment(),
-      getHotspots(equipmentId, 'parts'),
-      getHotspotCategories(equipmentId),
-      getQuizQuestions({ equipment: equipmentId, context: 'parts' }).catch(() => []),
-    ]).then(([equipmentRows, hotspotRows, categoryRows, questions]) => {
+      getHotspots('parts'),
+      getHotspotCategories(),
+      getQuizQuestions(PARTS_QUIZ_SCOPE).catch(() => []),
+    ]).then(([equipmentRow, hotspotRows, categoryRows, questions]) => {
       if (cancelled) return
-      setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
+      setEquipment(equipmentRow)
       setHotspots(hotspotRows)
       preloadImages(hotspotRows.map((hotspot) => hotspot.image))
       setCategories(categoryRows)
@@ -97,14 +99,14 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
     return () => {
       cancelled = true
     }
-  }, [equipmentId])
+  }, [])
 
   const exploreStep = resolveStep(EXPLORE_STEP_KEYS, t)
   const steps = hasQuiz ? [exploreStep, resolveStep(QUIZ_STEP_KEYS, t)] : [exploreStep]
   const hotspotIds = hotspots.map((hotspot) => hotspot.id)
   const viewedIds = new Set(progress.parts.viewedPartIds)
   const viewedCount = hotspotIds.filter((id) => viewedIds.has(id)).length
-  const percentage = getPartsProgress(progress, hotspotIds, equipmentId, hasQuiz)
+  const percentage = getPartsProgress(progress, hotspotIds, hasQuiz)
 
   // Categories the admin defined, plus any a hotspot uses that has no row -
   // otherwise a part whose category was renamed would vanish from the list.
@@ -182,7 +184,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
   const renderQuizTask = () => (
     <div className="parts-task-stack">
       <Quiz
-        scope={{ equipment: equipmentId, context: 'parts' }}
+        scope={PARTS_QUIZ_SCOPE}
         title={t('parts.step.quiz.title')}
         emptyMessage={t('quiz.empty.parts')}
         onScored={() => setQuizScored(true)}
@@ -199,7 +201,7 @@ function PartsIdentificationPage({ equipmentId, user, onBack }) {
   return (
     <>
       {showScopeNotice && (
-        <ScopeNoticeModal equipmentId={equipmentId} onDismiss={() => setShowScopeNotice(false)} />
+        <ScopeNoticeModal onDismiss={() => setShowScopeNotice(false)} />
       )}
       <SimulationPageLayout
         className="parts-identification-page"

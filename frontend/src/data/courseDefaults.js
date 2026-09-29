@@ -50,10 +50,9 @@ export const SUMMARY_COUNTER_LABELS = {
 
 // Where Submit sends the learner once a module is complete, stored on the
 // summary step as a key rather than a path, so a route that moves does not
-// strand saved content. These four resolve against whichever equipment the
-// module belongs to (lib/moduleContent.js); the admin picker adds one
-// `module:<slug>` entry per module the equipment actually has, which is why
-// there is no fixed list of Forklift modules here any more.
+// strand saved content (lib/moduleContent.js resolves it). The admin picker
+// adds one `module:<slug>` entry per module, which is why there is no fixed
+// list of modules here.
 export const NEXT_ROUTE_TARGETS = [
   ['modules', 'Module list'],
   ['hub', 'Training hub'],
@@ -234,9 +233,9 @@ const SUMMARY_COUNTERS = {
 }
 
 // The module page navigates here after Submit. `pallet-testing` is the last
-// module, so it returns to the Equipment Usage overview.
-// Keys of the equipment-relative scheme in lib/moduleContent.js, not paths -
-// `module:<slug>` for a specific module, `modules` for that equipment's list.
+// module, so it returns to the module list.
+// Keys of the scheme in lib/moduleContent.js, not paths - `module:<slug>` for
+// a specific module, `modules` for the module list.
 const SUMMARY_NEXT_ROUTE = {
   'load-handling': 'module:post-operation',
   'post-operation': 'module:pallet-testing',

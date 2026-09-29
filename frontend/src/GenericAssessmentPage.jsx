@@ -12,12 +12,12 @@ import {
   getPartsProgress,
   getPartsQuizAttempts,
 } from './lib/progressService'
+import { routes } from './lib/router'
 import './AssessmentPage.css'
 
-// The final-assessment page for every equipment. Nothing forks on which
-// equipment it is: the modules, the parts markers and the parts quiz are all
-// that equipment's own rows.
-function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate }) {
+// The final-assessment review: module progress, the parts markers and the
+// parts quiz, all read from the database rows.
+function GenericAssessmentPage({ user, onLogout, onBack, onNavigate }) {
   const t = useT()
   const { summary } = useProgress()
   const [equipment, setEquipment] = useState(null)
@@ -33,13 +33,13 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
 
     Promise.all([
       getEquipment(),
-      getTrainingModules(equipmentId),
-      getHotspots(equipmentId, 'parts'),
-      getQuizQuestions({ equipment: equipmentId, context: 'parts' }).catch(() => []),
+      getTrainingModules(),
+      getHotspots('parts'),
+      getQuizQuestions({ context: 'parts' }).catch(() => []),
     ])
-      .then(([equipmentRows, moduleRows, hotspotRows, partsQuestions]) => {
+      .then(([equipmentRow, moduleRows, hotspotRows, partsQuestions]) => {
         if (cancelled) return
-        setEquipment(equipmentRows.find((item) => item.id === equipmentId) || null)
+        setEquipment(equipmentRow)
         setModules(moduleRows)
         setHotspots(hotspotRows)
         setHasPartsQuiz(partsQuestions.length > 0)
@@ -51,14 +51,14 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
     return () => {
       cancelled = true
     }
-  }, [equipmentId])
+  }, [])
 
   const moduleSlugs = useMemo(() => modules.map((module) => module.slug), [modules])
   const hotspotIds = useMemo(() => hotspots.map((hotspot) => hotspot.id), [hotspots])
   const hasPartsSection = hotspotIds.length > 0
 
   const moduleProgress = getModulesProgress(summary.raw, moduleSlugs)
-  const partsProgress = getPartsProgress(summary.raw, hotspotIds, equipmentId, hasPartsQuiz)
+  const partsProgress = getPartsProgress(summary.raw, hotspotIds, hasPartsQuiz)
   const overall = getOverallProgress(summary.raw, moduleSlugs, hasPartsSection ? partsProgress : null)
 
   const moduleLabels = useMemo(
@@ -69,7 +69,7 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
     .filter(([moduleSlug]) => moduleSlugs.includes(moduleSlug))
     .flatMap(([moduleSlug, attempts]) => attempts.map((attempt) => ({ ...attempt, moduleSlug })))
   const viewedPartSet = new Set(summary.viewedParts)
-  const latestPartsQuiz = getPartsQuizAttempts(summary.raw, equipmentId)[0]
+  const latestPartsQuiz = getPartsQuizAttempts(summary.raw)[0]
 
   const requiredComplete = moduleProgress === 100 && (!hasPartsSection || partsProgress === 100)
   const recommendedAction = requiredComplete
@@ -225,11 +225,11 @@ function GenericAssessmentPage({ equipmentId, user, onLogout, onBack, onNavigate
         )}
 
         <div className="assessment-actions">
-          <Button variant="deep" onClick={() => onNavigate(`/training/${equipmentId}/modules`)}>
+          <Button variant="deep" onClick={() => onNavigate(routes.modules)}>
             {t('assessment.action.modules')}
           </Button>
           {hasPartsSection && (
-            <Button variant="deep" onClick={() => onNavigate(`/training/${equipmentId}/parts`)}>
+            <Button variant="deep" onClick={() => onNavigate(routes.parts)}>
               {t('assessment.action.parts')}
             </Button>
           )}

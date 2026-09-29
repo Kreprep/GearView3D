@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import LoginPage from './LoginPage'
 import TrainingHubPage from './TrainingHubPage'
-import ModulesPage from './ModulesPage'
 import PartsIdentificationPage from './PartsIdentificationPage'
 import GenericModulePage from './GenericModulePage'
 import ModuleListPage from './ModuleListPage'
@@ -14,7 +13,7 @@ import {
   hydrateProgressFromServer,
   resetStoredProgress,
 } from './lib/progressService'
-import { goTo, normalizePath, routes } from './lib/router'
+import { goTo, legacyRedirect, normalizePath, routes } from './lib/router'
 import { useMediaQuery } from './hooks/useMediaQuery'
 import DesktopOnlyNotice, { DESKTOP_MEDIA_QUERY } from './components/DesktopOnlyNotice'
 import './App.css'
@@ -93,17 +92,13 @@ function App() {
     }
 
     if (isLoggedIn && (path === '/' || path === routes.login)) {
-      goTo(routes.catalog, { replace: true })
+      goTo(routes.home, { replace: true })
     }
 
-    // Forklift's training pages used to live under /training/forklift/equipment;
-    // saved bookmarks and history entries for those paths land on the current
-    // /training/forklift/modules/:slug scheme instead.
-    if (isLoggedIn && path.startsWith('/training/forklift/equipment')) {
-      const legacySlug = path.split('/')[4]
-      const target = legacySlug === 'walk-around' ? routes.walkAround : legacySlug ? `/training/forklift/modules/${legacySlug}` : routes.equipment
-      goTo(target, { replace: true })
-    }
+    // Bookmarks and history entries from before the app was narrowed to the
+    // forklift land on the page that replaced them.
+    const legacyTarget = isLoggedIn ? legacyRedirect(path) : null
+    if (legacyTarget) goTo(legacyTarget, { replace: true })
   }, [isLoggedIn, path])
 
   const navigate = (nextPath, options) => {
@@ -118,7 +113,7 @@ function App() {
     setIsLoggedIn(true)
     setSessionExpired(false)
     hydrateProgressFromServer().catch(() => {})
-    navigate(routes.catalog, { replace: true })
+    navigate(routes.home, { replace: true })
   }
 
   const handleLogin = async (credentials) => {
@@ -152,42 +147,27 @@ function App() {
   }
 
   // Blank frame while a redirect effect above is moving the path (login
-  // bounce, or a legacy /training/forklift/equipment URL).
-  if (path === '/' || path === routes.login || path.startsWith('/training/forklift/equipment')) {
+  // bounce, or a legacy URL).
+  if (path === '/' || path === routes.login || legacyRedirect(path)) {
     return null
   }
 
-  if (path === routes.catalog) {
-    return (
-      <ModulesPage
-        user={user}
-        onLogout={handleLogout}
-        onNavigate={navigate}
-      />
-    )
-  }
+  // The training pages: /training[/section[/slug]]. Anything deeper, or an
+  // unknown section, is a 404 rather than silently showing the hub.
+  if (path === routes.home || path.startsWith(`${routes.home}/`)) {
+    const [section, moduleSlug, ...rest] = path.slice(routes.home.length + 1).split('/')
 
-  // Every equipment's training pages - Forklift included - are served from
-  // this one data-driven branch. The only page still keyed to Forklift is its
-  // richer Parts Identification page, matched by equipment id here rather than
-  // by a fixed route.
-  if (path.startsWith('/training/') && !path.startsWith('/training/forklift/equipment')) {
-    const [, , equipmentId, section, moduleSlug] = path.split('/')
-
-    if (!equipmentId) {
-      return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
+    if (!section) {
+      return <TrainingHubPage user={user} onLogout={handleLogout} onNavigate={navigate} />
     }
 
-    if (section === 'modules') {
-      const modulesRoute = `/training/${equipmentId}/modules`
-
+    if (section === 'modules' && !rest.length) {
       if (!moduleSlug) {
         return (
           <ModuleListPage
-            equipmentId={equipmentId}
             user={user}
             onLogout={handleLogout}
-            onBack={() => navigate(`/training/${equipmentId}`)}
+            onBack={() => navigate(routes.home)}
             onNavigate={navigate}
           />
         )
@@ -198,46 +178,31 @@ function App() {
         // one) remounts the page instead of reusing the previous module's
         // step index and simulation state.
         <GenericModulePage
-          key={`${equipmentId}/${moduleSlug}`}
-          equipmentId={equipmentId}
+          key={moduleSlug}
           moduleSlug={moduleSlug}
           user={user}
-          onBack={() => navigate(modulesRoute)}
+          onBack={() => navigate(routes.modules)}
           onNavigate={navigate}
         />
       )
     }
 
-    if (section === 'parts') {
-      return (
-        <PartsIdentificationPage
-          equipmentId={equipmentId}
-          user={user}
-          onBack={() => navigate(`/training/${equipmentId}`)}
-        />
-      )
+    if (section === 'parts' && !moduleSlug) {
+      return <PartsIdentificationPage user={user} onBack={() => navigate(routes.home)} />
     }
 
-    if (section === 'assessment') {
+    if (section === 'assessment' && !moduleSlug) {
       return (
         <GenericAssessmentPage
-          equipmentId={equipmentId}
           user={user}
           onLogout={handleLogout}
-          onBack={() => navigate(`/training/${equipmentId}`)}
+          onBack={() => navigate(routes.home)}
           onNavigate={navigate}
         />
       )
     }
 
-    return (
-      <TrainingHubPage
-        equipmentId={equipmentId}
-        user={user}
-        onLogout={handleLogout}
-        onNavigate={navigate}
-      />
-    )
+    return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
   }
 
   if (path === routes.admin || path.startsWith('/admin/')) {
@@ -249,7 +214,7 @@ function App() {
       <AdminDashboard
         user={user}
         onLogout={handleLogout}
-        onBack={() => navigate(routes.catalog)}
+        onBack={() => navigate(routes.home)}
         path={path}
         onNavigate={navigate}
       />

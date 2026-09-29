@@ -29,13 +29,13 @@ test('translate substitutes named tokens and leaves unfilled ones in place', () 
 })
 
 test('a reserved count selects the .one / .other variant', () => {
-  assert.equal(translate('en', 'catalog.availableModels', { count: 1 }), '1 available model')
-  assert.equal(translate('en', 'catalog.availableModels', { count: 3 }), '3 available models')
-  assert.equal(translate('en', 'catalog.availableModels', { count: 0 }), '0 available models')
+  assert.equal(translate('en', 'driving.task.checkpoints', { count: 1 }), 'Drive through 1 checkpoint in order to finish this step.')
+  assert.equal(translate('en', 'driving.task.checkpoints', { count: 3 }), 'Drive through 3 checkpoints in order to finish this step.')
+  assert.equal(translate('en', 'driving.task.checkpoints', { count: 0 }), 'Drive through 0 checkpoints in order to finish this step.')
   // Filipino has both keys with the same text - the noun does not inflect, but
   // the keys must exist or the lookup would fall through to English.
-  assert.equal(translate('fil', 'catalog.availableModels', { count: 1 }), '1 available na modelo')
-  assert.equal(translate('fil', 'catalog.availableModels', { count: 5 }), '5 available na modelo')
+  assert.equal(translate('fil', 'driving.task.checkpoints', { count: 1 }), 'Dumaan sa 1 checkpoint ayon sa pagkakasunod-sunod para matapos ang hakbang na ito.')
+  assert.equal(translate('fil', 'driving.task.checkpoints', { count: 5 }), 'Dumaan sa 5 checkpoint ayon sa pagkakasunod-sunod para matapos ang hakbang na ito.')
 })
 
 test('every language declared in LANGUAGES has a catalog, and vice versa', () => {

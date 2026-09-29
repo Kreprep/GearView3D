@@ -80,9 +80,10 @@ function draftOf(course) {
   }
 }
 
-// `equipment` is the module's own equipment row: the 3D preview drives its
-// vehicle, as the learner will. Without it every course previewed as a forklift.
-function CourseEditor({ course, equipment = null, equipmentModules = [], onCourseChanged, onCourseDeleted, onMessage }) {
+// `equipment` is the Equipment row: the 3D preview drives with its vehicle
+// profile overrides (footprint, seat), as the learner will. `modules` feeds
+// the summary step's destination picker.
+function CourseEditor({ course, equipment = null, modules = [], onCourseChanged, onCourseDeleted, onMessage }) {
   const language = useLanguage()
   const vehicleProfile = useMemo(() => resolveVehicleProfile(equipment, language), [equipment, language])
   const [draft, setDraft] = useState(() => draftOf(course))
@@ -424,10 +425,8 @@ function CourseEditor({ course, equipment = null, equipmentModules = [], onCours
                 <Textarea rows={2} value={content.incompleteMessage || ''} onChange={(event) => setContent({ incompleteMessage: event.target.value })} />
               </Field>
 
-              {/* Destinations resolve against this module's own equipment, and
-                  the per-module entries are built from the modules that
-                  equipment actually has - so this works the same for every
-                  equipment rather than offering Forklift's fixed routes. */}
+              {/* The per-module entries are built from the modules that
+                  actually exist, rather than a fixed list. */}
               <Field
                 label="Where Submit sends the learner"
                 note="Blank keeps the module's built-in destination. A stored value that no longer resolves falls back to it too, so deleting a module never strands another module's Submit."
@@ -440,7 +439,7 @@ function CourseEditor({ course, equipment = null, equipmentModules = [], onCours
                   {NEXT_ROUTE_TARGETS.map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
                   ))}
-                  {equipmentModules
+                  {modules
                     .filter((entry) => entry.slug !== course.moduleSlug)
                     .map((entry) => (
                       <option key={entry.slug} value={`${MODULE_ROUTE_PREFIX}${entry.slug}`}>

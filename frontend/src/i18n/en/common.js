@@ -14,7 +14,7 @@ export default {
   'common.status.notStarted': 'Not started',
   'common.notFound.title': 'Page not found',
   'common.notFound.body': 'The page you opened is not part of the current GearView3D training flow.',
-  'common.notFound.action': 'Go to equipment selection',
+  'common.notFound.action': 'Go to training',
   'common.desktopOnly.title': 'Open GearView3D on a computer',
   'common.desktopOnly.body':
     'The 3D training needs a keyboard and a bigger screen, so this screen is too small to use it.',

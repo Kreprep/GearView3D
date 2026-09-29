@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js'
 import { publicUser, requireAdmin, requireAuth } from '../lib/auth.js'
 import { buildAdminProgressReport } from '../lib/progressSummary.js'
 import { slugify, uniqueSlug } from '../lib/slug.js'
+import { EQUIPMENT_ID, findEquipment } from '../lib/equipment.js'
 import {
   adminCourse,
   courseDraftFields,
@@ -39,8 +40,8 @@ function pick(source, keys) {
 }
 
 // Every module is course-backed now that walk-around checks are step rows, so
-// this is just "does the module exist" - DB-driven so a module created for a
-// new equipment is immediately usable.
+// this is just "does the module exist" - DB-driven so a module an admin just
+// created is immediately usable.
 async function isCourseCapableModuleSlug(moduleSlug) {
   if (!moduleSlug) return false
   const module = await prisma.module.findUnique({ where: { slug: moduleSlug } })
@@ -51,7 +52,7 @@ const moduleFields = ['title', 'fullTitle', 'subtitle', 'description', 'imageUrl
 // `content` is the hub/module-list copy overrides (frontend
 // data/hubContent.js); it is stored whole, so the client sends the full object
 // and blank keys mean "fall back to the coded default".
-const equipmentFields = ['title', 'description', 'modelUrl', 'modelScale', 'modelOffsetY', 'imageUrl', 'sortOrder', 'available', 'content', 'simConfig']
+const equipmentFields = ['title', 'imageUrl', 'content', 'simConfig']
 const checklistFields = ['text', 'sortOrder']
 const quizFields = ['prompt', 'options', 'answer', 'sortOrder']
 const hotspotCategoryFields = ['label', 'sortOrder']
@@ -70,14 +71,16 @@ router.get('/content', async (req, res) => {
     quizQuestions,
     users,
     snapshots,
+    partsHotspotCount,
   ] = await Promise.all([
-    prisma.equipment.findMany({ orderBy: { sortOrder: 'asc' } }),
+    findEquipment(),
     prisma.module.findMany({ orderBy: { sortOrder: 'asc' } }),
-    prisma.hotspotCategory.findMany({ orderBy: [{ equipmentId: 'asc' }, { sortOrder: 'asc' }] }),
+    prisma.hotspotCategory.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.checklistItem.findMany({ orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] }),
-    prisma.quizQuestion.findMany({ orderBy: [{ equipmentId: 'asc' }, { context: 'asc' }, { sortOrder: 'asc' }] }),
+    prisma.quizQuestion.findMany({ orderBy: [{ context: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.user.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.progressSnapshot.findMany({ include: { user: true } }),
+    prisma.hotspot.count({ where: { published: true, inParts: true } }),
   ])
 
   const checklistTotals = {}
@@ -95,7 +98,10 @@ router.get('/content', async (req, res) => {
     modules,
     // Hotspots are not here: they carry position blobs and per-surface text
     // that only the hotspot editor needs, so it lists them itself the way the
-    // Module Editor lists course rows.
+    // Module Editor lists course rows. The count is what the training hub
+    // decides "is there a parts page" from, so the Hub Content editor can show
+    // the same default copy the hub will.
+    partsHotspotCount,
     hotspotCategories,
     checklists,
     quizQuestions,
@@ -106,53 +112,41 @@ router.get('/content', async (req, res) => {
 })
 
 // --- Hotspots ---------------------------------------------------------------
-// One set of endpoints for every marker on every equipment's model, whichever
-// surface shows it. `?equipment=` scopes list and reorder; creation requires it
-// in the body so a new row always belongs to exactly one equipment.
+// One set of endpoints for every marker on the model, whichever surface shows
+// it.
 //
 // Same draft/publish/builtIn shape as courses: an edit is a draft, learners
 // keep seeing the published columns until Publish, and a `builtIn` row can be
 // reset to its baseline in frontend/src/data/hotspotDefaults.js.
 
 router.get('/hotspots', async (req, res) => {
-  const where = req.query.equipment ? { equipmentId: req.query.equipment } : {}
-  const rows = await prisma.hotspot.findMany({ where, orderBy: { sortOrder: 'asc' } })
+  const rows = await prisma.hotspot.findMany({ orderBy: { sortOrder: 'asc' } })
   res.json({ hotspots: rows.map(adminHotspot) })
 })
 
 router.post('/hotspots', async (req, res) => {
   const payload = req.body || {}
-  if (!payload.equipmentId) {
-    return res.status(400).json({ error: 'equipmentId is required' })
-  }
   if (!payload.label?.trim()) {
     return res.status(400).json({ error: 'Hotspot label is required' })
   }
 
-  const slug = slugify(payload.id || payload.label)
-  if (!slug) {
+  // Learner progress and walk-around step data reference the id bare, so it
+  // is fixed at creation and a clash is refused rather than renamed.
+  const id = slugify(payload.id || payload.label)
+  if (!id) {
     return res.status(400).json({ error: 'Hotspot id could not be derived from the label' })
   }
-
-  // Ids are global, because learner progress and walk-around step data
-  // reference them bare. Forklift's seeded ids are unprefixed for that reason,
-  // so only new rows get the equipment prefix that keeps them unique.
-  const id = payload.equipmentId === 'forklift' ? slug : `${payload.equipmentId}-${slug}`
   if (await prisma.hotspot.findUnique({ where: { id } })) {
     return res.status(409).json({ error: `A hotspot with id "${id}" already exists` })
   }
 
-  const last = await prisma.hotspot.findFirst({
-    where: { equipmentId: payload.equipmentId },
-    orderBy: { sortOrder: 'desc' },
-  })
+  const last = await prisma.hotspot.findFirst({ orderBy: { sortOrder: 'desc' } })
 
   // Created unpublished: a new hotspot has no position worth showing a learner
   // until the admin places it, so it must not reach them before first publish.
   const hotspot = await prisma.hotspot.create({
     data: {
       id,
-      equipmentId: payload.equipmentId,
       label: payload.label.trim(),
       position: payload.position === null ? null : payload.position || [0, 0.3, 0],
       inParts: payload.inParts !== false,
@@ -235,22 +229,22 @@ router.post('/hotspots/:id/reset', async (req, res) => {
   res.json({ hotspot: adminHotspot(hotspot) })
 })
 
-// Whole-list reorder for one equipment; ids not in the list are left alone.
+// Whole-list reorder; ids not in the list are left alone.
 router.post('/hotspots/reorder', async (req, res) => {
-  const { equipmentId, ids } = req.body || {}
-  if (!equipmentId || !Array.isArray(ids)) {
-    return res.status(400).json({ error: 'equipmentId and ids are required' })
+  const { ids } = req.body || {}
+  if (!Array.isArray(ids)) {
+    return res.status(400).json({ error: 'ids is required' })
   }
 
-  // updateMany (not update) so an id that doesn't belong to this equipment is
-  // silently skipped rather than renumbering another equipment's hotspot.
+  // updateMany (not update) so an id deleted in another tab is skipped rather
+  // than failing the whole transaction.
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.hotspot.updateMany({ where: { id, equipmentId }, data: { sortOrder: index + 1 } }),
+      prisma.hotspot.updateMany({ where: { id }, data: { sortOrder: index + 1 } }),
     ),
   )
 
-  const rows = await prisma.hotspot.findMany({ where: { equipmentId }, orderBy: { sortOrder: 'asc' } })
+  const rows = await prisma.hotspot.findMany({ orderBy: { sortOrder: 'asc' } })
   res.json({ hotspots: rows.map(adminHotspot) })
 })
 
@@ -266,18 +260,11 @@ router.post('/hotspot-categories', async (req, res) => {
   if (!payload.label) {
     return res.status(400).json({ error: 'Category label is required' })
   }
-  if (!payload.equipmentId) {
-    return res.status(400).json({ error: 'equipmentId is required' })
-  }
 
-  const last = await prisma.hotspotCategory.findFirst({
-    where: { equipmentId: payload.equipmentId },
-    orderBy: { sortOrder: 'desc' },
-  })
+  const last = await prisma.hotspotCategory.findFirst({ orderBy: { sortOrder: 'desc' } })
   const category = await prisma.hotspotCategory.create({
     data: {
       id: payload.id || payload.label,
-      equipmentId: payload.equipmentId,
       label: payload.label,
       sortOrder: (last?.sortOrder || 0) + 1,
     },
@@ -303,69 +290,9 @@ router.delete('/hotspot-categories/:id', async (req, res) => {
   res.json({ deleted: true })
 })
 
-// Equipment rows are content too: an admin can add one and build its modules,
-// hotspots and quizzes without a code change or a seed edit.
-router.post('/equipment', async (req, res) => {
-  const payload = req.body || {}
-  const title = String(payload.title || '').trim()
-  if (!title) return res.status(400).json({ error: 'Equipment title is required' })
-
-  const idBase = slugify(payload.id || title) || 'equipment'
-  const id = await uniqueSlug(idBase, (candidate) => prisma.equipment.findUnique({ where: { id: candidate } }))
-
-  const last = await prisma.equipment.findFirst({ orderBy: { sortOrder: 'desc' }, select: { sortOrder: true } })
-  const equipment = await prisma.equipment.create({
-    data: {
-      id,
-      title,
-      description: payload.description || '',
-      modelUrl: payload.modelUrl || '',
-      imageUrl: payload.imageUrl || '',
-      sortOrder: (last?.sortOrder || 0) + 1,
-      // New equipment starts hidden: the catalogue card stays "Coming Soon"
-      // until an admin has given it content and ticked Available.
-      available: payload.available === true,
-    },
-  })
-  res.json({ equipment })
-})
-
-// Refused while the equipment still owns content, so deleting one is never a
-// silent cascade through a learner's modules.
-router.delete('/equipment/:id', async (req, res) => {
-  const [modules, hotspots, quizQuestions] = await Promise.all([
-    prisma.module.count({ where: { equipmentId: req.params.id } }),
-    prisma.hotspot.count({ where: { equipmentId: req.params.id } }),
-    prisma.quizQuestion.count({ where: { equipmentId: req.params.id } }),
-  ])
-
-  if (modules || hotspots || quizQuestions) {
-    return res.status(400).json({
-      error: `Delete this equipment's content first: ${modules} module(s), ${hotspots} hotspot(s), ${quizQuestions} quiz question(s).`,
-    })
-  }
-
-  await prisma.equipment.delete({ where: { id: req.params.id } })
-  res.json({ deleted: true })
-})
-
-router.patch('/equipment/:id', async (req, res) => {
+// The one Equipment row: title, hub artwork, hub copy and driving overrides.
+router.patch('/equipment', async (req, res) => {
   const data = pick(req.body, equipmentFields)
-
-  // A blank, non-numeric or 1x value means "no override" - the model renders
-  // at its native scale, same as before this field existed.
-  if ('modelScale' in data) {
-    const value = Number(data.modelScale)
-    data.modelScale = Number.isFinite(value) && value > 0 && value !== 1 ? value : null
-  }
-
-  // Same rule for the height nudge, except that negative values are the useful
-  // ones (a model grounded on something lower than its wheels needs lowering),
-  // so only a blank, non-numeric or exactly-zero value clears it.
-  if ('modelOffsetY' in data) {
-    const value = Number(data.modelOffsetY)
-    data.modelOffsetY = Number.isFinite(value) && value !== 0 ? value : null
-  }
 
   // Only overrides are stored: a key an admin cleared is dropped so the coded
   // default in data/hubContent.js applies again (and keeps applying when that
@@ -389,39 +316,32 @@ router.patch('/equipment/:id', async (req, res) => {
     data.simConfig = entries.length ? Object.fromEntries(entries) : null
   }
 
-  const equipment = await prisma.equipment.update({ where: { id: req.params.id }, data })
+  const equipment = await prisma.equipment.update({ where: { id: EQUIPMENT_ID }, data })
   res.json({ equipment })
 })
 
 // A module created here starts with one briefing step, so the Module Editor
-// (and the learner page) has something to show instead of an empty shell -
-// the same shape prisma/seed.js gives a new equipment's starter module.
+// (and the learner page) has something to show instead of an empty shell.
 router.post('/modules', async (req, res) => {
   const payload = req.body || {}
   const title = String(payload.title || '').trim()
-  const equipmentId = payload.equipmentId
 
   if (!title) return res.status(400).json({ error: 'Module title is required' })
-  if (!equipmentId) return res.status(400).json({ error: 'equipmentId is required' })
-  if (!(await prisma.equipment.findUnique({ where: { id: equipmentId } }))) {
-    return res.status(400).json({ error: 'Unknown equipment' })
-  }
 
-  const slugBase = slugify(`${equipmentId}-${title}`) || `${equipmentId}-module`
+  const slugBase = slugify(title) || 'module'
   const slug = await uniqueSlug(slugBase, (candidate) => prisma.module.findUnique({ where: { slug: candidate } }))
 
   // Module.id is a plain Int (it mirrors the seeded module numbering rather
   // than being generated), so a new row takes the next one.
   const [lastId, lastOrder] = await Promise.all([
     prisma.module.findFirst({ orderBy: { id: 'desc' }, select: { id: true } }),
-    prisma.module.findFirst({ where: { equipmentId }, orderBy: { sortOrder: 'desc' }, select: { sortOrder: true } }),
+    prisma.module.findFirst({ orderBy: { sortOrder: 'desc' }, select: { sortOrder: true } }),
   ])
 
   const module = await prisma.module.create({
     data: {
       id: (lastId?.id || 0) + 1,
       slug,
-      equipmentId,
       title,
       fullTitle: payload.fullTitle || title,
       subtitle: payload.subtitle || '',
@@ -447,23 +367,23 @@ router.post('/modules', async (req, res) => {
   res.json({ module })
 })
 
-// Whole-list reorder for one equipment's modules; ids not in the list are
-// left alone. Mirrors /courses/reorder.
+// Whole-list reorder; ids not in the list are left alone. Mirrors
+// /courses/reorder.
 router.post('/modules/reorder', async (req, res) => {
-  const { equipmentId, ids } = req.body || {}
-  if (!equipmentId || !Array.isArray(ids)) {
-    return res.status(400).json({ error: 'equipmentId and ids are required' })
+  const { ids } = req.body || {}
+  if (!Array.isArray(ids)) {
+    return res.status(400).json({ error: 'ids is required' })
   }
 
-  // updateMany (not update) so an id that doesn't belong to this equipment is
-  // silently skipped rather than renumbering another equipment's modules.
+  // updateMany (not update) so an id deleted in another tab is skipped rather
+  // than failing the whole transaction.
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.module.updateMany({ where: { id: Number(id), equipmentId }, data: { sortOrder: index + 1 } }),
+      prisma.module.updateMany({ where: { id: Number(id) }, data: { sortOrder: index + 1 } }),
     ),
   )
 
-  const modules = await prisma.module.findMany({ where: { equipmentId }, orderBy: { sortOrder: 'asc' } })
+  const modules = await prisma.module.findMany({ orderBy: { sortOrder: 'asc' } })
   res.json({ modules })
 })
 
@@ -602,8 +522,7 @@ router.delete('/checklist-items/:id', async (req, res) => {
 })
 
 // Quiz questions, module and parts alike - one table, one editor. A parts
-// question carries `equipmentId` and no module; a module question is scoped by
-// `moduleId` and inherits that module's equipment.
+// question has no module; a module question is scoped by `moduleId`.
 router.post('/quiz-questions', async (req, res) => {
   const payload = req.body || {}
   if (!payload.prompt?.trim()) {
@@ -611,7 +530,6 @@ router.post('/quiz-questions', async (req, res) => {
   }
 
   const context = payload.context === 'parts' ? 'parts' : 'module'
-  let equipmentId = payload.equipmentId
   let moduleId = null
 
   if (context === 'module') {
@@ -620,20 +538,16 @@ router.post('/quiz-questions', async (req, res) => {
       : null
     if (!module) return res.status(400).json({ error: 'Unknown module' })
     moduleId = module.id
-    equipmentId = module.equipmentId
-  } else if (!equipmentId) {
-    return res.status(400).json({ error: 'equipmentId is required for a parts quiz question' })
   }
 
   const last = await prisma.quizQuestion.findFirst({
-    where: { context, ...(moduleId ? { moduleId } : { equipmentId }) },
+    where: { context, ...(moduleId ? { moduleId } : {}) },
     orderBy: { sortOrder: 'desc' },
   })
 
   const question = await prisma.quizQuestion.create({
     data: {
-      id: payload.id || `${context === 'parts' ? `${equipmentId}-parts` : moduleId}-question-${Date.now()}`,
-      equipmentId,
+      id: payload.id || `${context === 'parts' ? 'parts' : moduleId}-question-${Date.now()}`,
       context,
       moduleId,
       prompt: payload.prompt.trim(),

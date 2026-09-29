@@ -5,7 +5,7 @@ export default {
   'quiz.noAttempt': 'Wala pang sagot',
   'quiz.empty': 'Wala pang tanong sa pagsusulit.',
   'quiz.empty.module': 'Wala pang tanong sa pagsusulit para sa module na ito.',
-  'quiz.empty.parts': 'Wala pang naidagdag na tanong sa pagsusulit para sa kagamitang ito.',
+  'quiz.empty.parts': 'Wala pang naidagdag na tanong sa pagsusulit para sa pahina ng mga bahagi.',
   'quiz.correct': 'Tama.',
   'quiz.incorrect': 'Mali. Ang tamang sagot: {answer}.',
   'quiz.submit': 'Isumite ang pagsusulit',

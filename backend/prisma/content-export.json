@@ -1,11 +1,11 @@
 {
   "exportedAt": "2026-08-21T18:54:30.134Z",
   "counts": {
-    "Equipment": 3,
-    "Module": 5,
+    "Equipment": 1,
+    "Module": 4,
     "HotspotCategory": 4,
-    "Hotspot": 28,
-    "Course": 28,
+    "Hotspot": 27,
+    "Course": 26,
     "ChecklistItem": 22,
     "QuizQuestion": 19
   },
@@ -14,41 +14,7 @@
       {
         "id": "forklift",
         "title": "Forklift",
-        "description": "Learn safe forklift familiarization through guided lessons and a labeled 3D model.",
-        "modelUrl": "/models/forklift.glb",
-        "modelScale": null,
-        "modelOffsetY": null,
         "imageUrl": "/images/forklift-card.png",
-        "sortOrder": 1,
-        "available": true,
-        "content": null,
-        "simConfig": null
-      },
-      {
-        "id": "backhoe",
-        "title": "Backhoe Loader",
-        "description": "Heavy equipment training model. Coming soon.",
-        "modelUrl": "/models/backhoe.glb",
-        "modelScale": 8,
-        "modelOffsetY": -0.025,
-        "imageUrl": "",
-        "sortOrder": 2,
-        "available": false,
-        "content": null,
-        "simConfig": {
-          "hasForks": false
-        }
-      },
-      {
-        "id": "crane",
-        "title": "Mobile Crane",
-        "description": "Heavy equipment training model. Coming soon.",
-        "modelUrl": "",
-        "modelScale": null,
-        "modelOffsetY": null,
-        "imageUrl": "",
-        "sortOrder": 3,
-        "available": false,
         "content": null,
         "simConfig": null
       }
@@ -62,8 +28,7 @@
         "subtitle": "Visual Inspection",
         "description": "Inspect a Class V (LPG) forklift before use: forks, mast, chains, hydraulic hoses, tires, counterweight, LPG tank/battery, seat belt, overhead guard, and ground leaks, then confirm dashboard indicators, steering, brakes, lift/tilt, travel, and warning devices.",
         "imageUrl": "/images/modules/walk-around-check.png",
-        "sortOrder": 1,
-        "equipmentId": "forklift"
+        "sortOrder": 1
       },
       {
         "id": 2,
@@ -73,19 +38,7 @@
         "subtitle": "Operational Controls",
         "description": "Practice basic forklift operational controls in a simplified guided drive: engine start-up, acceleration, braking, and steering, without real vehicle physics or collision.",
         "imageUrl": "/images/modules/load-handling.png",
-        "sortOrder": 2,
-        "equipmentId": "forklift"
-      },
-      {
-        "id": 5,
-        "slug": "backhoe-getting-started",
-        "title": "New Module",
-        "fullTitle": "",
-        "subtitle": "Getting Started",
-        "description": "A starting point for Backhoe Loader training content. Edit this module in the Module Editor to add your own steps.",
-        "imageUrl": "",
-        "sortOrder": 2,
-        "equipmentId": "backhoe"
+        "sortOrder": 2
       },
       {
         "id": 3,
@@ -95,8 +48,7 @@
         "subtitle": "Secure Parking",
         "description": "Park the forklift inside a painted bay on a cone-lined route, then secure it: fork lowering, neutral controls, brake engagement, power off, and reporting. Hitting a cone fails the parking attempt.",
         "imageUrl": "/images/modules/post-operation.png",
-        "sortOrder": 3,
-        "equipmentId": "forklift"
+        "sortOrder": 3
       },
       {
         "id": 4,
@@ -106,71 +58,34 @@
         "subtitle": "Load Safety",
         "description": "Apply load-handling judgment under fail conditions: respect rated capacity, avoid traffic cones, and brake smoothly so the load stays on the forks. Overloading, collisions, and sudden stops fail the attempt.",
         "imageUrl": "/images/modules/pallet-testing.png",
-        "sortOrder": 4,
-        "equipmentId": "forklift"
+        "sortOrder": 4
       }
     ],
     "HotspotCategory": [
       {
         "id": "Load Handling Parts",
-        "equipmentId": "forklift",
         "label": "Load Handling Parts",
         "sortOrder": 1
       },
       {
         "id": "Stability and Structure",
-        "equipmentId": "forklift",
         "label": "Stability and Structure",
         "sortOrder": 2
       },
       {
         "id": "Operator and Controls",
-        "equipmentId": "forklift",
         "label": "Operator and Controls",
         "sortOrder": 3
       },
       {
         "id": "Safety and Identification",
-        "equipmentId": "forklift",
         "label": "Safety and Identification",
         "sortOrder": 4
       }
     ],
     "Hotspot": [
       {
-        "id": "backhoe-tires",
-        "equipmentId": "backhoe",
-        "label": "Tires",
-        "position": [
-          0.1591498625468493,
-          -0.1966057131538883,
-          0.2482567199715691
-        ],
-        "sortOrder": 1,
-        "inParts": true,
-        "inWalkAround": false,
-        "title": "Tires",
-        "subtitle": "",
-        "image": "",
-        "description": "",
-        "category": "",
-        "functionText": "",
-        "inspectionReminder": "",
-        "safetyNote": "",
-        "relatedModule": "",
-        "checklist": [],
-        "inspectCategory": "",
-        "state": "",
-        "inspect": "",
-        "safeFeedback": "",
-        "unsafeFeedback": "",
-        "unsafeScenarios": [],
-        "published": true,
-        "builtIn": false
-      },
-      {
         "id": "forks",
-        "equipmentId": "forklift",
         "label": "Forks",
         "position": [
           0,
@@ -205,7 +120,6 @@
       },
       {
         "id": "mast",
-        "equipmentId": "forklift",
         "label": "Mast",
         "position": [
           0,
@@ -242,7 +156,6 @@
       },
       {
         "id": "lift-chain",
-        "equipmentId": "forklift",
         "label": "Lift Chain",
         "position": [
           0.075,
@@ -277,7 +190,6 @@
       },
       {
         "id": "carriage",
-        "equipmentId": "forklift",
         "label": "Carriage",
         "position": [
           0,
@@ -312,7 +224,6 @@
       },
       {
         "id": "operator-area",
-        "equipmentId": "forklift",
         "label": "Operator Area",
         "position": [
           0,
@@ -347,7 +258,6 @@
       },
       {
         "id": "overhead-guard",
-        "equipmentId": "forklift",
         "label": "Overhead Guard",
         "position": [
           0,
@@ -384,7 +294,6 @@
       },
       {
         "id": "counterweight",
-        "equipmentId": "forklift",
         "label": "Counterweight",
         "position": [
           0,
@@ -419,7 +328,6 @@
       },
       {
         "id": "tires",
-        "equipmentId": "forklift",
         "label": "Tires",
         "position": [
           0.12,
@@ -456,7 +364,6 @@
       },
       {
         "id": "capacity-plate",
-        "equipmentId": "forklift",
         "label": "Capacity Plate",
         "position": [
           0.1,
@@ -491,7 +398,6 @@
       },
       {
         "id": "warning-devices",
-        "equipmentId": "forklift",
         "label": "Warning Devices",
         "position": [
           0,
@@ -526,7 +432,6 @@
       },
       {
         "id": "hydraulic-hoses",
-        "equipmentId": "forklift",
         "label": "Hydraulic Hoses",
         "position": [
           0.05,
@@ -559,7 +464,6 @@
       },
       {
         "id": "lpg-tank",
-        "equipmentId": "forklift",
         "label": "LPG Tank and Battery",
         "position": [
           0,
@@ -592,7 +496,6 @@
       },
       {
         "id": "seat-belt",
-        "equipmentId": "forklift",
         "label": "Seat Belt",
         "position": [
           0,
@@ -623,7 +526,6 @@
       },
       {
         "id": "ground-leaks",
-        "equipmentId": "forklift",
         "label": "Ground Leaks",
         "position": [
           0,
@@ -656,7 +558,6 @@
       },
       {
         "id": "ignition",
-        "equipmentId": "forklift",
         "label": "Ignition Switch",
         "position": [
           -0.07,
@@ -687,7 +588,6 @@
       },
       {
         "id": "dashboard",
-        "equipmentId": "forklift",
         "label": "Dashboard",
         "position": [
           0,
@@ -718,7 +618,6 @@
       },
       {
         "id": "horn",
-        "equipmentId": "forklift",
         "label": "Horn",
         "position": [
           0,
@@ -749,7 +648,6 @@
       },
       {
         "id": "headlights",
-        "equipmentId": "forklift",
         "label": "Headlights",
         "position": [
           0.117,
@@ -780,7 +678,6 @@
       },
       {
         "id": "tail-lights",
-        "equipmentId": "forklift",
         "label": "Tail Lights",
         "position": [
           0,
@@ -811,7 +708,6 @@
       },
       {
         "id": "turn-signals",
-        "equipmentId": "forklift",
         "label": "Turn Signals",
         "position": [
           -0.039,
@@ -842,7 +738,6 @@
       },
       {
         "id": "warning-beacon",
-        "equipmentId": "forklift",
         "label": "Warning Beacon",
         "position": [
           0,
@@ -873,7 +768,6 @@
       },
       {
         "id": "backup-alarm",
-        "equipmentId": "forklift",
         "label": "Backup Alarm",
         "position": [
           0,
@@ -904,7 +798,6 @@
       },
       {
         "id": "steering-response",
-        "equipmentId": "forklift",
         "label": "Steering Response",
         "position": [
           0,
@@ -935,7 +828,6 @@
       },
       {
         "id": "brakes",
-        "equipmentId": "forklift",
         "label": "Brakes",
         "position": [
           0.01,
@@ -966,7 +858,6 @@
       },
       {
         "id": "lift-tilt-functions",
-        "equipmentId": "forklift",
         "label": "Lift and Tilt Functions",
         "position": [
           -0.07,
@@ -997,7 +888,6 @@
       },
       {
         "id": "forward-reverse-travel",
-        "equipmentId": "forklift",
         "label": "Forward/Reverse Travel",
         "position": [
           -0.02,
@@ -1028,7 +918,6 @@
       },
       {
         "id": "tilt-cylinder",
-        "equipmentId": "forklift",
         "label": "Tilt Cylinder",
         "position": null,
         "sortOrder": 900,
@@ -1055,77 +944,6 @@
       }
     ],
     "Course": [
-      {
-        "id": "backhoe-getting-started-briefing",
-        "moduleSlug": "backhoe-getting-started",
-        "sortOrder": 1,
-        "kind": "briefing",
-        "title": "Briefing",
-        "objective": "",
-        "instructions": "",
-        "hint": "",
-        "goalType": "checkpoints",
-        "data": null,
-        "content": {
-          "body": "",
-          "image": "",
-          "syllabus": {
-            "element": "",
-            "location": "",
-            "unitCode": "",
-            "pageReferences": ""
-          },
-          "sceneBody": "",
-          "objectives": [],
-          "showSyllabus": true
-        },
-        "published": true,
-        "builtIn": false
-      },
-      {
-        "id": "trytry",
-        "moduleSlug": "backhoe-getting-started",
-        "sortOrder": 2,
-        "kind": "driving",
-        "title": "TryTry",
-        "objective": "",
-        "instructions": "",
-        "hint": "",
-        "goalType": "checkpoints",
-        "data": {
-          "start": {
-            "heading": 0,
-            "position": [
-              0,
-              0,
-              0
-            ]
-          },
-          "pallets": [],
-          "dropZone": null,
-          "capacityKg": null,
-          "parkingBay": null,
-          "checkpoints": [
-            {
-              "id": "checkpoint-1",
-              "type": "pass",
-              "label": "Checkpoint 1",
-              "radius": 0.9,
-              "position": [
-                0,
-                0,
-                2.5
-              ],
-              "completeMessage": "Checkpoint 1 clear."
-            }
-          ],
-          "decorations": [],
-          "failConditions": null
-        },
-        "content": null,
-        "published": true,
-        "builtIn": false
-      },
       {
         "id": "load-handling-briefing",
         "moduleSlug": "load-handling",
@@ -5910,7 +5728,6 @@
     "QuizQuestion": [
       {
         "id": "engine-start-key",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 2,
         "prompt": "Which key starts the engine in this simulation?",
@@ -5925,7 +5742,6 @@
       },
       {
         "id": "post-forks",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 3,
         "prompt": "What should be done to the forks after operation?",
@@ -5940,7 +5756,6 @@
       },
       {
         "id": "pallet-overload",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 4,
         "prompt": "What happens when a forklift lifts more than its rated capacity?",
@@ -5955,7 +5770,6 @@
       },
       {
         "id": "walk-fluid-leaks",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 1,
         "prompt": "What should be checked during a walk-around inspection?",
@@ -5970,7 +5784,6 @@
       },
       {
         "id": "post-controls",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 3,
         "prompt": "Where should controls be placed during shutdown?",
@@ -5985,7 +5798,6 @@
       },
       {
         "id": "walk-warning-devices",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 1,
         "prompt": "Which devices should be tested before operation?",
@@ -6000,7 +5812,6 @@
       },
       {
         "id": "accelerate-key",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 2,
         "prompt": "Which key accelerates the forklift forward?",
@@ -6015,7 +5826,6 @@
       },
       {
         "id": "pallet-braking",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 4,
         "prompt": "How should you brake while carrying a load?",
@@ -6030,7 +5840,6 @@
       },
       {
         "id": "walk-tires",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 1,
         "prompt": "Why inspect tires before operation?",
@@ -6045,7 +5854,6 @@
       },
       {
         "id": "pallet-cones",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 4,
         "prompt": "What do traffic cones mark in a work area?",
@@ -6060,7 +5868,6 @@
       },
       {
         "id": "brake-key",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 2,
         "prompt": "Which key slows down or stops the forklift?",
@@ -6075,7 +5882,6 @@
       },
       {
         "id": "post-report",
-        "equipmentId": "forklift",
         "context": "module",
         "moduleId": 3,
         "prompt": "What should be reported after operation?",
@@ -6090,7 +5896,6 @@
       },
       {
         "id": "select-capacity-plate",
-        "equipmentId": "forklift",
         "context": "parts",
         "moduleId": null,
         "prompt": "Which part shows the rated load capacity and forklift specifications?",
@@ -6105,7 +5910,6 @@
       },
       {
         "id": "balance-part",
-        "equipmentId": "forklift",
         "context": "parts",
         "moduleId": null,
         "prompt": "Which part balances the forklift?",
@@ -6120,7 +5924,6 @@
       },
       {
         "id": "load-support",
-        "equipmentId": "forklift",
         "context": "parts",
         "moduleId": null,
         "prompt": "Which part supports the pallet or load?",
@@ -6135,7 +5938,6 @@
       },
       {
         "id": "operator-controls",
-        "equipmentId": "forklift",
         "context": "parts",
         "moduleId": null,
         "prompt": "Which area contains the operator controls?",
@@ -6150,7 +5952,6 @@
       },
       {
         "id": "warning-devices",
-        "equipmentId": "forklift",
         "context": "parts",
         "moduleId": null,
         "prompt": "Which devices include lights, horn, and backup alarm?",
@@ -6165,7 +5966,6 @@
       },
       {
         "id": "raises-forks",
-        "equipmentId": "forklift",
         "context": "parts",
         "moduleId": null,
         "prompt": "Which part raises and lowers the forks?",
@@ -6180,7 +5980,6 @@
       },
       {
         "id": "connects-forks",
-        "equipmentId": "forklift",
         "context": "parts",
         "moduleId": null,
         "prompt": "Which part connects the forks to the mast?",

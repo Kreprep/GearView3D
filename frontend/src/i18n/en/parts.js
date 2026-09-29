@@ -1,4 +1,4 @@
-// The parts identification page (/training/:equipmentId/parts). Part labels,
+// The parts identification page (/training/parts). Part labels,
 // categories and detail cards are admin-authored Hotspot rows and stay as
 // written; this is the page's own chrome.
 export default {
