@@ -296,7 +296,7 @@ export default function PartsViewport({
       </div>
 
       <ViewerErrorBoundary modelUrl={EQUIPMENT_MODEL_URL}>
-        <Canvas shadows dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
+        <Canvas shadows="percentage" dpr={[1, 1.35]} camera={{ position: [1.25, 0.85, 1.55], fov: 42 }}>
           <Suspense fallback={<ViewerLoadingPanel />}>{Scene}</Suspense>
         </Canvas>
       </ViewerErrorBoundary>
