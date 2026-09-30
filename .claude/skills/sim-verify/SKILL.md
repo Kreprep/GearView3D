@@ -59,7 +59,7 @@ limiter.
 | `rack-store` | Pallet Testing, Rack Storage | a load lowered onto the middle shelf rests at shelf height and is delivered once the forks are out |
 | `pallet-impact` | Load Handling, Pallet Pickup & Placement | forks too high for the pockets, driven at the pallet: fails as a pallet impact, and the pallet is shoved |
 | `load-drop` | Pallet Testing, Precision Carry | forks two thirds in, full brake from speed: the load slides off, the load-shifting sign comes up, the attempt fails as a lost load |
-| `tip-over` | Load Handling, Pallet Pickup & Placement | a load carried high through a swerve: tip-risk sign, then the truck rolls onto its right side |
+| `tip-over` | Load Handling, Pallet Pickup & Placement | a load carried high through a swerve: tip-risk sign, then the truck goes over; the fall is simulated, and it ends lying on its right side (`tipAngle` about pi/2) with the load thrown clear and the metal impact played |
 | `interlock` | Load Handling, Accelerate Course | E is refused without seatbelt and parking brake; the parking brake holds the truck against W |
 | `sound` | Load Handling, Accelerate Course | the samples load, the six loops run, and the denial tone, switch clicks, starter, horn and reverse beeper are asked for |
 | `sign-interlock` | Load Handling, Accelerate Course | a refused start raises the start-interlock sign; W against the parking brake raises parking-brake-on |
