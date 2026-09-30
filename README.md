@@ -147,6 +147,16 @@ Once everyone is pointed at one deployed backend (see below), none of this is ne
 | `frontend/` | `npm run build` | production build |
 | `frontend/` | `npm run lint` | ESLint |
 
+## Steering Wheel, Pedals and Shifter (optional)
+
+The driving simulation also takes a steering wheel, pedals and H-pattern shifter through the browser's Gamepad API. It was built and tested with a Thrustmaster **T300 RS** and **TH8A**, and those two come with their buttons already set up. The keyboard keeps working alongside.
+
+- Use **Chrome or Edge on Windows**, on `localhost` or the HTTPS live instance (the Gamepad API needs a secure context).
+- Install Thrustmaster's PC drivers. In the Thrustmaster Control Panel, set the wheel rotation to **900°** and leave **auto-centre off**. The browser can't drive force feedback, so the wheel stays loose, which is close to a forklift's hydraulic steering.
+- Plug the TH8A into its own USB port and set it to H-pattern. It shows up as a second controller called "T500 RS Gear Shift", which is expected.
+- Press any button on the wheel with the page focused (browsers only reveal controllers after a button press), then open **Wheel setup** from the home screen or the driving screen. There you can calibrate the steering and pedals, record the shifter's gears, and change any button. Settings are saved in this browser only.
+- Starting the forklift works as on a real truck: seatbelt, parking brake and neutral first, then the engine, then release the parking brake.
+
 ## Troubleshooting
 
 - **"Cannot reach the GearView3D API"** in the browser → the backend isn't running. Start it (`cd backend && npm run dev`).
