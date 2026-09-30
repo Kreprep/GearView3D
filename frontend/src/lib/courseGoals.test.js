@@ -147,3 +147,21 @@ test('the rated capacity is the course\'s own plate, or the reference truck\'s',
     assert.equal(resolveCapacityKg(course), 2270)
   }
 })
+
+test('a built-in free course seeded before completion code gets the stock code, and nothing else does', async () => {
+  const { withMissingCompletionCode } = await import('./courseGoals.js')
+  const stock = drivingCourses['controls-intro']
+  const stored = { start: { position: [0, 0, 0], heading: 0 }, checkpoints: [] }
+
+  const filled = withMissingCompletionCode(stored, stock)
+  assert.equal(filled.completionCode, stock.completionCode)
+  assert.deepEqual(validateCourse(filled), [])
+
+  // The row's own value wins, a blanked one included; a stock course with no
+  // code adds nothing.
+  for (const own of [{ ...stored, completionCode: 'return true' }, { ...stored, completionCode: '' }, { ...stored, completionCode: null }]) {
+    assert.equal(withMissingCompletionCode(own, stock), own)
+  }
+  assert.equal(withMissingCompletionCode(stored, { completionCode: null }), stored)
+  assert.equal(withMissingCompletionCode(null, stock), null)
+})

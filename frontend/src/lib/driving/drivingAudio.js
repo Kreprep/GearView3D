@@ -76,18 +76,32 @@ const NO_SWITCHES = { lever: null }
 
 const silent = () => ({ gain: 0, rate: 1 })
 
+// The forklift recording keeps sounding under the high-revs one, at this
+// share of the power at full revs. The high-revs loop is a car holding its
+// revs, close to a pure tone (about 82 Hz), which laptop speakers barely
+// reproduce: faded out entirely, the forklift left full throttle a thin hum
+// (team's listening check, 2026-10-01). Kept, pitched up with the revs, its
+// rough firing carries the engine's character to the top of the range.
+const IDLE_FLOOR = 0.6
+// An engine is louder working than idling: the engine loops' gain at full
+// revs, relative to idle (+1.9 dB, which with the forklift loop kept is
+// +3.5 dB RMS in an offline render, peaks still 10 dB under full scale).
+const FULL_REV_LOUDNESS = 1.25
+
 // The two engine loops for an engine speed of `rev` (0 idle .. 1 full
 // throttle). Both are pitched to the same firing frequency, so the crossfade
 // between the recordings is heard as one engine. Equal power, because the two
-// recordings are not in phase.
+// recordings are not in phase, and the forklift loop never fades below
+// IDLE_FLOOR of it; the whole engine then gets louder with the revs.
 function engineLoops(rev) {
   const idleHz = SOUND_BANK.engineIdle.firingHz
   const highHz = SOUND_BANK.engineHigh.firingHz
   const firingHz = idleHz + rev * (highHz - idleHz)
-  const angle = (rev * Math.PI) / 2
+  const high = Math.sqrt(1 - IDLE_FLOOR ** 2) * Math.sin((rev * Math.PI) / 2)
+  const loudness = 1 + (FULL_REV_LOUDNESS - 1) * rev
   return {
-    engineIdle: { gain: Math.cos(angle), rate: firingHz / idleHz },
-    engineHigh: { gain: Math.sin(angle), rate: firingHz / highHz },
+    engineIdle: { gain: Math.sqrt(1 - high ** 2) * loudness, rate: firingHz / idleHz },
+    engineHigh: { gain: high * loudness, rate: firingHz / highHz },
   }
 }
 

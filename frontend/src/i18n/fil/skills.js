@@ -33,6 +33,8 @@ export default {
   'skills.evidence.cleanRun.dangerAll': 'Tapusin ang "{step}" ({module}) nang walang babalang pang-panganib',
   'skills.evidence.quiz.module': 'Makakuha ng hindi bababa sa {min}% sa quiz ng {module} (ang pinakahuli mong subok)',
   'skills.evidence.quiz.parts': 'Makakuha ng hindi bababa sa {min}% sa quiz ng mga parte (ang pinakahuli mong subok)',
+  'skills.evidence.quiz.moduleStaff': 'Makakuha ng hindi bababa sa {min}% sa quiz ng {module} (ang pinakahuling subok ng trainee)',
+  'skills.evidence.quiz.partsStaff': 'Makakuha ng hindi bababa sa {min}% sa quiz ng mga parte (ang pinakahuling subok ng trainee)',
   'skills.evidence.partsViewed': 'Tingnan ang bawat parte sa pahina ng mga parte',
   'skills.evidence.cautionRecovered':
     'Tapusin ang isang driving step matapos lumabas ang babala, nang hindi ito naging babalang pang-panganib',

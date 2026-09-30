@@ -15,6 +15,7 @@ import { buildDefaultPartsQuizQuestions } from '../../frontend/src/data/partsQui
 import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
 import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
 import { withMissingAlertDefaults } from '../../frontend/src/lib/courseAlerts.js'
+import { withMissingCompletionCode } from '../../frontend/src/lib/courseGoals.js'
 import { EQUIPMENT_DEFAULTS } from '../../frontend/src/data/equipment.js'
 import { buildDefaultHotspots } from '../../frontend/src/data/hotspotDefaults.js'
 import { SKILL_DEFAULTS, skillRowDefaults } from '../../frontend/src/data/skillDefaults.js'
@@ -219,8 +220,9 @@ async function seedCourses() {
     // backfilled, because the row has no value for it at all. Keys the row
     // already has - including ones an admin deliberately blanked - always win.
     // That covers every content key, and in a driving step's data only the
-    // safety signs' settings (a stock speed limit): the geometry is never
-    // touched.
+    // safety signs' settings (a stock speed limit) and a free-practice step's
+    // completion code (without which the step can never be finished): the
+    // geometry is never touched.
     if (!existing.builtIn) continue
     const update = {}
 
@@ -231,11 +233,12 @@ async function seedCourses() {
     }
 
     if (course.kind === 'driving' && course.data) {
-      const data = withMissingAlertDefaults(existing.data, course.data)
+      const backfill = (stored) => withMissingCompletionCode(withMissingAlertDefaults(stored, course.data), course.data)
+      const data = backfill(existing.data)
       if (data !== existing.data) update.data = data
       // A pending draft is a whole payload: publishing it must not drop what
       // the published row was just given.
-      const draftData = withMissingAlertDefaults(existing.draft?.data, course.data)
+      const draftData = backfill(existing.draft?.data)
       if (draftData !== existing.draft?.data) update.draft = { ...existing.draft, data: draftData }
     }
 

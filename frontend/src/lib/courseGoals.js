@@ -232,3 +232,14 @@ export function validateCourse(course) {
 
   return problems
 }
+
+// The stock completion code of a built-in free-practice course, laid into a
+// stored course that has no value for it at all: what prisma/seed.js
+// backfills into a row seeded before completion code existed, which
+// otherwise has no completion rule and can never be finished. A value the row
+// has always wins, a blanked one included. Returns `data` itself when there
+// is nothing to add.
+export function withMissingCompletionCode(data, defaults) {
+  if (!data || !defaults?.completionCode || 'completionCode' in data) return data
+  return { ...data, completionCode: defaults.completionCode }
+}

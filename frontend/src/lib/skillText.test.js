@@ -21,6 +21,9 @@ test('every rule type reads as a sentence, naming the titles it was given', () =
 
   assert.equal(describeEvidence({ type: 'quiz-score', module: 'x', moduleTitle: 'Pallets', min: 80 }, en), 'Score at least 80% on the Pallets quiz (your latest try)')
   assert.match(describeEvidence({ type: 'quiz-score', context: 'parts', min: 80 }, en), /parts quiz/)
+  // Instructors read about the trainee, not "your" try.
+  assert.match(describeEvidence({ type: 'quiz-score', context: 'parts', min: 80 }, en, { staff: true }), /the trainee's latest try/)
+  assert.match(describeEvidence({ type: 'quiz-score', module: 'x', moduleTitle: 'Pallets', min: 80 }, en, { staff: true }), /Pallets quiz \(the trainee's latest try\)/)
   assert.match(describeEvidence({ type: 'parts-viewed' }, fil), /bawat parte/)
   assert.match(describeEvidence({ type: 'caution-recovered' }, en), /warning sign/)
 })
