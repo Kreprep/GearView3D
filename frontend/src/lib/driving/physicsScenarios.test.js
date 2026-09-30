@@ -115,9 +115,12 @@ test('a load set down in the drop zone is delivered once the forks are out', () 
 test('a raised laden sharp turn tips the truck sideways; the same turn lowered does not', () => {
   const raised = drive('tip-over-turn', (v) => v.lateralMargin)
   assert.equal(failOf(raised.events), 'tip-over')
-  // A left swerve throws the truck onto its right side.
+  // A left swerve throws the truck onto its right side, where the physics
+  // leaves it lying, its load thrown clear.
   assert.equal(raised.view.tipAxis, 'right')
-  assert.ok(raised.view.tipAngle > 1)
+  assert.ok(Math.abs(raised.view.tipAngle - Math.PI / 2) < 0.1, `lying at ${raised.view.tipAngle}`)
+  assert.ok(raised.state.tip.pose.position.y > 0.1)
+  assert.equal(raised.view.pallets[0].onForks, false)
 
   const lowered = drive('turn-lowered', (v) => v.lateralMargin)
   assert.equal(failOf(lowered.events), null)
@@ -130,8 +133,9 @@ test('a load half as heavy again as the rating tips the truck forward as it lift
   const { view, events } = drive('tip-over-forward')
   assert.equal(failOf(events), 'tip-over')
   assert.equal(view.tipAxis, 'forward')
-  // The truck comes to rest on its fork tips.
-  assert.ok(view.tipAngle > 0.02 && view.tipAngle < 0.5, `pitched ${view.tipAngle}`)
+  // The load's weight carries it over: the rear wheels lift and the truck
+  // comes to rest on its fork tips, nose down.
+  assert.ok(view.tipAngle > 0.05 && view.tipAngle < 0.5, `pitched ${view.tipAngle}`)
 })
 
 test('lifting a pallet over the capacity plate fails as an overload where the course says so', () => {

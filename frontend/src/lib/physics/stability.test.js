@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { STABILITY_DEFAULTS } from '../../data/vehicleProfile.js'
 import { deratedCapacityKg, isOverCapacity, loadChartPoints, RATED_LOAD_CENTRE } from './loadChart.js'
-import { stabilityMargins, stabilityModel } from './stability.js'
+import { rollRateOver, stabilityMargins, stabilityModel } from './stability.js'
 
 const G = 9.81
 const { ratedCapacityKg, ratedLoadCentre, frontOverhang, travelLoadHeight, ratingDecel, wheelbase } = STABILITY_DEFAULTS
@@ -54,7 +54,36 @@ test('a course that rates its truck lower gets the same margins for the same fra
 // --- Forward -------------------------------------------------------------------
 
 test('unladen and standing, both margins are whole', () => {
-  assert.deepEqual(stabilityMargins(truck, null), { longitudinalMargin: 1, lateralMargin: 1, tipping: null })
+  assert.deepEqual(stabilityMargins(truck, null), {
+    longitudinalMargin: 1,
+    lateralMargin: 1,
+    tipping: null,
+    tipAcceleration: 0,
+    centreOfGravityHeight: STABILITY_DEFAULTS.cgHeight,
+  })
+})
+
+test('past the point of tipping the truck starts to rotate, faster the further past', () => {
+  assert.equal(stabilityMargins(truck, ratedLoad()).tipAcceleration, 0)
+  const forward = (factor) => stabilityMargins(truck, ratedLoad(factor)).tipAcceleration
+  assert.ok(forward(1.5) > 0 && forward(2) > forward(1.5))
+  const sideways = (g) => stabilityMargins(truck, null, { lateralAccel: g * G }).tipAcceleration
+  assert.ok(sideways(0.9) > 0 && sideways(1.2) > sideways(0.9))
+  assert.equal(sideways(0.2), 0)
+})
+
+test('the roll rate that puts a truck on its side: energy to lift its centre of gravity over the edge', () => {
+  // A centre of gravity 0.45 m up and 0.6 m in from the edge rises 0.3 m to
+  // get over it.
+  const rate = rollRateOver(0.6, 0.45)
+  const rise = Math.hypot(0.6, 0.45) - 0.45
+  assert.ok(Math.abs(0.5 * (rate * Math.hypot(0.6, 0.45)) ** 2 - G * rise) < 1e-9)
+  assert.ok(rate > 3 && rate < 3.5, `${rate} rad/s`)
+  // A higher centre of gravity, or one nearer the edge, needs less.
+  assert.ok(rollRateOver(0.6, 1.2) < rate)
+  assert.ok(rollRateOver(0.3, 0.45) < rate)
+  // A load carried high raises the combined centre of gravity.
+  assert.ok(stabilityMargins(truck, ratedLoad(0.5, { height: 3.3 })).centreOfGravityHeight > 1)
 })
 
 test('braking, a load further out and a load further forward all cost forward stability', () => {

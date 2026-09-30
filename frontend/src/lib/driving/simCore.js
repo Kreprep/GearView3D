@@ -6,7 +6,6 @@ import { createSimState, createSimWorld } from './simState.js'
 import { stepDrive } from './stepDrive.js'
 import { stepCollisionBody, stepCollisionHazards } from './stepCollision.js'
 import { stepForks } from './stepForks.js'
-import { stepFail } from './stepFail.js'
 import { stepPallet } from './stepPallet.js'
 import { createScenePhysics, stepPhysics, truckPoses } from './stepPhysics.js'
 import { stepStability } from './stepStability.js'
@@ -110,12 +109,10 @@ export function createSimCore(course, profile, { geometry, rapier } = {}) {
       stepDrive(state, world, controls, dt)
       stepCollisionBody(state, world)
       stepForks(state, world, dt)
-      // The tip-over's fall advances one step before whatever sets
-      // tip.active (stepStability, below), so a tip shows its first degree
-      // on the next step.
-      stepFail(state, world, dt)
       // The truck is where this step put it: move it in the physics world,
-      // step that, and read the pallets and cones back.
+      // step that, and read the pallets and cones back. A truck that tipped
+      // over last step (stepStability, below) becomes a body in that world
+      // here, and is read back too.
       stepPhysics(state, world, physics, dt)
       stepCollisionHazards(state, world)
       stepCheckpoints(state, world)

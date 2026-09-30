@@ -79,6 +79,15 @@ const SOUNDS = [
   // Phase 7, the physics' sounds. The steadiest drag of the crowbar across
   // the concrete (6.75 s to 9.0 s).
   { name: 'fork-scrape', source: 452587, loop: true, start: 6.9, length: 1.5, crossfade: 0.3 },
+  // One plank landing flat, the fifth drop of the recording (8.3 s): a single
+  // thud with no second bounce.
+  { name: 'pallet-drop', source: 589866, start: 8.28, length: 0.7, fadeIn: 0.003, fadeOut: 0.25 },
+  // The hit itself and the start of the bucket's hollow ring.
+  { name: 'cone-knock', source: 199453, start: 0.2, length: 0.6, fadeIn: 0.003, fadeOut: 0.25 },
+  // The clang and under a second of its ring (the recording rings for 6 s).
+  // Freesound 650701, a dry half-second hit, is the alternative if this one
+  // rings too long by ear: change `source` and drop `start` to 0.
+  { name: 'metal-impact', source: 568786, start: 0.62, length: 0.9, fadeIn: 0.003, fadeOut: 0.6 },
 ]
 
 const outputFile = (sound) => `${sound.name}.${sound.loop ? 'flac' : 'mp3'}`

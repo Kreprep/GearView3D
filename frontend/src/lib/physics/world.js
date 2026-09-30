@@ -4,7 +4,9 @@
 // - The truck's body and its fork carriage are kinematic. The drive model
 //   (lib/driving/stepDrive.js, stepForks.js) decides where they are; this
 //   world is told, and moves them there across its substeps. A kinematic body
-//   pushes a dynamic one with the right momentum.
+//   pushes a dynamic one with the right momentum. Until the truck tips over:
+//   releaseTruck() then swaps the two for one dynamic body, and the fall is
+//   the engine's.
 // - Pallets (each one compound body with its load, fork pockets open) and
 //   cones are dynamic.
 // - The floor, racks (posts, beams and decking), walls and parked vehicles
@@ -19,25 +21,29 @@
 // that feeds it poses and reads bodies back. RAPIER is passed in
 // (lib/physics/rapier.js loads it), so this runs unchanged under node --test.
 import { Matrix4, Quaternion, Vector3 } from 'three'
-import { CONE, FRICTION, PHYSICS_WORLD, TOUCH_DISTANCE, palletPhysics } from '../../data/physicsProfile.js'
+import { CONE, FRICTION, PHYSICS_WORLD, TOUCH_DISTANCE, WRECK, palletPhysics } from '../../data/physicsProfile.js'
 import { boxVolume, chassisCollider, forkColliders, parkedVehicleCollider, rackColliders, wallCollider } from './colliders.js'
 
 // Collision groups: what each kind of collider is, and what it meets. The
 // truck is placed by the drive model, so it does not meet the floor; the
-// floor carries only what can fall on it.
+// floor carries only what can fall on it, which a truck that has gone over
+// (FALLEN) can.
 const FLOOR = 1
 const STRUCTURE = 2
 const TRUCK = 4
 const DYNAMIC = 8
+const FALLEN = 16
 const groups = (member, filter) => (member << 16) | filter
 const GROUPS = {
-  floor: groups(FLOOR, DYNAMIC),
+  floor: groups(FLOOR, DYNAMIC | FALLEN),
   structure: groups(STRUCTURE, DYNAMIC | TRUCK),
   truck: groups(TRUCK, DYNAMIC | STRUCTURE),
+  wreck: groups(TRUCK | FALLEN, FLOOR | DYNAMIC | STRUCTURE),
   dynamic: groups(DYNAMIC, FLOOR | STRUCTURE | TRUCK | DYNAMIC),
 }
 
-const TRUCK_KINDS = new Set(['chassis', 'tine', 'backrest'])
+const TRUCK_KINDS = new Set(['chassis', 'wheel', 'tine', 'backrest'])
+const IDENTITY = { x: 0, y: 0, z: 0, w: 1 }
 
 const yawQuaternion = (rotation = 0) => ({ x: 0, y: Math.sin(rotation / 2), z: 0, w: Math.cos(rotation / 2) })
 
@@ -57,6 +63,8 @@ const composeInto = (matrix, { position, quaternion }) =>
  * `scene` is what the course puts in the world, in scene units:
  *   footprint  the truck body's { halfWidth, halfLength }
  *   mastFoot   the rig's mast foot, which the carriage frame hangs from
+ *   feet       where the truck stands, in its own frame (colliders.js,
+ *              truckFeet): what a truck that has gone over pivots on
  *   pallets    [{ def, x, z, rotation }] (def: the course's pallet)
  *   cones      [{ x, z }]
  *   racks      [{ id, x, z, rotation }]
@@ -111,20 +119,22 @@ export function createPhysicsWorld(RAPIER, scene, truck, options = {}) {
     )
   const chassis = kinematicAt(truck.chassis)
   const carriage = kinematicAt(truck.carriage)
-  const truckColliders = [
+  const forkBoxes = forkColliders(scene.mastFoot)
+  // Min: tine-on-anything is the tine's own value.
+  const steel = (desc) => desc.setFriction(tineFriction).setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
+  let truckColliders = [
     addBox(chassis, chassisCollider(scene.footprint), { kind: 'chassis' }, (desc) =>
       desc.setFriction(FRICTION.woodOnConcrete).setCollisionGroups(GROUPS.truck)),
-    ...forkColliders(scene.mastFoot).map(({ part, ...box }) =>
+    ...forkBoxes.map(({ part, ...box }) =>
       addBox(carriage, box, { kind: part }, (desc) =>
-        desc
-          .setFriction(tineFriction)
-          // Min: tine-on-anything is the tine's own value.
-          .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
+        steel(desc)
           .setCollisionGroups(GROUPS.truck)
           // Kinematic against fixed generates no contacts by default, and the
           // forks have to feel a rack beam.
           .setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.KINEMATIC_FIXED))),
   ]
+  // The truck as one dynamic body, once it has gone over (releaseTruck).
+  let wreck = null
 
   // --- Dynamic: pallets and cones ---
   const pallets = scene.pallets.map(({ def, x, z, rotation }, index) => {
@@ -199,29 +209,102 @@ export function createPhysicsWorld(RAPIER, scene, truck, options = {}) {
     return found
   }
 
+  /**
+   * The truck tips over: from here it is a rigid body like any other, and the
+   * engine finishes the fall. The kinematic body and carriage are replaced by
+   * one dynamic body where they stand, with the forks fixed to it as they
+   * were, standing on the truck's three feet.
+   *   massKg, centreOfMass [x, y, z], inertia [x, y, z]  the truck's, in its
+   *             own frame (principal inertia about its own axes)
+   *   carriage  the fork carriage's pose in the truck's frame
+   *   linvel, angvel  what the truck was doing, and the rotation the
+   *             tip-over starts with, in world space
+   *   tip       that rotation on its own, { angvel, about } (a point on the
+   *             edge the truck goes over), which the pallets in `held`
+   *             (indexes) share: truck and load start the fall as one
+   */
+  function releaseTruck({ massKg, centreOfMass, inertia, carriage: carriagePose, linvel, angvel, tip, held = [] }) {
+    if (wreck) return
+    const turning = new Vector3().copy(tip.angvel)
+    for (const index of held) {
+      const { body } = pallets[index]
+      const swing = new Vector3().copy(body.worldCom()).sub(tip.about)
+      body.setLinvel(new Vector3().copy(body.linvel()).add(new Vector3().crossVectors(turning, swing)), true)
+      body.setAngvel(new Vector3().copy(body.angvel()).add(turning), true)
+    }
+    for (const collider of truckColliders) tags.delete(collider.handle)
+    world.removeRigidBody(chassis)
+    world.removeRigidBody(carriage)
+
+    const { position, quaternion } = last.chassis
+    const [comX, comY, comZ] = centreOfMass
+    const [inertiaX, inertiaY, inertiaZ] = inertia
+    wreck = world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(position.x, position.y, position.z)
+        .setRotation(quaternion)
+        .setLinvel(linvel.x, linvel.y, linvel.z)
+        .setAngvel(angvel)
+        .setCcdEnabled(true)
+        .setCanSleep(false)
+        // The truck's mass is given, not worked out from its boxes.
+        .setAdditionalMassProperties(massKg, { x: comX, y: comY, z: comZ }, { x: inertiaX, y: inertiaY, z: inertiaZ }, IDENTITY),
+    )
+    const massless = (desc) => desc.setDensity(0).setCollisionGroups(GROUPS.wreck)
+    const attach = (desc, tag) => {
+      const collider = world.createCollider(desc, wreck)
+      tags.set(collider.handle, tag)
+      return collider
+    }
+
+    const carriageOffset = new Vector3().copy(carriagePose.position)
+    const carriageRotation = new Quaternion().copy(carriagePose.quaternion)
+    truckColliders = [
+      addBox(wreck, chassisCollider(scene.footprint, WRECK.bodyBottom), { kind: 'chassis' }, (desc) =>
+        massless(desc).setFriction(FRICTION.woodOnConcrete)),
+      ...scene.feet.map(([x, y, z]) =>
+        attach(
+          massless(RAPIER.ColliderDesc.ball(WRECK.footRadius).setTranslation(x, y + WRECK.footRadius, z)).setFriction(FRICTION.rubberOnConcrete),
+          { kind: 'wheel' },
+        )),
+      ...forkBoxes.map(({ part, center, half }) => {
+        const at = new Vector3(...center).applyQuaternion(carriageRotation).add(carriageOffset)
+        return attach(steel(massless(RAPIER.ColliderDesc.cuboid(...half).setTranslation(at.x, at.y, at.z).setRotation(carriageRotation))), { kind: part })
+      }),
+    ]
+  }
+
   return {
     RAPIER,
     world,
-    chassis,
-    carriage,
     pallets,
     cones,
 
     // One sim step: the truck moves from where it was to `next` across the
-    // substeps, so Rapier sees it travel rather than jump.
+    // substeps, so Rapier sees it travel rather than jump. A truck that has
+    // gone over is no longer told where to be.
     step(next) {
       for (let i = 1; i <= settings.substeps; i += 1) {
-        const t = i / settings.substeps
-        setKinematic(chassis, last.chassis, next.chassis, t)
-        setKinematic(carriage, last.carriage, next.carriage, t)
+        if (!wreck) {
+          const t = i / settings.substeps
+          setKinematic(chassis, last.chassis, next.chassis, t)
+          setKinematic(carriage, last.carriage, next.carriage, t)
+        }
         world.step()
       }
       last = next
     },
 
+    releaseTruck,
+
+    // Where the truck that has gone over is, and how fast it is moving, or
+    // null while the drive model still places it.
+    fallenTruck: () => (wreck ? { position: wreck.translation(), quaternion: wreck.rotation(), linvel: wreck.linvel() } : null),
+
     // Put the truck somewhere else outright (a test or a debug warp), taking
     // the pallets in `carried` (indexes) along on the forks.
     teleport(next, carried = []) {
+      if (wreck) return
       scratchDelta.copy(composeInto(scratchMatrix, last.carriage)).invert().premultiply(composeInto(scratchMatrix, next.carriage))
       for (const index of carried) {
         const { body } = pallets[index]

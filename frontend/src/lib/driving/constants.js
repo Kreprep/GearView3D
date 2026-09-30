@@ -99,20 +99,18 @@ export const SUDDEN_STOP_MIN_SPEED = kmh(10)
 // the forks-high-travel sign shares). GearView default.
 export const HIGH_TRAVEL_MIN_SPEED = kmh(5.8)
 
-// stepStability / stepFail: the tip-over. The stability model
-// (lib/physics/stability.js) says when the truck is past the point of
-// tipping; it goes over once it has been there this long, since a truck
-// takes a moment to rotate past its balance point and a one-step jolt (a
-// blocked move) is not a tip. GearView default.
+// stepStability: the tip-over. The stability model (lib/physics/stability.js)
+// says when the truck is past the point of tipping; it goes over once it has
+// been there this long, since a truck takes a moment to rotate past its
+// balance point and a one-step jolt (a blocked move) is not a tip. GearView
+// default.
 export const TIP_ONSET_SECONDS = 0.25
-// The fall itself is an animation: the truck pitches about its front axle
-// until the forks meet the ground, or rolls about a side of the stability
-// triangle until it lies on its side.
-export const TIP_PIVOT_Y = 0.08
-export const TIP_PIVOT_Z = 0.25
-export const TIP_GRAVITY_ACCEL = 2.4
-export const TIP_MAX_ANGLE = 1.15
-export const TIP_ROLL_MAX_ANGLE = 1.45
+// The fall itself is the physics engine's: at the onset the truck becomes a
+// dynamic body (stepPhysics.js), turning at the rate the overturning moment
+// has given it by then. Sideways, that is at least the rate that carries it
+// over onto its side (rollRateOver in lib/physics/stability.js), with this
+// much in hand, so a truck judged to be going over does go over.
+export const TIP_ROLL_MARGIN = 1.1
 
 // stepCollision: the truck's body against walls, parked vehicles and racking,
 // in 2D (lib/simCollision.js). Pallets and cones are physics bodies.

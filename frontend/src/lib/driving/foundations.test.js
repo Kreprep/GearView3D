@@ -2,11 +2,11 @@ import '../../test-helpers/browserGlobals.js'
 import '../../test-helpers/physics.js'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Group, Matrix4, Vector3 } from 'three'
+import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three'
 import { drivingCourses } from '../../data/drivingCourse.js'
 import { defaultVehicleProfile } from '../../data/vehicleProfile.js'
 import { TINE_REST_Y } from '../../data/physicsProfile.js'
-import { MAX_SPEED, STOP_SPEED_EPSILON, TIP_PIVOT_Y, TIP_PIVOT_Z } from './constants.js'
+import { MAX_SPEED, STOP_SPEED_EPSILON } from './constants.js'
 import { createKeyActiveTracker, legacyKeysFromControls, mergeControls, neutralControls } from './controls.js'
 import { chassisPose, forkPose, tineClearance, tineGroundClearance } from './forkPose.js'
 import { createKeyboardSource } from './keyboardSource.js'
@@ -278,31 +278,24 @@ test('a failed attempt ignores the engine key', () => {
 
 // --- fork pose ---------------------------------------------------------------
 
-// Rebuild the scene-graph chain DrivingScene renders (truck group -> tip
-// pivot -> offset -> tilt pivot at the mast foot -> carriage lift) and check
-// forkPose() gives the same world matrix the old code read off the node.
+// Rebuild the scene-graph chain DrivingScene renders (truck group -> tilt
+// pivot at the mast foot -> carriage lift) and check forkPose() gives the same
+// world matrix the old code read off the node.
 test('forkPose matches the carriage node chain it replaced', () => {
   const truckGroup = new Group()
-  const tipPivot = new Group()
-  const offset = new Group()
   const tiltPivot = new Group()
   const carriageLift = new Group()
-  truckGroup.add(tipPivot)
-  tipPivot.add(offset)
-  offset.add(tiltPivot)
+  truckGroup.add(tiltPivot)
   tiltPivot.add(carriageLift)
-  tipPivot.position.set(0, TIP_PIVOT_Y, TIP_PIVOT_Z)
-  offset.position.set(0, -TIP_PIVOT_Y, -TIP_PIVOT_Z)
   tiltPivot.position.set(...FORKLIFT_RIG_GEOMETRY.mastFoot)
 
   const state = {
     truck: { x: 1.3, y: 0, z: -4.2, heading: 0.7 },
     forks: { height: 0.37, tilt: -0.09 },
-    tip: { axis: 'forward', angle: 0.25 },
+    tip: { pose: null },
   }
   truckGroup.position.set(state.truck.x, state.truck.y, state.truck.z)
   truckGroup.rotation.y = state.truck.heading
-  tipPivot.rotation.x = state.tip.angle
   tiltPivot.rotation.x = state.forks.tilt
   carriageLift.position.y = state.forks.height
   carriageLift.updateWorldMatrix(true, false)
@@ -310,31 +303,20 @@ test('forkPose matches the carriage node chain it replaced', () => {
   const pose = forkPose(state)
   pose.elements.forEach((value, index) => close(value, carriageLift.matrixWorld.elements[index], 1e-12))
 
-  // And the tine tip sits forkTipOffset ahead of the truck at rest.
-  const level = forkPose({ truck: { x: 0, y: 0, z: 0, heading: 0 }, forks: { height: 0, tilt: 0 }, tip: { angle: 0 } }, undefined, new Matrix4())
+  // And the carriage frame sits at the mast foot at rest.
+  const level = forkPose({ truck: { x: 0, y: 0, z: 0, heading: 0 }, forks: { height: 0, tilt: 0 }, tip: { pose: null } }, undefined, new Matrix4())
   const origin = new Vector3().applyMatrix4(level)
   close(origin.z, FORKLIFT_RIG_GEOMETRY.mastFoot[2])
-})
 
-test('a sideways tip-over rolls the truck about a side of its stability triangle', () => {
-  const at = (axis, angle) => ({ truck: { x: 0, y: 0, z: 0, heading: 0 }, forks: { height: 0, tilt: 0 }, tip: { axis, angle } })
-  const { frontAxleZ, rearAxleZ, frontTrackHalf } = FORKLIFT_RIG_GEOMETRY
-  const moved = (axis, point) => new Vector3(...point).applyMatrix4(chassisPose(at(axis, 0.5)))
-
-  // The edge itself stays put: the front wheel's contact patch on that side,
-  // and the rear axle's pivot.
-  for (const [axis, side] of [['left', 1], ['right', -1]]) {
-    for (const point of [[side * frontTrackHalf, 0, frontAxleZ], [0, 0, rearAxleZ]]) {
-      const after = moved(axis, point)
-      point.forEach((value, index) => close(after.getComponent(index), value, 1e-12))
-    }
-  }
-  // The roof goes over toward that side (left is +X), and the far front
-  // wheel lifts.
-  assert.ok(moved('left', [0, 0.5, 0]).x > 0.1)
-  assert.ok(moved('right', [0, 0.5, 0]).x < -0.1)
-  assert.ok(moved('left', [-frontTrackHalf, 0, frontAxleZ]).y > 0.05)
-  assert.ok(moved('right', [frontTrackHalf, 0, frontAxleZ]).y > 0.05)
+  // A truck that has tipped over is wherever its physics body is: the same
+  // chain hangs off that pose instead.
+  const fallen = { position: new Vector3(2, 0.1, 5), quaternion: new Quaternion().setFromEuler(new Euler(0.2, 1.1, 1.4)) }
+  truckGroup.position.copy(fallen.position)
+  truckGroup.quaternion.copy(fallen.quaternion)
+  carriageLift.updateWorldMatrix(true, false)
+  const tipped = forkPose({ ...state, tip: { pose: fallen } })
+  tipped.elements.forEach((value, index) => close(value, carriageLift.matrixWorld.elements[index], 1e-12))
+  chassisPose({ ...state, tip: { pose: fallen } }).elements.forEach((value, index) => close(value, truckGroup.matrixWorld.elements[index], 1e-12))
 })
 
 test('the tines rest 3.4 cm off the floor and the floor stops them', () => {
@@ -344,10 +326,12 @@ test('the tines rest 3.4 cm off the floor and the floor stops them', () => {
   assert.ok(tineClearance(0, -0.19) > 0)
   assert.ok(tineClearance(0, 0.1) < 0)
   assert.ok(tineClearance(0.05, 0.1) > 0)
-  // The same reading off the full pose, which also follows a tip-over.
-  const level = { truck: { x: 2, y: 0, z: 3, heading: 1 }, forks: { height: 0.05, tilt: 0.1 }, tip: { axis: 'forward', angle: 0 } }
+  // The same reading off the full pose, which also follows a truck that has
+  // pitched over.
+  const level = { truck: { x: 2, y: 0, z: 3, heading: 1 }, forks: { height: 0.05, tilt: 0.1 }, tip: { pose: null } }
   close(tineGroundClearance(level), tineClearance(0.05, 0.1), 1e-12)
-  assert.ok(tineGroundClearance({ ...level, tip: { axis: 'forward', angle: 0.3 } }) < 0)
+  const pitched = { position: new Vector3(2, 0, 3), quaternion: new Quaternion().setFromEuler(new Euler(0.3, 0, 0)) }
+  assert.ok(tineGroundClearance({ ...level, tip: { pose: pitched } }) < 0)
 })
 
 test('rigGeometryMismatches flags a re-exported model', () => {

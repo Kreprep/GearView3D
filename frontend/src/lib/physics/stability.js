@@ -60,7 +60,11 @@ export function stabilityModel(ratedCapacityKg = STABILITY_DEFAULTS.ratedCapacit
  * the truck to the right).
  *
  * A margin is 1 with nothing acting and 0 at the point of tipping.
- * `tipping` is null, 'forward', 'left' or 'right'.
+ * `tipping` is null, 'forward', 'left' or 'right', and `tipAcceleration` how
+ * fast the truck is starting to rotate that way (rad/s^2): the moment left
+ * over once the truck's own weight is beaten, over the inertia of truck and
+ * load about the edge they turn on. `centreOfGravityHeight` is the combined
+ * centre of gravity's height, in metres.
  */
 export function stabilityMargins(model, load, { decel = 0, lateralAccel = 0 } = {}) {
   const loadKg = load?.massKg ?? 0
@@ -71,6 +75,8 @@ export function stabilityMargins(model, load, { decel = 0, lateralAccel = 0 } = 
   const restoring = model.massKg * model.cgBehindFrontAxle
   const overturning = loadKg * loadForward + (Math.max(decel, 0) / GRAVITY) * inertia
   const longitudinalMargin = 1 - overturning / restoring
+  const aboutFrontAxle =
+    model.massKg * (model.cgBehindFrontAxle ** 2 + model.cgHeight ** 2) + loadKg * (loadForward ** 2 + loadHeight ** 2)
 
   // The combined centre of gravity: how far ahead of the front axle, how
   // high, and how far off the centreline.
@@ -90,8 +96,29 @@ export function stabilityMargins(model, load, { decel = 0, lateralAccel = 0 } = 
   const lateralMargin = reach > 0 ? 1 - demand / reach : -Infinity
 
   let tipping = null
-  if (longitudinalMargin < 0 && longitudinalMargin <= lateralMargin) tipping = 'forward'
-  else if (lateralMargin < 0) tipping = towardRight ? 'right' : 'left'
+  let tipAcceleration = 0
+  if (longitudinalMargin < 0 && longitudinalMargin <= lateralMargin) {
+    tipping = 'forward'
+    tipAcceleration = (GRAVITY * (overturning - restoring)) / aboutFrontAxle
+  } else if (lateralMargin < 0) {
+    tipping = towardRight ? 'right' : 'left'
+    const arm = Math.max(reach, 0)
+    tipAcceleration = (GRAVITY * (demand - arm)) / (height ** 2 + arm ** 2)
+  }
 
-  return { longitudinalMargin, lateralMargin, tipping }
+  return { longitudinalMargin, lateralMargin, tipping, tipAcceleration, centreOfGravityHeight: height }
+}
+
+// The least roll rate (rad/s) that carries a body standing on the floor over
+// onto its side: enough to lift a centre of gravity `height` up, and
+// `edgeDistance` in from the edge it rolls on, to directly above that edge.
+// Metres in.
+//
+// The stability triangle says when a truck starts to go over. What it then
+// has to get past is its own outer wheels: a rear axle only swings so far
+// before the truck is standing on the wheels of one side. So the edge that
+// matters for whether it ends on its side is the body's, not the triangle's.
+export function rollRateOver(edgeDistance, height) {
+  const radius = Math.hypot(edgeDistance, height)
+  return Math.sqrt(2 * GRAVITY * (radius - height)) / radius
 }

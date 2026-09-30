@@ -103,12 +103,17 @@ export function createSimState(course) {
     // `liftRate` is how fast the carriage is moving (scene units per second):
     // a hydraulic valve opens and closes over a moment, not at once.
     forks: { height: 0, tilt: 0, liftRate: 0 },
-    // The tip-over: the truck pitching about its front axle ('forward') or
-    // rolling about a side of its stability triangle ('left' / 'right').
-    tip: { active: false, axis: 'forward', angle: 0, vel: 0 },
-    // The stability margins of the last step (lib/physics/stability.js), and
-    // how long the truck has been past the point of tipping.
-    stability: { longitudinalMargin: 1, lateralMargin: 1, tipping: null, unstableFor: 0 },
+    // The tip-over. `axis` is which way the stability model saw it go
+    // ('forward', 'left' or 'right'), `rate` and `yawRate` the rotation it
+    // starts with (rad/s). From then on the truck is a body in the physics
+    // world: `pose` is where that body is ({ position, quaternion }, null
+    // until the first step after the onset) and `angle` how far it is off
+    // upright.
+    tip: { active: false, axis: null, rate: 0, yawRate: 0, pose: null, angle: 0 },
+    // The stability margins of the last step (lib/physics/stability.js), how
+    // long the truck has been past the point of tipping, and the rotation
+    // the overturning moment has given it in that time (rad/s).
+    stability: { longitudinalMargin: 1, lateralMargin: 1, tipping: null, unstableFor: 0, tipRate: 0 },
     failed: false,
     failReason: null,
     checkpointIndex: 0,

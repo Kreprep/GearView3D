@@ -11,9 +11,20 @@ const boxBetween = ([x0, x1], [y0, y1], [z0, z1]) => ({
   half: [Math.abs(x1 - x0) / 2, Math.abs(y1 - y0) / 2, Math.abs(z1 - z0) / 2],
 })
 
-// The truck's body over its footprint (the vehicle profile's half-extents).
-export function chassisCollider({ halfWidth, halfLength }) {
-  return boxBetween([-halfWidth, halfWidth], CHASSIS_Y, [-halfLength, halfLength])
+// The truck's body over its footprint (the vehicle profile's half-extents),
+// from `bottom` up.
+export function chassisCollider({ halfWidth, halfLength }, bottom = CHASSIS_Y[0]) {
+  return boxBetween([-halfWidth, halfWidth], [bottom, CHASSIS_Y[1]], [-halfLength, halfLength])
+}
+
+// Where a truck stands: its two front wheels' contact patches and the rear
+// axle's pivot, in its own frame. `geometry` is the rig's.
+export function truckFeet({ frontAxleZ, rearAxleZ, frontTrackHalf }) {
+  return [
+    [frontTrackHalf, 0, frontAxleZ],
+    [-frontTrackHalf, 0, frontAxleZ],
+    [0, 0, rearAxleZ],
+  ]
 }
 
 // The two tines and the load backrest in the carriage body's frame, which is

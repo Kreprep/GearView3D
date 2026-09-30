@@ -1,5 +1,4 @@
 import { DEFAULT_RIG } from '../../data/vehicleProfile.js'
-import { TIP_PIVOT_Y, TIP_PIVOT_Z } from './constants.js'
 
 // forklift.glb's rig geometry as the simulation needs it, as constants, so
 // the sim can run without the model loaded (headless, in node --test).
@@ -16,7 +15,6 @@ import { TIP_PIVOT_Y, TIP_PIVOT_Z } from './constants.js'
 // (rigGeometryMismatches below).
 export const FORKLIFT_RIG_GEOMETRY = {
   mastFoot: DEFAULT_RIG.mastFoot,
-  tipPivot: [0, TIP_PIVOT_Y, TIP_PIVOT_Z],
   // Tine tip ahead of the truck origin, and the length of tine a load can
   // sit on (tip back to the carriage face).
   forkTipOffset: 0.6436886749311639,
@@ -28,8 +26,9 @@ export const FORKLIFT_RIG_GEOMETRY = {
   frontAxleZ: 0.195,
   rearAxleZ: -0.188,
   // Half the front track (the front wheels' centres are at x +/-0.119): with
-  // the rear axle's pivot, the stability triangle a sideways tip-over rolls
-  // about. Measured off forklift.glb on 2026-09-30.
+  // the rear axle's pivot, the stability triangle the truck stands on, and
+  // rolls about a side of when it tips over. Measured off forklift.glb on
+  // 2026-09-30.
   frontTrackHalf: 0.119,
 }
 

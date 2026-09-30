@@ -70,6 +70,25 @@ export function stepDrive(state, world, controls, dt) {
   const turnInput = controlsLocked ? 0 : controls.steer
   const prevSpeed = truck.prevSpeed
 
+  // A truck that has tipped over is the physics engine's (stepPhysics reads
+  // its pose and speed back into state): nothing here moves it.
+  if (state.tip.active) {
+    Object.assign(frame, {
+      controls,
+      controlsLocked,
+      turnInput,
+      prevSpeed,
+      lateralAccel: 0,
+      yawRate: 0,
+      forwardX: Math.sin(truck.heading),
+      forwardZ: Math.cos(truck.heading),
+      nextHeading: truck.heading,
+      nextX: truck.x,
+      nextZ: truck.z,
+    })
+    return
+  }
+
   // The rear wheels follow the steering (hydraulic, so only with the engine
   // running) with a short lag.
   const steerTarget = truck.engineOn && !controlsLocked ? turnInput * MAX_STEER_ANGLE * STEER_SIGN : 0
