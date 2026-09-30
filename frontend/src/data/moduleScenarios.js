@@ -91,8 +91,8 @@ export const moduleScenarioSteps = {
       title: 'Pallet Pickup & Placement',
       objective: 'Pick up a pallet with the forks and place it in the marked drop zone.',
       instructions:
-        'Drive up to the pallet with the forks lowered (F), slide them all the way under the load, raise with R to lift, carry the pallet to the drop zone, lower with F until it rests on the ground, tilt the mast forward with G to let it off the forks, then reverse away.',
-      hint: 'Approach the pallet slowly and squarely - the forks only engage when they are low and centered under the load. Setting it back down takes both moves: lower it onto the ground, then tilt forward.',
+        'Drive up to the pallet with the forks lowered (F), slide them all the way into its pockets, raise a little with R to lift, tilt the mast back with T, carry the pallet to the drop zone, level the mast with G, lower with F until the pallet rests on the ground and the forks are free, then reverse straight out.',
+      hint: 'Approach the pallet at a crawl and squarely - the forks only go in when they are low, level and lined up with the pockets, and hitting the pallet at speed fails the attempt. To set it down, level the mast first: with the mast tilted back the fork tips stay caught under the load.',
     },
     {
       id: 'summary',
@@ -109,22 +109,22 @@ export const moduleScenarioSteps = {
       objective: 'Understand rated capacity, load stability, and the fail conditions in this assessment.',
       instructions:
         'Review why overloading tips a forklift forward, why cones must never be struck, and why sudden braking throws the load off the forks. Any of these fails the attempt.',
-      hint: 'The counterweight only balances loads up to the rated capacity shown in the HUD.',
+      hint: 'The counterweight only balances loads up to the rated capacity on the capacity plate, and less than that when the load sits further out along the forks.',
     },
     {
       id: 'precision-carry',
       title: 'Precision Carry',
       objective: 'Carry a pallet through a cone-lined lane and deliver it without a single fail condition.',
       instructions:
-        'Pick up the pallet, carry it down the cone corridor to the drop zone, lower it with F until it rests on the ground, tilt forward with G to release it, and reverse away. Hitting a cone or braking hard while carrying fails the attempt - use Reset Attempt and try again.',
-      hint: 'Ease off W early and let the forklift coast instead of slamming S at speed.',
+        'Pick up the pallet, carry it low and tilted back down the cone corridor to the drop zone, level the mast with G, lower it with F until it rests on the ground and the forks are free, and reverse straight out. Hitting a cone, losing the load or travelling fast with the forks raised fails the attempt - use Reset Attempt and try again.',
+      hint: 'Ease off W early and let the forklift coast instead of slamming S at speed: a load slides on the forks under hard braking, and one that is not seated all the way comes off.',
     },
     {
       id: 'load-limits',
       title: 'Load Limits',
       objective: 'Judge which pallet is within the rated capacity and deliver it safely.',
       instructions:
-        'Three pallets are labeled with their weight. The forklift capacity is shown in the HUD. Lift a pallet within capacity and deliver it to the drop zone. Lifting the overweight pallet will tip the forklift and fail the attempt.',
+        'Three pallets are labeled with their weight. The capacity plate on the dashboard shows what the forklift may lift. Lift a pallet within capacity and deliver it to the drop zone. Lifting the overweight pallet fails the attempt.',
       hint: 'Read the weight labels before driving in - the heaviest pallet exceeds the rated capacity.',
     },
     {
@@ -132,7 +132,7 @@ export const moduleScenarioSteps = {
       title: 'Rack Storage',
       objective: 'Raise a pallet to its assigned shelf height and store it in the correct rack level.',
       instructions:
-        'Pick up the pallet, raise it with R just above the target shelf, drive it into the bay, then lower with F until it rests on the shelf and tilt forward with G to set it down. Racking has a bottom, middle, and top shelf - this exercise is graded on the middle shelf.',
+        'Pick up the pallet and carry it low to the rack. Stop in front of the bay, raise it with R just above the target shelf, drive in until the rack stops the truck, level the mast with G, lower with F until the load rests on the shelf and the forks are free, then reverse straight out. Racking has a bottom, middle, and top shelf - this exercise is graded on the middle shelf.',
       hint: 'Watch the pallet through the chase camera as you raise it - line it up with the target ring floating at shelf height before driving in, and stop short of the uprights: the forks do the reaching, not the truck.',
     },
     {
@@ -140,7 +140,7 @@ export const moduleScenarioSteps = {
       title: 'Top Shelf Storage',
       objective: 'Raise a pallet to the top shelf and store it there.',
       instructions:
-        'Pick up the pallet, hold R to raise it just above the top shelf, drive it into the bay, then lower with F until it rests on the shelf and tilt forward with G to set it down. This is a fuller lift than the middle shelf, so give the forks time to reach height before driving in.',
+        'Pick up the pallet and carry it low to the rack. Stop in front of the bay, hold R to raise it just above the top shelf, drive in until the rack stops the truck, level the mast with G, lower with F until the load rests on the shelf and the forks are free, then reverse straight out. This is a fuller lift than the middle shelf, so give the forks time to reach height before driving in.',
       hint: 'Hold R until the carried pallet lines up with the top target ring - it takes longer to reach than the middle shelf.',
     },
     {

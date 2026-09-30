@@ -19,6 +19,33 @@ import { translate } from '../i18n/translate.js'
 // left the tines short of the bay they were supposed to reach into.
 export const DEFAULT_FOOTPRINT = { halfWidth: 0.15, halfLength: 0.29 }
 
+// What the stability model (lib/physics/stability.js) and the load chart
+// (lib/physics/loadChart.js) know about the truck, in kilograms and metres.
+// The reference truck is the Toyota 8FGU25 (docs/revisions/
+// post-defense-plan.md, section 2): its figures are from public spec
+// listings, and the rest are GearView defaults, marked.
+export const STABILITY_DEFAULTS = {
+  serviceWeightKg: 3560, // 8FGU25 (public listing)
+  ratedCapacityKg: 2270, // 8FGU25: 5,000 lb
+  ratedLoadCentre: 0.61, // 8FGU25: 24 in
+  wheelbase: 1.65, // 8FGU25 (public listing)
+  // Front axle to the fork face, and the front track: measured off
+  // forklift.glb (0.113 and 0.238 scene units).
+  frontOverhang: 0.45,
+  frontTrack: 0.95,
+  // The unladen centre of gravity's height is not published. GearView
+  // default: low, as a counterbalance truck's is (counterweight, engine and
+  // drive axle), and chosen so an unladen truck swerved as hard as the
+  // keyboard steers at top speed stays on its wheels with a reserve.
+  cgHeight: 0.45,
+  // What the rating is taken to guarantee (GearView defaults): the rated
+  // load, carried with its centre of gravity this high, held with this
+  // reserve under this much braking, in g. 0.25 g is service braking.
+  travelLoadHeight: 0.6,
+  ratingDecel: 0.25,
+  ratingReserve: 1.1,
+}
+
 // Node names the rig builder looks for in the GLB, plus the world-space mast
 // foot the tilt pivot sits on.
 export const DEFAULT_RIG = {
@@ -97,9 +124,13 @@ export function defaultFailMessages(lang) {
       title: translate(lang, 'driving.fail.unsecuredLoad.title'),
       message: translate(lang, 'driving.fail.unsecuredLoad.message'),
     },
-    'load-tipping': {
-      title: translate(lang, 'driving.fail.loadTipping.title'),
-      message: translate(lang, 'driving.fail.loadTipping.message'),
+    'tip-over': {
+      title: translate(lang, 'driving.fail.tipOver.title'),
+      message: translate(lang, 'driving.fail.tipOver.message'),
+    },
+    'pallet-impact': {
+      title: translate(lang, 'driving.fail.palletImpact.title'),
+      message: translate(lang, 'driving.fail.palletImpact.message'),
     },
     'high-travel': {
       title: translate(lang, 'driving.fail.highTravel.title'),

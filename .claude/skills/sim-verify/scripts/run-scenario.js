@@ -16,8 +16,9 @@ async (page) => {
   const BASE = 'http://localhost:5173'
 
   // Each action: { press } taps a key; { hold, until, timeout } holds a key
-  // until the JS expression `until` (over `d` = window.__drivingDebug) is
-  // true; { wait } sleeps; { set } calls __drivingDebugSet mid-run.
+  // (or several: hold: ['w', 'a']) until the JS expression `until` (over
+  // `d` = window.__drivingDebug) is true; { wait } sleeps; { set } calls
+  // __drivingDebugSet mid-run.
   // `expect` is a list of JS expressions over `d` that must all be true;
   // they can also read `a`, the audio engine's window.__audioDebug(), `l`,
   // the safety signs' layout over the run ({ maxSigns, overlap }), and `p`,
@@ -34,6 +35,29 @@ async (page) => {
   // set the switches with __drivingDebugSet ({ seatbelt, parkingBrake,
   // direction }), as cone-fail does.
   const START = [{ press: 'b' }, { press: 'Space' }, { press: 'e' }, { press: 'Space' }]
+
+  // Since Phase 7 pallets and cones are physics bodies. A held W cannot creep
+  // the forks into a pallet (a learner feathers it, and striking a pallet at
+  // speed is a fail), so the pallet scenarios warp the truck to where its
+  // lowered forks are already in the pockets, which touches nothing, and
+  // use real keys from there. FORKS_IN is that place for each course's
+  // pallet: its near face, less the fork heel's 0.308 and a centimetre.
+  // A load on the forks goes with a warp.
+  const FORKS_IN = { precisionCarry: 4.5395, loadLimitsHeavy: 6.5645, palletPickup: 9.5395, rackStorage: 5.5395 }
+  // Up to travel height (the valve coasts the carriage on to about 0.05) and
+  // the mast back.
+  const PICK_UP = [
+    { hold: 'r', until: 'd.forkHeight >= 0.035', timeout: 5000 },
+    { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
+    { wait: 300 },
+  ]
+  // Level the mast, lower until the floor has the load and the forks hang
+  // free, back straight out.
+  const SET_DOWN = [
+    { hold: 'g', until: 'd.tilt >= -0.002', timeout: 5000 },
+    { hold: 'f', until: 'd.forkHeight <= 0', timeout: 5000 },
+    { hold: 's', until: 'd.deliveredCount >= 1 || d.z < 16.5', timeout: 10000 },
+  ]
   const SCENARIOS = {
     smoke: {
       module: 'load-handling', step: 'Accelerate Course',
@@ -77,61 +101,90 @@ async (page) => {
     },
     'pallet-pickup': {
       module: 'pallet-testing', step: 'Precision Carry',
-      setup: { x: 0, z: 4.0, heading: 0 },
-      actions: [
-        ...START,
-        { hold: 'w', until: 'd.z > 4.1 && d.speed === 0', timeout: 8000 },
-        { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
-        { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
-      ],
-      expect: ["d.palletStates[0] === 'carried'", "d.grip === 'secure'", 'd.carriedIndex === 0', '!d.failed'],
+      setup: { x: 0, z: FORKS_IN.precisionCarry, heading: 0 },
+      actions: [...START, ...PICK_UP],
+      expect: ["d.palletStates[0] === 'carried'", 'd.palletOnForks[0]', 'd.palletHeights[0] > 0.02', "d.grip === 'secure'", 'd.carriedIndex === 0', '!d.failed'],
     },
     'pallet-deliver': {
       module: 'pallet-testing', step: 'Precision Carry',
-      setup: { x: 0, z: 4.0, heading: 0 },
+      setup: { x: 0, z: FORKS_IN.precisionCarry, heading: 0 },
       actions: [
         ...START,
-        { hold: 'w', until: 'd.z > 4.1 && d.speed === 0', timeout: 8000 },
-        { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
-        { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
-        // Warp the laden truck to just short of the drop zone; the load
-        // follows the forks on the next step.
-        { set: { x: 0, z: 18.2, speed: 0 } },
+        ...PICK_UP,
+        // Warp the laden truck to just short of the drop zone's centre; the
+        // load goes with the forks.
+        { set: { x: 0, z: 18.4, speed: 0 } },
         { wait: 300 },
-        { hold: 'f', until: 'd.forkHeight <= 0', timeout: 5000 },
-        { hold: 'g', until: 'd.tilt >= 0.08', timeout: 5000 },
-        { hold: 's', until: 'd.deliveredCount >= 1 || d.z < 16.8', timeout: 10000 },
+        ...SET_DOWN,
       ],
-      expect: ['d.deliveredCount === 1', "d.palletStates[0] === 'delivered'", '!d.failed'],
+      expect: ['d.deliveredCount === 1', "d.palletStates[0] === 'delivered'", 'Math.abs(d.palletHeights[0]) < 0.002', '!d.failed'],
     },
     overload: {
       module: 'pallet-testing', step: 'Load Limits',
-      setup: { x: 0, z: 6.0, heading: 0 },
-      actions: [
-        ...START,
-        { hold: 'w', until: 'd.z > 6.05 && d.speed === 0', timeout: 8000 },
-        { hold: 'r', until: 'd.failed', timeout: 5000 },
-        { wait: 1500 },
-      ],
-      expect: ["d.failReason === 'overload'", 'd.tipAngle > 0.5'],
+      setup: { x: 0, z: FORKS_IN.loadLimitsHeavy, heading: 0 },
+      actions: [...START, { hold: 'r', until: 'd.failed', timeout: 5000 }, { wait: 500 }],
+      expect: ["d.failReason === 'overload'", 'd.load && d.load.overCapacity'],
     },
     'rack-store': {
       module: 'pallet-testing', step: 'Rack Storage',
-      setup: { x: 0, z: 5.0, heading: 0 },
+      setup: { x: 0, z: FORKS_IN.rackStorage, heading: 0 },
       actions: [
         ...START,
-        { hold: 'w', until: 'd.z > 5.1 && d.speed === 0', timeout: 8000 },
-        { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
-        { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
-        // Warp the laden truck to where the rack face stops it. Driving up
-        // to it with W reaches the rack-strike speed (0.3) in a few
-        // centimetres, so a held key can't creep; a learner feathers it.
-        { set: { x: 0, z: 14.36, speed: 0 } },
-        { hold: 'r', until: 'd.forkHeight >= 0.375', timeout: 5000 },
-        // Forward tilt stops at 6 degrees (0.1047 rad) since Phase 4.
-        { hold: 'g', until: 'd.deliveredCount >= 1 || d.tilt >= 0.104', timeout: 5000 },
+        ...PICK_UP,
+        // Warp the laden truck to just short of the rack, raise the load
+        // above the middle shelf, then to where the rack's face stops the
+        // truck: the load is over the shelf. (Driving up to it with a held
+        // W passes the rack-strike speed; a learner feathers it.)
+        { set: { x: 0, z: 13.4, speed: 0 } },
+        { hold: 'r', until: 'd.forkHeight >= 0.415', timeout: 8000 },
+        { wait: 400 },
+        { set: { x: 0, z: 14.369, speed: 0 } },
+        { wait: 300 },
+        { hold: 'g', until: 'd.tilt >= -0.002', timeout: 5000 },
+        // Down until the shelf has the load and the tines hang free in it.
+        { hold: 'f', until: 'd.forkHeight <= 0.372', timeout: 5000 },
+        { hold: 's', until: 'd.deliveredCount >= 1 || d.z < 13.2', timeout: 10000 },
       ],
-      expect: ['d.deliveredCount === 1', "d.palletStates[0] === 'delivered'", '!d.failed'],
+      expect: ['d.deliveredCount === 1', "d.palletStates[0] === 'delivered'", 'Math.abs(d.palletHeights[0] - 0.3698) < 0.003', '!d.failed'],
+    },
+    // --- Physics (Phase 7) --------------------------------------------------
+    'pallet-impact': {
+      module: 'load-handling', step: 'Pallet Pickup & Placement',
+      // Forks too high for the pockets, driven at the pallet: the tines meet
+      // its face at speed.
+      setup: { x: 0, z: 7, heading: 0, forkHeight: 0.05 },
+      actions: [...START, { hold: 'w', until: 'd.failed', timeout: 10000 }, { wait: 600 }],
+      expect: ["d.failReason === 'pallet-impact'", 'd.palletPositions[0][2] > 10.05'],
+    },
+    'load-drop': {
+      module: 'pallet-testing', step: 'Precision Carry',
+      // The forks two thirds of the way in and the mast left upright: full
+      // brake from speed slides the load off the tines.
+      setup: { x: 0, z: 4.426, heading: 0 },
+      actions: [
+        ...START,
+        { hold: 'r', until: 'd.forkHeight >= 0.035', timeout: 5000 },
+        { wait: 300 },
+        { hold: 'w', until: 'd.speed >= 1.0 || d.failed', timeout: 10000 },
+        { hold: 's', until: 'd.failed || d.speed < 0.02', timeout: 6000 },
+        { wait: 1500 },
+      ],
+      expect: ["d.failReason === 'load-dropped'", "d.dangers['load-shifting'] >= 1", '!d.palletOnForks[0]', '!l.overlap'],
+    },
+    'tip-over': {
+      module: 'load-handling', step: 'Pallet Pickup & Placement',
+      // A load carried high through a swerve at speed: the truck rolls onto
+      // its right side. The tip-risk sign comes up first.
+      setup: { x: 0, z: FORKS_IN.palletPickup, heading: 0 },
+      actions: [
+        ...START,
+        { hold: 'r', until: 'd.forkHeight >= 0.7', timeout: 10000 },
+        { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
+        { hold: 'w', until: 'd.speed >= 1.0 || d.failed', timeout: 10000 },
+        { hold: ['w', 'a'], until: 'd.failed', timeout: 6000 },
+        { wait: 2000 },
+      ],
+      expect: ["d.failReason === 'tip-over'", "d.tipAxis === 'right'", 'd.tipAngle > 1', "d.dangers['tip-risk'] >= 1"],
     },
     interlock: {
       module: 'load-handling', step: 'Accelerate Course',
@@ -165,7 +218,7 @@ async (page) => {
         'd.engineOn',
         "a.state === 'running'",
         "['denied', 'keyClick', 'seatbelt', 'parkingBrake', 'engineStart', 'horn'].every((name) => a.played.includes(name))",
-        'a.loops.length === 6 && a.loops.every((loop) => loop.playing)',
+        'a.loops.length === 7 && a.loops.every((loop) => loop.playing)',
         "a.loops.find((loop) => loop.name === 'reverseBeeper').gain > 0",
         "a.loops.find((loop) => loop.name === 'engineIdle').gain > 0",
       ],
@@ -208,24 +261,25 @@ async (page) => {
     },
     'sign-load': {
       module: 'pallet-testing', step: 'Precision Carry',
-      setup: { x: 0, z: 4.0, heading: 0 },
+      setup: { x: 0, z: FORKS_IN.precisionCarry, heading: 0 },
       // Pick the pallet up and drive off with the forks high and the mast
-      // upright: "Lower the forks for travel" and "Tilt the mast back".
+      // upright: "Lower the forks for travel" and "Tilt the mast back". The
+      // truck is stopped again before it is fast enough for the highTravel
+      // fail.
       actions: [
         ...START,
-        { hold: 'w', until: 'd.z > 4.1 && d.speed === 0', timeout: 8000 },
         { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
-        { hold: 'w', until: "d.violations['mast-not-back'] >= 1 && d.violations['forks-high-travel'] >= 1", timeout: 5000 },
+        { hold: 'w', until: "(d.violations['mast-not-back'] >= 1 && d.violations['forks-high-travel'] >= 1) || d.speed > 0.3", timeout: 5000 },
         { hold: 's', until: 'd.speed < 0.06', timeout: 5000 },
       ],
       expect: ["d.violations['forks-high-travel'] >= 1", "d.violations['mast-not-back'] >= 1", 'l.maxSigns === 2', '!l.overlap', '!d.failed'],
     },
     'sign-overload': {
       module: 'pallet-testing', step: 'Load Limits',
-      setup: { x: 0, z: 6.0, heading: 0 },
-      // Forks into the 1,500 kg pallet: "Do not lift", before anything is
+      setup: { x: 0, z: FORKS_IN.loadLimitsHeavy, heading: 0 },
+      // Forks in the 1,500 kg pallet: "Do not lift", before anything is
       // lifted.
-      actions: [...START, { hold: 'w', until: 'd.z > 6.05 && d.speed === 0', timeout: 8000 }, { wait: 500 }],
+      actions: [...START, { wait: 600 }],
       expect: ["d.signs.some((sign) => sign.id === 'overload' && sign.severity === 'danger')", 'd.dangers.overload === 1', '!d.failed', '!l.overlap'],
     },
     'sign-reverse': {
@@ -242,20 +296,20 @@ async (page) => {
     },
     'sign-release': {
       module: 'pallet-testing', step: 'Precision Carry',
-      setup: { x: 0, z: 4.0, heading: 0 },
-      // pallet-deliver's drive up to the load resting in the drop zone: the
-      // hint to tilt the mast forward comes up, is not counted, and clears
-      // once the load is off the forks.
+      setup: { x: 0, z: FORKS_IN.precisionCarry, heading: 0 },
+      // A load lowered into the drop zone with the mast still tilted back:
+      // the fork tips stay caught under it, and the hint to tilt the mast
+      // forward comes up. It is not counted, and clears once the mast is
+      // level and the load is off the forks.
       actions: [
         ...START,
-        { hold: 'w', until: 'd.z > 4.1 && d.speed === 0', timeout: 8000 },
-        { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
-        { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
-        { set: { x: 0, z: 18.2, speed: 0 } },
+        ...PICK_UP,
+        { set: { x: 0, z: 18.4, speed: 0 } },
         { wait: 300 },
         { hold: 'f', until: "d.signs.some((sign) => sign.id === 'release-load')", timeout: 6000 },
-        { hold: 'g', until: "d.palletStates[0] !== 'carried'", timeout: 5000 },
-        { wait: 800 },
+        { hold: 'g', until: 'd.tilt >= -0.002', timeout: 5000 },
+        { hold: 'f', until: 'd.forkHeight <= 0', timeout: 5000 },
+        { wait: 1000 },
       ],
       expect: ["d.palletStates[0] === 'released'", "!d.signs.some((sign) => sign.id === 'release-load')", "d.violations['release-load'] === undefined", 'l.maxSigns >= 1', '!l.overlap', '!d.failed'],
     },
@@ -389,7 +443,8 @@ async (page) => {
     } else if (action.set) {
       await setState(action.set)
     } else if (action.hold) {
-      await page.keyboard.down(action.hold)
+      const keys = [].concat(action.hold)
+      for (const key of keys) await page.keyboard.down(key)
       let reached = true
       // Signs come and go inside a hold; watch them while it runs.
       const watching = setInterval(() => sampleLayout().catch(() => {}), 100)
@@ -406,8 +461,8 @@ async (page) => {
         reached = false
       }
       clearInterval(watching)
-      await page.keyboard.up(action.hold)
-      if (!reached) log.push(`timed out holding ${action.hold.toUpperCase()} until ${action.until}`)
+      for (const key of keys) await page.keyboard.up(key)
+      if (!reached) log.push(`timed out holding ${keys.join('+').toUpperCase()} until ${action.until}`)
     }
     await sampleLayout()
     const d = await debug()

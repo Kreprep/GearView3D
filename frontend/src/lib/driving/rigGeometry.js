@@ -27,6 +27,10 @@ export const FORKLIFT_RIG_GEOMETRY = {
   // the front axle line. Measured in Blender on 2026-09-29.
   frontAxleZ: 0.195,
   rearAxleZ: -0.188,
+  // Half the front track (the front wheels' centres are at x +/-0.119): with
+  // the rear axle's pivot, the stability triangle a sideways tip-over rolls
+  // about. Measured off forklift.glb on 2026-09-30.
+  frontTrackHalf: 0.119,
 }
 
 export const wheelbase = (geometry = FORKLIFT_RIG_GEOMETRY) => geometry.frontAxleZ - geometry.rearAxleZ

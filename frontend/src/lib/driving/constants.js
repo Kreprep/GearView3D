@@ -1,10 +1,13 @@
 import { G, kmh, mps, mps2 } from './units.js'
 
-// Tuning constants for the driving simulation's kinematic "physics" (no
-// physics engine yet). The headless core (simCore.js) runs the steps that read
-// them - stepDrive.js / stepCollision.js / stepForks.js / stepPallet.js /
-// stepFail.js / stepGoals.js - at a fixed step (simLoop.js). Grouped by which
-// step reads them. New constants are written in real units via units.js.
+// Tuning constants for the driving simulation's own model: the drive train,
+// steering, lift and tilt, which the truck follows kinematically. (Loads,
+// cones and what they do are the physics engine's: lib/physics/ and
+// data/physicsProfile.js.) The headless core (simCore.js) runs the steps that
+// read them - stepDrive.js / stepCollision.js / stepForks.js / stepPallet.js /
+// stepStability.js / stepFail.js / stepGoals.js - at a fixed step
+// (simLoop.js). Grouped by which step reads them. New constants are written
+// in real units via units.js.
 //
 // The drive, lift and tilt numbers are the reference truck's, the Toyota
 // 8FGU25 (docs/revisions/post-defense-plan.md, section 2), taken from public
@@ -67,75 +70,63 @@ export const KEYBOARD_YAW_FULL_SPEED = 1.5 // the old MAX_SPEED, where the old y
 export const FORK_MAX_HEIGHT = 0.8
 export const LIFT_SPEED = mps(0.6) // 8FGU25 lift speed, laden (public listing)
 export const LOWER_SPEED = mps(0.5) // 8FGU25 lowering speed, laden (public listing)
+// The lift valve opens and closes over this long rather than at once: a load
+// on the tines hops if the carriage stops dead (Phase 2 finding).
+export const LIFT_RAMP_SECONDS = 0.2
 export const MAST_LIFT_RATIO = 0.5
 
 // Mast tilt: rotation.x on the rig's tiltPivot (see buildVehicleRig). Negative
 // tilts the mast top back toward the operator (secures a carried load),
 // positive tilts it forward (used to level the forks against a rack/floor
-// before engaging a pallet). A load is only considered "secured" against a
-// sudden-stop fail once tilted back past TILT_SECURE_ANGLE.
+// before engaging a pallet). A load counts as secured for travel once the
+// mast is tilted back past TILT_SECURE_ANGLE.
 export const TILT_FORWARD_MAX = deg(6) // 8FGU25 (public listing)
 export const TILT_BACK_MAX = deg(11) // 8FGU25 (public listing)
 export const TILT_SPEED = deg(4) // GearView default, per second
 export const TILT_SECURE_ANGLE = -0.06
 
-// stepPallet: pallet pickup gameplay thresholds (no physics engine - see
-// lib/loadPhysics.js for how far the forks are in, and data/palletProfile.js
-// for the tiers it grades that against). These are the viewer's own
-// fork-height gates.
-export const FORK_ENGAGE_HEIGHT = 0.05
-export const LIFT_THRESHOLD = 0.12
-export const CLEAR_DISTANCE = 0.8
-// How far a carried pallet sits above the tines - just enough to keep the two
-// surfaces from z-fighting.
-export const PALLET_CARRY_Y = 0
+// stepPallet: what the load-handling fails read (the load itself is the
+// physics engine's, lib/physics/).
 // Braking harder than 0.4 g while carrying is a sudden stop: full pedal
 // (0.5 g) is, ordinary service braking (0.35 g) is not. GearView default.
+// It names why a load was lost (palletProfile.js, LOAD_LOSS_WINDOW_SECONDS).
 export const SUDDEN_STOP_DECEL = 0.4 * G
 // Hard braking only counts from above this speed: 10 km/h, the same fraction
 // of top speed (0.57) the pre-Phase 4 value was. GearView default.
 export const SUDDEN_STOP_MIN_SPEED = kmh(10)
-// Standard travel height: forks should stay low and close to the ground while
-// moving with a load. Above LIFT_THRESHOLD (0.12) so a normal pickup doesn't
-// immediately trip it, well below FORK_MAX_HEIGHT (0.8) - exact value tuned
-// for gameplay feel, not a real-world cm conversion.
-//
-// This is the highTravel *fail*. The forks-high-travel safety sign warns from
-// 50 cm (FORKS_TRAVEL_HEIGHT, data/safetyThresholds.js); the two values unify
-// in Phase 7, since moving this one changes the simulation.
-export const SAFE_TRAVEL_HEIGHT = 0.22
-export const HIGH_TRAVEL_MIN_SPEED = 0.4
-export const LOAD_GRAVITY = 2.0
-export const LOAD_TUMBLE_RATE = 2.6
-export const LOAD_REST_TILT = 0.16
-export const OVERLOAD_TIP_HEIGHT = 0.08
+// The highTravel fail: carrying a load faster than this with the forks above
+// the travel height (FORKS_TRAVEL_HEIGHT in data/safetyThresholds.js, which
+// the forks-high-travel sign shares). GearView default.
+export const HIGH_TRAVEL_MIN_SPEED = kmh(5.8)
 
-// stepFail: tip-over "physics" (Module 4) - still kinematic, no physics
-// engine. Tip-over pivots the whole truck about the front axle; dropped loads
-// follow a simple ballistic arc; cones knock over about their base edge.
+// stepStability / stepFail: the tip-over. The stability model
+// (lib/physics/stability.js) says when the truck is past the point of
+// tipping; it goes over once it has been there this long, since a truck
+// takes a moment to rotate past its balance point and a one-step jolt (a
+// blocked move) is not a tip. GearView default.
+export const TIP_ONSET_SECONDS = 0.25
+// The fall itself is an animation: the truck pitches about its front axle
+// until the forks meet the ground, or rolls about a side of the stability
+// triangle until it lies on its side.
 export const TIP_PIVOT_Y = 0.08
 export const TIP_PIVOT_Z = 0.25
 export const TIP_GRAVITY_ACCEL = 2.4
 export const TIP_MAX_ANGLE = 1.15
+export const TIP_ROLL_MAX_ANGLE = 1.45
 
-// stepCollision: cone/wall/rack/pallet-as-obstacle checks.
-// The 0.7m cone's real base radius, at this scene's metres/4 convention.
-// Combined with the truck's own footprint (from the vehicle profile) in the
-// exact rectangle-vs-point cone check.
+// stepCollision: the truck's body against walls, parked vehicles and racking,
+// in 2D (lib/simCollision.js). Pallets and cones are physics bodies.
+// The cone's radius as the 2D proximity readout sees it.
 export const CONE_RADIUS = 0.0375
 export const CONE_MIN_HIT_SPEED = 0.05
-export const CONE_FALL_SPEED = 6
-export const CONE_FALL_ANGLE = 1.45
 export const WALL_THICKNESS = 0.05 // matches CourseDecorations' wall boxGeometry
 export const WALL_HALF_THICKNESS = WALL_THICKNESS / 2
 export const WALL_HIT_MARGIN = 0.12
-// Solid objects the truck is stopped by rather than driven through: racking
-// (which also fails the attempt, like a wall) and pallets sitting on the floor
-// (which do not - driving into a pallet is how you pick one up). Racking is
-// given a small margin so the body stops just clear of the uprights.
+// Racking is given a small margin so the body stops just clear of the
+// uprights.
 export const RACK_HIT_MARGIN = 0.04
-export const PALLET_NUDGE_MAX = 0.02
-// Above this the pallet is on a shelf or mid-fall, not an obstacle on the floor.
+// Above this a pallet is on a shelf or in the air, not an obstacle on the
+// floor (the proximity readout).
 export const PALLET_SOLID_MAX_Y = 0.1
 
 // stepGoals: secure-parking proficiency (Module 3) - the bay completes when
@@ -178,9 +169,9 @@ export const GRIP_LABEL_KEYS = {
   secure: 'driving.hud.grip.secure',
 }
 
-// TILT_RELEASE_ANGLE comes from data/palletProfile.js (shared with
-// lib/loadPhysics.js's slip grading), so tiltStateName takes it as a
-// parameter rather than importing it here and risking two copies drifting.
+// TILT_RELEASE_ANGLE comes from data/palletProfile.js, so tiltStateName takes
+// it as a parameter rather than importing it here and risking two copies
+// drifting.
 export function tiltStateName(angle, tiltReleaseAngle) {
   if (angle <= TILT_SECURE_ANGLE) return 'back'
   if (angle >= tiltReleaseAngle) return 'forward'

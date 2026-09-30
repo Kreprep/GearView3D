@@ -1,4 +1,5 @@
 import '../../test-helpers/browserGlobals.js'
+import '../../test-helpers/physics.js'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { drivingCourses } from '../../data/drivingCourse.js'
@@ -34,6 +35,7 @@ function watch(scenario, { view = SEATED, course = scenarioCourse(scenario) } = 
   })
   if (scenario.setup) sim.core.debugSet(scenario.setup)
   runScenario(scenario, { observe: sim.observe, frame: sim.frame })
+  sim.dispose()
   return { ...monitor.tally(), edges, mostShown, state: sim.core.state }
 }
 
@@ -45,6 +47,14 @@ const startEngine = [
 ]
 const openCourse = (extra = {}) => ({ id: 'open', start: { position: [0, 0, 0], heading: 0 }, checkpoints: [], ...extra })
 const cone = (x, z) => ({ type: 'cone', position: [x, 0, z] })
+
+// A pallet two metres ahead with the forks already in it: the truck stands
+// where the carriage meets its near face.
+const PALLET = { id: 'load', position: [0, 0, 2], rotation: 0, weightKg: 400 }
+const FORKS_IN = { x: 0, z: 2 - 0.15 - 0.31, heading: 0 }
+const raise = (height) => ({ name: 'raise', keys: hold({ raise: true }), until: (obs) => obs.forkHeight >= height, frames: 600 })
+const lower = (height) => ({ name: 'lower', keys: hold({ lower: true }), until: (obs) => obs.forkHeight <= height, frames: 600 })
+const tiltBack = { name: 'tilt back', keys: hold({ tiltBack: true }), until: (obs) => obs.tilt <= -0.1, frames: 300 }
 
 // --- The scripted drives the characterization test already runs --------------
 
@@ -72,17 +82,48 @@ test('overload: forks into a pallet over the rated capacity', () => {
   assert.equal(dangers.overload, 1)
 })
 
+test('overload: a load within the rating, picked up out at the fork tips', () => {
+  // 600 kg on a 1,000 kg truck is fine seated, and over the chart with the
+  // forks barely half in.
+  const course = openCourse({ capacityKg: 1000, pallets: [{ ...PALLET, weightKg: 600 }] })
+  const pickUp = (z) => ({ course, setup: { ...FORKS_IN, z }, phases: [...startEngine, raise(0.04), { name: 'hold', keys: hold(NO_KEYS), frames: 30 }] })
+  assert.equal(watch(pickUp(FORKS_IN.z)).violations.overload, undefined)
+  assert.equal(watch(pickUp(FORKS_IN.z - 0.14)).dangers.overload, 1)
+})
+
 test('tilt-forward-elevated: a raised load tilted forward away from the rack', () => {
-  const { dangers } = watch(scenarioById('load-tipping'))
+  const scenario = {
+    course: openCourse({ pallets: [PALLET] }),
+    setup: FORKS_IN,
+    phases: [...startEngine, raise(0.4), { name: 'tilt forward', keys: hold({ tiltForward: true }), frames: 90 }],
+  }
+  const { dangers, state } = watch(scenario)
   assert.equal(dangers['tilt-forward-elevated'], 1)
+  assert.equal(state.pallets[0].state, 'carried')
+})
+
+test('tip-risk: a load carried high through a swerve, before the truck goes over', () => {
+  const { dangers, state } = watch(scenarioById('tip-over-turn'))
+  assert.equal(state.failReason, 'tip-over')
+  assert.equal(dangers['tip-risk'], 1)
+  // The same swerve with the load low keeps a margin.
+  assert.equal(watch(scenarioById('turn-lowered')).dangers['tip-risk'], undefined)
+})
+
+test('load-shifting: a load sliding along the tines under a hard stop', () => {
+  const { dangers, state } = watch(scenarioById('load-dropped'))
+  assert.equal(state.failReason, 'load-dropped')
+  assert.equal(dangers['load-shifting'], 1)
+  // Seated and tilted back, the same stop does not move it enough to count.
+  assert.equal(watch(scenarioById('load-held')).dangers['load-shifting'], undefined)
 })
 
 test('forks-high-travel: carrying with the forks well above travel height', () => {
   assert.equal(watch(scenarioById('high-travel')).violations['forks-high-travel'], 1)
 })
 
-test('forks-not-inserted and mast-not-back: a half-inserted load lifted and driven mast-upright', () => {
-  const { violations } = watch(scenarioById('sudden-stop-slip'))
+test('forks-not-inserted and mast-not-back: a load lifted on a short bite and driven mast-upright', () => {
+  const { violations } = watch(scenarioById('load-dropped'))
   assert.equal(violations['forks-not-inserted'], 1)
   assert.equal(violations['mast-not-back'], 1)
 })
@@ -173,7 +214,7 @@ test('tail-swing: turning left with a cone off the right rear corner', () => {
 test('turn-speed: a steering wheel held past half lock above 5 km/h', () => {
   // The keyboard's virtual wheel cannot do this (its lock shrinks with
   // speed), so this drives the core with a wheel's analog controls.
-  const course = openCourse({ speedLimitKmh: 18 })
+  const course = openCourse({ speedLimitKmh: 18, alerts: { overspeed: false } })
   const core = createSimCore(course, defaultVehicleProfile('en'))
   const monitor = createSafetyMonitor(course)
   const drive = (controls, steps) => {
@@ -184,18 +225,39 @@ test('turn-speed: a steering wheel held past half lock above 5 km/h', () => {
   }
   core.command('engineStart')
   drive({ parkingBrake: true }, 1)
-  drive({ throttle: 1, direction: 'F', explicitDirection: true }, 90)
+  // A little over 5 km/h, held there.
+  drive({ throttle: 0.35, direction: 'F', explicitDirection: true }, 240)
   assert.deepEqual(monitor.tally().violations, {})
-  drive({ throttle: 1, direction: 'F', explicitDirection: true, steer: 0.9 }, 45)
+  drive({ throttle: 0.35, direction: 'F', explicitDirection: true, steer: 0.6 }, 45)
   assert.equal(monitor.tally().violations['turn-speed'], 1)
+  core.dispose()
 })
 
-test('release-load: a delivery shows the hint at the drop zone and on the shelf, and does not count it', () => {
+test('release-load: a load lowered onto the drop zone with the mast still back shows the hint, uncounted', () => {
+  const scenario = {
+    course: openCourse({ pallets: [PALLET], dropZone: { position: [0, 0, 2], radius: 0.6 } }),
+    setup: FORKS_IN,
+    phases: [
+      ...startEngine,
+      raise(0.04),
+      tiltBack,
+      lower(0),
+      { name: 'wait', keys: hold(NO_KEYS), frames: 30 },
+      { name: 'level the mast', keys: hold({ tiltForward: true }), until: (obs) => obs.tilt >= -0.002, frames: 300 },
+      { name: 'back out', keys: hold({ back: true }), until: (obs) => obs.deliveredCount >= 1, frames: 600 },
+    ],
+  }
+  const { violations, edges, state } = watch(scenario, { view: CHASE })
+  assert.equal(state.deliveredCount, 1)
+  assert.equal(edges.filter((edge) => edge.id === 'release-load').length, 1)
+  assert.equal(violations['release-load'], undefined)
+})
+
+test('a delivery the way the courses teach it needs no hint', () => {
   for (const id of ['precision-carry-delivery', 'rack-storage-delivery']) {
-    const { violations, edges, state } = watch(scenarioById(id), { view: CHASE })
+    const { edges, state } = watch(scenarioById(id), { view: CHASE })
     assert.equal(state.deliveredCount, 1, id)
-    assert.equal(edges.filter((edge) => edge.id === 'release-load').length, 1, id)
-    assert.equal(violations['release-load'], undefined, id)
+    assert.deepEqual(edges.filter((edge) => edge.id === 'release-load'), [], id)
   }
 })
 
@@ -263,6 +325,7 @@ test('watching a drive does not change it', () => {
   const watched = watch(scenario).state
   const unwatched = createHeadlessDrive(scenarioCourse(scenario))
   runScenario(scenario, { observe: unwatched.observe, frame: unwatched.frame })
+  unwatched.dispose()
   const strip = (state) => JSON.stringify({ ...state, frame: undefined })
   assert.equal(strip(watched), strip(unwatched.core.state))
 })

@@ -1,11 +1,13 @@
 import { Html } from '@react-three/drei'
+import { useT } from '../../i18n'
 
 export function DrivingLoadingPanel() {
+  const t = useT()
   return (
     <Html center>
       <div className="interactive-loading-panel">
         <div />
-        <p>Loading driving simulation</p>
+        <p>{t('driving.hud.loading')}</p>
       </div>
     </Html>
   )

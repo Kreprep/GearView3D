@@ -24,27 +24,10 @@
 // decision is a threshold on the observation.
 
 import { drivingCourses } from '../data/drivingCourse.js'
-import { TILT_FORWARD_MAX } from '../lib/driving/constants.js'
+import { palletPhysics, TINE_HEEL_Z } from '../data/physicsProfile.js'
+import { RACK_LEVEL_HEIGHTS } from '../data/rackProfile.js'
 
 export const SCENARIO_DT = 1 / 60
-
-// Pallet half-extents measured in the browser off the three pallet GLBs
-// (lib/driving/models.js modelFootprint), so the headless run sees the same
-// footprints the viewer measures at runtime.
-export const MEASURED_PALLET_FOOTPRINTS = {
-  light: { halfWidth: 0.14999999664723873, halfDepth: 0.14999998928931055 },
-  medium: { halfWidth: 0.12469142398834228, halfDepth: 0.15001668661695977 },
-  heavy: { halfWidth: 0.1300163514163415, halfDepth: 0.15000000988526271 },
-}
-
-// Same weight bands as palletModelForWeight() in lib/driving/models.js,
-// which imports three.js and so stays out of this file.
-export function measuredPalletFootprint(pallet) {
-  const weight = pallet.weightKg
-  if (typeof weight !== 'number' || weight <= 500) return MEASURED_PALLET_FOOTPRINTS.light
-  if (weight >= 1000) return MEASURED_PALLET_FOOTPRINTS.heavy
-  return MEASURED_PALLET_FOOTPRINTS.medium
-}
 
 const NO_KEYS = Object.freeze({})
 
@@ -115,15 +98,56 @@ const shutDown = [
 ]
 const settle = (frames = 30) => ({ name: 'settle', keys: hold(NO_KEYS), frames })
 
-// Creep forward until the truck is stopped by what is in front of it (a
-// pallet seated against the carriage, or the rack face). Drives at a normal
-// speed up to `fastUntilZ`, then creeps the rest of the way.
-const creepUntilBlocked = (speed = 0.25, fastUntilZ = -Infinity) => ({
+// Creep forward until the truck is stopped by what is in front of it: the
+// rack's face, where its body is held.
+const creepUntilBlocked = (speed = 0.25) => ({
   name: 'creep until blocked',
-  keys: (obs) => speedKeys(obs, obs.z < fastUntilZ ? 0.6 : speed),
+  keys: (obs) => speedKeys(obs, speed),
   until: (obs, phaseFrame) => phaseFrame > 20 && obs.speed === 0,
   frames: 1500,
 })
+
+// Where the truck stands, on a course driven up the +Z axis, with its forks
+// into a pallet: `seated` (0..1) of the way from the pallet's near face at
+// the fork tips to its near face at the carriage.
+const FORK_TIP_Z = 0.6436886749311639
+function forksInAt(pallet, seated = 1) {
+  const nearFace = pallet.position[2] - palletPhysics(pallet).footprint.halfDepth
+  const tipsAtFace = nearFace - FORK_TIP_Z
+  // Stopping short of the carriage by a centimetre: the load is seated, not
+  // shoved.
+  const heelsAtFace = nearFace - TINE_HEEL_Z - 0.0025
+  return tipsAtFace + (heelsAtFace - tipsAtFace) * seated
+}
+
+// Drive the lowered forks into a pallet straight ahead and stop there: at
+// travelling speed to a truck's length short of it, then at a crawl, which is
+// how a load is approached.
+const forksInto = (pallet, seated = 1) => {
+  const stopZ = forksInAt(pallet, seated)
+  return {
+    name: seated === 1 ? 'forks into the pallet' : `forks ${Math.round(seated * 100)}% into the pallet`,
+    keys: (obs) => {
+      const remaining = stopZ - obs.z
+      if (remaining <= 0.012) return speedKeys(obs, 0)
+      return speedKeys(obs, remaining > 1.2 ? 0.6 : Math.max(0.1, Math.min(0.3, remaining * 0.6)))
+    },
+    until: (obs, phaseFrame) => phaseFrame > 20 && stopped(obs) && obs.z >= stopZ - 0.03,
+    frames: 1500,
+  }
+}
+
+// The fork height at which a carried pallet's underside is `clearance` above
+// a rack level's shelf, and at which the tines hang free inside the pockets
+// of a pallet resting on it.
+const PALLET_UNDER_TINE_TOP = 0.0104
+const aboveShelf = (level, clearance = 0.035) => RACK_LEVEL_HEIGHTS[level] + PALLET_UNDER_TINE_TOP + clearance
+const freeOnShelf = (level) => RACK_LEVEL_HEIGHTS[level] + PALLET_UNDER_TINE_TOP - 0.009
+
+// Travel height: let go of the lift key here and the carriage coasts up to
+// about 20 cm as the valve closes, clear of the floor and under the
+// forks-high-travel threshold.
+const TRAVEL_HEIGHT = 0.035
 
 const raiseTo = (height) => ({
   name: `raise to ${height}`,
@@ -146,12 +170,21 @@ const tiltBackTo = (angle) => ({
   frames: 300,
 })
 
-const tiltForwardTo = (angle) => ({
-  name: `tilt forward to ${angle}`,
-  keys: hold({ tiltForward: true }),
-  until: (obs) => obs.tilt >= angle,
-  frames: 300,
-})
+// Setting a load down: level the mast, lower until the surface has the load
+// and the tines hang free in the pockets, then back straight out.
+const levelMast = { name: 'level the mast', keys: hold({ tiltForward: true }), until: (obs) => obs.tilt >= -0.002, frames: 300 }
+const backOut = (distance) => {
+  let from = 0
+  return {
+    name: 'back out',
+    keys: (obs) => speedKeys(obs, -0.25),
+    until: (obs, phaseFrame) => {
+      if (phaseFrame === 0) from = obs.z
+      return from - obs.z >= distance
+    },
+    frames: 900,
+  }
+}
 
 const brakeToStop = {
   name: 'brake to stop',
@@ -160,14 +193,22 @@ const brakeToStop = {
   frames: 600,
 }
 
-const halfInsert = {
-  name: 'half insert',
-  keys: (obs) => speedKeys(obs, obs.z >= 4.33 ? 0 : obs.z < 3.6 ? 0.6 : 0.25),
-  until: (obs, phaseFrame) => phaseFrame > 20 && obs.z >= 4.33 && stopped(obs),
-  frames: 900,
-}
+// Pick a pallet up the way the courses teach: forks all the way in, up to
+// travel height, mast back.
+const pickUp = (pallet) => [forksInto(pallet), raiseTo(TRAVEL_HEIGHT), tiltBackTo(-0.1)]
+// And set it down where the truck stands.
+const setDownOnFloor = [levelMast, lowerTo(0), backOut(0.8), brakeToStop]
+const setDownOnShelf = (level) => [
+  raiseTo(aboveShelf(level)),
+  creepUntilBlocked(0.18),
+  levelMast,
+  lowerTo(freeOnShelf(level)),
+  backOut(0.6),
+  brakeToStop,
+]
 
 const course = (id) => drivingCourses[id]
+const palletOf = (id, index = 0) => (course(id).pallets || [course(id).pallet])[index]
 
 export const drivingScenarios = [
   {
@@ -295,19 +336,14 @@ export const drivingScenarios = [
     course: course('precision-carry'),
     phases: [
       ...startEngine,
-      creepUntilBlocked(0.25, 3.8),
-      raiseTo(0.15),
-      tiltBackTo(-0.1),
+      ...pickUp(palletOf('precision-carry')),
       {
         name: 'carry to the drop zone',
-        keys: driveTo([0, 0, 18.3], { speed: 0.5, stop: true }),
+        keys: driveTo([0, 0, 18.4], { speed: 0.5, stop: true }),
         until: (obs, phaseFrame) => phaseFrame > 30 && stopped(obs),
         frames: 2400,
       },
-      lowerTo(0),
-      tiltForwardTo(0.08),
-      { name: 'back away', keys: (obs) => speedKeys(obs, -0.3), until: (obs) => obs.deliveredCount >= 1 || obs.z < 16.8, frames: 600 },
-      brakeToStop,
+      ...setDownOnFloor,
       settle(),
     ],
   },
@@ -316,7 +352,7 @@ export const drivingScenarios = [
     course: course('load-limits'),
     phases: [
       ...startEngine,
-      creepUntilBlocked(0.25, 5.8),
+      forksInto(palletOf('load-limits', 1)),
       { name: 'try to lift', keys: hold({ raise: true }), until: (obs) => obs.failed, frames: 300 },
       settle(150),
     ],
@@ -326,35 +362,46 @@ export const drivingScenarios = [
     course: course('rack-storage'),
     phases: [
       ...startEngine,
-      creepUntilBlocked(0.25, 4.8),
-      raiseTo(0.15),
-      tiltBackTo(-0.1),
+      ...pickUp(palletOf('rack-storage')),
       {
         name: 'carry toward the rack',
         keys: driveTo([0, 0, 13.2], { speed: 0.5, stop: true }),
         until: (obs, phaseFrame) => phaseFrame > 30 && stopped(obs),
         frames: 2400,
       },
-      raiseTo(0.375),
-      creepUntilBlocked(0.18),
-      {
-        name: 'tilt forward to set down',
-        keys: hold({ tiltForward: true }),
-        until: (obs) => obs.deliveredCount >= 1 || obs.tilt >= TILT_FORWARD_MAX - 0.001,
-        frames: 300,
-      },
-      { name: 'back away', keys: (obs) => speedKeys(obs, -0.25), frames: 120 },
-      brakeToStop,
+      ...setDownOnShelf('middle'),
     ],
   },
   {
-    id: 'sudden-stop-slip',
+    // A load lost to a hard stop: the forks two thirds of the way in, the
+    // mast left upright, then full brake from speed. Friction cannot hold
+    // it, and with a third of the pallet beyond the tips it goes off them.
+    id: 'load-dropped',
     course: course('precision-carry'),
     phases: [
       ...startEngine,
-      halfInsert,
-      raiseTo(0.15),
-      { name: 'speed up', keys: hold({ forward: true }), until: (obs) => obs.failed || obs.speed >= 1.2, frames: 600 },
+      forksInto(palletOf('precision-carry'), 0.66),
+      raiseTo(TRAVEL_HEIGHT),
+      { name: 'speed up', keys: hold({ forward: true }), until: (obs) => obs.failed || obs.speed >= 1.0, frames: 600 },
+      {
+        name: 'slam the brakes',
+        keys: hold({ back: true }),
+        until: (obs, phaseFrame) => obs.failed || (phaseFrame > 2 && obs.speed <= 0.05),
+        frames: 300,
+      },
+      settle(180),
+    ],
+  },
+  {
+    // The same stop with the load seated to the carriage and the mast tilted
+    // all the way back: it rides it out.
+    id: 'load-held',
+    course: course('precision-carry'),
+    phases: [
+      ...startEngine,
+      ...pickUp(palletOf('precision-carry')),
+      tiltBackTo(-0.185),
+      { name: 'speed up', keys: hold({ forward: true }), until: (obs) => obs.failed || obs.speed >= 1.0, frames: 600 },
       {
         name: 'slam the brakes',
         keys: hold({ back: true }),
@@ -365,26 +412,11 @@ export const drivingScenarios = [
     ],
   },
   {
-    id: 'turn-slip',
-    course: course('precision-carry'),
-    // Only the sharp-turn slip source on, so the cornering path is recorded
-    // on its own.
-    courseOverride: { failConditions: { sharpTurn: true } },
-    phases: [
-      ...startEngine,
-      halfInsert,
-      raiseTo(0.15),
-      { name: 'speed up', keys: hold({ forward: true }), until: (obs) => obs.speed >= 1.0, frames: 600 },
-      { name: 'swerve', keys: hold({ forward: true, left: true }), until: (obs) => obs.failed, frames: 300 },
-      settle(120),
-    ],
-  },
-  {
     id: 'high-travel',
     course: course('precision-carry'),
     phases: [
       ...startEngine,
-      creepUntilBlocked(0.25, 3.8),
+      forksInto(palletOf('precision-carry')),
       raiseTo(0.3),
       tiltBackTo(-0.1),
       { name: 'drive with forks high', keys: hold({ forward: true }), until: (obs) => obs.failed, frames: 600 },
@@ -392,15 +424,70 @@ export const drivingScenarios = [
     ],
   },
   {
-    id: 'load-tipping',
-    course: course('rack-storage'),
-    courseOverride: { capacityKg: 500, failConditions: { loadTipping: true } },
+    // A pallet struck at speed: the forks are too high for the pockets, so
+    // the tines meet its face.
+    id: 'pallet-impact',
+    course: course('pallet-pickup'),
+    setup: { x: 0, z: 6.5, heading: 0, forkHeight: 0.05 },
     phases: [
       ...startEngine,
-      creepUntilBlocked(0.25, 4.8),
-      raiseTo(0.5),
-      { name: 'tilt forward high', keys: hold({ tiltForward: true }), until: (obs) => obs.failed, frames: 300 },
+      { name: 'drive at the pallet', keys: (obs) => speedKeys(obs, 0.55), until: (obs) => obs.failed, frames: 900 },
+      settle(90),
+    ],
+  },
+  {
+    // A forward tip-over: a load half as heavy again as the truck's rating,
+    // on a course that does not fail an overload. The stability model does.
+    id: 'tip-over-forward',
+    course: course('rack-storage'),
+    courseOverride: { capacityKg: 300 },
+    phases: [
+      ...startEngine,
+      forksInto(palletOf('rack-storage')),
+      { name: 'lift', keys: hold({ raise: true }), until: (obs) => obs.failed, frames: 300 },
       settle(150),
+    ],
+  },
+  {
+    // A sideways tip-over: a load carried high, then a swerve at speed.
+    id: 'tip-over-turn',
+    course: course('pallet-pickup'),
+    courseOverride: { decorations: [], capacityKg: 500 },
+    phases: [
+      ...startEngine,
+      forksInto(palletOf('pallet-pickup')),
+      raiseTo(0.7),
+      tiltBackTo(-0.1),
+      { name: 'speed up', keys: hold({ forward: true }), until: (obs) => obs.failed || obs.speed >= 1.0, frames: 600 },
+      { name: 'swerve', keys: hold({ forward: true, left: true }), until: (obs) => obs.failed, frames: 300 },
+      settle(150),
+    ],
+  },
+  {
+    // The same swerve with the load at travel height: the truck stays up.
+    id: 'turn-lowered',
+    course: course('pallet-pickup'),
+    courseOverride: { decorations: [], capacityKg: 500 },
+    phases: [
+      ...startEngine,
+      ...pickUp(palletOf('pallet-pickup')),
+      { name: 'speed up', keys: hold({ forward: true }), until: (obs) => obs.failed || obs.speed >= 1.0, frames: 600 },
+      { name: 'swerve', keys: hold({ forward: true, left: true }), until: (obs) => obs.failed, frames: 120 },
+      { name: 'coast to a stop', keys: hold(NO_KEYS), until: (obs, phaseFrame) => phaseFrame > 2 && stopped(obs), frames: 900 },
+    ],
+  },
+  {
+    // One tine in a pocket and the other outside the pallet: lifted, it
+    // rolls off the fork.
+    id: 'one-tine-pickup',
+    course: course('pallet-pickup'),
+    courseOverride: { failConditions: { loadDrop: true } },
+    setup: { x: -0.105, z: 8.5, heading: 0 },
+    phases: [
+      ...startEngine,
+      forksInto(palletOf('pallet-pickup')),
+      { name: 'lift', keys: hold({ raise: true }), until: (obs) => obs.failed || obs.forkHeight >= 0.4, frames: 600 },
+      settle(180),
     ],
   },
   {
@@ -441,10 +528,8 @@ export const drivingScenarios = [
     course: course('pallet-pickup'),
     phases: [
       ...startEngine,
-      creepUntilBlocked(0.25, 8.8),
-      raiseTo(0.15),
-      tiltBackTo(-0.1),
-      { name: 'reverse clear', keys: (obs) => speedKeys(obs, -0.25), until: (obs) => obs.z <= 9.2, frames: 600 },
+      ...pickUp(palletOf('pallet-pickup')),
+      { name: 'reverse clear', keys: (obs) => speedKeys(obs, -0.25), until: (obs) => obs.z <= 9.0, frames: 600 },
       brakeToStop,
       {
         name: 'carry to the drop zone',
@@ -452,9 +537,9 @@ export const drivingScenarios = [
         until: (obs, phaseFrame) => obs.failed || (phaseFrame > 30 && stopped(obs)),
         frames: 2400,
       },
+      levelMast,
       lowerTo(0),
-      tiltForwardTo(0.08),
-      { name: 'back away', keys: (obs) => speedKeys(obs, -0.3), until: (obs) => obs.deliveredCount >= 1, frames: 600 },
+      { name: 'back out', keys: (obs) => speedKeys(obs, -0.25), until: (obs) => obs.deliveredCount >= 1, frames: 900 },
       brakeToStop,
       settle(),
     ],
@@ -464,25 +549,14 @@ export const drivingScenarios = [
     course: course('rack-storage-top'),
     phases: [
       ...startEngine,
-      creepUntilBlocked(0.25, 4.8),
-      raiseTo(0.15),
-      tiltBackTo(-0.1),
+      ...pickUp(palletOf('rack-storage-top')),
       {
         name: 'carry toward the rack',
         keys: driveTo([0, 0, 13.2], { speed: 0.5, stop: true }),
         until: (obs, phaseFrame) => obs.failed || (phaseFrame > 30 && stopped(obs)),
         frames: 2400,
       },
-      raiseTo(0.65),
-      creepUntilBlocked(0.18),
-      {
-        name: 'tilt forward to set down',
-        keys: hold({ tiltForward: true }),
-        until: (obs) => obs.deliveredCount >= 1 || obs.tilt >= TILT_FORWARD_MAX - 0.001,
-        frames: 300,
-      },
-      { name: 'back away', keys: (obs) => speedKeys(obs, -0.25), frames: 120 },
-      brakeToStop,
+      ...setDownOnShelf('top'),
     ],
   },
   {

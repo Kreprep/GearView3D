@@ -25,8 +25,9 @@ start (or cut on a whole period) so they repeat without a gap.
 | `seatbelt.mp3` | Seatbelt buckle | [02 Seatbelt.wav](https://freesound.org/people/15HPanska_Ruttner_Jan/sounds/461675/) | 15HPanska_Ruttner_Jan | CC0 1.0 |
 | `key-click.mp3` | Key switch | [Key Turn without Ignition](https://freesound.org/people/microman502/sounds/818298/) | microman502 | CC0 1.0 |
 | `denied.mp3` | Engine start refused by the interlock | [busdoorwarning.wav](https://freesound.org/people/Mihacappy/sounds/803765/) | Mihacappy | CC0 1.0 |
-| `caution-chime.mp3` | Caution sign (not yet used) | [Chime-Improper.flac](https://freesound.org/people/drooler/sounds/660863/) | drooler | CC0 1.0 |
-| `danger-alarm.mp3` | Danger sign (not yet used) | [Factory Warning Buzzer](https://freesound.org/people/qubodup/sounds/832414/) | qubodup, from a CC0 recording by AstraPLanetshine | CC0 1.0 |
+| `caution-chime.mp3` | Caution safety sign | [Chime-Improper.flac](https://freesound.org/people/drooler/sounds/660863/) | drooler | CC0 1.0 |
+| `danger-alarm.mp3` | Danger safety sign | [Factory Warning Buzzer](https://freesound.org/people/qubodup/sounds/832414/) | qubodup, from a CC0 recording by AstraPLanetshine | CC0 1.0 |
+| `fork-scrape.flac` | Fork tips dragged along the floor (loop) | [crowbar metal drag on concrete scrape and handling.wav](https://freesound.org/people/kyles/sounds/452587/) | kyles | CC0 1.0 |
 
 To rebuild a file, download its source recording into
 `frontend/audio-src/raw/` (keeping Freesound's file name) and run

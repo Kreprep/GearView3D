@@ -76,6 +76,9 @@ const SOUNDS = [
   { name: 'denied', source: 803765, start: 0, fadeIn: 0.005, fadeOut: 0.05 },
   { name: 'caution-chime', source: 660863, start: 0, fadeIn: 0.005, fadeOut: 0.05 },
   { name: 'danger-alarm', source: 832414, start: 0, length: 1.6, fadeIn: 0.005, fadeOut: 0.4 },
+  // Phase 7, the physics' sounds. The steadiest drag of the crowbar across
+  // the concrete (6.75 s to 9.0 s).
+  { name: 'fork-scrape', source: 452587, loop: true, start: 6.9, length: 1.5, crossfade: 0.3 },
 ]
 
 const outputFile = (sound) => `${sound.name}.${sound.loop ? 'flac' : 'mp3'}`

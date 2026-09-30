@@ -16,10 +16,19 @@ import { traceSnapshot } from '../../test-helpers/drivingTrace.js'
 // 8FGU25 drive model in real units, the rear-wheel-steer bicycle model, the
 // keyboard's virtual steering wheel, the pre-start interlock, the parking
 // brake and the parking goal's brake-and-neutral check) and re-recorded it
-// from the headless core; see the note in the file. Here the same scripts
-// drive the core through the keyboard and dashboard sources and the
-// fixed-step loop (test-helpers/headlessDrive.js), and every sampled frame
-// and every event has to match.
+// from the headless core. Phase 7 did so again: pallets and cones became
+// bodies in a physics world, the forks solid, and the tip-over the stability
+// model's, so every drive with a load or a contact in it changed, and the
+// scripts that drove the old scripted carry were rewritten for the new one.
+// The drives with neither (both acceleration lanes, the slalom, the driving
+// course, the parking courses, the interlock and the lever) still matched the
+// Phase 4 trace when it was replaced. See the note in the file.
+//
+// Here the same scripts drive the core through the keyboard and dashboard
+// sources and the fixed-step loop (test-helpers/headlessDrive.js), and every
+// sampled frame and every event has to match. The physics engine is
+// deterministic for the same inputs on the same build, which is what lets a
+// pallet's pose be compared at all.
 //
 // The golden file is the record of the old behaviour, so never regenerate it
 // to make a failing refactor pass. When the sim is changed *on purpose* (a
@@ -52,7 +61,7 @@ function assertMatches(actual, expected, path) {
 }
 
 for (const scenario of drivingScenarios) {
-  test(`parity with the pre-refactor sim: ${scenario.id}`, () => {
+  test(`parity with the recorded sim: ${scenario.id}`, () => {
     const expected = golden.scenarios[scenario.id]
     if (!RECORD) assert.ok(expected, `no golden trace for ${scenario.id}`)
 
@@ -68,6 +77,7 @@ for (const scenario of drivingScenarios) {
     }
     const { frames, phaseLog } = runScenario(scenario, adapter)
     const final = traceSnapshot(frames, sim.view())
+    sim.dispose()
 
     if (RECORD) {
       recorded.scenarios[scenario.id] = { frames, phaseLog, events: sim.events, samples, final }

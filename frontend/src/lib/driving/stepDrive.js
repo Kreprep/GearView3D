@@ -95,9 +95,10 @@ export function stepDrive(state, world, controls, dt) {
   frame.controlsLocked = controlsLocked
   frame.turnInput = turnInput
   frame.prevSpeed = prevSpeed
-  // Sideways acceleration of the truck (v * yaw rate), which the load feels
-  // in a turn (stepPallet's sharp-turn slip).
+  // Sideways acceleration of the truck (v * yaw rate), which the stability
+  // model and a lost load's cause read, and the yaw rate itself.
   frame.lateralAccel = truck.speed * yawRate
+  frame.yawRate = yawRate
   frame.forwardX = forwardX
   frame.forwardZ = forwardZ
   frame.nextHeading = nextHeading

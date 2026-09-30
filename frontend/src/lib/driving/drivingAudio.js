@@ -3,6 +3,8 @@ import { clamp } from '../math.js'
 import { displayedDirection } from './cockpitTelemetry.js'
 import { FORK_MAX_HEIGHT, MAX_SPEED } from './constants.js'
 import { neutralControls } from './controls.js'
+import { tineGroundClearance } from './forkPose.js'
+import { kmh, m } from './units.js'
 
 // What the driving simulation sounds like (docs/revisions/
 // post-defense-plan.md, section 4.4). Audio is view-side: it reads the sim
@@ -13,12 +15,12 @@ import { neutralControls } from './controls.js'
 //   engine speed it asks for, and slewRev() how fast a real engine gets there.
 // - eventSounds(event) / switchSounds(previous, next) / alertSounds(edges)
 //   name the one-shots a sim event, a moved cab switch or a safety sign
-//   plays. Pure.
+//   plays, and impactGain(event) how loud a knock is. Pure.
 // - createDrivingAudio(engine) holds one attempt's loops and applies all of
 //   the above to an audio engine (lib/audio/audioEngine.js). The engine is
 //   passed in, so this file has no browser APIs.
 
-export const LOOP_NAMES = ['engineIdle', 'engineHigh', 'reverseBeeper', 'hydraulicWhine', 'reliefStrain', 'chainRattle']
+export const LOOP_NAMES = ['engineIdle', 'engineHigh', 'reverseBeeper', 'hydraulicWhine', 'reliefStrain', 'chainRattle', 'forkScrape']
 
 // Working the lift makes the pump load the engine, which the governor answers
 // with a few more revs, as a fraction of the throttle's range.
@@ -41,6 +43,17 @@ const LOAD_PITCH_RISE = 0.25
 // for a course that sets none.
 const REFERENCE_CAPACITY_KG = 2270
 
+// The fork tips are on the floor when the tines are this close to it, and
+// scrape when the truck travels faster than this. The scrape is at its
+// loudest from SCRAPE_FULL_SPEED.
+const SCRAPE_CLEARANCE = m(0.01)
+const SCRAPE_MIN_SPEED = kmh(0.5)
+const SCRAPE_FULL_SPEED = kmh(6)
+// An impact (the sim's 'impact' event) at this speed or more plays at full
+// volume; a gentler one is quieter, down to IMPACT_MIN_GAIN.
+const IMPACT_FULL_SPEED = kmh(6)
+const IMPACT_MIN_GAIN = 0.25
+
 // How quickly each loop follows its target (seconds, the time constant of an
 // exponential approach). The engine takes a moment to gain and lose revs; a
 // beeper or a valve is on or off.
@@ -54,6 +67,7 @@ const LOOP_TIME_CONSTANTS = {
   hydraulicWhine: MACHINE_TIME_CONSTANT,
   reliefStrain: MACHINE_TIME_CONSTANT,
   chainRattle: MACHINE_TIME_CONSTANT,
+  forkScrape: MACHINE_TIME_CONSTANT,
 }
 
 const NO_CONTROLS = neutralControls()
@@ -108,6 +122,14 @@ export function audioTargets(state, { capacityKg, rev = engineRevTarget(state) }
   const { truck, forks } = state
   const controls = state.frame.controls || NO_CONTROLS
   const targets = Object.fromEntries(LOOP_NAMES.map((name) => [name, silent()]))
+
+  // Steel on concrete: the fork tips on the floor while the truck moves,
+  // engine running or not.
+  const travel = Math.abs(truck.speed)
+  if (travel > SCRAPE_MIN_SPEED && tineGroundClearance(state) <= SCRAPE_CLEARANCE) {
+    targets.forkScrape.gain = clamp(travel / SCRAPE_FULL_SPEED, 0, 1)
+  }
+
   if (!truck.engineOn) return targets
 
   // A failed attempt locks the controls (stepDrive).
@@ -132,11 +154,21 @@ export function audioTargets(state, { capacityKg, rev = engineRevTarget(state) }
   return targets
 }
 
+// What each kind of impact sounds like: a pallet struck or landing is wood,
+// a cone hollow plastic, racking or a wall metal.
+const IMPACT_SOUNDS = { pallet: 'palletDrop', landing: 'palletDrop', cone: 'coneKnock', structure: 'metalImpact' }
+
 // The one-shots a sim core event (simCore.js) plays.
 export function eventSounds(event) {
   if (event.type === 'engine') return [event.on ? 'engineStart' : 'engineStop']
   if (event.type === 'engine-blocked') return ['denied']
+  if (event.type === 'impact' && IMPACT_SOUNDS[event.what]) return [IMPACT_SOUNDS[event.what]]
   return []
+}
+
+// How loud an impact plays (0..1 of the bank's gain): harder is louder.
+export function impactGain(event) {
+  return clamp(event.speed / IMPACT_FULL_SPEED, IMPACT_MIN_GAIN, 1)
 }
 
 // The cab switches (dashboardSource.js) that make a sound when they move.
@@ -204,7 +236,8 @@ export function createDrivingAudio(engine, { capacityKg } = {}) {
     // A sim core event, as drained from the core.
     handleEvent(event) {
       if (event.type === 'engine') engineCatchAt = event.on ? engine.now() + SOUND_BANK.engineStart.catchAt : 0
-      eventSounds(event).forEach((name) => engine.playOneShot(name))
+      const options = event.type === 'impact' ? { gain: impactGain(event) } : undefined
+      eventSounds(event).forEach((name) => engine.playOneShot(name, options))
     },
 
     // Safety signs that came up since the last frame.

@@ -14,6 +14,6 @@ export function ModelProp({ url }) {
     })
     return next
   }, [scene])
-  const { scale, position } = MODEL_TRANSFORM[url]
-  return <primitive object={cloned} scale={scale} position={position} />
+  const { scale, position, rotationY = 0 } = MODEL_TRANSFORM[url]
+  return <primitive object={cloned} scale={scale} position={position} rotation={[0, rotationY, 0]} />
 }

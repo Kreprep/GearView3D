@@ -2,6 +2,16 @@
    tokens when this viewer runs inside ModuleSimulationShell - that rule lives
    in ModuleSimulationShell.css, next to the lanes it has to clear. */
 
+.driving-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
 .driving-simulation {
   position: relative;
   width: 100%;

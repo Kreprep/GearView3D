@@ -1,9 +1,9 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Grid, OrbitControls, useGLTF } from '@react-three/drei'
-import { DoubleSide } from 'three'
+import { BufferAttribute, DoubleSide } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Gamepad2, Locate, Radar, RotateCcw, VolumeX } from 'lucide-react'
+import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Gamepad2, Locate, Radar, RotateCcw, VolumeX } from 'lucide-react'
 import { useT } from '../i18n'
 import { buildVehicleRig } from '../lib/vehicleRig'
 import { clamp } from '../lib/math'
@@ -21,7 +21,7 @@ import {
   PALLET_MODEL_LIGHT_URL,
   PALLET_MODEL_MEDIUM_URL,
 } from '../lib/driving/models'
-import { LOOK_MAX_PITCH, LOOK_SENSITIVITY, PALLET_STATE_LABEL_KEYS, TIP_PIVOT_Y, TIP_PIVOT_Z } from '../lib/driving/constants'
+import { LOOK_MAX_PITCH, LOOK_SENSITIVITY, PALLET_STATE_LABEL_KEYS } from '../lib/driving/constants'
 import { createCabGauges, stepCabGauges } from '../lib/driving/cabGauges'
 import { CAMERA_COMMANDS, CAMERA_VIEWS, cameraReducer, cameraShot, FREE_CAMERA_VIEW, glanceTargetYaw, initialCameraState } from '../lib/driving/cameraModes'
 import { cockpitSnapshot } from '../lib/driving/cockpitTelemetry'
@@ -39,6 +39,7 @@ import { createSimLoop } from '../lib/driving/simLoop'
 import { capturePose, createPoseBuffer, syncView } from '../lib/driving/syncView'
 import { createTelemetryStore, TELEMETRY_INTERVAL } from '../lib/driving/telemetry'
 import { stepCamera } from '../lib/driving/stepCamera'
+import { loadRapier } from '../lib/physics/rapier'
 import { useDrivingInput } from '../hooks/useDrivingInput'
 import { useDrivingSceneRefs } from '../hooks/useDrivingSceneRefs'
 import { useAudioSuspended } from '../hooks/useAudio'
@@ -111,7 +112,27 @@ function publishCockpit(telemetry, core, course, { controls, switches, gauges, w
   )
 }
 
-function DrivingScene({ profile, course, core, telemetry, safety, signs, keyboard, dashboard, wheel, audioRef, onSimEvent, onSafetyTally, onKeyActive, onCabChange, onViewCommand, cameraState, insetEnabled, insetFrameRef, camAdjustedRef }) {
+// The physics world's colliders as Rapier draws them itself (the admin
+// preview's "Show colliders"): what is on screen is exactly what the physics
+// simulates. It shows the last step, not the interpolated frame.
+function ColliderWireframe({ core }) {
+  const geometryRef = useRef(null)
+  useFrame(() => {
+    const geometry = geometryRef.current
+    if (!geometry || !core.physics) return
+    const { vertices, colors } = core.physics.debugRender()
+    geometry.setAttribute('position', new BufferAttribute(vertices, 3))
+    geometry.setAttribute('color', new BufferAttribute(colors, 4))
+  })
+  return (
+    <lineSegments frustumCulled={false} renderOrder={10}>
+      <bufferGeometry ref={geometryRef} />
+      <lineBasicMaterial vertexColors transparent depthTest={false} />
+    </lineSegments>
+  )
+}
+
+function DrivingScene({ profile, course, core, telemetry, safety, signs, keyboard, dashboard, wheel, audioRef, onSimEvent, onSafetyTally, onKeyActive, onCabChange, onViewCommand, cameraState, insetEnabled, insetFrameRef, camAdjustedRef, showColliders }) {
   const { scene } = useGLTF(EQUIPMENT_MODEL_URL)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const { camera, gl } = useThree()
@@ -473,7 +494,6 @@ function DrivingScene({ profile, course, core, telemetry, safety, signs, keyboar
           palletRef={(el) => {
             palletObjectsRef.current[index] = el
           }}
-          onMeasure={(footprint) => core.setPalletFootprint(index, footprint)}
           overweight={typeof course.capacityKg === 'number' && (palletDef.weightKg ?? 0) > course.capacityKg}
         />
       ))}
@@ -481,10 +501,11 @@ function DrivingScene({ profile, course, core, telemetry, safety, signs, keyboar
       {course.parkingBay && <ParkingBayMarker bay={course.parkingBay} parked={parked} />}
 
       <group ref={truckGroupRef}>
-        <group ref={tipPivotRef} position={[0, TIP_PIVOT_Y, TIP_PIVOT_Z]}>
-          <group position={[0, -TIP_PIVOT_Y, -TIP_PIVOT_Z]}>
-            <primitive object={forklift} />
-          </group>
+        {/* The tip-over: syncView sets this group's transform (forkPose.js,
+            tipMatrix), about the front axle or a side of the stability
+            triangle. */}
+        <group ref={tipPivotRef}>
+          <primitive object={forklift} />
         </group>
         {/* Head/work light on the overhead guard, switched from the dashboard.
             Always mounted and dimmed to 0 when off, since adding or removing a
@@ -493,6 +514,8 @@ function DrivingScene({ profile, course, core, telemetry, safety, signs, keyboar
         <object3D ref={headlightTargetRef} position={[0, 0, 1.6]} />
         <ProximityRings world={core.world} />
       </group>
+
+      {showColliders && <ColliderWireframe core={core} />}
 
       <InsetRenderer enabled={insetEnabled} frameRef={insetFrameRef} poseRef={renderPoseRef} />
 
@@ -519,6 +542,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   const [cameraState, setCameraState] = useState(initialCameraState)
   const shot = cameraShot(cameraState)
   const [insetOn, setInsetOn] = useState(true)
+  const [showColliders, setShowColliders] = useState(false)
   const camAdjustedRef = useRef(false)
   const insetFrameRef = useRef(null)
   const t = useT()
@@ -559,6 +583,17 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   useEffect(() => {
     core.setProfile(profile)
   }, [core, profile])
+
+  // The core owns a physics world, which has to be freed. The free waits a
+  // tick so that React's development double-mount, which runs this cleanup
+  // and then the effect again on the same core, cancels it.
+  const disposeTimerRef = useRef(null)
+  useEffect(() => {
+    clearTimeout(disposeTimerRef.current)
+    return () => {
+      disposeTimerRef.current = setTimeout(() => core.dispose(), 0)
+    }
+  }, [core])
 
   // A binding changed in Controller Setup applies to the running attempt.
   useEffect(() => subscribeToControllerConfig((config) => wheel.setConfig(config)), [wheel])
@@ -727,6 +762,16 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
           <button type="button" className="driving-reset-button" onClick={() => setSetupOpen(true)}>
             <Gamepad2 size={14} /> {t('controller.open')}
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              className={`driving-reset-button ${showColliders ? 'is-active' : ''}`}
+              aria-pressed={showColliders}
+              onClick={() => setShowColliders((on) => !on)}
+            >
+              <Box size={14} /> {t('driving.hud.showColliders')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -759,6 +804,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
             insetEnabled={insetEnabled}
             insetFrameRef={insetFrameRef}
             camAdjustedRef={camAdjustedRef}
+            showColliders={showColliders}
           />
         </Suspense>
       </Canvas>
@@ -790,7 +836,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
           </button>
         )}
         {hint && <p className="driving-hud-help">{hint}</p>}
-        <OperatorDashboard telemetry={telemetry} dashboard={dashboard} capacityKg={course.capacityKg} keyLegend={profile.keyLegend} pressed={pressed} />
+        <OperatorDashboard telemetry={telemetry} dashboard={dashboard} keyLegend={profile.keyLegend} pressed={pressed} />
       </div>
     </section>
   )
@@ -801,6 +847,31 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
 // coded forklift defaults.
 export default function DrivingSimulationViewer({ profile = DEFAULT_PROFILE, course, onEvent, className = '', isAdmin = false }) {
   const [resetSeed, setResetSeed] = useState(0)
+  // The physics engine is its own chunk, fetched the first time a driving
+  // step mounts (lib/physics/rapier.js). An attempt needs it before it can
+  // build its simulation core.
+  const [physics, setPhysics] = useState('loading')
+  const t = useT()
+  useEffect(() => {
+    let mounted = true
+    loadRapier().then(
+      () => mounted && setPhysics('ready'),
+      () => mounted && setPhysics('failed'),
+    )
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  if (physics !== 'ready') {
+    return (
+      <section className={`driving-simulation ${className}`}>
+        <p className="driving-loading" role={physics === 'failed' ? 'alert' : 'status'}>
+          {t(physics === 'failed' ? 'driving.hud.loadFailed' : 'driving.hud.loading')}
+        </p>
+      </section>
+    )
+  }
 
   return (
     <DrivingSimulationInner

@@ -40,6 +40,11 @@ export const SOUND_BANK = {
   hydraulicWhine: { file: 'hydraulic-whine.flac', bus: 'machine', loop: true, gain: 0.5 },
   reliefStrain: { file: 'relief-strain.flac', bus: 'machine', loop: true, gain: 0.45 },
   chainRattle: { file: 'chain-rattle.flac', bus: 'machine', loop: true, gain: 0.35 },
+  // What the physics does (Phase 7): the fork tips dragged along the floor.
+  // The impact one-shots lib/driving/drivingAudio.js asks for (palletDrop,
+  // coneKnock, metalImpact) are added here with their recordings; until a
+  // name is in the bank, the audio engine plays nothing for it.
+  forkScrape: { file: 'fork-scrape.flac', bus: 'machine', loop: true, gain: 0.5 },
 
   keyClick: { file: 'key-click.mp3', bus: 'ui', gain: 0.7 },
   seatbelt: { file: 'seatbelt.mp3', bus: 'ui', gain: 0.7 },
@@ -63,6 +68,7 @@ export const DRIVING_SOUNDS = [
   'hydraulicWhine',
   'reliefStrain',
   'chainRattle',
+  'forkScrape',
   'keyClick',
   'seatbelt',
   'parkingBrake',

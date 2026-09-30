@@ -17,6 +17,7 @@ import { useTelemetry } from '../../hooks/useTelemetry'
 import { KEY_POSITIONS } from '../../lib/driving/dashboardSource'
 import { GRIP_LABEL_KEYS } from '../../lib/driving/constants'
 import { DIRECTIONS } from '../../lib/driving/controls'
+import { loadChartPoints } from '../../lib/physics/loadChart'
 import { AudioControl } from '../AudioControl'
 import './OperatorDashboard.css'
 
@@ -99,7 +100,39 @@ function LeverIndicator({ label, value }) {
   )
 }
 
-export function OperatorDashboard({ telemetry, dashboard, capacityKg, keyLegend, pressed }) {
+// The truck's capacity plate, as a load chart (TESDA CON834218 element 3:
+// "loads are calculated based on load center"): capacity against how far out
+// along the forks the load's centre of gravity sits, with the load the forks
+// are in plotted on it. A load above the curve is over capacity.
+const PLATE = { width: 64, height: 30, from: 0.4, to: 1.4, headroom: 1.3 }
+
+function CapacityPlate({ ratedKg, ratedCentre, loadKg, loadCentre, limitKg, over }) {
+  const t = useT()
+  const x = (centre) => ((Math.min(Math.max(centre, PLATE.from), PLATE.to) - PLATE.from) / (PLATE.to - PLATE.from)) * PLATE.width
+  const y = (kg) => PLATE.height - (Math.min(kg / (ratedKg * PLATE.headroom), 1)) * PLATE.height
+  const curve = loadChartPoints(ratedKg, PLATE)
+    .map(({ loadCentre: centre, capacityKg }) => `${x(centre).toFixed(1)},${y(capacityKg).toFixed(1)}`)
+    .join(' ')
+  const hasLoad = loadKg != null
+
+  return (
+    <div className={`operator-readout operator-plate ${over ? 'is-danger' : ''}`}>
+      <svg className="operator-plate-chart" viewBox={`0 0 ${PLATE.width} ${PLATE.height}`} role="img" aria-label={t('driving.dash.plate.chart')}>
+        <path className="operator-plate-axes" d={`M0 0V${PLATE.height}H${PLATE.width}`} />
+        <polyline className="operator-plate-curve" points={curve} />
+        {hasLoad && <circle className="operator-plate-load" cx={x(loadCentre)} cy={y(loadKg)} r="2.4" />}
+      </svg>
+      <span className="operator-readout-value small">
+        {hasLoad
+          ? t('driving.dash.plate.load', { load: loadKg.toLocaleString(), limit: limitKg.toLocaleString(), centre: loadCentre.toFixed(2) })
+          : t('driving.dash.plate.rated', { capacity: ratedKg.toLocaleString(), centre: ratedCentre.toFixed(2) })}
+      </span>
+      <span className="operator-readout-label">{t('driving.dash.plate')}</span>
+    </div>
+  )
+}
+
+export function OperatorDashboard({ telemetry, dashboard, keyLegend, pressed }) {
   const t = useT()
   const [drawerOpen, setDrawerOpen] = useState(false)
   // Nearly every field is on show, and the store only replaces the snapshot
@@ -107,13 +140,13 @@ export function OperatorDashboard({ telemetry, dashboard, capacityKg, keyLegend,
   const {
     engineOn, keyPosition, direction, leverEngaged, shifterActive, seatbelt, parkingBrake, lights,
     needSeatbelt, needParkingBrake, needNeutral,
-    speedKmh, forkHeightM, tiltDeg, tilt, grip, palletState, carriedLoadKg,
+    speedKmh, forkHeightM, tiltDeg, tilt, grip, palletState,
+    ratedCapacityKg, ratedLoadCentreM, plateLoadKg, plateLoadCentreM, plateLimitKg, plateOverCapacity,
     fuel, temp, hours, liftInput, tiltInput,
   } = useTelemetry(telemetry, wholeSnapshot)
 
   const powered = engineOn || keyPosition === 'on'
-  const hasCapacity = typeof capacityKg === 'number'
-  const overloaded = hasCapacity && carriedLoadKg != null && carriedLoadKg > capacityKg
+  const overloaded = plateOverCapacity
   const loadInsecure = palletState === 'carried' && grip !== 'secure'
 
   return (
@@ -192,16 +225,14 @@ export function OperatorDashboard({ telemetry, dashboard, capacityKg, keyLegend,
             <span className="operator-readout-label">{t('driving.dash.mast')}</span>
           </div>
 
-          {hasCapacity && (
-            <div className={`operator-readout ${overloaded ? 'is-danger' : ''}`}>
-              <span className="operator-readout-value small">
-                {carriedLoadKg != null
-                  ? t('driving.dash.loadValue', { load: carriedLoadKg.toLocaleString(), capacity: capacityKg.toLocaleString() })
-                  : t('driving.dash.noLoad', { capacity: capacityKg.toLocaleString() })}
-              </span>
-              <span className="operator-readout-label">{t('driving.dash.load')}</span>
-            </div>
-          )}
+          <CapacityPlate
+            ratedKg={ratedCapacityKg}
+            ratedCentre={ratedLoadCentreM}
+            loadKg={plateLoadKg}
+            loadCentre={plateLoadCentreM}
+            limitKg={plateLimitKg}
+            over={plateOverCapacity}
+          />
 
           {/* How far the forks are in. It decides whether a load stays put, so
               the learner has to be able to read it without guessing from the

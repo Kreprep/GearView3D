@@ -5,7 +5,8 @@
 //
 // A course stores only what it changed: `alerts` holds `{ ruleId: false }`
 // for the rules it switched off, and `speedLimitKmh` its own speed limit.
-// Essential rules (collisions, overload, the start interlock) are always on:
+// Essential rules (collisions, overload, tip risk, a shifting load, the start
+// interlock) are always on:
 // resolveAlerts() ignores a stored `false` on one, so a hand-edited row
 // cannot silence them.
 //
@@ -15,14 +16,15 @@
 
 import { DEFAULT_SPEED_LIMIT_KMH } from '../data/safetyThresholds.js'
 
-// In the order the Course Editor lists them. tip-risk and load-shifting join
-// the essential set in Phase 7, with the stability model and physics they
-// need; sound-horn is a stretch goal that needs a course object of its own.
+// In the order the Course Editor lists them. sound-horn is a stretch goal
+// that needs a course object of its own.
 export const ALERT_RULES = [
   { id: 'obstacle-ahead', essential: true, label: 'Obstacle ahead' },
   { id: 'obstacle-behind', essential: true, label: 'Obstacle behind' },
   { id: 'tail-swing', essential: true, label: 'Tail swing near an obstacle' },
-  { id: 'overload', essential: true, label: 'Load over the rated capacity' },
+  { id: 'overload', essential: true, label: 'Load over the capacity for its load centre' },
+  { id: 'tip-risk', essential: true, label: 'Close to tipping over' },
+  { id: 'load-shifting', essential: true, label: 'Load sliding on the forks' },
   { id: 'start-interlock', essential: true, label: 'Start without seatbelt, parking brake or neutral' },
   { id: 'look-direction', essential: false, label: 'Reversing without looking behind (first-person)' },
   { id: 'overspeed', essential: false, label: 'Over the speed limit' },

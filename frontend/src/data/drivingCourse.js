@@ -1,7 +1,8 @@
-// Ground-plane coordinates for the simplified WASD driving simulation (Module 2).
-// No physics engine is modeled - checkpoints are simple radius/speed checks
-// (or line-crossing checks) used to gate step completion, but cones/walls/
-// forklifts placed below ARE live colliders (see DrivingSimulationViewer).
+// Ground-plane coordinates for the driving simulation's stock courses.
+// Checkpoints are simple radius/speed checks (or line-crossing checks) used to
+// gate step completion. Everything placed below is solid: pallets and cones
+// are bodies in the physics world (lib/physics/world.js), and racking, walls
+// and parked forklifts are fixed in it.
 // Facing +Z at heading 0, pressing D (steer right) turns the forklift toward
 // -X and pressing A (steer left) turns it toward +X - so "right gate" style
 // checkpoints sit on the -X side of the course and "left gate" ones on +X.
@@ -215,16 +216,18 @@ export const drivingCourses = {
       ...coneLine(2.6, 2, 11, 2.4),
     ],
   },
-  // Module 4 (Pallet Handling Assessment) courses. These enable the kinematic
-  // fail system in DrivingSimulationViewer: `capacityKg` + pallet `weightKg`
-  // drive the overload tip-over, cones/walls are always live colliders, and
-  // `failConditions` toggles the load-specific fail rules per course.
+  // Module 4 (Pallet Handling Assessment) courses. `capacityKg` is the truck's
+  // capacity plate, which a pallet's `weightKg` is judged against (the load
+  // chart, and the stability model behind a tip-over), and `failConditions`
+  // switches the load-handling fails on per course (lib/courseGoals.js,
+  // resolveFailConditions). Collisions, a pallet struck at speed and a
+  // tip-over always fail.
   'precision-carry': {
     id: 'precision-carry',
     start: { position: [0, 0, 0], heading: 0 },
     checkpoints: [],
     capacityKg: 1000,
-    failConditions: { suddenStop: true, overload: true, highTravel: true },
+    failConditions: { loadDrop: true, overload: true, highTravel: true },
     pallets: [{ id: 'carry-pallet', position: [0, 0, 5], rotation: 0, weightKg: 500 }],
     dropZone: { position: [0, 0, 19], radius: 0.9, label: 'Drop Zone' },
     obstacles: [
@@ -249,7 +252,7 @@ export const drivingCourses = {
     start: { position: [0, 0, 0], heading: 0 },
     checkpoints: [],
     capacityKg: 1000,
-    failConditions: { suddenStop: true, overload: true, highTravel: true },
+    failConditions: { loadDrop: true, overload: true, highTravel: true },
     pallets: [
       { id: 'pallet-600', position: [-2.2, 0, 7], rotation: 0, weightKg: 600 },
       { id: 'pallet-1500', position: [0, 0, 7], rotation: 0, weightKg: 1500 },
@@ -272,8 +275,8 @@ export const drivingCourses = {
   'pallet-pickup': {
     id: 'pallet-pickup',
     start: { position: [0, 0, 0], heading: 0 },
-    // No checkpoints - completion is driven by the pallet pickup state machine
-    // in DrivingSimulationViewer (pallet-lifted / pallet-dropped / pallet-delivered).
+    // No checkpoints - completion is driven by the pallet's state
+    // (lib/physics/palletState.js: pallet-lifted / pallet-dropped / pallet-delivered).
     checkpoints: [],
     pallet: { id: 'pallet-1', position: [0, 0, 10], rotation: 0 },
     dropZone: { position: [-2.6, 0, 18], radius: 0.9, label: 'Drop Zone' },
@@ -286,9 +289,9 @@ export const drivingCourses = {
     ],
   },
   // Module 4 rack-storage exercise: pick up the pallet, then raise it to the
-  // assigned shelf height and drive it into the rack instead of setting it
-  // down in a ground drop zone (see `racks`/`targetRack`/`targetLevel` and
-  // the goalType: 'racking' completion check in DrivingSimulationViewer).
+  // assigned shelf height and set it on the rack instead of in a ground drop
+  // zone (see `racks`/`targetRack`/`targetLevel`; the delivery is judged in
+  // lib/driving/stepPallet.js, atDestination).
   'rack-storage': {
     id: 'rack-storage',
     start: { position: [0, 0, 0], heading: 0 },

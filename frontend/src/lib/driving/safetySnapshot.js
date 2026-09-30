@@ -3,7 +3,8 @@ import { MAX_STEER_ANGLE, STEER_SIGN } from './constants.js'
 import { neutralControls } from './controls.js'
 import { startInterlockMissing } from './interlock.js'
 import { pathClearance, proximityReadout } from './proximity.js'
-import { inRackSlot, targetRackSlot } from './rackSlot.js'
+import { inRackSlot } from './rackSlot.js'
+import { atDestination } from './stepPallet.js'
 import { kmh } from './units.js'
 
 // What the safety rules (safetyRules.js) judge: one flat reading of the
@@ -29,36 +30,23 @@ function forkTip(state, world) {
   return { tipX: x + Math.sin(heading) * tipOffset, tipZ: z + Math.cos(heading) * tipOffset }
 }
 
-// Whether a carried load is resting where it is going: on the floor inside
-// the drop zone, or on its target shelf. All that is left is to tilt the mast
-// forward (stepPallet's release).
-function restingAtDestination(carried, state, world) {
-  if (!carried?.landed) return false
-  const { dropZone } = world.course
-  if (dropZone && carried.restY === 0) {
-    const { x, z } = carried.position
-    if (Math.hypot(x - dropZone.position[0], z - dropZone.position[2]) <= dropZone.radius) return true
-  }
-  const slot = targetRackSlot({ ...forkTip(state, world), forkHeight: state.forks.height }, carried.def, world)
-  return slot.inSlotRect && Math.abs(carried.restY - slot.targetHeight) < 1e-3
-}
-
-// The load on the forks, or about to be: whether it is heavier than the
-// course's rated capacity, whether it is off the ground, and whether it is
-// resting where it is going.
+// The load on the forks, or about to be: whether it is more than the load
+// chart allows where it sits, whether it is off the ground, whether it is
+// resting where it is going, and how fast it is sliding on the tines.
 function loadReading(state, world) {
-  const { pallets } = state
-  const capacity = typeof world.course.capacityKg === 'number' ? world.course.capacityKg : Infinity
-  const held = pallets.filter((pallet) => pallet.engaged || pallet.state === 'carried')
-  const carried = pallets[state.carriedIndex] || null
+  const carried = state.pallets[state.carriedIndex] || null
+  const landed = Boolean(carried?.landed)
 
   return {
     carrying: Boolean(carried),
-    loadLanded: Boolean(carried?.landed),
-    loadAtDestination: restingAtDestination(carried, state, world),
-    // The capacity plate, not the load chart: derating by load centre comes
-    // with Phase 7's loadChart.js.
-    overCapacity: held.some((pallet) => (pallet.def.weightKg ?? 0) > capacity),
+    loadLanded: landed,
+    // Lowered onto the floor of the drop zone or its shelf, the forks still
+    // under it.
+    loadAtDestination: landed && atDestination(carried, world),
+    // Against the capacity derated for where the load's centre of gravity
+    // is along the tines (lib/physics/loadChart.js).
+    overCapacity: Boolean(state.load?.overCapacity),
+    loadSlipSpeed: carried && !landed ? carried.slipSpeed : 0,
   }
 }
 
@@ -104,6 +92,9 @@ export function buildSafetySnapshot(state, world, { view, speedLimitKmh, previou
     grip: state.grip,
     ...loadReading(state, world),
     atStack: forksAtStack(state, world),
+    // The smaller of the truck's two stability margins (lib/physics/
+    // stability.js): 1 with nothing acting, 0 at the point of tipping.
+    stabilityMargin: Math.min(state.stability.longitudinalMargin, state.stability.lateralMargin),
     // What a refused start still wants, until the engine starts.
     interlockMissing: state.interlock.at !== null && !truck.engineOn ? startInterlockMissing(controls) : [],
     // Clearances, or null when there is nothing there.
