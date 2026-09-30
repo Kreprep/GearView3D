@@ -157,6 +157,12 @@ The driving simulation also takes a steering wheel, pedals and H-pattern shifter
 - Press any button on the wheel with the page focused (browsers only reveal controllers after a button press), then open **Wheel setup** from the home screen or the driving screen. There you can calibrate the steering and pedals, record the shifter's gears, and change any button. Settings are saved in this browser only.
 - Starting the forklift works as on a real truck: seatbelt, parking brake and neutral first, then the engine, then release the parking brake.
 
+## Sound
+
+The driving simulation and the walk-around device tests play recorded sounds: the engine, the reverse beeper, the hydraulics, the lift chain, the horn and the cab's switches. Volume and mute are on the operator dashboard and on the walk-around step, and are saved in this browser only. If the browser holds the sound back, the driving screen shows **Click to enable sound**; a click or a key press starts it (a steering wheel's buttons may not).
+
+Every sound is a CC0 recording from Freesound. The source, author and licence of each file are listed in [`frontend/public/audio/CREDITS.md`](frontend/public/audio/CREDITS.md). To rebuild a file from its original, put the download in `frontend/audio-src/raw/` and run `node scripts/build-audio.mjs` from `frontend/` (needs [ffmpeg](https://ffmpeg.org/) on the PATH).
+
 ## Troubleshooting
 
 - **"Cannot reach the GearView3D API"** in the browser → the backend isn't running. Start it (`cd backend && npm run dev`).
