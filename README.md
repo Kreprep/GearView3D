@@ -157,9 +157,13 @@ The driving simulation also takes a steering wheel, pedals and H-pattern shifter
 - Press any button on the wheel with the page focused (browsers only reveal controllers after a button press), then open **Wheel setup** from the home screen or the driving screen. There you can calibrate the steering and pedals, record the shifter's gears, and change any button. Settings are saved in this browser only.
 - Starting the forklift works as on a real truck: seatbelt, parking brake and neutral first, then the engine, then release the parking brake.
 
+## Physics
+
+Pallets, their loads and traffic cones in the driving simulation are rigid bodies in the [Rapier](https://rapier.rs) physics engine (`@dimforge/rapier3d-compat`, pinned to 0.19.3), and the forks are solid: a load is lifted because the forks are under it, rides on them by friction, slides under hard braking and is set down by levelling the mast and lowering it. The forklift itself is driven by the simulation's own model, and tipping over comes from a stability calculation (the stability triangle and the combined centre of gravity), with the capacity derated by load centre as on a load chart. The engine is a separate 2.2 MB chunk that is downloaded the first time a driving step opens. Admins can press **Colliders** in a driving step's 3D preview to see the shapes the engine simulates.
+
 ## Safety Signs
 
-While a learner drives, safety rules watch the driving and the load handling and raise signs above the dashboard: a yellow triangle warns, a blue circle says what must be done, a red circle what must not (obstacle ahead, speed limit, forks too high for travel, mast not tilted back, overload and so on). The signs never fail an attempt. They are counted, and a completed step shows how many came up. In the Module Editor a driving step's **Safety signs** panel sets the course's speed limit (8 km/h by default) and switches the non-essential rules on or off; collisions, overload and the start checks are always on. The thresholds are in `frontend/src/data/safetyThresholds.js`, each with the OSHA 29 CFR 1910.178 paragraph it implements.
+While a learner drives, safety rules watch the driving and the load handling and raise signs above the dashboard: a yellow triangle warns, a blue circle says what must be done, a red circle what must not (obstacle ahead, speed limit, forks too high for travel, mast not tilted back, overload and so on). The signs never fail an attempt. They are counted, and a completed step shows how many came up. In the Module Editor a driving step's **Safety signs** panel sets the course's speed limit (8 km/h by default) and switches the non-essential rules on or off; collisions, overload, tip-over risk, a shifting load and the start checks are always on. The thresholds are in `frontend/src/data/safetyThresholds.js`, each with the OSHA 29 CFR 1910.178 paragraph it implements.
 
 ## Sound
 
