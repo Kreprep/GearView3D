@@ -61,6 +61,8 @@ npm run seed             # loads demo users, modules, hotspots, checklists, quiz
 
 The seed reads the content from `frontend/src/data/`, so both folders must exist (they do, in this repo). Re-running the seed is safe — it only adds missing rows and never overwrites admin edits.
 
+`npm test` in `backend/` needs PostgreSQL running: its route tests use a separate `gearview3d_test` database (your `DATABASE_URL` with `_test` added), which they create, migrate and empty themselves. They never touch `gearview3d`.
+
 ### 2. Frontend
 
 ```bash
@@ -89,15 +91,24 @@ npm run dev
 ## Demo Accounts
 
 - Admin: `admin@mail.com` / `admin123`
+- Instructor: `instructor@mail.com` / `instructor123`
 - Learner: `trainee@mail.com` / `trainee123`
 
 Local only - seeded by `npm run seed` when `SEED_DEMO_USERS` is unset or not `false` (`backend/.env.example` default). Production (`docker-compose.yml`) sets `SEED_DEMO_USERS=false`, so these accounts are never (re-)created on the live box.
 
 Learner progress is saved per account in the database, so the same login shows the same progress on any machine pointing at the same database.
 
+## Roles
+
+- **Admin**: everything, including creating accounts and changing a name, email, password or role.
+- **Instructor**: edits the training content and Equipment Settings, sees the trainees and their scores, and can reset a trainee's progress. Cannot create or edit accounts, and does not see admins or other instructors.
+- **Trainee**: the training only.
+
+The permissions are in `frontend/src/data/permissions.js`, and the API enforces them (a refused request is a 403).
+
 ## Admin Flow
 
-Admin routes (log in as the admin account):
+Admin routes (log in as the admin account; the instructor sees the same dashboard without the account controls):
 
 - `/admin` — overview: learner count, average completion, per-module completion, recent activity
 - **Training Content** — three sections:
@@ -105,7 +116,7 @@ Admin routes (log in as the admin account):
   - `/admin/modules/:slug` — the **Module Editor**: the module's card fields plus its ordered steps (Read Up, Driving Course, Walk Around, Checklist, Quiz, Built-in Activity, Completion Summary). Selecting a step edits it in place — a driving step gets the 3D map, a walk-around step its inspection checks / gauges / device tests / defect scenarios plus the same 3D hotspot editor, scoped to the markers it shows, a checklist step its items, a quiz step its questions
   - `/admin/parts` — the hotspot list beside the 3D model: add a hotspot, click the model to place its marker or drag one to move it, edit its detail card (Markdown + reference image), then Publish. Every placed hotspot is marked on the model at once, so you can place one against its neighbours. Each hotspot is ticked for the surfaces it appears on — Parts Identification, walk-around inspection, or both — so a component that is both is edited once, not twice. Also part categories and the parts quiz
   - `/admin/settings` — **Equipment Settings**: the equipment title (what `{equipment}` resolves to in the hub copy) and the **hub artwork image** (the line drawing etched into the training hub's header plate: drop a file in `frontend/public/images/` and point the field at `/images/your-file.png`, or paste any image URL), the **Hub content** (the copy on the training hub and module list; leave a field blank to use the default) and the **Driving Simulation** profile (body footprint and first-person seat)
-- `/admin/users`, `/admin/reports` — learners, progress, CSV export
+- `/admin/users`, `/admin/reports` — learners, progress, CSV export. **Reset progress** on a user clears everything they have saved (the account stays). A learner still signed in somewhere gets the reset copy on their next save rather than writing their old progress back.
 
 Hotspots and course steps use **Save draft / Publish**: learners keep seeing the published version until you press Publish, and Discard draft throws the pending edit away. Modules, the equipment settings, hub content, part categories, checklists and quiz questions save immediately.
 
