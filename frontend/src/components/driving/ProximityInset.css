@@ -1,12 +1,14 @@
 /* The proximity inset's frame. The canvas draws the inset into
    .proximity-inset-view's box (InsetRenderer measures it every frame), so
-   CSS alone decides where the inset sits: it is the first item of
-   .driving-hud-bottom, which puts it at the right-hand end of the band
-   between the module shell's overlay lanes, stacked above the dashboard. */
+   CSS alone decides where the inset sits: the last column of
+   .driving-hud-upper, the row above the dashboard, which puts it at the
+   right-hand end of the band between the module shell's overlay lanes. The
+   safety signs have the row's middle column. */
 
 .proximity-inset {
   position: relative;
-  align-self: flex-end;
+  grid-column: 3;
+  justify-self: end;
   width: clamp(128px, 11vw, 180px);
   aspect-ratio: 1;
   pointer-events: none;

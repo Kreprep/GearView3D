@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { closestPointOnOrientedRect, rectRectClosest, rectRectDistance } from './simCollision.js'
+import { closestPointOnOrientedRect, forwardGap, forwardGapToCircle, rectRectClosest, rectRectDistance } from './simCollision.js'
 
 const close = (actual, expected, tolerance = 1e-9) => assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`)
 const rect = (x, z, halfX, halfZ, rotation = 0) => ({ x, z, rotation, halfX, halfZ })
@@ -63,4 +63,50 @@ test('rectRectClosest on overlapping boxes points toward the other box', () => {
   assert.equal(found.distance, 0)
   close(found.x, 0)
   close(found.z, 1)
+})
+
+// --- forwardGap: what is in the path a rect sweeps going straight ahead -----
+
+test('forwardGap is the gap from the front face to a box straight ahead', () => {
+  // Front face at z = 2; the box's near face at z = 5.
+  close(forwardGap(rect(0, 0, 1, 2), rect(0, 6, 3, 1)), 3)
+})
+
+test('forwardGap ignores a box beside the path, however close, and one behind', () => {
+  assert.equal(forwardGap(rect(0, 0, 1, 2), rect(2.2, 1, 1, 1)), null)
+  assert.equal(forwardGap(rect(0, 0, 1, 2), rect(0, -6, 1, 1)), null)
+})
+
+test('forwardGap counts a box that only clips the edge of the path, from where it enters it', () => {
+  // Spans x 0.5..2.5: its part inside |x| <= 1 starts at z = 4.
+  close(forwardGap(rect(0, 0, 1, 2), rect(1.5, 5, 1, 1)), 2)
+  // A margin widens the path to reach a box just outside it.
+  assert.equal(forwardGap(rect(0, 0, 1, 2), rect(2.05, 5, 1, 1)), null)
+  close(forwardGap(rect(0, 0, 1, 2), rect(2.05, 5, 1, 1), 0.1), 2)
+})
+
+test('forwardGap measures to where a turned box enters the path, not to its nearest corner', () => {
+  // A long wall at 45 degrees crossing the path: it enters the strip at its
+  // x = 1 edge. The wall's centreline is z = 6 - x, so at x = 1 it is near 5.
+  const gap = forwardGap(rect(0, 0, 1, 2), rect(0, 6, 0.01, 8, Math.PI / 4))
+  close(gap, 3 - 0.01 * Math.SQRT2, 1e-6)
+})
+
+test('forwardGap follows the heading of the rect, and a half turn looks behind', () => {
+  // Facing +X (a quarter turn): a box further along +X is ahead.
+  close(forwardGap(rect(0, 0, 1, 2, Math.PI / 2), rect(6, 0, 1, 1)), 3)
+  assert.equal(forwardGap(rect(0, 0, 1, 2, Math.PI / 2), rect(0, 6, 1, 1)), null)
+  close(forwardGap(rect(0, 0, 1, 2, Math.PI), rect(0, -6, 1, 1)), 3)
+})
+
+test('forwardGap is zero for a box already at or over the front face', () => {
+  assert.equal(forwardGap(rect(0, 0, 1, 2), rect(0, 2.5, 1, 1)), 0)
+})
+
+test('forwardGapToCircle treats a cone as the square around it', () => {
+  const truck = rect(0, 0, 1, 2)
+  close(forwardGapToCircle(truck, { x: 0, z: 5, radius: 0.5 }), 2.5)
+  assert.equal(forwardGapToCircle(truck, { x: 1.6, z: 5, radius: 0.5 }), null)
+  close(forwardGapToCircle(truck, { x: 1.4, z: 5, radius: 0.5 }), 2.5)
+  assert.equal(forwardGapToCircle(truck, { x: 0, z: -5, radius: 0.5 }), null)
 })

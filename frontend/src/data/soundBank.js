@@ -33,7 +33,7 @@ export const SOUND_BANK = {
   horn: { file: 'horn.mp3', bus: 'alerts', gain: 0.8 },
   // The pre-start interlock refusing to crank.
   denied: { file: 'denied.mp3', bus: 'alerts', gain: 0.6 },
-  // For the safety signs (Phase 6); nothing plays them yet.
+  // The safety signs (lib/driving/safetyRules.js): a caution and a danger.
   cautionChime: { file: 'caution-chime.mp3', bus: 'alerts', gain: 0.6 },
   dangerAlarm: { file: 'danger-alarm.mp3', bus: 'alerts', gain: 0.7 },
 
@@ -66,4 +66,6 @@ export const DRIVING_SOUNDS = [
   'keyClick',
   'seatbelt',
   'parkingBrake',
+  'cautionChime',
+  'dangerAlarm',
 ]

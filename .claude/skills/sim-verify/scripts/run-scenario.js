@@ -19,7 +19,13 @@ async (page) => {
   // until the JS expression `until` (over `d` = window.__drivingDebug) is
   // true; { wait } sleeps; { set } calls __drivingDebugSet mid-run.
   // `expect` is a list of JS expressions over `d` that must all be true;
-  // they can also read `a`, the audio engine's window.__audioDebug().
+  // they can also read `a`, the audio engine's window.__audioDebug(), `l`,
+  // the safety signs' layout over the run ({ maxSigns, overlap }), and `p`,
+  // the step's saved attemptStats entry (trainee mode only, else null).
+  //
+  // Since Phase 6 `d` also carries the safety signs: `d.signs` (the ones
+  // shown, [{ id, severity, kind }]) and this attempt's `d.violations` /
+  // `d.dangers` ({ ruleId: n }).
   //
   // Since Phase 4 the engine only starts through the pre-start interlock
   // (seatbelt, parking brake, direction N) and the parking brake holds the
@@ -164,6 +170,83 @@ async (page) => {
         "a.loops.find((loop) => loop.name === 'engineIdle').gain > 0",
       ],
     },
+    // --- Safety signs (Phase 6), one per rule family -----------------------
+    'sign-interlock': {
+      module: 'load-handling', step: 'Accelerate Course',
+      actions: [
+        // A refused start raises the blue "Fasten the seatbelt" sign.
+        { press: 'e' },
+        { wait: 400 },
+        { press: 'b' },
+        { press: 'Space' },
+        { press: 'e' },
+        { wait: 300 },
+        // W against the set parking brake: "Release the parking brake". The
+        // truck does not move, so the hold ends on the sign.
+        { hold: 'w', until: "d.violations['parking-brake-on'] >= 1", timeout: 3000 },
+      ],
+      expect: ["d.violations['start-interlock'] === 1", "d.violations['parking-brake-on'] === 1", 'd.engineOn', 'd.z < 0.05', '!l.overlap', 'l.maxSigns >= 1'],
+    },
+    'sign-obstacle': {
+      module: 'post-operation', step: 'Secure Parking',
+      // cone-fail's drive: the obstacle sign has to come up, and turn to
+      // "stop", before the strike.
+      setup: { x: 1.2, z: 2.0, heading: 0, seatbelt: true, parkingBrake: true },
+      actions: [{ press: 'e' }, { set: { parkingBrake: false } }, { hold: 'w', until: 'd.failed', timeout: 10000 }],
+      expect: ["d.failReason === 'cone'", "d.violations['obstacle-ahead'] === 1", "d.dangers['obstacle-ahead'] === 1", '!l.overlap'],
+    },
+    'sign-overspeed': {
+      module: 'load-handling', step: 'Left and Right Turning',
+      // Full throttle on a course with the default 8 km/h limit.
+      actions: [
+        ...START,
+        { hold: 'w', until: 'd.violations.overspeed >= 1', timeout: 8000 },
+        { hold: 's', until: 'd.speed < 0.06', timeout: 5000 },
+        { wait: 900 },
+      ],
+      expect: ['d.violations.overspeed === 1', "!d.signs.some((sign) => sign.id === 'overspeed')", '!d.failed', '!l.overlap', 'l.maxSigns >= 1'],
+    },
+    'sign-load': {
+      module: 'pallet-testing', step: 'Precision Carry',
+      setup: { x: 0, z: 4.0, heading: 0 },
+      // Pick the pallet up and drive off with the forks high and the mast
+      // upright: "Lower the forks for travel" and "Tilt the mast back".
+      actions: [
+        ...START,
+        { hold: 'w', until: 'd.z > 4.1 && d.speed === 0', timeout: 8000 },
+        { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
+        { hold: 'w', until: "d.violations['mast-not-back'] >= 1 && d.violations['forks-high-travel'] >= 1", timeout: 5000 },
+        { hold: 's', until: 'd.speed < 0.06', timeout: 5000 },
+      ],
+      expect: ["d.violations['forks-high-travel'] >= 1", "d.violations['mast-not-back'] >= 1", 'l.maxSigns === 2', '!l.overlap', '!d.failed'],
+    },
+    'sign-overload': {
+      module: 'pallet-testing', step: 'Load Limits',
+      setup: { x: 0, z: 6.0, heading: 0 },
+      // Forks into the 1,500 kg pallet: "Do not lift", before anything is
+      // lifted.
+      actions: [...START, { hold: 'w', until: 'd.z > 6.05 && d.speed === 0', timeout: 8000 }, { wait: 500 }],
+      expect: ["d.signs.some((sign) => sign.id === 'overload' && sign.severity === 'danger')", 'd.dangers.overload === 1', '!d.failed', '!l.overlap'],
+    },
+    'sign-reverse': {
+      module: 'load-handling', step: 'Accelerate Course',
+      // Reversing in first-person while looking ahead, then looking behind
+      // (arrow down) clears the sign.
+      actions: [
+        ...START,
+        { hold: 's', until: "d.violations['look-direction'] >= 1", timeout: 6000 },
+        { press: 'ArrowDown' },
+        { hold: 's', until: "!d.signs.some((sign) => sign.id === 'look-direction')", timeout: 4000 },
+      ],
+      expect: ["d.violations['look-direction'] === 1", "!d.signs.some((sign) => sign.id === 'look-direction')", '!l.overlap'],
+    },
+    'sign-record': {
+      module: 'load-handling', step: 'Accelerate Course',
+      // Completing a step saves what the signs logged with the learner's
+      // progress, and the task panel sums it up. Trainee mode only.
+      actions: [...START, { hold: 'w', until: 'd.checkpointIndex >= 1', timeout: 25000 }, { hold: 's', until: 'd.speed < 0.06', timeout: 5000 }, { wait: 800 }],
+      expect: ['d.checkpointIndex === 1', 'p && typeof p.completedAt === "string"', 'p && p.bestViolations <= Object.values(p.violations).reduce((sum, n) => sum + n, 0)', 'l.summary !== null'],
+    },
   }
 
   const scenario = SCENARIOS[SCENARIO]
@@ -257,6 +340,26 @@ async (page) => {
     await page.waitForTimeout(100)
   }
 
+  // Where the safety signs sit against the dashboard and the proximity inset,
+  // sampled through the run: they must never cover either.
+  const layout = { maxSigns: 0, overlap: false, summary: null }
+  const sampleLayout = async () => {
+    const sample = await page.evaluate(() => {
+      const box = (element) => element.getBoundingClientRect()
+      const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+      const signs = [...document.querySelectorAll('.safety-sign')].map(box)
+      const blocked = [...document.querySelectorAll('.operator-dashboard, .proximity-inset')].map(box)
+      return {
+        signs: signs.length,
+        overlap: signs.some((sign) => blocked.some((other) => overlaps(sign, other))),
+        summary: document.querySelector('[data-attempt-violations]')?.textContent ?? null,
+      }
+    })
+    layout.maxSigns = Math.max(layout.maxSigns, sample.signs)
+    layout.overlap = layout.overlap || sample.overlap
+    layout.summary = sample.summary
+  }
+
   const log = []
   for (const action of scenario.actions) {
     if (action.press) {
@@ -269,6 +372,8 @@ async (page) => {
     } else if (action.hold) {
       await page.keyboard.down(action.hold)
       let reached = true
+      // Signs come and go inside a hold; watch them while it runs.
+      const watching = setInterval(() => sampleLayout().catch(() => {}), 100)
       try {
         await page.waitForFunction(
           (expression) => {
@@ -281,20 +386,31 @@ async (page) => {
       } catch {
         reached = false
       }
+      clearInterval(watching)
       await page.keyboard.up(action.hold)
       if (!reached) log.push(`timed out holding ${action.hold.toUpperCase()} until ${action.until}`)
     }
+    await sampleLayout()
     const d = await debug()
-    log.push(`${JSON.stringify(action)} -> t=${d.time?.toFixed(2)} x=${d.x.toFixed(3)} z=${d.z.toFixed(3)} v=${d.speed.toFixed(3)} fork=${d.forkHeight.toFixed(3)} tilt=${d.tilt.toFixed(3)}${d.failed ? ` FAILED(${d.failReason})` : ''}`)
+    log.push(`${JSON.stringify(action)} -> t=${d.time?.toFixed(2)} x=${d.x.toFixed(3)} z=${d.z.toFixed(3)} v=${d.speed.toFixed(3)} fork=${d.forkHeight.toFixed(3)} tilt=${d.tilt.toFixed(3)}${d.failed ? ` FAILED(${d.failReason})` : ''}${d.signs?.length ? ` signs=${d.signs.map((sign) => sign.id).join('+')}` : ''}`)
   }
 
   await page.waitForTimeout(300)
   const final = await debug()
   const audio = await page.evaluate(() => window.__audioDebug?.() ?? null)
+  await sampleLayout()
+  // The step's saved safety record. The admin preview saves no progress.
+  const record = mode === 'trainee'
+    ? await page.evaluate(([module, stepTitle]) => {
+        const stats = JSON.parse(localStorage.getItem('gearview_progress_v1') || '{}').simulations?.[module]?.attemptStats || {}
+        const stepId = stepTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+        return stats[stepId] ?? null
+      }, [scenario.module, scenario.step])
+    : null
   const checks = scenario.expect.map((expression) => {
     let passed = false
     try {
-      passed = Boolean(new Function('d', 'a', `return (${expression})`)(final, audio))
+      passed = Boolean(new Function('d', 'a', 'l', 'p', `return (${expression})`)(final, audio, layout, record))
     } catch {
       // An expression over `a` with no audio engine on the page.
     }
@@ -311,6 +427,8 @@ async (page) => {
       log,
       hud: hud?.split('\n'),
       debug: final,
+      layout,
+      record,
       audio,
       consoleErrors,
     },

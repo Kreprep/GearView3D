@@ -99,6 +99,10 @@ export const SUDDEN_STOP_MIN_SPEED = kmh(10)
 // moving with a load. Above LIFT_THRESHOLD (0.12) so a normal pickup doesn't
 // immediately trip it, well below FORK_MAX_HEIGHT (0.8) - exact value tuned
 // for gameplay feel, not a real-world cm conversion.
+//
+// This is the highTravel *fail*. The forks-high-travel safety sign warns from
+// 15 cm (FORKS_TRAVEL_HEIGHT, data/safetyThresholds.js); the two values unify
+// in Phase 7, since moving this one changes the simulation.
 export const SAFE_TRAVEL_HEIGHT = 0.22
 export const HIGH_TRAVEL_MIN_SPEED = 0.4
 export const LOAD_GRAVITY = 2.0

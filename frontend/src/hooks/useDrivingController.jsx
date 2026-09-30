@@ -1,9 +1,18 @@
 import { useRef, useState } from 'react'
+import { AttemptSummary } from '../components/driving/AttemptSummary'
 import { useT } from '../i18n'
 import { courseTaskKey } from '../lib/courseGoals'
 import { evaluateFreeCompletion } from '../lib/customCompletion'
 import { getStoredProgress } from '../lib/progressService'
-import { buildSimulationState, withStepComplete } from '../lib/simulationProgress'
+import {
+  attemptStatsFor,
+  buildSimulationState,
+  emptyAttemptTally,
+  isStepComplete,
+  withAttemptComplete,
+  withAttemptFail,
+  withStepComplete,
+} from '../lib/simulationProgress'
 
 function unique(items) {
   return [...new Set(items)]
@@ -23,10 +32,23 @@ function unique(items) {
 // The rule's context is { keysUsed, engineStarted, seatbelt, parkingBrake }.
 // The last two are the cab switches' positions right now (the viewer's
 // cab-switch event), not a history, so they are not saved with progress.
+//
+// Completing a step also records what the safety signs logged on that attempt
+// (simulation.attemptStats[stepId], lib/simulationProgress.js). The viewer
+// reports the running tally with `safety-tally` events, starting from an
+// empty one each attempt; a failed attempt counts toward the next
+// completion's `fails`.
 export function useDrivingController({ moduleSlug, courseById, simulation, gradedStepIds, saveSimulation, markStepComplete, updateSimulation }) {
   const [lastFail, setLastFail] = useState(null)
   const cabRef = useRef({ seatbelt: false, parkingBrake: false })
+  const tallyRef = useRef({ stepId: null, tally: emptyAttemptTally() })
   const t = useT()
+
+  // The current attempt's tally, if it is this step's.
+  const completedAttempt = (stepId) => ({
+    tally: tallyRef.current.stepId === stepId ? tallyRef.current.tally : emptyAttemptTally(),
+    completedAt: new Date().toISOString(),
+  })
 
   const keysUsedFor = (stepId) => simulation.keysUsedByStep?.[stepId] || []
 
@@ -39,7 +61,10 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
     evaluateFreeCompletion(courseById[stepId], { keysUsed, engineStarted: merged.engineStarted, ...cabRef.current }).then((done) => {
       if (!done) return
       const live = buildSimulationState(getStoredProgress().simulations[moduleSlug] || {}, gradedStepIds)
-      updateSimulation(moduleSlug, buildSimulationState({ ...live, ...withStepComplete(live, stepId) }, gradedStepIds))
+      // The rule is evaluated again on every key after it first holds; only
+      // the first time is the completion.
+      const stats = isStepComplete(live, stepId) ? null : withAttemptComplete(live, stepId, completedAttempt(stepId))
+      updateSimulation(moduleSlug, buildSimulationState({ ...live, ...stats, ...withStepComplete(live, stepId) }, gradedStepIds))
     })
   }
 
@@ -63,6 +88,11 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
       return
     }
 
+    if (event.type === 'safety-tally') {
+      tallyRef.current = { stepId: currentStep.id, tally: event.tally }
+      return
+    }
+
     if (event.type === 'cab-switch') {
       cabRef.current = { seatbelt: event.seatbelt, parkingBrake: event.parkingBrake }
       if (isFreePractice) evaluateFreePractice(currentStep.id, simulation)
@@ -76,7 +106,7 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
 
     if (event.type === 'sim-failed') {
       setLastFail({ stepId: currentStep.id, title: event.title, message: event.message })
-      saveSimulation({ failedAttempts: simulation.failedAttempts + 1 })
+      saveSimulation({ failedAttempts: simulation.failedAttempts + 1, ...withAttemptFail(simulation, currentStep.id) })
       return
     }
 
@@ -84,7 +114,7 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
     if (event.type === 'course-complete' || event.type === 'pallet-delivered' || event.type === 'parking-complete') {
       if (gradedStepIds.includes(currentStep.id)) {
         setLastFail(null)
-        markStepComplete(currentStep.id)
+        markStepComplete(currentStep.id, withAttemptComplete(simulation, currentStep.id, completedAttempt(currentStep.id)))
       }
     }
   }
@@ -92,6 +122,7 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
   const renderDrivingTask = (currentStep, done) => {
     const course = courseById[currentStep.id]
     const failVisible = lastFail && lastFail.stepId === currentStep.id && !done
+    const summary = done ? <AttemptSummary stats={attemptStatsFor(simulation, currentStep.id)} /> : null
 
     if (course.goalType === 'free') {
       // Completion is entirely up to the course's own `completionCode` (see
@@ -102,6 +133,7 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
           <p className={done ? 'completion-ready' : 'task-note'}>
             {done ? t('driving.task.done') : t('module.task.completeRequirements')}
           </p>
+          {summary}
         </div>
       )
     }
@@ -118,6 +150,7 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
         <p className={done ? 'completion-ready' : 'task-note'}>
           {done ? t('driving.task.done') : t(task.key, task.values)}
         </p>
+        {summary}
       </div>
     )
   }

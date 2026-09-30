@@ -33,6 +33,7 @@ import { snapshotGamepads } from '../lib/driving/gamepadBrowser'
 import { createWheelSource } from '../lib/driving/wheelSource'
 import { proximityReadout } from '../lib/driving/proximity'
 import { rigGeometryMismatches } from '../lib/driving/rigGeometry'
+import { createSafetyMonitor } from '../lib/driving/safetyMonitor'
 import { createSimCore } from '../lib/driving/simCore'
 import { createSimLoop } from '../lib/driving/simLoop'
 import { capturePose, createPoseBuffer, syncView } from '../lib/driving/syncView'
@@ -55,6 +56,7 @@ import { DrivingLoadingPanel } from './driving/DrivingLoadingPanel'
 import { OperatorDashboard } from './driving/OperatorDashboard'
 import { ControllerSetup } from './driving/ControllerSetup'
 import { InsetRenderer, ProximityInsetFrame, ProximityRings } from './driving/ProximityInset'
+import { SafetySigns } from './driving/SafetySigns'
 import './DrivingSimulationViewer.css'
 
 // The coded forklift numbers, used whenever no profile is passed.
@@ -109,7 +111,7 @@ function publishCockpit(telemetry, core, course, { controls, switches, gauges, w
   )
 }
 
-function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, wheel, audioRef, onSimEvent, onKeyActive, onCabChange, onViewCommand, cameraState, insetEnabled, insetFrameRef, camAdjustedRef }) {
+function DrivingScene({ profile, course, core, telemetry, safety, signs, keyboard, dashboard, wheel, audioRef, onSimEvent, onSafetyTally, onKeyActive, onCabChange, onViewCommand, cameraState, insetEnabled, insetFrameRef, camAdjustedRef }) {
   const { scene } = useGLTF(EQUIPMENT_MODEL_URL)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const { camera, gl } = useThree()
@@ -315,6 +317,16 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, w
     const { alpha } = sim.loop.advance(rawDelta)
     stepCabGauges(sim.gauges, { engineOn: core.state.truck.engineOn, throttle: sim.controls().throttle }, rawDelta)
 
+    // The safety signs (lib/driving/safetyMonitor.js) judge the state the
+    // steps just left. They go first, so a sign that came up with the step
+    // that completes the course is in the tally the page records with it.
+    const alerts = safety.update(core.state, core.world, { firstPerson, lookYaw: lookYawRef.current })
+    signs.publish({ signs: alerts.shown })
+    if (alerts.edges.length) {
+      audioRef.current?.handleAlerts(alerts.edges)
+      onSafetyTally(safety.tally())
+    }
+
     const events = core.drainEvents()
     events.forEach(onSimEvent)
     // Sound follows the state the steps just left (lib/driving/drivingAudio.js).
@@ -341,7 +353,7 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, w
     stepCamera({ ...refs, profile, camera, cameraState, forkHeight: core.state.forks.height, camAdjustedRef }, pose, rawDelta)
     if (headlightRef.current) headlightRef.current.intensity = dashboard.switches.lights ? HEADLIGHT_INTENSITY : 0
 
-    if (import.meta.env.DEV) window.__drivingDebug = core.debugSnapshot()
+    if (import.meta.env.DEV) window.__drivingDebug = { ...core.debugSnapshot(), ...safety.debugSnapshot() }
 
     // The HUD refreshes at TELEMETRY_HZ, and at once when something happened
     // or a dashboard switch moved.
@@ -512,8 +524,11 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   const t = useT()
 
   // One attempt: the component is keyed on the course and a reset counter, so
-  // "Reset Attempt" builds a fresh core, dashboard and gauges.
+  // "Reset Attempt" builds a fresh core, dashboard, gauges and safety watch.
   const [core] = useState(() => createSimCore(course, profile))
+  const [safety] = useState(() => createSafetyMonitor(course))
+  // What SafetySigns draws: the alert queue's `shown` list.
+  const [signs] = useState(() => createTelemetryStore({ signs: [] }))
   const [dashboard] = useState(createDashboardSource)
   const [wheel] = useState(() => createWheelSource(loadControllerConfig()))
   const [setupOpen, setSetupOpen] = useState(false)
@@ -609,9 +624,19 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
       emit({ type: 'parking-complete' })
     }
   }
+  // The attempt's violation count so far, for the page's progress record
+  // (lib/simulationProgress.js, attemptStats).
+  const handleSafetyTally = (tally) => emit({ type: 'safety-tally', tally })
   const handleKeyActive = (key) => emit({ type: 'key-active', key })
   // For free-practice completion code (context.seatbelt / parkingBrake).
   const handleCabChange = ({ seatbelt, parkingBrake }) => emit({ type: 'cab-switch', seatbelt, parkingBrake })
+
+  // A new attempt starts from an empty tally: the page must not carry the
+  // last attempt's count into this one's record.
+  useEffect(() => {
+    const timer = setTimeout(() => onEventRef.current?.({ type: 'safety-tally', tally: safety.tally() }), 0)
+    return () => clearTimeout(timer)
+  }, [safety])
 
   const checkpoints = course.checkpoints || []
   // Stored courses always use `pallets`; the singular `pallet` is the older
@@ -719,11 +744,14 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
             course={course}
             core={core}
             telemetry={telemetry}
+            safety={safety}
+            signs={signs}
             keyboard={keyboard}
             dashboard={dashboard}
             wheel={wheel}
             audioRef={audioRef}
             onSimEvent={handleSimEvent}
+            onSafetyTally={handleSafetyTally}
             onKeyActive={handleKeyActive}
             onCabChange={handleCabChange}
             onViewCommand={handleViewCommand}
@@ -750,7 +778,12 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
       )}
 
       <div className="driving-hud-bottom">
-        {insetEnabled && <ProximityInsetFrame telemetry={telemetry} frameRef={insetFrameRef} />}
+        {/* The safety signs at the centre and the proximity inset at the
+            right-hand end share the row above the dashboard. */}
+        <div className="driving-hud-upper">
+          <SafetySigns store={signs} />
+          {insetEnabled && <ProximityInsetFrame telemetry={telemetry} frameRef={insetFrameRef} />}
+        </div>
         {soundSuspended && (
           <button type="button" className="driving-reset-button driving-sound-prompt" onClick={() => getAudioEngine().resume()}>
             <VolumeX size={14} aria-hidden="true" /> {t('driving.hud.enableSound')}

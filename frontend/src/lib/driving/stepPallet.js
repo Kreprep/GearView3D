@@ -6,19 +6,11 @@ import {
   SLIP_FAIL_RATIO,
   TILT_RELEASE_ANGLE,
 } from '../../data/palletProfile.js'
-import {
-  RACK_FOOTPRINT,
-  RACK_LEVEL_HEIGHTS,
-  RACK_LEVEL_TOLERANCE,
-  RACK_LEVELS,
-  RACK_PLACE_MAX_SPEED,
-  RACK_SLOT_APPROACH_MARGIN,
-  RACK_SLOT_HALF_WIDTH,
-} from '../../data/rackProfile.js'
+import { RACK_LEVEL_HEIGHTS, RACK_LEVEL_TOLERANCE, RACK_LEVELS, RACK_PLACE_MAX_SPEED } from '../../data/rackProfile.js'
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
 import { engagementRisk, evaluateForkEngagement, gripQuality, slipThisFrame } from '../loadPhysics.js'
-import { toRectLocal } from '../simCollision.js'
 import { forkPose } from './forkPose.js'
+import { targetRackSlot } from './rackSlot.js'
 import { triggerFail } from './stepFail.js'
 import {
   CLEAR_DISTANCE,
@@ -30,7 +22,6 @@ import {
   LOAD_TUMBLE_RATE,
   OVERLOAD_TIP_HEIGHT,
   PALLET_CARRY_Y,
-  RACK_HIT_MARGIN,
   SAFE_TRAVEL_HEIGHT,
   SUDDEN_STOP_DECEL,
   SUDDEN_STOP_MIN_SPEED,
@@ -69,7 +60,7 @@ function emitPalletEvent(state, event, nextState) {
 // integrated) and after stepCollisionBody (reads the committed position).
 export function stepPallet(state, world, dt) {
   const { truck, forks, pallets, frame } = state
-  const { course, racks, halfLength, geometry } = world
+  const { course, geometry } = world
   const { forwardX, forwardZ, lateralAccel, prevSpeed } = frame
 
   if (!pallets.length) return
@@ -84,15 +75,6 @@ export function stepPallet(state, world, dt) {
   const brakingHard = decel > SUDDEN_STOP_DECEL
   const turnLoad = Math.abs(lateralAccel)
   let liveQuality = 'none'
-  // Racking blocks the truck body, so the fork tip can only ever reach a
-  // little way past the rack's front face - and how far depends on the
-  // vehicle, since a short fork on a long body reaches less. Derive the
-  // depth the slot accepts from that geometry rather than trusting a fixed
-  // margin, or a body footprint tuned longer in Equipment Settings could
-  // never deliver.
-  const slotReach =
-    RACK_FOOTPRINT.halfDepth +
-    Math.max(RACK_SLOT_APPROACH_MARGIN, halfLength + RACK_HIT_MARGIN - attachOffset + 0.05)
 
   // A carried pallet is pinned to the carriage rather than chased toward a
   // point in front of the truck: its pose is captured in the carriage's own
@@ -250,21 +232,17 @@ export function stepPallet(state, world, dt) {
       // into the bay and tilts the mast forward to set it down, rather than
       // lowering to the ground like a dropZone delivery - a shelf is
       // elevated, so there is no "lower to release" step.
-      const targetRack = palletDef.targetRack ? racks.find((rack) => rack.id === palletDef.targetRack) : null
-      const targetHeight = targetRack && palletDef.targetLevel ? RACK_LEVEL_HEIGHTS[palletDef.targetLevel] : null
-      const rackRot = targetRack?.rotation || 0
+      //
       // Lined up with the bay at any height is what puts a shelf under the
       // load instead of the floor; being at the *target* level as well is
-      // what makes setting it down a delivery. The set-down itself happens
-      // in the carry branch below, so the floor and the shelf are one rule.
-      let inSlotRect = false
-      let atTargetSlot = false
-
-      if (targetRack && targetHeight != null) {
-        const slot = toRectLocal(tipX, tipZ, { x: targetRack.position[0], z: targetRack.position[2], rotation: rackRot })
-        inSlotRect = Math.abs(slot.x) <= RACK_SLOT_HALF_WIDTH && Math.abs(slot.z) <= slotReach
-        atTargetSlot = inSlotRect && Math.abs(forks.height - targetHeight) <= RACK_LEVEL_TOLERANCE
-      }
+      // what makes setting it down a delivery (rackSlot.js). The set-down
+      // itself happens in the carry branch below, so the floor and the shelf
+      // are one rule.
+      const { targetRack, targetHeight, rackRot, inSlotRect, atTargetSlot } = targetRackSlot(
+        { tipX, tipZ, forkHeight: forks.height },
+        palletDef,
+        world,
+      )
 
       // Lined up at the target shelf, tilting forward is the correct move -
       // exempt it, or storing a heavy pallet up high would be impossible
