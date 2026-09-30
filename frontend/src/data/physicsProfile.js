@@ -66,6 +66,11 @@ export const FORK_COLLIDERS = [
 // same rectangle the 2D collision uses): y from just clear of the floor to
 // the top of the body panels.
 export const CHASSIS_Y = [0.01, 0.49]
+// A truck that has gone over is a dynamic body (lib/physics/world.js,
+// releaseTruck): it stands on its two front wheels and the rear axle's pivot,
+// the stability triangle, as three small feet, with the body's box starting
+// at the underside of the panels so it is the feet that bear on the floor.
+export const WRECK = { footRadius: 0.01, bodyBottom: 0.04 }
 
 // --- Pallets ----------------------------------------------------------------
 // Measured off each pallet GLB in Blender on 2026-09-30 and scaled by its

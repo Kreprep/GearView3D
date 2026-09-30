@@ -28,6 +28,9 @@ start (or cut on a whole period) so they repeat without a gap.
 | `caution-chime.mp3` | Caution safety sign | [Chime-Improper.flac](https://freesound.org/people/drooler/sounds/660863/) | drooler | CC0 1.0 |
 | `danger-alarm.mp3` | Danger safety sign | [Factory Warning Buzzer](https://freesound.org/people/qubodup/sounds/832414/) | qubodup, from a CC0 recording by AstraPLanetshine | CC0 1.0 |
 | `fork-scrape.flac` | Fork tips dragged along the floor (loop) | [crowbar metal drag on concrete scrape and handling.wav](https://freesound.org/people/kyles/sounds/452587/) | kyles | CC0 1.0 |
+| `pallet-drop.mp3` | A pallet struck, set down hard or dropped | [Wooden Planks Dropping on Concrete, Breaking Wood](https://freesound.org/people/TheLittleCrow/sounds/589866/) | TheLittleCrow | CC0 1.0 |
+| `cone-knock.mp3` | A traffic cone knocked | [Water Bucket Hit FF206.aif](https://freesound.org/people/martinimeniscus/sounds/199453/) | martinimeniscus | CC0 1.0 |
+| `metal-impact.mp3` | The forks, or a load on them, meeting racking or a wall | [Metallic clang](https://freesound.org/people/tomwilkinson/sounds/568786/) | tomwilkinson | CC0 1.0 |
 
 To rebuild a file, download its source recording into
 `frontend/audio-src/raw/` (keeping Freesound's file name) and run

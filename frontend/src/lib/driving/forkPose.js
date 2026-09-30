@@ -8,64 +8,45 @@ import { FORKLIFT_RIG_GEOMETRY } from './rigGeometry.js'
 //
 // They reproduce the chain DrivingScene renders and buildVehicleRig builds:
 //   truck group   translate(x, y, z) * rotateY(heading)
-//   tip           the tip-over, about the front axle or a side of the
-//                 stability triangle (tipMatrix below)
 //   tilt pivot    translate(mastFoot) * rotateX(mast tilt)
 //   carriage lift translate(0, forkHeight, 0)
 // The carriage's local +Y runs up the tilted mast and +Z out along the tines.
 //
+// A truck that has tipped over is a physics body (lib/physics/world.js,
+// releaseTruck), and `state.tip.pose` is where that body is: the truck group's
+// transform is then the body's, whatever way up it has ended.
+//
 // three.js is used for its matrix maths only; it runs fine under Node.
 
 const scratch = new Matrix4()
-const tipScratch = new Matrix4()
-const axis = new Vector3()
-
-// The tip-over as a transform in the truck's own frame.
-// - 'forward' pitches the truck about its front axle, until the forks meet
-//   the ground.
-// - 'left' / 'right' rolls it about that side of the stability triangle: the
-//   line from the front wheel's contact patch to the rear axle's pivot.
-export function tipMatrix(tip, geometry = FORKLIFT_RIG_GEOMETRY, target = new Matrix4()) {
-  if (!tip.angle) return target.identity()
-  if (tip.axis === 'left' || tip.axis === 'right') {
-    const side = tip.axis === 'left' ? 1 : -1
-    // Along that edge, pointing so that a positive angle lays the truck over
-    // onto that side: back down the left edge, forward up the right one.
-    axis.set(-geometry.frontTrackHalf, 0, side * (geometry.rearAxleZ - geometry.frontAxleZ)).normalize()
-    return target
-      .makeTranslation(0, 0, geometry.rearAxleZ)
-      .multiply(tipScratch.makeRotationAxis(axis, tip.angle))
-      .multiply(tipScratch.makeTranslation(0, 0, -geometry.rearAxleZ))
-  }
-  const [, pivotY, pivotZ] = geometry.tipPivot
-  return target
-    .makeTranslation(0, pivotY, pivotZ)
-    .multiply(tipScratch.makeRotationX(tip.angle))
-    .multiply(tipScratch.makeTranslation(0, -pivotY, -pivotZ))
-}
+const ONE = new Vector3(1, 1, 1)
 
 // The truck body's world transform.
-export function chassisPose(state, geometry = FORKLIFT_RIG_GEOMETRY, target = new Matrix4()) {
+export function chassisPose(state, target = new Matrix4()) {
   const { truck, tip } = state
+  if (tip.pose) return target.compose(tip.pose.position, tip.pose.quaternion, ONE)
   target.makeTranslation(truck.x, truck.y, truck.z)
-  target.multiply(scratch.makeRotationY(truck.heading))
-  return target.multiply(tipMatrix(tip, geometry, scratch))
+  return target.multiply(scratch.makeRotationY(truck.heading))
 }
 
-export function forkPose(state, geometry = FORKLIFT_RIG_GEOMETRY, target = new Matrix4()) {
-  const { forks } = state
+// The carriage in the truck's own frame: at the mast foot, tilted with the
+// mast, raised by the fork height.
+export function carriageInTruck(forks, geometry = FORKLIFT_RIG_GEOMETRY, target = new Matrix4()) {
   const [footX, footY, footZ] = geometry.mastFoot
-
-  chassisPose(state, geometry, target)
-  target.multiply(scratch.makeTranslation(footX, footY, footZ))
+  target.makeTranslation(footX, footY, footZ)
   target.multiply(scratch.makeRotationX(forks.tilt))
-  target.multiply(scratch.makeTranslation(0, forks.height, 0))
-  return target
+  return target.multiply(scratch.makeTranslation(0, forks.height, 0))
+}
+
+const carriage = new Matrix4()
+
+export function forkPose(state, geometry = FORKLIFT_RIG_GEOMETRY, target = new Matrix4()) {
+  carriageInTruck(state.forks, geometry, carriage)
+  return chassisPose(state, target).multiply(carriage)
 }
 
 // The height above the floor of the lowest point of the tines' underside,
-// with the truck wherever its tip-over has put it: a truck pitching forward
-// comes down on its fork tips.
+// wherever the truck is: standing, or gone over onto its fork tips.
 const tinePoint = new Vector3()
 const tineMatrix = new Matrix4()
 export function tineGroundClearance(state, geometry = FORKLIFT_RIG_GEOMETRY) {

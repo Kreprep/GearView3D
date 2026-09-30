@@ -7,8 +7,10 @@ import { forkPose } from '../driving/forkPose.js'
 import { FORKLIFT_RIG_GEOMETRY } from '../driving/rigGeometry.js'
 import { SIM_DT } from '../driving/simLoop.js'
 import { truckPoses } from '../driving/stepPhysics.js'
-import { G, kmh, m, mps2 } from '../driving/units.js'
+import { truckFeet } from './colliders.js'
+import { G, kmh, m, mps2, toMetres } from '../driving/units.js'
 import { loadRapier } from './rapier.js'
+import { rollRateOver } from './stability.js'
 import { createPhysicsWorld } from './world.js'
 
 // The physics world on its own: a truck that is only a pose, moved by a
@@ -270,6 +272,57 @@ test('the body of the truck knocks a cone over and reports touching it', () => {
   const { z } = body.translation()
   assert.ok(z > 1.3, `cone at z ${z}`)
   physics.dispose()
+})
+
+// --- A truck that has gone over ---------------------------------------------
+
+// A truck standing at the origin, released as a dynamic body turning at
+// `rate` rad/s about its right-hand edge. Returns how far off upright it is
+// after three seconds.
+function releasedTruck(rate) {
+  const standing = { truck: { x: 0, y: 0, z: 0, heading: 0 }, forks: { height: 0.1, tilt: 0 }, tip: { pose: null } }
+  const physics = createPhysicsWorld(
+    RAPIER,
+    { footprint: { halfWidth: 0.15, halfLength: 0.29 }, mastFoot: geometry.mastFoot, feet: truckFeet(geometry), pallets: [], cones: [], racks: [], walls: [], vehicles: [] },
+    truckPoses(standing, geometry),
+  )
+  assert.equal(physics.fallenTruck(), null)
+  // The right-hand side of the stability triangle, pointing forward: a
+  // positive turn about it lays the truck onto its right side (-X).
+  const edge = new Vector3(-geometry.frontTrackHalf, 0, geometry.frontAxleZ - geometry.rearAxleZ).normalize()
+  const centreOfMass = [0, 0.1125, geometry.frontAxleZ - 0.243]
+  const angvel = edge.clone().multiplyScalar(rate)
+  const about = new Vector3(0, 0, geometry.rearAxleZ)
+  physics.releaseTruck({
+    massKg: 3560,
+    centreOfMass,
+    inertia: [500, 500, 300],
+    carriage: { position: new Vector3(...geometry.mastFoot).setY(geometry.mastFoot[1] + 0.1), quaternion: { x: 0, y: 0, z: 0, w: 1 } },
+    linvel: angvel.clone().cross(new Vector3(...centreOfMass).sub(about)),
+    angvel,
+    tip: { angvel, about },
+  })
+  for (let step = 0; step < 180; step += 1) physics.step(truckPoses(standing, geometry))
+  const { position, quaternion } = physics.fallenTruck()
+  const lean = new Vector3(0, 1, 0).angleTo(new Vector3(0, 1, 0).applyQuaternion(quaternion))
+  const kinds = new Set(physics.contacts().map(({ a, b }) => `${a.kind}>${b.kind}`))
+  physics.dispose()
+  return { lean, position, kinds }
+}
+
+test('a released truck stands on its three feet', () => {
+  const { lean, position, kinds } = releasedTruck(0)
+  assert.ok(lean < 0.01, `leaning ${lean}`)
+  assert.ok(Math.abs(position.y) < 0.002 && Math.hypot(position.x, position.z) < 0.01)
+  assert.deepEqual([...kinds], ['wheel>floor'])
+})
+
+test('a released truck rocked a little drops back onto its wheels; rocked hard it ends on its side', () => {
+  assert.ok(releasedTruck(0.6).lean < 0.02)
+  const over = releasedTruck(rollRateOver(toMetres(0.15), toMetres(0.1125)) * 1.1)
+  assert.ok(Math.abs(over.lean - Math.PI / 2) < 0.1, `lean ${over.lean}`)
+  // Onto its right side, the body on the floor.
+  assert.ok(over.kinds.has('chassis>floor'))
 })
 
 test('a pallet set on a rack rests on its decking and reports the shelf', () => {

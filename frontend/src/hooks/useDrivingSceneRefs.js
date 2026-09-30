@@ -10,7 +10,6 @@ export function useDrivingSceneRefs() {
     // Scene objects.
     rigRef: useRef(null),
     truckGroupRef: useRef(null),
-    tipPivotRef: useRef(null),
     palletObjectsRef: useRef([]),
     coneObjectsRef: useRef([]),
     vehicleOrbitRef: useRef(null),

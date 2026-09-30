@@ -211,6 +211,7 @@ test('an impact sounds like what was struck, louder the harder it was', () => {
   assert.deepEqual(eventSounds(impact('cone')), ['coneKnock'])
   assert.deepEqual(eventSounds(impact('structure')), ['metalImpact'])
   assert.deepEqual(eventSounds(impact('something-else')), [])
+  for (const name of ['palletDrop', 'coneKnock', 'metalImpact']) assert.ok(SOUND_BANK[name] && !SOUND_BANK[name].loop, name)
 
   assert.equal(impactGain(impact('pallet', kmh(12))), 1)
   assert.ok(impactGain(impact('pallet', kmh(3))) > impactGain(impact('pallet', kmh(2))))

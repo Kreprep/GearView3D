@@ -1,9 +1,11 @@
 import { Matrix4, Quaternion, Vector3 } from 'three'
-import { IMPACT_SOUND_SPEED } from '../../data/physicsProfile.js'
+import { CHASSIS_Y, IMPACT_SOUND_SPEED } from '../../data/physicsProfile.js'
 import { decorationType } from '../courseEdit.js'
+import { truckFeet } from '../physics/colliders.js'
 import { createPhysicsWorld } from '../physics/world.js'
-import { chassisPose, forkPose } from './forkPose.js'
+import { carriageInTruck, chassisPose, forkPose } from './forkPose.js'
 import { noTouch } from './simState.js'
+import { m } from './units.js'
 
 // The physics step (docs/revisions/post-defense-plan.md, section 4.6): the
 // one place the simulation and the physics world (lib/physics/world.js) meet.
@@ -21,6 +23,11 @@ import { noTouch } from './simState.js'
 //   state.frame.impacts what began touching this step, and how hard, for
 //                       stepCollisionHazards to judge
 // and an 'impact' event for each one hard enough to hear.
+//
+// A truck that tips over (stepStability) is handed to the engine here: it
+// becomes a dynamic body with the truck's mass and centre of gravity, moving
+// and turning as the truck was, and from then on its pose is read back like a
+// pallet's (state.tip.pose).
 //
 // Everything after this step reads state, not the physics world, so the
 // safety rules, the audio and the view stay as they were: readers of state.
@@ -40,7 +47,7 @@ function poseOf(source) {
 // Where the truck's body and its fork carriage are, for the physics world.
 export function truckPoses(state, geometry) {
   return {
-    chassis: poseOf(chassisPose(state, geometry, matrix)),
+    chassis: poseOf(chassisPose(state, matrix)),
     carriage: poseOf(forkPose(state, geometry, matrix)),
   }
 }
@@ -54,6 +61,7 @@ export function createScenePhysics(RAPIER, state, world) {
     {
       footprint: { halfWidth: world.halfWidth, halfLength: world.halfLength },
       mastFoot: world.geometry.mastFoot,
+      feet: truckFeet(world.geometry),
       pallets: state.pallets.map(({ def }) => ({ def, ...placed(def) })),
       cones: world.liveCones.map(placed),
       racks: world.rackColliders,
@@ -64,7 +72,85 @@ export function createScenePhysics(RAPIER, state, world) {
   )
 }
 
-const TRUCK_PARTS = new Set(['chassis', 'tine', 'backrest'])
+const UP = new Vector3(0, 1, 0)
+const axis = new Vector3()
+const arm = new Vector3()
+const spin = new Vector3()
+const velocity = new Vector3()
+const forward = new Vector3()
+
+// What the physics world needs to take a tipping truck over: its mass and
+// where that sits, the forks as they stand on it, and how it is moving, with
+// the rotation the tip-over starts with (state.tip) about the edge it goes
+// over: the front axle, or a side of the stability triangle.
+function truckRelease(state, world) {
+  const { truck, forks, tip } = state
+  const { geometry, stability, halfWidth, halfLength } = world
+  const { frontAxleZ, rearAxleZ, frontTrackHalf } = geometry
+
+  const centreOfMass = [0, m(stability.cgHeight), frontAxleZ - m(stability.cgBehindFrontAxle)]
+  // The truck's inertia, as a solid box the size of its body.
+  const halfHeight = CHASSIS_Y[1] / 2
+  const third = stability.massKg / 3
+  const inertia = [
+    third * (halfHeight ** 2 + halfLength ** 2),
+    third * (halfWidth ** 2 + halfLength ** 2),
+    third * (halfWidth ** 2 + halfHeight ** 2),
+  ]
+
+  // In the truck's own frame. A positive turn about the axis lays the truck
+  // over the way it is going: nose down, or onto that side (left is +X).
+  let edgeZ = frontAxleZ
+  if (tip.axis === 'forward') axis.set(1, 0, 0)
+  else {
+    const side = tip.axis === 'left' ? 1 : -1
+    axis.set(-frontTrackHalf, 0, side * (rearAxleZ - frontAxleZ)).normalize()
+    edgeZ = rearAxleZ
+  }
+  // The centre of gravity's velocity: the truck's travel, its turning about
+  // the front axle, and the tip-over's rotation about its edge.
+  velocity.set(0, 0, truck.speed)
+  arm.set(centreOfMass[0], centreOfMass[1], centreOfMass[2] - frontAxleZ)
+  velocity.add(spin.copy(UP).multiplyScalar(tip.yawRate).cross(arm))
+  arm.set(centreOfMass[0], centreOfMass[1], centreOfMass[2] - edgeZ)
+  velocity.add(spin.copy(axis).multiplyScalar(tip.rate).cross(arm))
+  const tipSpin = spin.copy(axis).multiplyScalar(tip.rate).clone().applyAxisAngle(UP, truck.heading)
+
+  return {
+    massKg: stability.massKg,
+    centreOfMass,
+    inertia,
+    carriage: poseOf(carriageInTruck(forks, geometry, matrix)),
+    linvel: velocity.clone().applyAxisAngle(UP, truck.heading),
+    angvel: tipSpin.clone().addScaledVector(UP, tip.yawRate),
+    // The load on the forks goes over with the truck.
+    tip: {
+      angvel: tipSpin,
+      about: new Vector3(0, 0, edgeZ).applyAxisAngle(UP, truck.heading).add(arm.set(truck.x, truck.y, truck.z)),
+    },
+    held: state.pallets.flatMap((pallet, index) => (pallet.touch.forks ? [index] : [])),
+  }
+}
+
+// Where the fallen truck's body is, read back into state: its pose, how far
+// off upright it is, and the truck's position, heading and speed for
+// everything that reads those.
+function readFallenTruck(state, fallen) {
+  const { truck, tip } = state
+  tip.pose ||= { position: new Vector3(), quaternion: new Quaternion() }
+  tip.pose.position.copy(fallen.position)
+  tip.pose.quaternion.copy(fallen.quaternion)
+  tip.angle = UP.angleTo(arm.copy(UP).applyQuaternion(tip.pose.quaternion))
+
+  truck.x = fallen.position.x
+  truck.z = fallen.position.z
+  // Its heading is where its nose points along the floor, while it has one.
+  forward.set(0, 0, 1).applyQuaternion(tip.pose.quaternion)
+  if (Math.hypot(forward.x, forward.z) > 0.5) truck.heading = Math.atan2(forward.x, forward.z)
+  truck.speed = fallen.linvel.x * Math.sin(truck.heading) + fallen.linvel.z * Math.cos(truck.heading)
+}
+
+const TRUCK_PARTS = new Set(['chassis', 'wheel', 'tine', 'backrest'])
 const FORK_PARTS = new Set(['tine', 'backrest'])
 const STRUCTURE = new Set(['rack', 'wall', 'vehicle'])
 const contactKey = ({ a, b }) => `${a.kind}${a.index ?? ''}>${b.kind}${b.index ?? ''}`
@@ -77,7 +163,10 @@ export function stepPhysics(state, world, physics, dt) {
   // it this step.
   const before = pallets.map((pallet) => pallet.velocity.clone())
 
+  if (state.tip.active && !physics.fallenTruck()) physics.releaseTruck(truckRelease(state, world))
   physics.step(truckPoses(state, geometry))
+  const fallen = physics.fallenTruck()
+  if (fallen) readFallenTruck(state, fallen)
 
   carriageInverse.copy(forkPose(state, geometry, matrix)).invert()
   pallets.forEach((pallet, index) => {
@@ -147,6 +236,9 @@ export function stepPhysics(state, world, physics, dt) {
         if (started) impacts.push({ what: 'cone', byTruck: true, speed: Math.abs(truck.speed) })
       } else if (STRUCTURE.has(b.kind)) {
         limitBy(contact, started)
+      } else if (fallen && b.kind === 'floor' && a.kind !== 'wheel' && started) {
+        // A truck going over: its body or its forks coming down on the floor.
+        impacts.push({ what: 'structure', byTruck: true, speed: Math.hypot(fallen.linvel.x, fallen.linvel.y, fallen.linvel.z) })
       }
       continue
     }

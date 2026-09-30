@@ -154,7 +154,7 @@ async (page) => {
       // its face at speed.
       setup: { x: 0, z: 7, heading: 0, forkHeight: 0.05 },
       actions: [...START, { hold: 'w', until: 'd.failed', timeout: 10000 }, { wait: 600 }],
-      expect: ["d.failReason === 'pallet-impact'", 'd.palletPositions[0][2] > 10.05'],
+      expect: ["d.failReason === 'pallet-impact'", 'd.palletPositions[0][2] > 10.05', "a.played.includes('palletDrop')"],
     },
     'load-drop': {
       module: 'pallet-testing', step: 'Precision Carry',
@@ -173,8 +173,9 @@ async (page) => {
     },
     'tip-over': {
       module: 'load-handling', step: 'Pallet Pickup & Placement',
-      // A load carried high through a swerve at speed: the truck rolls onto
-      // its right side. The tip-risk sign comes up first.
+      // A load carried high through a swerve at speed: the tip-risk sign
+      // comes up, then the truck goes over. The fall is the physics engine's:
+      // it ends lying on its right side, with a clang as it lands.
       setup: { x: 0, z: FORKS_IN.palletPickup, heading: 0 },
       actions: [
         ...START,
@@ -184,7 +185,7 @@ async (page) => {
         { hold: ['w', 'a'], until: 'd.failed', timeout: 6000 },
         { wait: 2000 },
       ],
-      expect: ["d.failReason === 'tip-over'", "d.tipAxis === 'right'", 'd.tipAngle > 1', "d.dangers['tip-risk'] >= 1"],
+      expect: ["d.failReason === 'tip-over'", "d.tipAxis === 'right'", 'Math.abs(d.tipAngle - Math.PI / 2) < 0.15', "d.dangers['tip-risk'] >= 1", '!d.palletOnForks[0]', "a.played.includes('metalImpact')"],
     },
     interlock: {
       module: 'load-handling', step: 'Accelerate Course',
@@ -218,6 +219,7 @@ async (page) => {
         'd.engineOn',
         "a.state === 'running'",
         "['denied', 'keyClick', 'seatbelt', 'parkingBrake', 'engineStart', 'horn'].every((name) => a.played.includes(name))",
+        "['palletDrop', 'coneKnock', 'metalImpact', 'forkScrape'].every((name) => a.loaded.includes(name))",
         'a.loops.length === 7 && a.loops.every((loop) => loop.playing)',
         "a.loops.find((loop) => loop.name === 'reverseBeeper').gain > 0",
         "a.loops.find((loop) => loop.name === 'engineIdle').gain > 0",

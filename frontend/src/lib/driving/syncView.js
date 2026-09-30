@@ -1,15 +1,14 @@
-import { Matrix4, Quaternion, Vector3 } from 'three'
+import { Quaternion, Vector3 } from 'three'
 import { REAR_WHEEL_KEYS } from '../vehicleRig.js'
 import { LEVER_DAMP, LEVER_THROW, MAST_LIFT_RATIO, MAX_STEER_ANGLE, STEERING_WHEEL_LOCK } from './constants.js'
-import { tipMatrix } from './forkPose.js'
 
 // The only code that writes simulation state onto three.js objects
 // (docs/revisions/post-defense-plan.md, section 3.2). The sim steps own
 // SimState; once per rendered frame this copies it onto the truck group, the
-// tip pivot, the rig nodes (wheels, steering, mast, carriage, the cab's
-// steering wheel and hydraulic levers), the pallet groups and the cones. The
-// pallets' and cones' poses in the state are their physics bodies', read back
-// each step (stepPhysics.js).
+// rig nodes (wheels, steering, mast, carriage, the cab's steering wheel and
+// hydraulic levers), the pallet groups and the cones. The pallets' and cones'
+// poses in the state are their physics bodies', read back each step
+// (stepPhysics.js), and so is the truck's own once it has tipped over.
 //
 // The sim runs at a fixed step (simLoop.js) while the display may refresh
 // faster, so the moving poses are interpolated between the previous step and
@@ -25,8 +24,9 @@ export function createPoseBuffer() {
     forkHeight: 0,
     tilt: 0,
     steer: 0,
-    tipAngle: 0,
     wheelTravel: 0,
+    // The fallen truck's body, once there is one.
+    fallen: null,
     pallets: [],
     cones: [],
   }
@@ -47,16 +47,18 @@ export function capturePose(state, pose) {
   pose.forkHeight = forks.height
   pose.tilt = forks.tilt
   pose.steer = truck.steer
-  pose.tipAngle = state.tip.angle
   pose.wheelTravel = truck.wheelTravel
+  if (state.tip.pose) {
+    pose.fallen ||= { position: new Vector3(), quaternion: new Quaternion() }
+    pose.fallen.position.copy(state.tip.pose.position)
+    pose.fallen.quaternion.copy(state.tip.pose.quaternion)
+  }
   state.pallets.forEach((pallet, index) => captureBody(pose.pallets, index, pallet))
   state.cones.forEach((cone, index) => captureBody(pose.cones, index, cone))
   return pose
 }
 
 const lerp = (from, to, alpha) => from + (to - from) * alpha
-const tipTransform = new Matrix4()
-const tipScale = new Vector3()
 
 // A physics body's pose onto its scene object, between the last two steps.
 const syncBody = (object, from, body, alpha) => {
@@ -77,7 +79,7 @@ const LEVER_TARGETS = {
   tilt: (controls) => controls.tilt * LEVER_THROW,
 }
 
-// `view`: { truckGroup, tipPivot, rig, palletObjects[], coneObjects[] } -
+// `view`: { truckGroup, rig, palletObjects[], coneObjects[] } -
 // any of them may be missing (not mounted yet) and is then skipped. `dt` is
 // the render delta, which eases the levers toward the input.
 // Returns the rendered truck pose, for the camera.
@@ -90,14 +92,12 @@ export function syncView(view, state, prev, alpha, world, dt = 0) {
   const forkHeight = lerp(prev.forkHeight, forks.height, alpha)
   const tilt = lerp(prev.tilt, forks.tilt, alpha)
 
-  if (view.truckGroup) {
+  // A truck that has tipped over is a physics body: the group takes its pose
+  // whole, whatever way up it is.
+  if (state.tip.pose) syncBody(view.truckGroup, prev.fallen, state.tip.pose, alpha)
+  else if (view.truckGroup) {
     view.truckGroup.position.set(x, y, z)
-    view.truckGroup.rotation.y = heading
-  }
-  // The tip-over, as one transform in the truck's frame (forkPose.js).
-  if (view.tipPivot) {
-    tipMatrix({ axis: state.tip.axis, angle: lerp(prev.tipAngle, state.tip.angle, alpha) }, world.geometry, tipTransform)
-    tipTransform.decompose(view.tipPivot.position, view.tipPivot.quaternion, tipScale)
+    view.truckGroup.rotation.set(0, heading, 0)
   }
 
   const rig = view.rig

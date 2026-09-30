@@ -147,7 +147,7 @@ function DrivingScene({ profile, course, core, telemetry, safety, signs, keyboar
   const parked = useTelemetry(telemetry, (snapshot) => snapshot.parked)
 
   const refs = useDrivingSceneRefs()
-  const { rigRef, truckGroupRef, tipPivotRef, palletObjectsRef, coneObjectsRef, vehicleOrbitRef, lookYawRef, lookPitchRef, glanceRef } = refs
+  const { rigRef, truckGroupRef, palletObjectsRef, coneObjectsRef, vehicleOrbitRef, lookYawRef, lookPitchRef, glanceRef } = refs
   const sunLightRef = useRef()
   const sunTargetRef = useRef()
   const headlightRef = useRef()
@@ -359,7 +359,6 @@ function DrivingScene({ profile, course, core, telemetry, safety, signs, keyboar
     const pose = syncView(
       {
         truckGroup: truckGroupRef.current,
-        tipPivot: tipPivotRef.current,
         rig: rigRef.current,
         palletObjects: palletObjectsRef.current,
         coneObjects: coneObjectsRef.current,
@@ -501,12 +500,7 @@ function DrivingScene({ profile, course, core, telemetry, safety, signs, keyboar
       {course.parkingBay && <ParkingBayMarker bay={course.parkingBay} parked={parked} />}
 
       <group ref={truckGroupRef}>
-        {/* The tip-over: syncView sets this group's transform (forkPose.js,
-            tipMatrix), about the front axle or a side of the stability
-            triangle. */}
-        <group ref={tipPivotRef}>
-          <primitive object={forklift} />
-        </group>
+        <primitive object={forklift} />
         {/* Head/work light on the overhead guard, switched from the dashboard.
             Always mounted and dimmed to 0 when off, since adding or removing a
             light recompiles every material in the scene. */}
