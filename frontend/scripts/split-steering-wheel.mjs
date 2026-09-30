@@ -56,7 +56,11 @@ const EXPECTED_FACES = 1308
 
 // The wheel in the model's own frame (glTF axes, as the viewers show it):
 // the ring's centre and its normal, which is the column's axis to within
-// 4 degrees. Also in DEFAULT_RIG.steeringWheel (data/vehicleProfile.js).
+// 4 degrees. This centre only picks the wheel's faces, and it is 0.0118
+// units up the wheel's face from the rim's true centre; the pivot the wheel
+// turns about is DEFAULT_RIG.steeringWheel (data/vehicleProfile.js), fitted
+// to the split mesh. Keep this one as it is, so the selection still finds
+// the 1,308 faces.
 const CENTRE = [0, 0.3197, 0.0672]
 const AXIS = vec3.normalize([0, 0.8804, -0.4743])
 // A loose part belongs to the wheel when every vertex is within this radius
