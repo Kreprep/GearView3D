@@ -1,8 +1,10 @@
-import { Euler, Vector3 } from 'three'
-import { PALLET_FALLBACK_FOOTPRINT } from '../../data/palletProfile.js'
+import { Euler, Quaternion, Vector3 } from 'three'
+import { palletPhysics } from '../../data/physicsProfile.js'
 import { DECOR_RACK_KINDS, RACK_FOOTPRINT } from '../../data/rackProfile.js'
 import { decorationType } from '../courseEdit.js'
-import { resolveCourseBounds } from '../courseGoals.js'
+import { resolveCapacityKg, resolveCourseBounds, resolveFailConditions } from '../courseGoals.js'
+import { initialPalletState } from '../physics/palletState.js'
+import { stabilityModel } from '../physics/stability.js'
 import { FORKLIFT_RIG_GEOMETRY } from './rigGeometry.js'
 
 // The driving simulation's state, as plain data (docs/revisions/
@@ -11,10 +13,11 @@ import { FORKLIFT_RIG_GEOMETRY } from './rigGeometry.js'
 // copies it onto three.js objects. That split is what lets the sim run
 // headless under node --test.
 //
-// Pallet poses are three.js Vector3/Euler values - maths types, not scene
-// objects - because the fork/pallet maths is matrix work (see forkPose.js).
-// The Euler keeps its own rotation order, as Object3D.rotation did, since the
-// carry code switches a pallet to 'YXZ' and later adds to its pitch.
+// Pallet and cone poses are three.js Vector3 / Quaternion / Euler values -
+// maths types, not scene objects. Since Phase 7 they are read back from the
+// physics world each step (stepPhysics.js), which holds the bodies
+// themselves; the state keeps what the other steps, the safety rules and the
+// view need to know about them.
 
 // Stored courses always use `pallets`; the singular `pallet` is the older
 // hand-written shape kept working.
@@ -29,12 +32,14 @@ export function courseCones(course) {
 }
 
 // What the course contributes that does not change during an attempt:
-// collider lists, bounds, the vehicle's footprint and rig geometry, and
-// scratch objects the steps reuse rather than reallocate every step.
+// collider lists, bounds, the vehicle's footprint and rig geometry, the
+// course's fails and rating, and scratch objects the steps reuse rather than
+// reallocate every step.
 export function createSimWorld(course, profile, geometry = FORKLIFT_RIG_GEOMETRY) {
   const racks = course.racks || []
   const { halfWidth, halfLength } = profile.footprint
   const bounds = resolveCourseBounds(course)
+  const ratedCapacityKg = resolveCapacityKg(course)
   return {
     course,
     profile,
@@ -62,6 +67,11 @@ export function createSimWorld(course, profile, geometry = FORKLIFT_RIG_GEOMETRY
     groundHalfWidth: bounds.halfWidth,
     courseMinZ: bounds.minZ,
     courseMaxZ: bounds.maxZ,
+    // The load-handling fails the course switched on, its capacity plate and
+    // the truck that plate describes (lib/physics/stability.js).
+    failConditions: resolveFailConditions(course),
+    ratedCapacityKg,
+    stability: stabilityModel(ratedCapacityKg),
     scratch: {
       bodyRect: { x: 0, z: 0, rotation: 0, halfX: 0, halfZ: 0 },
       otherRect: { x: 0, z: 0, rotation: 0, halfX: 0, halfZ: 0 },
@@ -69,10 +79,10 @@ export function createSimWorld(course, profile, geometry = FORKLIFT_RIG_GEOMETRY
   }
 }
 
-// `palletFootprint(def, index)` gives a pallet's half-extents. The viewer
-// measures them off the loaded models and fills them in with
-// setPalletFootprint(); until then, and headless, the fallback applies.
-export function createSimState(course, { palletFootprint } = {}) {
+// What a pallet or the forks are touching, as stepPhysics reads it each step.
+export const noTouch = () => ({ forks: false, tines: false, supported: false, rackId: null, rackLevel: null })
+
+export function createSimState(course) {
   const start = course.start || { position: [0, 0, 0], heading: 0 }
   return {
     time: 0,
@@ -90,34 +100,71 @@ export function createSimState(course, { palletFootprint } = {}) {
       // Distance rolled, so the view can spin each wheel by its own radius.
       wheelTravel: 0,
     },
-    forks: { height: 0, tilt: 0 },
-    // Overload / tip-over animation: the truck pitching about its front axle.
-    tip: { active: false, angle: 0, vel: 0 },
+    // `liftRate` is how fast the carriage is moving (scene units per second):
+    // a hydraulic valve opens and closes over a moment, not at once.
+    forks: { height: 0, tilt: 0, liftRate: 0 },
+    // The tip-over: the truck pitching about its front axle ('forward') or
+    // rolling about a side of its stability triangle ('left' / 'right').
+    tip: { active: false, axis: 'forward', angle: 0, vel: 0 },
+    // The stability margins of the last step (lib/physics/stability.js), and
+    // how long the truck has been past the point of tipping.
+    stability: { longitudinalMargin: 1, lateralMargin: 1, tipping: null, unstableFor: 0 },
     failed: false,
     failReason: null,
     checkpointIndex: 0,
-    pallets: coursePallets(course).map((def, index) => ({
-      def,
-      footprint: palletFootprint?.(def, index) || PALLET_FALLBACK_FOOTPRINT,
-      position: new Vector3(def.position[0], 0, def.position[2]),
-      rotation: new Euler(0, def.rotation || 0, 0),
-      state: 'ground',
-      engaged: false,
-      vx: 0,
-      vy: 0,
-      vz: 0,
-      risk: 0,
-      grip: null,
-      slipCause: null,
-      landed: false,
-      restY: 0,
-    })),
+    pallets: coursePallets(course).map((def) => {
+      const { kind, pallet, loadKg, footprint } = palletPhysics(def)
+      const rotation = def.rotation || 0
+      return {
+        def,
+        kind,
+        footprint,
+        // The load alone, which the capacity plate weighs, and with its
+        // pallet, which the stability model carries.
+        loadKg,
+        massKg: loadKg + pallet.mass,
+        position: new Vector3(def.position[0], 0, def.position[2]),
+        quaternion: new Quaternion().setFromEuler(new Euler(0, rotation, 0)),
+        // The same orientation as yaw-first Euler angles, for the 2D readers
+        // (fork engagement, proximity), which want `rotation.y`.
+        rotation: new Euler(0, rotation, 0, 'YXZ'),
+        velocity: new Vector3(),
+        // The centre of gravity, in world space.
+        com: new Vector3(def.position[0], 0, def.position[2]),
+        // Radians off level.
+        lean: 0,
+        touch: { ...noTouch(), supported: true },
+        // Where it sits in the carriage's frame while the forks hold it, and
+        // how fast it is sliding there (the load-shifting rule).
+        forkLocal: null,
+        slipSpeed: 0,
+        ...initialPalletState(),
+      }
+    }),
     carriedIndex: -1,
     deliveredCount: 0,
     // Live fork-engagement quality for the HUD: 'none' | 'shallow' |
     // 'partial' | 'secure'.
     grip: 'none',
-    cones: courseCones(course).map(() => ({ hit: false, angle: 0, dirX: 0, dirZ: 1 })),
+    // The load the forks are in or under, for the capacity plate and the
+    // overload rule: { index, kg, centre (metres from the fork face),
+    // deratedKg }, or null.
+    load: null,
+    cones: courseCones(course).map((cone) => ({
+      hit: false,
+      position: new Vector3(cone.position[0], 0, cone.position[2]),
+      quaternion: new Quaternion(),
+    })),
+    // What the forks, or a load on them, are up against that does not move:
+    // directions of travel that are blocked (unit vectors toward the
+    // structure, with its kind), and whether lifting or lowering is.
+    limits: { travel: [], lift: false, lower: false },
+    // The contacts of the last step, by key, so the next can tell what has
+    // only just begun to touch.
+    touching: [],
+    // When the operator last braked hard or cornered hard (state.time), for
+    // naming why a load was lost.
+    recent: { hardBrakeAt: null, sharpTurnAt: null },
     parking: { parked: false, status: '' },
     // The last start the pre-start interlock refused: what was missing and
     // when (state.time), for the dashboard to point at. `at` is null once the

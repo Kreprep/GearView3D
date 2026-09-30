@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { courseGoalType, validateCourse } from './courseGoals.js'
+import { drivingCourses } from '../data/drivingCourse.js'
+import { courseGoalType, resolveCapacityKg, resolveFailConditions, validateCourse } from './courseGoals.js'
 
 const START = { position: [0, 0, 0], heading: 0 }
 
@@ -106,4 +107,43 @@ test('validateCourse: a speed limit has to be a positive number, or left out for
   assert.deepEqual(validateCourse(course), [])
   assert.deepEqual(validateCourse({ ...course, speedLimitKmh: 12, alerts: { overspeed: false } }), [])
   assert.ok(validateCourse({ ...course, speedLimitKmh: 0 }).some((p) => p.includes('speed limit')))
+})
+
+// --- The load-handling fails and the capacity plate ---------------------------
+
+test('a course with no fail conditions has none on', () => {
+  for (const course of [undefined, null, {}, { failConditions: null }, { failConditions: {} }]) {
+    assert.deepEqual(resolveFailConditions(course), { overload: false, highTravel: false, loadDrop: false })
+  }
+})
+
+test('the fails a course stores are read as they are', () => {
+  const failConditions = { overload: true, highTravel: false, loadDrop: true }
+  assert.deepEqual(resolveFailConditions({ failConditions }), failConditions)
+})
+
+test('a course saved before the physics: any of the three slip rules is a lost load', () => {
+  for (const key of ['suddenStop', 'sharpTurn', 'unsecuredTravel']) {
+    assert.deepEqual(resolveFailConditions({ failConditions: { [key]: true } }), { overload: false, highTravel: false, loadDrop: true }, key)
+  }
+  assert.equal(resolveFailConditions({ failConditions: { suddenStop: false, sharpTurn: false } }).loadDrop, false)
+  // loadTipping is gone: a tip-over is physics and always fails.
+  assert.deepEqual(resolveFailConditions({ failConditions: { loadTipping: true, overload: true } }), { overload: true, highTravel: false, loadDrop: false })
+})
+
+test('the new key wins over the old ones once a course has been saved again', () => {
+  assert.equal(resolveFailConditions({ failConditions: { loadDrop: false, suddenStop: true } }).loadDrop, false)
+})
+
+test('the stock pallet courses fail a lost load, an overload and travelling high', () => {
+  for (const id of ['precision-carry', 'load-limits']) {
+    assert.deepEqual(resolveFailConditions(drivingCourses[id]), { overload: true, highTravel: true, loadDrop: true }, id)
+  }
+})
+
+test('the rated capacity is the course\'s own plate, or the reference truck\'s', () => {
+  assert.equal(resolveCapacityKg({ capacityKg: 1000 }), 1000)
+  for (const course of [undefined, {}, { capacityKg: null }, { capacityKg: 0 }, { capacityKg: '900' }]) {
+    assert.equal(resolveCapacityKg(course), 2270)
+  }
 })

@@ -8,8 +8,9 @@ import {
   PARKED_FORKS_MAX,
   TAIL_SWING_REACH,
   TILT_FORWARD_ANGLE,
+  TIP_RISK_MARGIN,
 } from '../../data/safetyThresholds.js'
-import { TILT_RELEASE_ANGLE } from '../../data/palletProfile.js'
+import { LOAD_SHIFT_SPEED } from '../../data/palletProfile.js'
 import { ALERT_RULES, resolveAlerts } from '../courseAlerts.js'
 import { TILT_SECURE_ANGLE } from './constants.js'
 import {
@@ -46,6 +47,8 @@ const snapshot = (overrides = {}) => ({
   loadAtDestination: false,
   atStack: false,
   overCapacity: false,
+  loadSlipSpeed: 0,
+  stabilityMargin: 1,
   interlockMissing: [],
   ahead: null,
   behind: null,
@@ -151,6 +154,22 @@ test('overload: a load over the rated capacity on the forks is a danger', () => 
   const alert = alertFor('overload', { overCapacity: true })
   assert.deepEqual([alert.severity, alert.kind], ['danger', 'prohibition'])
   quiet('overload', { overCapacity: false })
+})
+
+test('tip-risk: a stability margin nearly used up is a danger', () => {
+  const alert = alertFor('tip-risk', { stabilityMargin: TIP_RISK_MARGIN - 0.01 })
+  assert.deepEqual([alert.severity, alert.kind, alert.sound], ['danger', 'warning', 'dangerAlarm'])
+  // Past the point of tipping as well.
+  fires('tip-risk', { stabilityMargin: -0.4 })
+  quiet('tip-risk', { stabilityMargin: TIP_RISK_MARGIN })
+  quiet('tip-risk', { stabilityMargin: 1 })
+})
+
+test('load-shifting: a load sliding on the tines is a danger', () => {
+  const alert = alertFor('load-shifting', { ...CARRYING, loadSlipSpeed: LOAD_SHIFT_SPEED * 2 })
+  assert.deepEqual([alert.severity, alert.kind], ['danger', 'warning'])
+  quiet('load-shifting', { ...CARRYING, loadSlipSpeed: LOAD_SHIFT_SPEED / 2 })
+  quiet('load-shifting', CARRYING)
 })
 
 test('start-interlock: one mandatory sign for the first thing a refused start still wants', () => {
@@ -266,12 +285,13 @@ test('forks-raised-parked: forks up with the engine off or the parking brake set
   quiet('forks-raised-parked', { engineOn: false, forkHeight: PARKED_FORKS_MAX })
 })
 
-test('release-load: a load resting where it is going, until the mast is tilted forward', () => {
+test('release-load: a load resting where it is going, until the mast is levelled', () => {
   const resting = { ...CARRYING, forkHeight: 0, loadLanded: true, loadAtDestination: true }
   const hint = alertFor('release-load', resting)
   assert.deepEqual([hint.severity, hint.kind, hint.sound, hint.hint], ['info', 'mandatory', null, true])
-  fires('release-load', { ...resting, mastTilt: 0 })
-  quiet('release-load', { ...resting, mastTilt: TILT_RELEASE_ANGLE })
+  fires('release-load', { ...resting, mastTilt: -2 * TILT_FORWARD_ANGLE })
+  // Level, the tines can come free of the load: nothing left to tilt.
+  quiet('release-load', { ...resting, mastTilt: 0 })
   // Landed somewhere else, or still in the air: nothing to release yet.
   quiet('release-load', { ...resting, loadAtDestination: false })
   quiet('release-load', CARRYING)

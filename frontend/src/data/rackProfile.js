@@ -61,23 +61,17 @@ export const RACK_LEVEL_HEIGHTS = Object.fromEntries(
   RACK_LEVELS.map((level) => [level, Number((RACK_LEVEL_RAW_Y[level] * RACK_SCALE_Y).toFixed(4))]),
 )
 
-// How close the carried pallet's fork height must be to a level's target to
-// place it there. Generous - this is untimed practice and the learner has no
-// numeric height readout, only the chase-cam view.
-export const RACK_LEVEL_TOLERANCE = 0.05
-export const RACK_PLACE_MAX_SPEED = 0.25
-
 // Speed above which touching a rack is a strike rather than a stop. The truck
 // is blocked by racking at any speed, so a learner creeping up to a bay to
 // place a pallet - which is the correct way to do it, and puts the body right
 // at the rack's face - is stopped without being failed. Only hitting it at
-// travelling speed counts as driving into the structure. Deliberately above
-// RACK_PLACE_MAX_SPEED, so every approach slow enough to place a load is also
-// slow enough not to fail.
+// travelling speed counts as driving into the structure. The same goes for
+// the forks, or a load on them, meeting a beam or an upright.
 export const RACK_STRIKE_SPEED = 0.3
 
-// The centre bay's mouth, in the rack's own local frame. The fork tip has to
-// be inside this rectangle to set a pallet down.
+// The centre bay's mouth, in the rack's own local frame: where the safety
+// rules count the forks as "at the stack", and the bay a delivered pallet has
+// to be resting in (RACK_SLOT_HALF_WIDTH).
 //
 // This used to be a radius from the rack's *centre*, which stopped working
 // once the rack became a collider: the vehicle body is blocked at the rack's

@@ -1,4 +1,5 @@
 import '../../test-helpers/browserGlobals.js'
+import '../../test-helpers/physics.js'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { drivingCourses } from '../../data/drivingCourse.js'

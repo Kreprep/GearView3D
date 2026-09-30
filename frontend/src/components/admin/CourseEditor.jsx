@@ -25,8 +25,9 @@ import {
 import { emptySyllabus, NEXT_ROUTE_TARGETS, SUMMARY_COUNTER_LABELS } from '../../data/courseDefaults'
 import { MODULE_ROUTE_PREFIX } from '../../lib/moduleContent'
 import { ALERT_RULES, resolveAlerts, withAlertSwitch } from '../../lib/courseAlerts'
-import { COURSE_GOAL_TYPES, DEFAULT_COURSE_BOUNDS, resolveCourseBounds, validateCourse } from '../../lib/courseGoals'
+import { COURSE_GOAL_TYPES, DEFAULT_COURSE_BOUNDS, resolveCourseBounds, resolveFailConditions, validateCourse } from '../../lib/courseGoals'
 import { DEFAULT_SPEED_LIMIT_KMH } from '../../data/safetyThresholds'
+import { STABILITY_DEFAULTS } from '../../data/vehicleProfile'
 import { ReportingActivityFields, ShutdownActivityFields } from './ActivityContentFields'
 import WalkAroundContentFields from './WalkAroundContentFields'
 import CourseCanvas from './CourseCanvas'
@@ -62,6 +63,15 @@ const GOAL_HINTS = {
   racking: 'Completes when a pallet is raised to its assigned shelf height and set down inside its target rack.',
   free: 'No built-in goal - completes when this course\'s own completion code returns true. Required below.',
 }
+
+// The load-handling fails a course may switch on (lib/courseGoals.js,
+// resolveFailConditions). Collisions, a pallet struck at speed and a tip-over
+// always fail.
+const FAIL_CONDITIONS = [
+  { key: 'overload', label: 'Fail on lifting a load over capacity' },
+  { key: 'loadDrop', label: 'Fail on losing a load off the forks' },
+  { key: 'highTravel', label: 'Fail on driving fast with a load raised above travel height' },
+]
 
 const SNAP_OPTIONS = [
   [0.1, '0.1'],
@@ -119,6 +129,7 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
   const stepKind = course.kind || 'driving'
   const isDriving = stepKind === 'driving'
   const data = draft.data
+  const failConditions = resolveFailConditions(data)
   const content = draft.content || {}
   const problems = useMemo(
     () => (isDriving ? validateCourse({ ...data, goalType: draft.goalType }) : []),
@@ -659,7 +670,7 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
                 </PanelNote>
               )}
 
-              <Field label="Rated capacity (kg, blank for no limit)">
+              <Field label={`Rated capacity (kg, blank for the truck's ${STABILITY_DEFAULTS.ratedCapacityKg.toLocaleString()})`}>
                 <Input
                   type="number"
                   step={50}
@@ -667,52 +678,35 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
                   onChange={(event) => setCourseValue({ capacityKg: event.target.value === '' ? null : Number(event.target.value) })}
                 />
               </Field>
-              <Checkbox
-                label="Fail on lifting over capacity"
-                checked={Boolean(data.failConditions?.overload)}
-                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, overload: event.target.checked } })}
-              />
-              <Checkbox
-                label="Fail on braking hard while carrying"
-                checked={Boolean(data.failConditions?.suddenStop)}
-                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, suddenStop: event.target.checked } })}
-              />
-              <Checkbox
-                label="Fail on driving fast with forks raised"
-                checked={Boolean(data.failConditions?.highTravel)}
-                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, highTravel: event.target.checked } })}
-              />
-              <Checkbox
-                label="Fail on turning sharply at speed while carrying"
-                checked={Boolean(data.failConditions?.sharpTurn)}
-                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, sharpTurn: event.target.checked } })}
-              />
-              <Checkbox
-                label="Fail on travelling with the mast not tilted back"
-                checked={Boolean(data.failConditions?.unsecuredTravel)}
-                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, unsecuredTravel: event.target.checked } })}
-              />
-              <Checkbox
-                label="Fail on tilting a heavy load forward up high"
-                checked={Boolean(data.failConditions?.loadTipping)}
-                onChange={(event) => setCourseValue({ failConditions: { ...data.failConditions, loadTipping: event.target.checked } })}
-              />
+              {FAIL_CONDITIONS.map(({ key, label }) => (
+                <Checkbox
+                  key={key}
+                  label={label}
+                  checked={failConditions[key]}
+                  // Only the keys this list shows are written: a course saved
+                  // before the physics keeps working through
+                  // resolveFailConditions(), and is tidied on its next save.
+                  onChange={(event) => setCourseValue({ failConditions: { ...failConditions, [key]: event.target.checked } })}
+                />
+              ))}
               <PanelNote>
-                Braking hard, turning sharply and travelling mast-forward only lose the load when the forks went in
-                partway: a pallet driven fully onto the forks and centred rides all three out, and tilting the mast back
-                saves most of the rest. The tip-over rules need a rated capacity to judge "too heavy" against, so they do
-                nothing while the field above is blank.
+                Pallets ride on the forks by friction. Braking hard, turning sharply and travelling with the mast
+                upright slide a load along the tines; one the forks went only part of the way into comes off, and a
+                pallet driven fully onto the forks with the mast tilted back rides the same handling out. A load is
+                over capacity when it is heavier than the rated capacity allows where it sits: the limit falls as the
+                load sits further out along the forks (the capacity plate on the dashboard).
               </PanelNote>
               <PanelNote>
-                Cones, walls, parked vehicles and racking are always live colliders. Striking a cone, wall or parked
-                vehicle always fails the attempt; racking stops the truck at any speed but only fails it when hit at
-                travelling speed, since placing a load puts the nose at the rack&apos;s face on purpose. Pallets are
-                solid too, but they only block the truck, since driving into a pallet is how the forks go in.
+                Always on, for every course: striking a cone, a wall or a parked vehicle; driving the truck, its forks
+                or its load into racking at travelling speed (racking stops the truck at any speed, since placing a
+                load puts the nose at the rack&apos;s face on purpose); striking a pallet at more than walking pace;
+                and tipping the truck over, which a load that is too heavy, too far out or carried high through a
+                turn or a hard stop will do.
               </PanelNote>
               <PanelNote>
-                Setting a load down is always two moves, on the floor and on a shelf alike: lower it until the surface
-                takes its weight, then tilt the mast forward to let it off the tines. This is a mechanic, not a fail
-                rule, so it applies to every driving course.
+                Setting a load down is the same on the floor and on a shelf: level the mast, lower until the surface
+                takes the load and the forks hang free in the pallet, then back straight out. It is delivered once
+                the forks are clear of it.
               </PanelNote>
             </div>
           </Panel>

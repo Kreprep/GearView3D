@@ -14,8 +14,8 @@ import {
 const essential = ALERT_RULES.filter((rule) => rule.essential).map((rule) => rule.id)
 const optional = ALERT_RULES.filter((rule) => !rule.essential).map((rule) => rule.id)
 
-test('the essential set is the collisions, overload and the start interlock', () => {
-  assert.deepEqual(essential, ['obstacle-ahead', 'obstacle-behind', 'tail-swing', 'overload', 'start-interlock'])
+test('the essential set is the collisions, overload, stability and the start interlock', () => {
+  assert.deepEqual(essential, ['obstacle-ahead', 'obstacle-behind', 'tail-swing', 'overload', 'tip-risk', 'load-shifting', 'start-interlock'])
 })
 
 test('every rule is on for a course that stores nothing', () => {

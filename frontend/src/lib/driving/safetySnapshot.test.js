@@ -153,60 +153,72 @@ test('the rear corners come from the proximity readout', () => {
   assert.equal(s.rearRight, null)
 })
 
-test('a pallet over the rated capacity counts once the forks are in it, or carrying it', () => {
-  const course = { capacityKg: 1000, pallets: [{ id: 'heavy', position: [0, 0, 1], rotation: 0, weightKg: 1500 }] }
-  const sim = setup(course)
+test('over capacity is the load chart\'s verdict on the load the forks are in', () => {
+  const sim = setup({ capacityKg: 1000, pallets: [{ id: 'heavy', position: [0, 0, 1], rotation: 0, weightKg: 1500 }] })
   assert.equal(snapshotOf(sim).overCapacity, false)
-  sim.state.pallets[0].engaged = true
+  // stepPallet reads the load against the chart; the snapshot reports it.
+  sim.state.load = { index: 0, kg: 1500, centre: 0.6, deratedKg: 1000, overCapacity: true }
   assert.equal(snapshotOf(sim).overCapacity, true)
-
-  const light = setup({ ...course, pallets: [{ ...course.pallets[0], weightKg: 800 }] })
-  light.state.pallets[0].engaged = true
-  assert.equal(snapshotOf(light).overCapacity, false)
-  // A course with no rated capacity has nothing to be over.
-  const unrated = setup({ pallets: course.pallets })
-  unrated.state.pallets[0].engaged = true
-  assert.equal(snapshotOf(unrated).overCapacity, false)
+  sim.state.load = { index: 0, kg: 800, centre: 0.6, deratedKg: 1000, overCapacity: false }
+  assert.equal(snapshotOf(sim).overCapacity, false)
 })
 
-test('carrying and landed follow the carried pallet', () => {
+test('carrying, landed and the load\'s slip follow the carried pallet', () => {
   const sim = setup({ pallets: [{ id: 'p', position: [0, 0, 1], rotation: 0 }] })
-  sim.state.pallets[0].state = 'carried'
+  const pallet = sim.state.pallets[0]
+  pallet.state = 'carried'
+  pallet.slipSpeed = 0.2
   sim.state.carriedIndex = 0
-  assert.deepEqual([snapshotOf(sim).carrying, snapshotOf(sim).loadLanded], [true, false])
-  sim.state.pallets[0].landed = true
-  assert.equal(snapshotOf(sim).loadLanded, true)
+  const carrying = snapshotOf(sim)
+  assert.deepEqual([carrying.carrying, carrying.loadLanded, carrying.loadSlipSpeed], [true, false, 0.2])
+  // Set down with the forks still under it: not sliding on them any more.
+  pallet.landed = true
+  assert.deepEqual([snapshotOf(sim).loadLanded, snapshotOf(sim).loadSlipSpeed], [true, 0])
+  // Nothing carried.
+  assert.equal(snapshotOf(setup()).loadSlipSpeed, 0)
+})
+
+test('the stability margin is the smaller of the two', () => {
+  const sim = setup()
+  assert.equal(snapshotOf(sim).stabilityMargin, 1)
+  Object.assign(sim.state.stability, { longitudinalMargin: 0.4, lateralMargin: 0.15 })
+  assert.equal(snapshotOf(sim).stabilityMargin, 0.15)
+  Object.assign(sim.state.stability, { longitudinalMargin: -0.2, lateralMargin: 0.9 })
+  assert.equal(snapshotOf(sim).stabilityMargin, -0.2)
 })
 
 test('a landed load is at its destination in the drop zone or on its target shelf, nowhere else', () => {
-  const pallets = [{ id: 'p1', position: [0, 0, 2], rotation: 0, weightKg: 400, targetRack: 'rack-1', targetLevel: 'middle' }]
-  const course = { pallets, racks: [rack(6)], dropZone: { position: [0, 0, 2], radius: 0.5 } }
-  const carry = (patch, truck = {}) => {
-    const sim = setup(course, { truck })
+  const dropZone = { position: [0, 0, 2], radius: 0.5 }
+  const onFloor = (x, landed = true) => {
+    const sim = setup({ pallets: [{ id: 'p1', position: [x, 0, 2], rotation: 0, weightKg: 400 }], dropZone })
     sim.state.carriedIndex = 0
-    Object.assign(sim.state.pallets[0], { state: 'carried', landed: true, restY: 0 }, patch)
+    Object.assign(sim.state.pallets[0], { state: 'carried', landed })
     return snapshotOf(sim).loadAtDestination
   }
   // On the floor inside the zone; still in the air; on the floor outside it.
-  assert.equal(carry({}), true)
-  assert.equal(carry({ landed: false }), false)
-  const outside = setup(course)
-  outside.state.carriedIndex = 0
-  Object.assign(outside.state.pallets[0], { state: 'carried', landed: true, restY: 0 })
-  outside.state.pallets[0].position.set(3, 0, 2)
-  assert.equal(snapshotOf(outside).loadAtDestination, false)
+  assert.equal(onFloor(0), true)
+  assert.equal(onFloor(0, false), false)
+  assert.equal(onFloor(3), false)
 
-  // On the target shelf, the fork tips in the rack's bay; on another shelf.
-  const atFace = { z: 6 - RACK_FOOTPRINT.halfDepth - halfLength - 0.05 }
-  const shelf = (restY) => {
-    const sim = setup(course, { truck: atFace })
+  // A rack-bound pallet: resting on the target rack's target shelf, as the
+  // physics reports what it stands on.
+  const course = { pallets: [{ id: 'p1', position: [0, 0, 6], rotation: 0, weightKg: 400, targetRack: 'rack-1', targetLevel: 'middle' }], racks: [rack(6)] }
+  const onShelf = (touch, x = 0) => {
+    const sim = setup(course)
     sim.state.carriedIndex = 0
-    Object.assign(sim.state.pallets[0], { state: 'carried', landed: true, restY })
-    sim.state.pallets[0].position.set(0, restY, 6)
+    const pallet = sim.state.pallets[0]
+    Object.assign(pallet, { state: 'carried', landed: true })
+    Object.assign(pallet.touch, touch)
+    pallet.position.set(x, RACK_LEVEL_HEIGHTS.middle, 6)
     return snapshotOf(sim).loadAtDestination
   }
-  assert.equal(shelf(RACK_LEVEL_HEIGHTS.middle), true)
-  assert.equal(shelf(RACK_LEVEL_HEIGHTS.bottom), false)
+  assert.equal(onShelf({ rackId: 'rack-1', rackLevel: 'middle' }), true)
+  assert.equal(onShelf({ rackId: 'rack-1', rackLevel: 'bottom' }), false)
+  assert.equal(onShelf({ rackId: 'rack-2', rackLevel: 'middle' }), false)
+  // On the right shelf, but in a side bay.
+  assert.equal(onShelf({ rackId: 'rack-1', rackLevel: 'middle' }, 0.4), false)
+  // On the floor in front of the rack.
+  assert.equal(onShelf({}), false)
   // No load at all.
   assert.equal(snapshotOf(setup(course)).loadAtDestination, false)
 })

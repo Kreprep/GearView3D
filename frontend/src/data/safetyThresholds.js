@@ -51,19 +51,16 @@ export const TURN_MAX_STEER = 0.5
 export const TURN_MAX_STEER_RATE = 1.5
 
 // (n)(7)(iii): forks raised only as far as necessary to clear the road
-// surface. GearView default: 50 cm, set by the team after driving it. The
-// usual real travel height is about 15 cm, the first value here, but a load
-// only lifts at 48 cm (LIFT_THRESHOLD) and lands again at 8 cm
-// (LOAD_LAND_CLEARANCE), so 15 cm and then 30 cm asked the learner to lower a
-// load straight after picking it up. At 50 cm a load carried at about the
-// height it was lifted to raises no sign. It also counts as "raised" for
-// tilt-forward-elevated.
+// surface. GearView default: 30 cm, the team's value (2026-09-30) once a
+// load rode on physical forks. The usual real travel height is about 15 cm;
+// a load leaves the floor at about 4 cm of fork height, so 30 cm leaves the
+// keyboard's all-or-nothing lift key a band it can stop in. (Before Phase 7 a
+// load lifted at a scripted 48 cm, and the sign stood at 50 cm.) It also
+// counts as "raised" for tilt-forward-elevated.
 //
-// The highTravel fail (constants.js, SAFE_TRAVEL_HEIGHT) is this rule's
-// escalation but does not share the value yet: it is still the pre-Phase 6
-// 0.22 units at speed, because moving it changes the simulation. The two
-// unify in Phase 7, which re-records the characterization trace anyway.
-export const FORKS_TRAVEL_HEIGHT = m(0.5)
+// The highTravel fail is this rule's escalation and shares the value: above
+// it, laden, faster than HIGH_TRAVEL_MIN_SPEED (lib/driving/constants.js).
+export const FORKS_TRAVEL_HEIGHT = m(0.3)
 
 // (o)(6): no forward tilt with the load elevated, except to deposit it. The
 // mast this far forward of vertical counts as tilted forward. GearView
@@ -78,6 +75,11 @@ export const LOOK_AHEAD_HALF_ANGLE = deg(60)
 // Operator's manual: pedal pressed this far against a set parking brake.
 // GearView default.
 export const PARKING_BRAKE_THROTTLE = 0.2
+
+// (o)(6), (n)(15): stability. The smaller of the truck's two stability
+// margins (lib/physics/stability.js: 1 with nothing acting, 0 at the point of
+// tipping) under this is a tip risk. GearView default.
+export const TIP_RISK_MARGIN = 0.3
 
 // (m)(5)(i): forks fully lowered when the truck is left. Higher than this
 // with the engine off or the parking brake set is "forks up". GearView

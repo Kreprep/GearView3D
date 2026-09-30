@@ -1,31 +1,34 @@
-// Tuning for the fork/pallet interaction in DrivingSimulationViewer.
+// Thresholds for the fork/pallet interaction in the driving simulation.
 //
 // Same shape of file as rackProfile.js: plain constants, no three.js, so
 // lib/loadPhysics.js and lib/courseGoals.js can both import it and still run
 // inside the Node backend process (backend/src/lib/courses.js imports
 // courseGoals directly to validate a course on publish).
 //
-// Nothing here is a real-world measurement. The scene's convention is roughly
-// metres/4 (lib/driving/units.js), and these are gameplay thresholds tuned for
-// feel against that.
+// What a load does on the forks is the physics engine's business since
+// Phase 7 (lib/physics/, data/physicsProfile.js): it slides under braking and
+// comes off a short bite by friction and inertia, not by a gain in this file.
+// What is left here is how the simulation *reads* that: the fork-insertion
+// bands behind the dashboard's grip lamp, and when a pallet counts as lifted,
+// set down or lost. GearView defaults, in real units where they have one.
+import { G, kmh, m } from '../lib/driving/units.js'
 
-// Used when a pallet model's bounding box cannot be measured. The viewer
-// measures each loaded pallet GLB instead, the same way buildVehicleRig
-// measures the carriage to derive forkTipOffset.
-import { G } from '../lib/driving/units.js'
+const deg = (degrees) => (degrees * Math.PI) / 180
 
+// A pallet's footprint when there is nothing to measure it from (the course
+// validator, which has no physics data to hand).
 export const PALLET_FALLBACK_FOOTPRINT = { halfWidth: 0.15, halfDepth: 0.15 }
 
 // --- Insertion quality --------------------------------------------------
 // How far the forks are into the pallet, as a fraction of the pallet's depth
-// along the approach axis. Below MIN the pallet will not lift at all; at or
-// above SECURE (and centred, and square) the load carries with zero risk.
+// along the approach axis. Below MIN the lamp reads "shallow"; at or above
+// SECURE (and centred, and square) it reads "secure".
 export const FORK_INSERT_MIN_RATIO = 0.35
 export const FORK_INSERT_SECURE_RATIO = 0.8
 
 // Sideways offset of the fork centreline from the pallet centreline, as a
-// fraction of the pallet's half-width. Past MAX the forks miss the pockets
-// entirely and the pallet is treated as a solid obstacle instead.
+// fraction of the pallet's half-width. Past MAX the forks are not lined up
+// with the pockets at all.
 export const FORK_LATERAL_SECURE_RATIO = 0.35
 export const FORK_LATERAL_MAX_RATIO = 0.85
 
@@ -35,37 +38,39 @@ export const FORK_LATERAL_MAX_RATIO = 0.85
 export const FORK_YAW_SECURE = 0.12
 export const FORK_YAW_MAX = 0.35
 
-// --- Losing the load ----------------------------------------------------
-// A partially engaged load creeps out along the tines when the truck is
-// mishandled. Each gain converts one kind of mishandling into metres of lost
-// insertion depth, scaled by the load's own risk (0 = perfectly seated, and
-// therefore immune).
-export const TILT_BACK_RISK_FACTOR = 0.15 // mast tilted back nearly immunises a partial load
-export const SLIP_FAIL_RATIO = 0.3 // depth ratio at which the load leaves the forks
-// All three are per second, so a longer mistake costs more than a brief one.
-// Tuned so a half-inserted pallet is lost by one genuine hard stop, about a
-// second of hard cornering, or a few seconds of travelling mast-forward, while
-// a nearly-seated one survives all three.
-export const SLIP_DECEL_GAIN = 0.2 // per unit of deceleration, while braking hard
-// Per unit of lateral acceleration past SHARP_TURN_LATERAL_ACCEL. Scaled in
-// Phase 4 (from 0.12 per unit of |steer| x speed) so a full-speed keyboard
-// swerve sheds a half-seated load about as fast as it did before the
-// bicycle model.
-export const SLIP_TURN_GAIN = 0.33
-export const SLIP_TILT_GAIN = 0.2 // per radian the mast is short of tilted back
-// Sideways acceleration (scene units/s^2) that counts as a sharp turn: 0.2 g.
-export const SHARP_TURN_LATERAL_ACCEL = 0.2 * G
+// How far above or below a pocket a tine may read and still count as in it
+// (the lamp's height check, for a pallet the forks are not yet touching).
+export const FORK_POCKET_TOLERANCE = m(0.012)
 
-// --- Setting a load down ------------------------------------------------
-// How close to the surface below it a carried load has to get before that
-// surface takes its weight: the pallet stops following the forks down, sits
-// flat, and only comes off the tines once the mast is tilted forward.
-export const LOAD_LAND_CLEARANCE = 0.02
+// --- Lifted, set down, lost -----------------------------------------------
+// lib/physics/palletState.js. A pallet is lifted once the forks alone have
+// held it this long, and off the forks once they have not touched it this
+// long: long enough not to be one step's bounce.
+export const PALLET_CONFIRM_SECONDS = 0.1
+// Set down is coming off the forks slower than this. Lowering a load at the
+// truck's full lowering speed (0.5 m/s, 1.8 km/h) is inside it; a load that
+// slides off a moving truck is not.
+export const PALLET_SET_DOWN_SPEED = kmh(3)
+// At rest: slower than this for this long.
+export const PALLET_REST_SPEED = m(0.03)
+export const PALLET_REST_SECONDS = 0.3
+// Level enough to count as set down and delivered, and the lean past which a
+// load has fallen over.
+export const PALLET_LEVEL_LEAN = deg(5)
+export const PALLET_DROP_LEAN = deg(20)
+
+// --- Why a load was lost ------------------------------------------------
+// A lost load's fail message names what the operator did in the second
+// before it: braked hard (SUDDEN_STOP_DECEL, lib/driving/constants.js),
+// cornered harder than this, or travelled with the mast not tilted back.
+export const SHARP_TURN_LATERAL_ACCEL = 0.2 * G
+export const LOAD_LOSS_WINDOW_SECONDS = 1
+
+// A load sliding along the tines faster than this is shifting (the
+// load-shifting safety rule).
+export const LOAD_SHIFT_SPEED = m(0.08)
 
 // --- Mast tilt gates ----------------------------------------------------
-// Forward tilt (positive rotation.x on the rig's tiltPivot) needed to set a
-// load down on a shelf, and the combination that tips the truck instead.
+// Forward tilt (positive rotation.x on the rig's tiltPivot) past which the
+// dashboard reads the mast as tilted forward.
 export const TILT_RELEASE_ANGLE = 0.06
-export const LOAD_TIP_HEIGHT = 0.45 // fork height above which forward tilt can tip the truck
-export const LOAD_TIP_WEIGHT_RATIO = 0.6 // fraction of the course's capacityKg
-export const LOAD_TIP_TILT_RATIO = 0.75 // fraction of TILT_FORWARD_MAX

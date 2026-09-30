@@ -1,23 +1,13 @@
-import { useEffect, useRef } from 'react'
-import { Html, useGLTF } from '@react-three/drei'
-import { CARGO_BOX_MODEL_URL, modelFootprint, palletModelForWeight, PALLET_DECK_Y } from '../../lib/driving/models'
+import { Html } from '@react-three/drei'
+import { CARGO_BOX_MODEL_URL, palletModelForWeight, PALLET_DECK_Y } from '../../lib/driving/models'
 import { ModelProp } from './ModelProp'
 
-export function Pallet({ pallet, palletRef, overweight = false, onMeasure }) {
+// A course pallet and its load. The group is what syncView() moves: its pose
+// is the pallet's physics body's (lib/physics/world.js), whose colliders are
+// laid out in this same frame, origin on the floor at the pallet's centre.
+export function Pallet({ pallet, palletRef, overweight = false }) {
   const modelUrl = palletModelForWeight(pallet.weightKg)
   const cargoDeckY = PALLET_DECK_Y[modelUrl]
-  const { scene } = useGLTF(modelUrl)
-  const onMeasureRef = useRef(onMeasure)
-  useEffect(() => {
-    onMeasureRef.current = onMeasure
-  }, [onMeasure])
-
-  // The frame loop needs this pallet's real half-extents for both the fork
-  // insertion maths and the solid-obstacle test, so report them up once the
-  // model is in.
-  useEffect(() => {
-    onMeasureRef.current?.(modelFootprint(modelUrl, scene))
-  }, [modelUrl, scene])
 
   return (
     <group ref={palletRef} position={[pallet.position[0], 0, pallet.position[2]]} rotation={[0, pallet.rotation || 0, 0]}>

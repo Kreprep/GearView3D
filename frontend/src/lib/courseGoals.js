@@ -5,6 +5,7 @@
 
 import { DECOR_RACK_KINDS, RACK_FOOTPRINT } from '../data/rackProfile.js'
 import { PALLET_FALLBACK_FOOTPRINT } from '../data/palletProfile.js'
+import { STABILITY_DEFAULTS } from '../data/vehicleProfile.js'
 import { alertProblems } from './courseAlerts.js'
 import { orientedRectsOverlap } from './simCollision.js'
 
@@ -21,6 +22,33 @@ export function resolveCourseBounds(course) {
     halfWidth: typeof bounds.halfWidth === 'number' ? bounds.halfWidth : DEFAULT_COURSE_BOUNDS.halfWidth,
     minZ: typeof bounds.minZ === 'number' ? bounds.minZ : DEFAULT_COURSE_BOUNDS.minZ,
     maxZ: typeof bounds.maxZ === 'number' ? bounds.maxZ : DEFAULT_COURSE_BOUNDS.maxZ,
+  }
+}
+
+// The truck's rated capacity for a course: its own capacity plate, or the
+// reference truck's when the course sets none. The overload rule, the load
+// chart and the stability model all read this.
+export function resolveCapacityKg(course) {
+  return typeof course?.capacityKg === 'number' && course.capacityKg > 0 ? course.capacityKg : STABILITY_DEFAULTS.ratedCapacityKg
+}
+
+// The load-handling fails a course has switched on: { overload, highTravel,
+// loadDrop }. Collisions, a pallet struck at speed and a tip-over always
+// fail, whatever a course stores.
+//
+// A tolerant reader, like decorationType() in courseEdit.js: before Phase 7 a
+// load was lost by one of three scripted rules (suddenStop, sharpTurn,
+// unsecuredTravel), each with its own switch. Physics made them one thing, a
+// load that leaves the forks, so any of the three reads as `loadDrop`.
+// `loadTipping` is gone: a tip-over is physics and cannot be switched off.
+// The Course Editor writes only the three keys returned here.
+export function resolveFailConditions(course) {
+  const stored = course?.failConditions || {}
+  const legacyLoadDrop = Boolean(stored.suddenStop || stored.sharpTurn || stored.unsecuredTravel)
+  return {
+    overload: Boolean(stored.overload),
+    highTravel: Boolean(stored.highTravel),
+    loadDrop: typeof stored.loadDrop === 'boolean' ? stored.loadDrop : legacyLoadDrop,
   }
 }
 

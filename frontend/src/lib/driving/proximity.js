@@ -79,8 +79,9 @@ function obstacles(state, world) {
       },
     })
   }
-  for (const cone of world.liveCones) {
-    found.push({ kind: 'cone', circle: { x: cone.position[0], z: cone.position[2], radius: CONE_RADIUS } })
+  // Where each cone is now: the physics may have knocked it about.
+  for (const cone of state.cones) {
+    found.push({ kind: 'cone', circle: { x: cone.position.x, z: cone.position.z, radius: CONE_RADIUS } })
   }
   return found
 }

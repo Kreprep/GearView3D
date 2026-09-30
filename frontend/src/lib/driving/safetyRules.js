@@ -9,11 +9,12 @@ import {
   TAIL_SWING_MIN_STEER,
   TAIL_SWING_REACH,
   TILT_FORWARD_ANGLE,
+  TIP_RISK_MARGIN,
   TURN_MAX_STEER,
   TURN_MAX_STEER_RATE,
   TURN_SPEED,
 } from '../../data/safetyThresholds.js'
-import { TILT_RELEASE_ANGLE } from '../../data/palletProfile.js'
+import { LOAD_SHIFT_SPEED } from '../../data/palletProfile.js'
 import { TILT_SECURE_ANGLE } from './constants.js'
 
 // The driving simulation's safety rules (docs/revisions/post-defense-plan.md,
@@ -38,7 +39,7 @@ import { TILT_SECURE_ANGLE } from './constants.js'
 //              like any other but is not a violation, so it is not logged.
 //
 // Which rules a course may switch off is lib/courseAlerts.js, which lists the
-// same ids. tip-risk and load-shifting arrive in Phase 7.
+// same ids.
 
 const CAUTION = { severity: 'caution', sound: 'cautionChime' }
 const DANGER = { severity: 'danger', sound: 'dangerAlarm' }
@@ -95,6 +96,26 @@ export const SAFETY_RULES = [
     messageKey: 'safety.sign.overload',
     osha: '(o)(2)',
     when: (s) => s.overCapacity,
+  },
+  {
+    // The stability model's margin, forward or sideways, is nearly used up.
+    id: 'tip-risk',
+    ...DANGER,
+    kind: 'warning',
+    pictogram: 'tip-over',
+    messageKey: 'safety.sign.tip-risk',
+    osha: '(o)(6), (n)(15)',
+    when: (s) => s.stabilityMargin < TIP_RISK_MARGIN,
+  },
+  {
+    // The load is sliding on the tines.
+    id: 'load-shifting',
+    ...DANGER,
+    kind: 'warning',
+    pictogram: 'load-shift',
+    messageKey: 'safety.sign.load-shifting',
+    osha: '(o)(1)',
+    when: (s) => s.loadSlipSpeed > LOAD_SHIFT_SPEED,
   },
   {
     // One sign at a time, in the order the learner should work through them.
@@ -224,7 +245,8 @@ export const SAFETY_RULES = [
   },
   {
     // The second move of setting a load down: it is resting in the drop zone
-    // or on its shelf, and comes off the tines once the mast tilts forward.
+    // or on its shelf with the mast still tilted back, and the tines only
+    // come free of it once the mast is levelled.
     id: 'release-load',
     ...INFO,
     hint: true,
@@ -232,7 +254,7 @@ export const SAFETY_RULES = [
     pictogram: 'tilt-forward',
     messageKey: 'safety.sign.release-load',
     osha: '(o)(6)',
-    when: (s) => s.loadAtDestination && s.mastTilt < TILT_RELEASE_ANGLE,
+    when: (s) => s.loadAtDestination && s.mastTilt < -TILT_FORWARD_ANGLE,
   },
 ]
 

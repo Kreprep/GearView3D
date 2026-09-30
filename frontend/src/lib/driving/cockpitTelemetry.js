@@ -1,4 +1,6 @@
 import { TILT_RELEASE_ANGLE } from '../../data/palletProfile.js'
+import { RATED_LOAD_CENTRE } from '../physics/loadChart.js'
+import { resolveCapacityKg } from '../courseGoals.js'
 import { STOP_SPEED_EPSILON, tiltStateName } from './constants.js'
 import { startInterlockMissing } from './interlock.js'
 import { proximityTelemetry } from './proximity.js'
@@ -66,6 +68,15 @@ export function cockpitSnapshot(state, course, { controls, switches, gauges, pro
     grip: state.grip,
     palletState: state.hud.palletState,
     carriedLoadKg: state.hud.carriedLoadKg,
+    // The capacity plate: the truck's rating, and the load the forks are in
+    // or under against the load chart (lib/physics/loadChart.js). With no
+    // load the plate shows the rating at the rated load centre.
+    ratedCapacityKg: resolveCapacityKg(course),
+    ratedLoadCentreM: RATED_LOAD_CENTRE,
+    plateLoadKg: state.load ? state.load.kg : null,
+    plateLoadCentreM: state.load ? round(state.load.centre, 2) : null,
+    plateLimitKg: state.load ? Math.round(state.load.deratedKg / 10) * 10 : null,
+    plateOverCapacity: Boolean(state.load?.overCapacity),
     fuel: round(gauges.fuel, 3),
     temp: round(gauges.temp, 2),
     hours: round(gauges.hours, 1),

@@ -10,7 +10,8 @@ import { createDashboardSource } from '../lib/driving/dashboardSource.js'
 import { createKeyboardSource } from '../lib/driving/keyboardSource.js'
 import { createSimCore } from '../lib/driving/simCore.js'
 import { createSimLoop } from '../lib/driving/simLoop.js'
-import { measuredPalletFootprint, SCENARIO_DT } from './drivingScenarios.js'
+import { SCENARIO_DT } from './drivingScenarios.js'
+import './physics.js'
 
 const profile = defaultVehicleProfile('en')
 
@@ -31,7 +32,7 @@ const KEY_BY_HELD = {
 // runs after each step, for a test that watches the simulation as it goes
 // (the safety monitor's).
 export function createHeadlessDrive(course, { afterStep } = {}) {
-  const core = createSimCore(course, profile, { palletFootprint: measuredPalletFootprint })
+  const core = createSimCore(course, profile)
   const keyboard = createKeyboardSource()
   const dashboard = createDashboardSource()
   const loop = createSimLoop((dt) => {
@@ -55,6 +56,9 @@ export function createHeadlessDrive(course, { afterStep } = {}) {
       checkpointIndex: state.checkpointIndex,
       failed: state.failed,
       tipAngle: state.tip.angle,
+      tipAxis: state.tip.axis,
+      longitudinalMargin: state.stability.longitudinalMargin,
+      lateralMargin: state.stability.lateralMargin,
       carriedIndex: state.carriedIndex,
       deliveredCount: state.deliveredCount,
       parkingStatus: state.parking.status,
@@ -64,11 +68,14 @@ export function createHeadlessDrive(course, { afterStep } = {}) {
         state: pallet.state,
         position: pallet.position,
         rotation: pallet.rotation,
-        risk: pallet.risk,
-        insertDepth: pallet.grip?.insertDepth ?? null,
-        landed: Boolean(pallet.landed),
+        landed: pallet.landed,
+        lean: pallet.lean,
+        onForks: pallet.touch.forks,
+        supported: pallet.touch.supported,
+        slipSpeed: pallet.slipSpeed,
       })),
       cones: state.cones,
+      load: state.load,
     }
   }
 
@@ -80,6 +87,8 @@ export function createHeadlessDrive(course, { afterStep } = {}) {
     if (event.type === 'checkpoint') return { type: event.isLast ? 'course-complete' : 'checkpoint', id: event.checkpoint.id }
     if (event.type === 'pallet') return { ...event.event, nextState: event.nextState }
     if (event.type === 'parking') return { type: 'parking', status: event.status, isParked: event.isParked }
+    // An impact's speed is a physics reading: rounded, like the samples.
+    if (event.type === 'impact') return { type: 'impact', what: event.what, speed: Math.round(event.speed * 1e4) / 1e4 }
     return event
   }
 
@@ -94,6 +103,8 @@ export function createHeadlessDrive(course, { afterStep } = {}) {
       const v = view()
       return { ...v, palletStates: v.pallets.map((pallet) => pallet.state) }
     },
+    // Free the physics world once the drive is over.
+    dispose: () => core.dispose(),
     frame(keys, { engineToggle, cab }) {
       if (cab) {
         if (typeof cab.seatbelt === 'boolean') dashboard.set('seatbelt', cab.seatbelt)

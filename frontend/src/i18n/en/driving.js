@@ -5,8 +5,8 @@
 // builds it has no React and no catalog.
 export default {
   'driving.task.parking': 'Drive to the marked bay, straighten up between the lines and stop completely. Then secure the truck: direction lever in N, forks lowered with F, parking brake set with Space, and the engine switched off with E.',
-  'driving.task.pallet': 'Line up square with the pallet and drive the lowered forks all the way in, raise it with R, tilt the mast back with T to secure it, carry it to the drop zone, lower with F until it rests on the ground, tilt forward with G to let it off the forks, then reverse away.',
-  'driving.task.racking': 'Drive the lowered forks all the way into the pallet, raise it with R above the target shelf, tilt back with T to carry it there, stop square in front of the bay, lower with F until the load rests on the shelf, then tilt forward with G to set it down.',
+  'driving.task.pallet': 'Line up square with the pallet and drive the lowered forks all the way in, raise it a little with R, tilt the mast back with T to secure it, carry it to the drop zone, level the mast with G, lower with F until the pallet rests on the ground and the forks are free, then reverse straight out.',
+  'driving.task.racking': 'Drive the lowered forks all the way into the pallet, raise it a little with R and tilt back with T to carry it, stop square in front of the bay, raise the load above the target shelf, drive in until the rack stops the truck, level the mast with G, lower with F until the load rests on the shelf and the forks are free, then reverse straight out.',
   // The only plural in the driving copy. Filipino does not inflect after a
   // numeral, so both variants exist there with the same text.
   'driving.task.checkpoints.one': 'Drive through {count} checkpoint in order to finish this step.',
@@ -32,16 +32,18 @@ export default {
   'driving.fail.vehicle.message': 'You clipped a parked vehicle. Ease in slowly and keep clearance on both sides - reset the attempt and try again.',
   'driving.fail.rack.title': 'Racking struck',
   'driving.fail.rack.message': 'You drove the truck body into the racking. Only the forks belong inside a bay - stop square in front of the rack and let the forks do the reaching.',
-  'driving.fail.overload.title': 'Tip-over: overloaded',
-  'driving.fail.overload.message': 'That pallet exceeds the rated capacity, so the vehicle tipped forward. Reset and choose a load within capacity.',
+  'driving.fail.overload.title': 'Overloaded',
+  'driving.fail.overload.message': 'That load is more than the truck may lift where it sits on the forks. The capacity plate gives the limit, and a load further out along the forks lowers it. Reset and choose a load within capacity, with the forks all the way in.',
   'driving.fail.loadDropped.title': 'Load thrown off',
   'driving.fail.loadDropped.message': 'Braking hard at speed threw the pallet off the forks. A load only rides out a hard stop when the forks are all the way in and the mast is tilted back - reset, seat the forks fully, and brake gently while loaded.',
   'driving.fail.loadSlipped.title': 'Load slipped off',
   'driving.fail.loadSlipped.message': 'Turning sharply at speed shook the pallet off the forks. Reset, drive the forks fully into the pallet, tilt the mast back, and take corners slowly with a load.',
   'driving.fail.unsecuredLoad.title': 'Unsecured load',
   'driving.fail.unsecuredLoad.message': 'You travelled with the mast upright or tilted forward, and the pallet worked its way off the forks. Reset, and tilt the mast back with T before moving a raised load.',
-  'driving.fail.loadTipping.title': 'Tip-over: load too far forward',
-  'driving.fail.loadTipping.message': 'Tilting a heavy load forward that high moved the centre of gravity past the front wheels. Reset, and only tilt forward once the forks are down at the shelf you are setting the load on.',
+  'driving.fail.tipOver.title': 'Tip-over',
+  'driving.fail.tipOver.message': 'The truck went over. A load that is too heavy, too far out, carried high, braked hard or swung through a fast turn moves the centre of gravity outside the wheels. Reset, keep the load low and tilted back, and slow down before turning.',
+  'driving.fail.palletImpact.title': 'Pallet struck',
+  'driving.fail.palletImpact.message': 'You hit a pallet at speed. Approach a load at a crawl with the forks level and at pocket height, and stop when the carriage meets it. Reset and try again.',
   'driving.fail.highTravel.title': 'Unsafe travel height',
   'driving.fail.highTravel.message': 'You drove at speed with the forks raised above the standard travel height. Reset, and lower the forks close to the ground before moving with a load.',
 
@@ -64,6 +66,9 @@ export default {
   // Shown while the browser holds the sound back until it sees a click or a
   // key press (a steering wheel's buttons may not count).
   'driving.hud.enableSound': 'Click to enable sound',
+  'driving.hud.loading': 'Loading driving simulation',
+  'driving.hud.loadFailed': 'The driving simulation could not load. Check the connection and reload the page.',
+  'driving.hud.showColliders': 'Colliders',
 
   // Camera modes (lib/driving/cameraModes.js).
   'driving.camera.label': 'Camera view',
@@ -110,9 +115,10 @@ export default {
   'driving.dash.mastState.level': 'level',
   'driving.dash.mastState.forward': 'forward',
   'driving.dash.grip': 'Fork grip',
-  'driving.dash.load': 'Load',
-  'driving.dash.loadValue': '{load} / {capacity} kg',
-  'driving.dash.noLoad': 'none / {capacity} kg',
+  'driving.dash.plate': 'Capacity plate',
+  'driving.dash.plate.rated': '{capacity} kg at {centre} m',
+  'driving.dash.plate.load': '{load} of {limit} kg at {centre} m',
+  'driving.dash.plate.chart': 'Load chart: the capacity falls as the load sits further out along the forks',
   'driving.dash.fuel': 'Fuel',
   'driving.dash.temp': 'Coolant temperature',
   'driving.dash.hours': 'Hour meter',

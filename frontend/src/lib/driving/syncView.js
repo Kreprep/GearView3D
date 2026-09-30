@@ -1,12 +1,15 @@
-import { Quaternion, Vector3 } from 'three'
+import { Matrix4, Quaternion, Vector3 } from 'three'
 import { REAR_WHEEL_KEYS } from '../vehicleRig.js'
 import { LEVER_DAMP, LEVER_THROW, MAST_LIFT_RATIO, MAX_STEER_ANGLE, STEERING_WHEEL_LOCK } from './constants.js'
+import { tipMatrix } from './forkPose.js'
 
 // The only code that writes simulation state onto three.js objects
 // (docs/revisions/post-defense-plan.md, section 3.2). The sim steps own
 // SimState; once per rendered frame this copies it onto the truck group, the
 // tip pivot, the rig nodes (wheels, steering, mast, carriage, the cab's
-// steering wheel and hydraulic levers), the pallet groups and the cones.
+// steering wheel and hydraulic levers), the pallet groups and the cones. The
+// pallets' and cones' poses in the state are their physics bodies', read back
+// each step (stepPhysics.js).
 //
 // The sim runs at a fixed step (simLoop.js) while the display may refresh
 // faster, so the moving poses are interpolated between the previous step and
@@ -25,7 +28,14 @@ export function createPoseBuffer() {
     tipAngle: 0,
     wheelTravel: 0,
     pallets: [],
+    cones: [],
   }
+}
+
+const captureBody = (buffer, index, body) => {
+  if (!buffer[index]) buffer[index] = { position: new Vector3(), quaternion: new Quaternion() }
+  buffer[index].position.copy(body.position)
+  buffer[index].quaternion.copy(body.quaternion)
 }
 
 export function capturePose(state, pose) {
@@ -39,18 +49,26 @@ export function capturePose(state, pose) {
   pose.steer = truck.steer
   pose.tipAngle = state.tip.angle
   pose.wheelTravel = truck.wheelTravel
-  state.pallets.forEach((pallet, index) => {
-    if (!pose.pallets[index]) pose.pallets[index] = { position: new Vector3(), quaternion: new Quaternion() }
-    pose.pallets[index].position.copy(pallet.position)
-    pose.pallets[index].quaternion.setFromEuler(pallet.rotation)
-  })
+  state.pallets.forEach((pallet, index) => captureBody(pose.pallets, index, pallet))
+  state.cones.forEach((cone, index) => captureBody(pose.cones, index, cone))
   return pose
 }
 
 const lerp = (from, to, alpha) => from + (to - from) * alpha
-const palletQuat = new Quaternion()
-const coneAxis = new Vector3()
-const coneQuat = new Quaternion()
+const tipTransform = new Matrix4()
+const tipScale = new Vector3()
+
+// A physics body's pose onto its scene object, between the last two steps.
+const syncBody = (object, from, body, alpha) => {
+  if (!object) return
+  if (!from) {
+    object.position.copy(body.position)
+    object.quaternion.copy(body.quaternion)
+    return
+  }
+  object.position.lerpVectors(from.position, body.position, alpha)
+  object.quaternion.slerpQuaternions(from.quaternion, body.quaternion, alpha)
+}
 
 // How far each hydraulic lever leans for the operator's input: pulled back
 // (toward the seat, a negative angle about +X) to raise and to tilt back.
@@ -60,9 +78,8 @@ const LEVER_TARGETS = {
 }
 
 // `view`: { truckGroup, tipPivot, rig, palletObjects[], coneObjects[] } -
-// any of them may be missing (not mounted yet) and is then skipped.
-// `world.liveCones` gives each cone's authored position. `dt` is the render
-// delta, which eases the levers toward the input.
+// any of them may be missing (not mounted yet) and is then skipped. `dt` is
+// the render delta, which eases the levers toward the input.
 // Returns the rendered truck pose, for the camera.
 export function syncView(view, state, prev, alpha, world, dt = 0) {
   const { truck, forks } = state
@@ -77,7 +94,11 @@ export function syncView(view, state, prev, alpha, world, dt = 0) {
     view.truckGroup.position.set(x, y, z)
     view.truckGroup.rotation.y = heading
   }
-  if (view.tipPivot) view.tipPivot.rotation.x = lerp(prev.tipAngle, state.tip.angle, alpha)
+  // The tip-over, as one transform in the truck's frame (forkPose.js).
+  if (view.tipPivot) {
+    tipMatrix({ axis: state.tip.axis, angle: lerp(prev.tipAngle, state.tip.angle, alpha) }, world.geometry, tipTransform)
+    tipTransform.decompose(view.tipPivot.position, view.tipPivot.quaternion, tipScale)
+  }
 
   const rig = view.rig
   if (rig) {
@@ -108,28 +129,10 @@ export function syncView(view, state, prev, alpha, world, dt = 0) {
     }
   }
 
-  state.pallets.forEach((pallet, index) => {
-    const object = view.palletObjects?.[index]
-    const from = prev.pallets[index]
-    if (!object) return
-    if (!from) {
-      object.position.copy(pallet.position)
-      object.rotation.copy(pallet.rotation)
-      return
-    }
-    object.position.lerpVectors(from.position, pallet.position, alpha)
-    object.quaternion.slerpQuaternions(from.quaternion, palletQuat.setFromEuler(pallet.rotation), alpha)
-  })
-
-  // A knocked cone tips about its base edge, away from the truck.
+  state.pallets.forEach((pallet, index) => syncBody(view.palletObjects?.[index], prev.pallets[index], pallet, alpha))
+  // A cone nothing has touched stands where the course put it.
   state.cones.forEach((cone, index) => {
-    const object = view.coneObjects?.[index]
-    if (!object || !cone.hit) return
-    const [coneX, , coneZ] = world.liveCones[index].position
-    coneAxis.set(cone.dirZ, 0, -cone.dirX)
-    object.quaternion.copy(coneQuat.setFromAxisAngle(coneAxis, cone.angle))
-    object.position.x = coneX + cone.dirX * cone.angle * 0.12
-    object.position.z = coneZ + cone.dirZ * cone.angle * 0.12
+    if (cone.hit) syncBody(view.coneObjects?.[index], prev.cones[index], cone, alpha)
   })
 
   return { x, y, z, heading, forwardX: Math.sin(heading), forwardZ: Math.cos(heading) }

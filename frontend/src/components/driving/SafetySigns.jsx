@@ -33,6 +33,21 @@ const PICTOGRAMS = {
       <path d="M8.5 9.5h7L19 20H5z" />
     </>
   ),
+  // The truck from behind, going over.
+  'tip-over': (
+    <>
+      <path d="M7.5 17.5 5 8.5l8.5-2.3 2.4 9" />
+      <path d="M3.5 20h17M17 9.5c2 .8 3 2.6 3 4.6M18 15.2l2 .9 1-2" />
+    </>
+  ),
+  // A load sliding along the tines.
+  'load-shift': (
+    <>
+      <path d="M4 5v13h16" />
+      <rect x="9" y="9.5" width="6.5" height="6.5" rx="0.5" />
+      <path d="M17.5 12.8h3.5M19 10.8l2 2-2 2" />
+    </>
+  ),
   // A seated figure with a belt across it (as on the dashboard's lamp).
   seatbelt: (
     <>

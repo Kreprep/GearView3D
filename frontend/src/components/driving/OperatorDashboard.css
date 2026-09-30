@@ -106,6 +106,35 @@
   color: #f87171;
 }
 
+/* The capacity plate: a small load chart over its reading. */
+.operator-plate-chart {
+  width: 64px;
+  height: 30px;
+  overflow: visible;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.operator-plate-axes {
+  stroke: #475569;
+  stroke-width: 1;
+}
+
+.operator-plate-curve {
+  stroke: var(--surface-deep-accent);
+  stroke-width: 1.5;
+}
+
+.operator-plate-load {
+  fill: #e2e8f0;
+  stroke: none;
+}
+
+.operator-plate.is-danger .operator-plate-load {
+  fill: #f87171;
+}
+
 .operator-direction {
   display: inline-flex;
   gap: 6px;

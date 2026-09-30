@@ -1,13 +1,14 @@
 import '../../test-helpers/browserGlobals.js'
+import '../../test-helpers/physics.js'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Group, Matrix4, Vector3 } from 'three'
 import { drivingCourses } from '../../data/drivingCourse.js'
 import { defaultVehicleProfile } from '../../data/vehicleProfile.js'
-import { measuredPalletFootprint } from '../../test-helpers/drivingScenarios.js'
+import { TINE_REST_Y } from '../../data/physicsProfile.js'
 import { MAX_SPEED, STOP_SPEED_EPSILON, TIP_PIVOT_Y, TIP_PIVOT_Z } from './constants.js'
 import { createKeyActiveTracker, legacyKeysFromControls, mergeControls, neutralControls } from './controls.js'
-import { forkPose } from './forkPose.js'
+import { chassisPose, forkPose, tineClearance, tineGroundClearance } from './forkPose.js'
 import { createKeyboardSource } from './keyboardSource.js'
 import { FORKLIFT_RIG_GEOMETRY, rigGeometryMismatches } from './rigGeometry.js'
 import { createSimCore } from './simCore.js'
@@ -189,21 +190,22 @@ test('simLoop drops the backlog after MAX_STEPS instead of spiralling', () => {
 })
 
 // Controls scripted against *simulation* time, so every render rate asks for
-// the same input on the same step. The fixed step then has to produce exactly
+// the same input on the same step (gentle steering: full lock at speed would
+// tip the truck over). The fixed step then has to produce exactly
 // the same attempt at 60 Hz, 144 Hz and a jittery rate.
 function scriptedControls(time) {
   const controls = neutralControls()
   if (time < 2) {
     controls.throttle = 1
     controls.direction = 'F'
-    controls.steer = time > 1 ? 1 : 0
+    controls.steer = time > 1 ? 0.1 : 0
   } else if (time < 3) {
     controls.brake = 1
     controls.lift = 1
   } else {
     controls.throttle = 1
     controls.direction = 'F'
-    controls.steer = -1
+    controls.steer = -0.1
     controls.tilt = -1
   }
   return controls
@@ -217,7 +219,7 @@ function startEngine(core) {
 }
 
 function driveAtRate(frameDeltas) {
-  const core = createSimCore(drivingCourses['precision-carry'], profile, { palletFootprint: measuredPalletFootprint })
+  const core = createSimCore(drivingCourses['precision-carry'], profile)
   startEngine(core)
   const END = 5 - 1e-9
   // A long frame can run several steps; none may run past the end, or rates
@@ -230,7 +232,9 @@ function driveAtRate(frameDeltas) {
     loop.advance(frameDeltas(frame))
     frame += 1
   }
-  return core.debugSnapshot()
+  const snapshot = core.debugSnapshot()
+  core.dispose()
+  return snapshot
 }
 
 test('the same inputs drive the same attempt at 60 Hz, 144 Hz and a jittery rate', () => {
@@ -294,7 +298,7 @@ test('forkPose matches the carriage node chain it replaced', () => {
   const state = {
     truck: { x: 1.3, y: 0, z: -4.2, heading: 0.7 },
     forks: { height: 0.37, tilt: -0.09 },
-    tip: { angle: 0.25 },
+    tip: { axis: 'forward', angle: 0.25 },
   }
   truckGroup.position.set(state.truck.x, state.truck.y, state.truck.z)
   truckGroup.rotation.y = state.truck.heading
@@ -310,6 +314,40 @@ test('forkPose matches the carriage node chain it replaced', () => {
   const level = forkPose({ truck: { x: 0, y: 0, z: 0, heading: 0 }, forks: { height: 0, tilt: 0 }, tip: { angle: 0 } }, undefined, new Matrix4())
   const origin = new Vector3().applyMatrix4(level)
   close(origin.z, FORKLIFT_RIG_GEOMETRY.mastFoot[2])
+})
+
+test('a sideways tip-over rolls the truck about a side of its stability triangle', () => {
+  const at = (axis, angle) => ({ truck: { x: 0, y: 0, z: 0, heading: 0 }, forks: { height: 0, tilt: 0 }, tip: { axis, angle } })
+  const { frontAxleZ, rearAxleZ, frontTrackHalf } = FORKLIFT_RIG_GEOMETRY
+  const moved = (axis, point) => new Vector3(...point).applyMatrix4(chassisPose(at(axis, 0.5)))
+
+  // The edge itself stays put: the front wheel's contact patch on that side,
+  // and the rear axle's pivot.
+  for (const [axis, side] of [['left', 1], ['right', -1]]) {
+    for (const point of [[side * frontTrackHalf, 0, frontAxleZ], [0, 0, rearAxleZ]]) {
+      const after = moved(axis, point)
+      point.forEach((value, index) => close(after.getComponent(index), value, 1e-12))
+    }
+  }
+  // The roof goes over toward that side (left is +X), and the far front
+  // wheel lifts.
+  assert.ok(moved('left', [0, 0.5, 0]).x > 0.1)
+  assert.ok(moved('right', [0, 0.5, 0]).x < -0.1)
+  assert.ok(moved('left', [-frontTrackHalf, 0, frontAxleZ]).y > 0.05)
+  assert.ok(moved('right', [frontTrackHalf, 0, frontAxleZ]).y > 0.05)
+})
+
+test('the tines rest 3.4 cm off the floor and the floor stops them', () => {
+  close(tineClearance(0, 0), TINE_REST_Y, 1e-12)
+  // Tilted back the heels are lowest and still clear; tilted forward at the
+  // bottom the tips would be through the floor.
+  assert.ok(tineClearance(0, -0.19) > 0)
+  assert.ok(tineClearance(0, 0.1) < 0)
+  assert.ok(tineClearance(0.05, 0.1) > 0)
+  // The same reading off the full pose, which also follows a tip-over.
+  const level = { truck: { x: 2, y: 0, z: 3, heading: 1 }, forks: { height: 0.05, tilt: 0.1 }, tip: { axis: 'forward', angle: 0 } }
+  close(tineGroundClearance(level), tineClearance(0.05, 0.1), 1e-12)
+  assert.ok(tineGroundClearance({ ...level, tip: { axis: 'forward', angle: 0.3 } }) < 0)
 })
 
 test('rigGeometryMismatches flags a re-exported model', () => {

@@ -7,10 +7,10 @@
 // Scene units throughout (1 unit is about 4 m, lib/driving/units.js). Every
 // box is { center: [x, y, z], half: [x, y, z] } in its owner's frame, glTF
 // axes (+Y up, +Z forward).
-import { G, m } from '../lib/driving/units.js'
+import { G, kmh, m } from '../lib/driving/units.js'
 
 // --- World ---------------------------------------------------------------
-// Chosen in the Phase 2 spike (lib/physics/forkSpike.test.js pins them).
+// Chosen in the Phase 2 spike (lib/physics/world.test.js pins them).
 // Rapier steps at PHYSICS_DT, SUBSTEPS times per 1/60 s sim step.
 export const PHYSICS_WORLD = {
   gravity: [0, -G, 0],
@@ -33,12 +33,20 @@ export const FRICTION = {
   rubberOnConcrete: 0.8,
 }
 
+// Two colliders count as touching when Rapier's contact distance between
+// them is within this: its own allowed penetration at this scale, with room
+// for a resting body's hover.
+export const TOUCH_DISTANCE = m(0.004)
+
 // --- Forks ----------------------------------------------------------------
 // Measured off forklift.glb in Blender (2026-09-29, plan section 2). The
 // carriage frame's origin is the tine heel on the tines' underside, centred
 // between them; +Z runs along the tines. In the truck's frame the heel is at
 // z = TINE_HEEL_Z when the mast is upright.
 export const TINE_HEEL_Z = 0.308
+// The tines' underside above the floor with the carriage fully lowered and the
+// mast upright (3.4 cm; measured off forklift.glb on 2026-09-30).
+export const TINE_REST_Y = 0.0086
 export const TINE = {
   centreX: 0.0675,
   width: 0.031,
@@ -54,6 +62,11 @@ export const FORK_COLLIDERS = [
   { center: [0, 0.115, -0.004], half: [0.12, 0.115, 0.004] },
 ]
 
+// The truck's body, as one box over its footprint (the vehicle profile's, the
+// same rectangle the 2D collision uses): y from just clear of the floor to
+// the top of the body panels.
+export const CHASSIS_Y = [0.01, 0.49]
+
 // --- Pallets ----------------------------------------------------------------
 // Measured off each pallet GLB in Blender on 2026-09-30 and scaled by its
 // MODEL_TRANSFORM entry (lib/driving/models.js). The pallet's frame is its
@@ -66,6 +79,16 @@ const box = (x0, x1, y0, y1, z0, z1, scale = 1) => ({
   half: [(Math.abs(x1 - x0) / 2) * scale, (Math.abs(y1 - y0) / 2) * scale, (Math.abs(z1 - z0) / 2) * scale],
 })
 
+// A box turned a quarter turn about +Y, the way three.js turns a model by
+// rotation.y = PI / 2: what was along +Z now runs along +X.
+const quarterTurn = ({ center: [x, y, z], half: [hx, hy, hz] }) => ({ center: [z, y, -x], half: [hz, hy, hx] })
+
+// The cardboard box drawn on the wooden and plastic pallets
+// (cardboard-box.glb at its MODEL_TRANSFORM scale), as half-extents. It
+// stands on the pallet's deck.
+const CARGO_BOX_HALF = [0.0944, 0.0486, 0.0764]
+const cargoBoxOn = (deckY) => ({ center: [0, deckY + CARGO_BOX_HALF[1], 0], half: CARGO_BOX_HALF })
+
 // wooden-pallet.glb: a 1.2 m block pallet, four-way. Raw model units, x
 // re-centred on the model's own centre (raw x -2.5..-0.5). Three bottom
 // boards and three stringer boards run along Z over the block columns, nine
@@ -76,6 +99,7 @@ const WOODEN_COLUMNS = [-0.9, 0, 0.9]
 export const WOODEN_PALLET = {
   mass: 25,
   height: 0.243 * WOODEN_SCALE,
+  load: cargoBoxOn(0.243 * WOODEN_SCALE),
   colliders: [
     ...WOODEN_COLUMNS.map((x) => box(x - 0.1, x + 0.1, 0, 0.02, -1, 1, WOODEN_SCALE)),
     ...WOODEN_COLUMNS.flatMap((x) => WOODEN_COLUMNS.map((z) => box(x - 0.1, x + 0.1, 0.02, 0.2, z - 0.1, z + 0.1, WOODEN_SCALE))),
@@ -98,6 +122,7 @@ const PLASTIC_LEGS_Z = [[-61.231, -43.283], [-7.619, 7.619], [43.283, 61.231]]
 export const PLASTIC_PALLET = {
   mass: 20,
   height: 14 * PLASTIC_SCALE,
+  load: cargoBoxOn(14 * PLASTIC_SCALE),
   colliders: [
     ...PLASTIC_LEGS_X.flatMap(([x0, x1]) => PLASTIC_LEGS_Z.map(([z0, z1]) => box(x0, x1, 0, 11.457, z0, z1, PLASTIC_SCALE))),
     box(-50.894, -38.867, 0, 2.19, -61.231, 61.231, PLASTIC_SCALE),
@@ -116,9 +141,14 @@ export const PLASTIC_PALLET = {
 // ends. So the wide pockets open along X, and entering along Z means
 // threading the notches, which are only 0.052 raw (0.013 units, about 5 cm)
 // high: 0.002 units (8 mm) of clearance over a 0.011 tine. See the Phase 2 notes in the plan.
+//
+// So the model is drawn, and these colliders are laid, a quarter turn round
+// (PALLET_MODEL_TURN.heavy below, Phase 7): a course's `rotation: 0` then
+// presents the open side to a truck driving up the course, like the other
+// two pallets. The numbers here are the model's own, before the turn.
 const CEMENT_SCALE = 0.25
 const CEMENT_STRINGERS_Z = [[-0.592, -0.492], [-0.052, 0.048], [0.492, 0.592]]
-export const CEMENT_PALLET = {
+const CEMENT_PALLET_AS_MODELLED = {
   mass: 25,
   height: 0.101 * CEMENT_SCALE,
   colliders: [
@@ -140,6 +170,70 @@ export const CEMENT_PALLET = {
     z: { centres: [-0.25 * CEMENT_SCALE, 0.25 * CEMENT_SCALE], width: 0.296 * CEMENT_SCALE, y: [0.002 * CEMENT_SCALE, 0.054 * CEMENT_SCALE] },
   },
 }
+export const CEMENT_PALLET = {
+  ...CEMENT_PALLET_AS_MODELLED,
+  colliders: CEMENT_PALLET_AS_MODELLED.colliders.map(quarterTurn),
+  load: quarterTurn(CEMENT_PALLET_AS_MODELLED.load),
+  pockets: { x: CEMENT_PALLET_AS_MODELLED.pockets.z, z: CEMENT_PALLET_AS_MODELLED.pockets.x },
+}
+
+// Which pallet a course pallet is, by its load: the same weight bands the
+// viewer picks the model by (lib/driving/models.js).
+export const PALLET_LIGHT_MAX_KG = 500
+export const PALLET_HEAVY_MIN_KG = 1000
+export const PALLETS = { light: WOODEN_PALLET, medium: PLASTIC_PALLET, heavy: CEMENT_PALLET }
+// How far each pallet's model is turned about +Y from how it was modelled.
+export const PALLET_MODEL_TURN = { light: 0, medium: 0, heavy: Math.PI / 2 }
+
+export function palletKindForWeight(weightKg) {
+  if (typeof weightKg !== 'number') return 'light'
+  if (weightKg >= PALLET_HEAVY_MIN_KG) return 'heavy'
+  if (weightKg > PALLET_LIGHT_MAX_KG) return 'medium'
+  return 'light'
+}
+
+// What a course pallet that states no weight carries: a light carton.
+export const DEFAULT_LOAD_KG = 250
+
+// A course pallet as the physics builds it: its colliders, its load's box
+// and weight, and its footprint (half-extents over every collider, which the
+// fork-engagement maths and the 2D proximity read).
+export function palletPhysics(palletDef) {
+  const kind = palletKindForWeight(palletDef.weightKg)
+  const pallet = PALLETS[kind]
+  const extent = (axis) => Math.max(...pallet.colliders.map(({ center, half }) => Math.abs(center[axis]) + half[axis]))
+  return {
+    kind,
+    pallet,
+    loadKg: typeof palletDef.weightKg === 'number' ? palletDef.weightKg : DEFAULT_LOAD_KG,
+    footprint: { halfWidth: extent(0), halfDepth: extent(2) },
+  }
+}
+
+// --- Cone -------------------------------------------------------------------
+// traffic-cone.glb at its MODEL_TRANSFORM scale (0.7 m tall): a square base
+// plate and the cone standing on it. Measured on 2026-09-30.
+export const CONE = {
+  mass: 3,
+  base: { center: [0, 0.004, 0], half: [0.0594, 0.004, 0.0594] },
+  body: { centerY: 0.0915, halfHeight: 0.0835, radius: 0.0375 },
+}
+
+// --- Walls and parked vehicles --------------------------------------------
+// A course wall as CourseDecorations draws it, and a parked truck's body.
+export const WALL = { thickness: 0.05, height: 0.625 }
+export const PARKED_VEHICLE_HEIGHT = 0.49
+
+// --- Thresholds read off the physics ---------------------------------------
+// GearView defaults, in real units.
+//
+// The truck's body or forks striking a pallet faster than this along the line
+// of contact is an impact (the palletImpact fail). Driving the tines into
+// the pockets touches nothing; meeting the pallet's face with the carriage
+// at walking pace is how a load is seated.
+export const PALLET_IMPACT_SPEED = kmh(5)
+// Anything landing on, or struck at, more than this makes a sound.
+export const IMPACT_SOUND_SPEED = kmh(1.5)
 
 // --- Rack ------------------------------------------------------------------
 // pallet-racking.glb, measured on 2026-09-30, raw model units (scale it by

@@ -9,11 +9,13 @@ import {
   createDrivingAudio,
   engineRevTarget,
   eventSounds,
+  impactGain,
   LOOP_NAMES,
   slewRev,
   switchSounds,
 } from './drivingAudio.js'
 import { createSimState } from './simState.js'
+import { kmh } from './units.js'
 
 const COURSE = { start: { position: [0, 0, 0], heading: 0 } }
 
@@ -200,6 +202,36 @@ test('sim events map to their one-shots', () => {
   assert.deepEqual(eventSounds({ type: 'checkpoint', index: 0 }), [])
 })
 
+test('an impact sounds like what was struck, louder the harder it was', () => {
+  const impact = (what, speed = kmh(4)) => ({ type: 'impact', what, speed })
+  // Wood for a pallet struck or set down, plastic for a cone, metal for
+  // racking or a wall.
+  assert.deepEqual(eventSounds(impact('pallet')), ['palletDrop'])
+  assert.deepEqual(eventSounds(impact('landing')), ['palletDrop'])
+  assert.deepEqual(eventSounds(impact('cone')), ['coneKnock'])
+  assert.deepEqual(eventSounds(impact('structure')), ['metalImpact'])
+  assert.deepEqual(eventSounds(impact('something-else')), [])
+
+  assert.equal(impactGain(impact('pallet', kmh(12))), 1)
+  assert.ok(impactGain(impact('pallet', kmh(3))) > impactGain(impact('pallet', kmh(2))))
+  // A touch is still heard.
+  assert.ok(impactGain(impact('cone', 0)) > 0)
+})
+
+test('the fork tips scrape when they are on the floor and the truck is moving', () => {
+  // Forks at the bottom and the mast tilted forward until the tips touch.
+  const tipsDown = { forkHeight: 0, tilt: 0.0238 }
+  const scraping = audioTargets(simState({ ...tipsDown, speed: kmh(6) })).forkScrape.gain
+  assert.ok(scraping > 0.9, `gain ${scraping}`)
+  assert.ok(audioTargets(simState({ ...tipsDown, speed: kmh(2) })).forkScrape.gain < scraping)
+  assert.ok(audioTargets(simState({ ...tipsDown, speed: -kmh(6) })).forkScrape.gain > 0.9, 'reversing too')
+  // Stopped, or with the forks level and clear of the floor: nothing.
+  assert.equal(audioTargets(simState({ ...tipsDown, speed: 0 })).forkScrape.gain, 0)
+  assert.equal(audioTargets(simState({ forkHeight: 0, tilt: 0, speed: kmh(6) })).forkScrape.gain, 0)
+  // Steel on concrete needs no engine.
+  assert.ok(audioTargets(simState({ ...tipsDown, speed: kmh(6), engineOn: false })).forkScrape.gain > 0)
+})
+
 test('a cab switch that moved makes its sound', () => {
   const off = { key: 'off', seatbelt: false, parkingBrake: false, lights: false }
   assert.deepEqual(switchSounds(null, off), [])
@@ -219,6 +251,7 @@ function fakeEngine() {
     time: 0,
     loops: {},
     shots: [],
+    gains: [],
     now: () => engine.time,
     createLoop(name) {
       const loop = { gain: 0, rate: 1, stopped: false }
@@ -235,8 +268,9 @@ function fakeEngine() {
         },
       }
     },
-    playOneShot(name) {
+    playOneShot(name, options) {
       engine.shots.push(name)
+      engine.gains.push(options?.gain ?? 1)
     },
   }
   return engine
@@ -325,6 +359,16 @@ test('the horn, a refused start and the cab switches play their one-shots', () =
   audio.update(state, { ...SWITCHES, seatbelt: true })
   audio.update(state, { ...SWITCHES, seatbelt: true })
   assert.deepEqual(engine.shots, ['horn', 'denied', 'seatbelt'])
+})
+
+test('an impact event plays its sound at the gain its speed earns', () => {
+  const engine = fakeEngine()
+  const audio = createDrivingAudio(engine)
+  audio.handleEvent({ type: 'impact', what: 'cone', speed: kmh(12) })
+  audio.handleEvent({ type: 'impact', what: 'landing', speed: kmh(1.8) })
+  assert.deepEqual(engine.shots, ['coneKnock', 'palletDrop'])
+  assert.equal(engine.gains[0], 1)
+  assert.ok(engine.gains[1] < 1 && engine.gains[1] > 0)
 })
 
 test('a caution sign chimes, a danger sounds the alarm, and an information sign is silent', () => {

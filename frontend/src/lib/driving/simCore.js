@@ -1,4 +1,5 @@
 import { clamp } from '../math.js'
+import { loadedRapier } from '../physics/rapier.js'
 import { FORK_MAX_HEIGHT, TILT_BACK_MAX, TILT_FORWARD_MAX } from './constants.js'
 import { startInterlockMissing } from './interlock.js'
 import { createSimState, createSimWorld } from './simState.js'
@@ -7,6 +8,8 @@ import { stepCollisionBody, stepCollisionHazards } from './stepCollision.js'
 import { stepForks } from './stepForks.js'
 import { stepFail } from './stepFail.js'
 import { stepPallet } from './stepPallet.js'
+import { createScenePhysics, stepPhysics, truckPoses } from './stepPhysics.js'
+import { stepStability } from './stepStability.js'
 import { stepCheckpoints, stepParking } from './stepGoals.js'
 
 // The headless driving simulation: one course, one attempt. No three.js
@@ -15,10 +18,17 @@ import { stepCheckpoints, stepParking } from './stepGoals.js'
 // the scene with syncView.js; the characterization tests run it directly in
 // node --test.
 //
+//   await loadRapier()               // once, before the first core
 //   const core = createSimCore(course, profile)
 //   core.command('engineStart')      // or 'engineStop'
 //   core.step(SIM_DT, controls)      // controls: lib/driving/controls.js
 //   core.drainEvents()               // what happened, in order
+//   core.dispose()                   // frees the physics world
+//
+// The truck is driven by the steps' own model. Pallets and cones are bodies
+// in a Rapier physics world (lib/physics/world.js) that the core owns and
+// stepPhysics steps; the world is built on the first step, so a core that is
+// created and never stepped allocates nothing.
 //
 // Events (all plain data):
 //   { type: 'engine', on }
@@ -27,11 +37,20 @@ import { stepCheckpoints, stepParking } from './stepGoals.js'
 //   { type: 'checkpoint', index, checkpoint, isLast }
 //   { type: 'pallet', event, nextState }   event is the viewer's pallet-* event
 //   { type: 'parking', status, isParked }
-export function createSimCore(course, profile, { palletFootprint, geometry } = {}) {
+//   { type: 'impact', what, speed }  something struck or landed hard enough to
+//                                    hear: 'pallet' | 'cone' | 'landing' | 'structure'
+export function createSimCore(course, profile, { geometry, rapier } = {}) {
   let world = createSimWorld(course, profile, geometry)
-  const state = createSimState(course, { palletFootprint })
+  const state = createSimState(course)
   let commands = []
   let events = []
+  let physics = null
+  let disposed = false
+
+  const ensurePhysics = () => {
+    if (!physics && !disposed) physics = createScenePhysics(rapier || loadedRapier(), state, world)
+    return physics
+  }
 
   // Commands apply against the controls of the step they land in, since the
   // interlock reads the seatbelt, parking brake and direction lever.
@@ -65,9 +84,16 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
     },
 
     // A new vehicle profile (an admin editing the footprint while the Course
-    // Editor preview runs) applies without restarting the attempt.
+    // Editor preview runs) applies without restarting the attempt. The
+    // physics world keeps the body it was built with until the next attempt.
     setProfile(nextProfile) {
       world = createSimWorld(course, nextProfile, geometry)
+    },
+
+    // The physics world, for the collider debug view: null until the first
+    // step and after dispose().
+    get physics() {
+      return physics
     },
 
     // Queue an edge-triggered command; it applies at the start of the next
@@ -79,18 +105,22 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
     // The ordered pipeline. Each step reads what the previous ones wrote on
     // state.frame, in this order.
     step(dt, controls) {
+      if (!ensurePhysics()) return
       applyCommands(controls)
       stepDrive(state, world, controls, dt)
       stepCollisionBody(state, world)
-      stepForks(state, dt)
-      // The tip-over animation advances one step before whatever sets
-      // tip.active (stepPallet, below), so a fail that starts the tip shows
-      // its first degree of pitch on the next step. Kept from the original
-      // frame loop; it changes no grading.
-      stepFail(state, dt)
-      stepCollisionHazards(state, world, dt)
+      stepForks(state, world, dt)
+      // The tip-over's fall advances one step before whatever sets
+      // tip.active (stepStability, below), so a tip shows its first degree
+      // on the next step.
+      stepFail(state, world, dt)
+      // The truck is where this step put it: move it in the physics world,
+      // step that, and read the pallets and cones back.
+      stepPhysics(state, world, physics, dt)
+      stepCollisionHazards(state, world)
       stepCheckpoints(state, world)
       stepPallet(state, world, dt)
+      stepStability(state, world, dt)
       stepParking(state, world)
       state.truck.prevSpeed = state.truck.speed
       state.time += dt
@@ -107,16 +137,21 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
       return drained
     },
 
-    setPalletFootprint(index, footprint) {
-      if (state.pallets[index] && footprint) state.pallets[index].footprint = footprint
+    // Free the physics world. The core does nothing after this.
+    dispose() {
+      disposed = true
+      physics?.dispose()
+      physics = null
     },
 
     // Test and automation hook (window.__drivingDebugSet): warp the truck and
     // forks directly instead of faking held keys. The cab switches
     // (seatbelt, parking brake, direction lever) are the dashboard source's,
-    // so the viewer handles those itself.
+    // so the viewer handles those itself. A load on the forks goes with
+    // them: the truck is put there, it does not travel there.
     debugSet(patch = {}) {
       const { truck, forks } = state
+      const held = state.pallets.flatMap((pallet, index) => (pallet.touch.forks ? [index] : []))
       if (typeof patch.x === 'number') truck.x = patch.x
       if (typeof patch.z === 'number') truck.z = patch.z
       if (typeof patch.heading === 'number') truck.heading = patch.heading
@@ -124,6 +159,7 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
       if (typeof patch.forkHeight === 'number') forks.height = clamp(patch.forkHeight, 0, FORK_MAX_HEIGHT)
       if (typeof patch.tilt === 'number') forks.tilt = clamp(patch.tilt, -TILT_BACK_MAX, TILT_FORWARD_MAX)
       if (typeof patch.engineOn === 'boolean') truck.engineOn = patch.engineOn
+      physics?.teleport(truckPoses(state, world.geometry), held)
     },
 
     // What window.__drivingDebug reports. The cab controls are the ones
@@ -146,16 +182,22 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
         interlockMissing: state.interlock.missing,
         grip: state.grip,
         palletStates: state.pallets.map((pallet) => pallet.state),
-        palletRisks: state.pallets.map((pallet) => pallet.risk),
-        palletInsertDepths: state.pallets.map((pallet) => pallet.grip?.insertDepth ?? null),
+        palletPositions: state.pallets.map(({ position }) => [position.x, position.y, position.z]),
         palletHeights: state.pallets.map((pallet) => pallet.position.y),
-        palletLanded: state.pallets.map((pallet) => Boolean(pallet.landed)),
+        palletLanded: state.pallets.map((pallet) => pallet.landed),
+        palletOnForks: state.pallets.map((pallet) => pallet.touch.forks),
+        palletSlipSpeeds: state.pallets.map((pallet) => pallet.slipSpeed),
+        conesHit: state.cones.flatMap((cone, index) => (cone.hit ? [index] : [])),
+        load: state.load,
+        stability: { longitudinal: state.stability.longitudinalMargin, lateral: state.stability.lateralMargin },
+        limits: state.limits,
         carriedIndex: state.carriedIndex,
         deliveredCount: state.deliveredCount,
         checkpointIndex: state.checkpointIndex,
         failed: state.failed,
         failReason: state.failReason,
         tipAngle: state.tip.angle,
+        tipAxis: state.tip.axis,
         parkingStatus: state.parking.status,
         parked: state.parking.parked,
         time: state.time,
