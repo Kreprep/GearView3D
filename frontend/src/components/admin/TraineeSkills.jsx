@@ -136,7 +136,7 @@ function TraineeSkills({ learner, canSignOff, onMessage }) {
                     <li key={index}>
                       <span className={met ? 'font-bold text-status-done' : 'text-muted'}>{met ? 'Met' : 'Not yet'}</span>
                       {': '}
-                      {describeEvidence(rule, en)}
+                      {describeEvidence(rule, en, { staff: true })}
                     </li>
                   ))}
                 </ul>

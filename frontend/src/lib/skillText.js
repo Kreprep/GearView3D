@@ -28,7 +28,9 @@ function ruleList(ids, t) {
     .join(', ')
 }
 
-export function describeEvidence(rule, t) {
+// `staff` words a line for an instructor reading about a trainee rather than
+// for the trainee.
+export function describeEvidence(rule, t, { staff = false } = {}) {
   const module = rule.moduleTitle || rule.module
   const step = rule.stepTitle || rule.stepId
 
@@ -43,8 +45,8 @@ export function describeEvidence(rule, t) {
     }
     case 'quiz-score':
       return rule.context === 'parts'
-        ? t('skills.evidence.quiz.parts', { min: rule.min })
-        : t('skills.evidence.quiz.module', { min: rule.min, module })
+        ? t(staff ? 'skills.evidence.quiz.partsStaff' : 'skills.evidence.quiz.parts', { min: rule.min })
+        : t(staff ? 'skills.evidence.quiz.moduleStaff' : 'skills.evidence.quiz.module', { min: rule.min, module })
     case 'parts-viewed':
       return t('skills.evidence.partsViewed')
     case 'caution-recovered':

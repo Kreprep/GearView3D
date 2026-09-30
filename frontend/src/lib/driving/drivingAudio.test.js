@@ -57,17 +57,21 @@ test('an idling engine plays the idle loop alone, at its recorded pitch', () => 
 
 test('the throttle revs the engine in neutral too', () => {
   const { engineIdle, engineHigh } = audioTargets(simState({ controls: { throttle: 1, direction: 'N' } }))
-  close(engineHigh.gain, 1, 'high gain')
   close(engineHigh.rate, 1, 'high rate')
-  close(engineIdle.gain, 0, 'idle gain')
+  // At full revs the forklift loop still carries 0.6 of the engine's power
+  // under the high-revs loop's 0.8, and the whole engine is 1.25 times its
+  // idle loudness.
+  close(engineHigh.gain, 0.8 * 1.25, 'high gain')
+  close(engineIdle.gain, 0.6 * 1.25, 'idle gain')
 })
 
 test('part throttle crossfades the two loops at one firing frequency', () => {
   const { engineIdle, engineHigh } = audioTargets(simState({ controls: { throttle: 0.5, direction: 'F' } }))
   assert.ok(engineIdle.gain > 0 && engineIdle.gain < 1)
   assert.ok(engineHigh.gain > 0 && engineHigh.gain < 1)
-  // Equal power: the loudness holds across the crossfade.
-  close(engineIdle.gain ** 2 + engineHigh.gain ** 2, 1, 'equal power')
+  // Equal power across the crossfade, then louder with the revs (1.25 times
+  // at full): at half throttle, 1.125 times idle.
+  close(Math.sqrt(engineIdle.gain ** 2 + engineHigh.gain ** 2), 1.125, 'power')
   close(engineIdle.rate * SOUND_BANK.engineIdle.firingHz, engineHigh.rate * SOUND_BANK.engineHigh.firingHz, 'firing frequency')
   assert.ok(engineIdle.rate > 1 && engineHigh.rate < 1)
 })

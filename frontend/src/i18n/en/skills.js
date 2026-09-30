@@ -39,6 +39,9 @@ export default {
   'skills.evidence.cleanRun.dangerAll': 'Finish "{step}" ({module}) on a run with no danger-level safety sign',
   'skills.evidence.quiz.module': 'Score at least {min}% on the {module} quiz (your latest try)',
   'skills.evidence.quiz.parts': 'Score at least {min}% on the parts quiz (your latest try)',
+  // The same two lines as an instructor reads them in Reports.
+  'skills.evidence.quiz.moduleStaff': "Score at least {min}% on the {module} quiz (the trainee's latest try)",
+  'skills.evidence.quiz.partsStaff': "Score at least {min}% on the parts quiz (the trainee's latest try)",
   'skills.evidence.partsViewed': 'Look at every part on the parts page',
   'skills.evidence.cautionRecovered':
     'Finish a driving step after a warning sign came up, without it becoming a danger sign',
