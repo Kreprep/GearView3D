@@ -65,6 +65,7 @@ export const equipmentUsageModules = [
     pageReferences: 'pp. 55, 57-58',
     learningObjectives: [
       'Identify the basic operating controls used to start and drive a forklift in this simulation.',
+      'Follow the pre-start sequence: seatbelt fastened, parking brake set, direction lever in neutral, then start the engine.',
       'Practice accelerating and braking smoothly to control forklift speed.',
       'Practice steering left and right while maintaining a safe course.',
       'Combine starting, accelerating, braking, and steering in a short guided driving course.',
@@ -73,6 +74,7 @@ export const equipmentUsageModules = [
       'This simplified simulation lets you practice the basic operating controls of a forklift: starting the engine, accelerating, braking, and steering.',
       'This is a simplified control-familiarization exercise, not a physics-accurate driving simulator. It does not model collisions, real vehicle dynamics, or unsupervised operation.',
       'Each guided step introduces one control at a time before combining them in a short driving course.',
+      'Before starting the engine, fasten the seatbelt, set the parking brake and put the direction lever in neutral (N). Like a real truck\'s interlock, the engine will not crank otherwise. Release the parking brake before driving off.',
     ],
     interactiveActivities: [
       'Controls orientation and engine start practice',
@@ -82,7 +84,7 @@ export const equipmentUsageModules = [
       'Combined guided driving course',
     ],
     checklist: [
-      'Start the engine before attempting to move.',
+      'Fasten the seatbelt, set the parking brake and select neutral, then start the engine before attempting to move.',
       'Accelerate smoothly using the forward control.',
       'Brake smoothly and stop within the marked zone.',
       'Steer left and right with controlled inputs.',
@@ -127,7 +129,7 @@ export const equipmentUsageModules = [
     ],
     lessonContent: [
       'Post-operation discipline prevents parked forklifts from becoming hazards.',
-      'A proficient park means the truck sits straight inside the painted lines, stopped, with forks lowered and the engine off - cones along the route mark limits that must not be touched.',
+      'A proficient park means the truck sits straight inside the painted lines, stopped, in neutral, with forks lowered, the parking brake set and the engine off - cones along the route mark limits that must not be touched.',
       'Forks should be lowered, controls set to neutral, and the parking brake engaged before leaving the equipment.',
       'Any unsafe condition or visible damage should be reported for qualified follow-up.',
     ],
@@ -145,7 +147,7 @@ export const equipmentUsageModules = [
       'Report unsafe conditions or visible damage.',
     ],
     completionRequirements: [
-      'Park inside the painted bay without hitting a cone, forks down, engine off.',
+      'Park inside the painted bay without hitting a cone: in neutral, forks down, parking brake set, engine off.',
       'Complete the shutdown ordering activity.',
       'Answer every reporting decision correctly.',
     ],

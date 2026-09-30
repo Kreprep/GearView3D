@@ -38,10 +38,14 @@ export const DEFAULT_RIG = {
     lift: { node: 'Lever_L', base: [-0.049, 0.2672, 0.1302] },
     tilt: { node: 'Lever_M', base: [-0.0639, 0.2672, 0.1302] },
   },
-  // Approximate operator eye point, local to the vehicle (x: side, y: up, z:
+  // The operator's eye point, local to the vehicle (x: side, y: up, z:
   // forward) - what the first-person camera sits at. Tunable in the Driving
-  // Simulation section of Equipment Settings.
-  cabin: { seatOffset: [0, 0.40, -0.15] },
+  // Simulation section of Equipment Settings. Measured in Blender on
+  // 2026-09-30: the backrest's front face is at z -0.165 and the steering
+  // wheel's centre at z +0.067, so z -0.10 puts the eyes about 26 cm in
+  // front of the backrest, where an upright seated operator's are (it was
+  // -0.15, inside the head). The height is the original estimate.
+  cabin: { seatOffset: [0, 0.40, -0.10] },
 }
 
 // The HUD key legend.

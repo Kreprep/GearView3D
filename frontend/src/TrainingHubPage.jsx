@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, RotateCcw } from 'lucide-react'
+import { ArrowRight, Gamepad2, RotateCcw } from 'lucide-react'
 import { getEquipment, getHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
 import { getModulesProgress, getOverallProgress, getPartsProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
@@ -8,6 +8,7 @@ import { useLanguage, useT } from './i18n'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
 import { routes } from './lib/router'
 import PageLayout from './components/PageLayout'
+import { ControllerSetup } from './components/driving/ControllerSetup'
 import { StatusBadge } from './components/ui/badge'
 import { Button } from './components/ui/button'
 import { Card } from './components/ui/card'
@@ -141,6 +142,7 @@ function TrainingHubPage({ user, onLogout, onNavigate }) {
   const [hasPartsQuiz, setHasPartsQuiz] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [controllerSetupOpen, setControllerSetupOpen] = useState(false)
   const { summary, resetProgress } = useProgress()
   const t = useT()
   const language = useLanguage()
@@ -323,10 +325,18 @@ function TrainingHubPage({ user, onLogout, onNavigate }) {
             {t('hub.survey')}
           </Button>
         </p>
-        <Button variant="ghost" size="sm" onClick={resetProgress}>
-          <RotateCcw size={15} /> {t('hub.resetProgress')}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {/* The wheel is set up before driving, so Controller Setup is
+              reachable here as well as from the driving screen. */}
+          <Button variant="ghost" size="sm" onClick={() => setControllerSetupOpen(true)}>
+            <Gamepad2 size={15} /> {t('controller.open')}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={resetProgress}>
+            <RotateCcw size={15} /> {t('hub.resetProgress')}
+          </Button>
+        </div>
       </div>
+      {controllerSetupOpen && <ControllerSetup onClose={() => setControllerSetupOpen(false)} />}
     </PageLayout>
   )
 }

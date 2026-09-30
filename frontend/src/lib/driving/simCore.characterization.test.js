@@ -13,24 +13,29 @@ import {
 } from '../../test-helpers/drivingScenarios.js'
 import { traceSnapshot } from '../../test-helpers/drivingTrace.js'
 import { mergeControls } from './controls.js'
+import { createDashboardSource } from './dashboardSource.js'
 import { createKeyboardSource } from './keyboardSource.js'
 import { createSimCore } from './simCore.js'
 import { createSimLoop } from './simLoop.js'
 
-// Parity with the driving simulation as it was before the headless refactor.
+// Parity with the driving simulation as last recorded.
 //
-// __golden__/characterization.json was recorded by running every scenario in
-// test-helpers/drivingScenarios.js through the pre-refactor frame loop
-// (lib/driving/step*.js at 7b5763c, which read and wrote refs and three.js
-// Object3Ds) at a fixed 1/60 s. Here the same scripts drive the headless core
-// through the keyboard source and the fixed-step loop, and every sampled
-// frame and every event has to match.
+// __golden__/characterization.json was first recorded by running every
+// scenario in test-helpers/drivingScenarios.js through the pre-refactor frame
+// loop (lib/driving/step*.js at 7b5763c, which read and wrote refs and three.js
+// Object3Ds) at a fixed 1/60 s. Phase 4 changed the simulation on purpose (the
+// 8FGU25 drive model in real units, the rear-wheel-steer bicycle model, the
+// keyboard's virtual steering wheel, the pre-start interlock, the parking
+// brake and the parking goal's brake-and-neutral check) and re-recorded it
+// from the headless core; see the note in the file. Here the same scripts
+// drive the core through the keyboard and dashboard sources and the
+// fixed-step loop, and every sampled frame and every event has to match.
 //
 // The golden file is the record of the old behaviour, so never regenerate it
 // to make a failing refactor pass. When the sim is changed *on purpose* (a
 // retune, the physics engine), re-record it from the new core in the same
-// commit and say why:
-//   RECORD_GOLDEN=1 node --test src/lib/driving/simCore.characterization.test.js
+// commit and say why, in the file's note as well as the commit:
+//   RECORD_GOLDEN=1 RECORD_REASON="..." node --test src/lib/driving/simCore.characterization.test.js
 
 const GOLDEN_URL = new URL('./__golden__/characterization.json', import.meta.url)
 const RECORD = process.env.RECORD_GOLDEN === '1'
@@ -51,11 +56,16 @@ const KEY_BY_HELD = {
 }
 
 // The core, driven the way the viewer drives it: key events into the
-// keyboard source, commands into the core, one fixed step per 1/60 s frame.
+// keyboard source, cab switches on the dashboard source, E through the
+// dashboard's key switch, one fixed step per 1/60 s frame.
 function headlessAdapter(course) {
   const core = createSimCore(course, profile, { palletFootprint: measuredPalletFootprint })
   const keyboard = createKeyboardSource()
-  const loop = createSimLoop((dt) => core.step(dt, mergeControls([keyboard.read(core.state)])))
+  const dashboard = createDashboardSource()
+  const loop = createSimLoop((dt) => {
+    const leverEngaged = dashboard.switches.lever !== null
+    core.step(dt, mergeControls([keyboard.read(core.state, { leverEngaged, dt }), dashboard.read()]))
+  })
   const events = []
   let frameNo = 0
 
@@ -93,6 +103,7 @@ function headlessAdapter(course) {
   // The old recorder logged events in the viewer's own vocabulary.
   const toRecorded = (event) => {
     if (event.type === 'engine') return { type: event.on ? 'engine-on' : 'engine-off' }
+    if (event.type === 'engine-blocked') return { type: 'engine-blocked', missing: event.missing }
     if (event.type === 'fail') return { type: 'fail', reason: event.reason }
     if (event.type === 'checkpoint') return { type: event.isLast ? 'course-complete' : 'checkpoint', id: event.checkpoint.id }
     if (event.type === 'pallet') return { ...event.event, nextState: event.nextState }
@@ -111,13 +122,22 @@ function headlessAdapter(course) {
       const v = view()
       return { ...v, palletStates: v.pallets.map((pallet) => pallet.state) }
     },
-    frame(keys, { engineToggle }) {
+    frame(keys, { engineToggle, cab }) {
+      if (cab) {
+        if (typeof cab.seatbelt === 'boolean') dashboard.set('seatbelt', cab.seatbelt)
+        if (typeof cab.parkingBrake === 'boolean') dashboard.set('parkingBrake', cab.parkingBrake)
+        if (cab.lever === null) dashboard.releaseLever()
+        else if (cab.lever) dashboard.setLever(cab.lever)
+      }
       for (const [held, key] of Object.entries(KEY_BY_HELD)) {
         if (keys[held] && !keyboard.held[held]) keyboard.keyDown(key)
         if (!keys[held] && keyboard.held[held]) keyboard.keyUp(key)
       }
       if (engineToggle) keyboard.keyDown('e')
-      keyboard.drainCommands().forEach((command) => core.command(command))
+      for (const command of keyboard.drainCommands()) {
+        if (command === 'engineToggle') dashboard.toggleEngine(core.state.truck.engineOn)
+      }
+      dashboard.drainCommands().forEach((command) => core.command(command))
       const { steps } = loop.advance(SCENARIO_DT)
       assert.equal(steps, 1, 'one fixed step per 1/60 s frame')
       for (const event of core.drainEvents()) events.push({ f: frameNo, ...toRecorded(event) })
@@ -176,7 +196,8 @@ for (const scenario of drivingScenarios) {
 
 if (RECORD) {
   test('write the re-recorded golden trace', () => {
-    recorded.note = `Re-recorded from the headless core on ${new Date().toISOString().slice(0, 10)}. Earlier history: ${golden.note}`
+    assert.ok(process.env.RECORD_REASON, 'say why the trace is being re-recorded (RECORD_REASON)')
+    recorded.note = `Re-recorded from the headless core on ${new Date().toISOString().slice(0, 10)}: ${process.env.RECORD_REASON} Earlier history: ${golden.note}`
     writeFileSync(GOLDEN_URL, JSON.stringify(recorded))
   })
 }

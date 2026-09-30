@@ -1,6 +1,16 @@
-import { CAMERA_MODES } from './cameraModes.js'
+import { clamp } from '../math.js'
 import { neutralControls } from './controls.js'
-import { STOP_SPEED_EPSILON } from './constants.js'
+import {
+  KEYBOARD_STEER_RATE,
+  KEYBOARD_STEER_RETURN_RATE,
+  KEYBOARD_YAW_FULL_SPEED,
+  KEYBOARD_YAW_MIN_SCALE,
+  KEYBOARD_YAW_RATE,
+  MAX_STEER_ANGLE,
+  STOP_SPEED_EPSILON,
+} from './constants.js'
+import { wheelbase } from './rigGeometry.js'
+import { SIM_DT } from './simLoop.js'
 
 // The keyboard as a control source (docs/revisions/post-defense-plan.md,
 // section 3.4). Pure: hooks/useDrivingInput.js feeds it window key events,
@@ -14,20 +24,28 @@ import { STOP_SPEED_EPSILON } from './constants.js'
 // direction lever, the lever says which way the truck goes and S is only the
 // brake, as on a real truck.
 //
+// A and D turn a virtual steering wheel rather than snapping the rear wheels
+// to full lock: see keyboardSteerLimit() and the KEYBOARD_* constants.
+//
 // Keys that are not held controls raise edge-triggered commands instead,
 // drained by the viewer: E the key switch, the camera keys, the inset, and
 // the cab switches (see VIEW_COMMAND_BY_KEY).
 
 export const DRIVING_KEYS = ['w', 'a', 's', 'd', 'e', 'r', 'f', 't', 'g']
 
-// One press, one command. `1`-`5` jump to a camera mode.
+// One press, one command. C switches first-person / chase and the arrow keys
+// do what a wheel's D-pad does (cameraModes.js). Keys are lower-cased
+// KeyboardEvent.key values.
 export const VIEW_COMMAND_BY_KEY = {
-  c: 'cameraNext',
+  c: 'cameraToggle',
+  arrowleft: 'cameraLeft',
+  arrowright: 'cameraRight',
+  arrowup: 'cameraUp',
+  arrowdown: 'cameraDown',
   v: 'toggleInset',
   h: 'horn',
   b: 'seatbeltToggle',
   ' ': 'parkingBrakeToggle',
-  ...Object.fromEntries(CAMERA_MODES.map((mode, index) => [String(index + 1), `camera:${mode}`])),
 }
 
 const HELD_BY_KEY = {
@@ -39,6 +57,17 @@ const HELD_BY_KEY = {
   f: 'lower',
   t: 'tiltBack',
   g: 'tiltForward',
+}
+
+// How far (a fraction of full lock) the keyboard's virtual wheel may turn at
+// `speed`: whatever gives the yaw rate the keyboard had before the bicycle
+// model (KEYBOARD_YAW_RATE, scaled by speed as it was), so A and D feel the
+// same at speed. Near a standstill that allows full lock.
+export function keyboardSteerLimit(speed) {
+  const v = Math.abs(speed)
+  const yawRate = KEYBOARD_YAW_RATE * clamp(v / KEYBOARD_YAW_FULL_SPEED, KEYBOARD_YAW_MIN_SCALE, 1)
+  if (v < 1e-6) return 1
+  return Math.min(Math.atan((yawRate * wheelbase()) / v) / MAX_STEER_ANGLE, 1)
 }
 
 export function createKeyboardSource() {
@@ -54,6 +83,8 @@ export function createKeyboardSource() {
   }
   let commands = []
   let tapped = new Set()
+  // The virtual steering wheel's position, -1..1 of full lock.
+  let wheel = 0
 
   return {
     held,
@@ -101,11 +132,12 @@ export function createKeyboardSource() {
     },
 
     // Held keys -> operator controls, given the truck's current speed. Kept
-    // exactly as the old stepDrive branches read the keys: W wins over S,
-    // raise over lower, tilt-back over tilt-forward. With `leverEngaged` the
-    // direction is left to the lever (the dashboard's), so W is the
-    // accelerator and S the brake pedal.
-    read(state, { leverEngaged = false } = {}) {
+    // as the old stepDrive branches read the keys: W wins over S, raise over
+    // lower, tilt-back over tilt-forward. With `leverEngaged` the direction is
+    // left to the lever (the dashboard's or a shifter), so W is the
+    // accelerator and S the brake pedal. Called once per sim step of `dt`,
+    // since it also turns the virtual steering wheel.
+    read(state, { leverEngaged = false, dt = SIM_DT } = {}) {
       const controls = neutralControls()
       if (leverEngaged) {
         if (held.forward) controls.throttle = 1
@@ -122,7 +154,16 @@ export function createKeyboardSource() {
           controls.direction = 'R'
         }
       }
-      controls.steer = (held.left ? 1 : 0) - (held.right ? 1 : 0)
+      const steerKey = (held.left ? 1 : 0) - (held.right ? 1 : 0)
+      const limit = keyboardSteerLimit(state.truck.speed)
+      if (steerKey) {
+        wheel = clamp(wheel + steerKey * KEYBOARD_STEER_RATE * dt, -limit, limit)
+      } else {
+        wheel = wheel > 0 ? Math.max(wheel - KEYBOARD_STEER_RETURN_RATE * dt, 0) : Math.min(wheel + KEYBOARD_STEER_RETURN_RATE * dt, 0)
+      }
+      // A speed-up past the limit brings the wheel back within it.
+      wheel = clamp(wheel, -limit, limit)
+      controls.steer = wheel
       controls.lift = held.raise ? 1 : held.lower ? -1 : 0
       controls.tilt = held.tiltBack ? -1 : held.tiltForward ? 1 : 0
       return controls

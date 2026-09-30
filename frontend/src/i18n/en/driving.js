@@ -4,14 +4,14 @@
 // literal is cheaper to compare than a string of prose, and the file that
 // builds it has no React and no catalog.
 export default {
-  'driving.task.parking': 'Drive to the marked bay, straighten up between the lines, stop completely, lower the forks with F, then switch the engine off with E.',
+  'driving.task.parking': 'Drive to the marked bay, straighten up between the lines and stop completely. Then secure the truck: direction lever in N, forks lowered with F, parking brake set with Space, and the engine switched off with E.',
   'driving.task.pallet': 'Line up square with the pallet and drive the lowered forks all the way in, raise it with R, tilt the mast back with T to secure it, carry it to the drop zone, lower with F until it rests on the ground, tilt forward with G to let it off the forks, then reverse away.',
   'driving.task.racking': 'Drive the lowered forks all the way into the pallet, raise it with R above the target shelf, tilt back with T to carry it there, stop square in front of the bay, lower with F until the load rests on the shelf, then tilt forward with G to set it down.',
   // The only plural in the driving copy. Filipino does not inflect after a
   // numeral, so both variants exist there with the same text.
   'driving.task.checkpoints.one': 'Drive through {count} checkpoint in order to finish this step.',
   'driving.task.checkpoints.other': 'Drive through {count} checkpoints in order to finish this step.',
-  'driving.task.free': 'Press E to start the engine to finish this step.',
+  'driving.task.free': 'Start the engine to finish this step: fasten the seatbelt (B), set the parking brake (Space), then press E.',
   'driving.task.done': 'Step complete. Use Next to continue.',
 
   'driving.key.accelerate': 'Accelerate',
@@ -57,18 +57,29 @@ export default {
   'driving.hud.resetAttempt': 'Reset attempt',
   'driving.hud.resetCamera': 'Reset camera',
   'driving.hud.hint.lever': 'The direction lever is set: W accelerates in its direction and S brakes.',
-  'driving.hud.hint.engineOff': 'Press E, or turn the key to START, to start the engine.',
+  'driving.hud.hint.shifter': 'The shifter sets the direction: W accelerates in its direction and S brakes.',
+  'driving.hud.hint.engineOff': 'To start: fasten the seatbelt (B), set the parking brake (Space), keep the lever in N, then press E or turn the key to START. Release the parking brake (Space) to drive.',
+  'driving.hud.hint.interlock': 'The engine will not start yet. Do the marked steps first: seatbelt fastened, parking brake set, direction lever in N.',
   'driving.hud.hint.look': 'Drag the scene to look around.',
 
   // Camera modes (lib/driving/cameraModes.js).
   'driving.camera.label': 'Camera view',
-  'driving.camera.hint': 'Press C to change view, or 1 to 5',
+  'driving.camera.hint': 'Press C to switch view; the arrow keys move the camera',
   'driving.camera.firstPerson': 'First-person',
   'driving.camera.chase': 'Chase',
-  'driving.camera.top': 'Top',
-  'driving.camera.side': 'Side',
-  'driving.camera.front': 'Front',
   'driving.camera.free': 'Free',
+  // The on-screen D-pad (and the arrow keys): glances in first-person,
+  // steps round the truck in chase.
+  'driving.camera.arrows.first-person': 'Look around',
+  'driving.camera.arrows.chase': 'Move the camera round the forklift',
+  'driving.camera.first-person.cameraLeft': 'Look left',
+  'driving.camera.first-person.cameraRight': 'Look right',
+  'driving.camera.first-person.cameraUp': 'Look ahead',
+  'driving.camera.first-person.cameraDown': 'Look behind',
+  'driving.camera.chase.cameraLeft': 'Move round to the left',
+  'driving.camera.chase.cameraRight': 'Move round to the right',
+  'driving.camera.chase.cameraUp': 'Overhead, or back down',
+  'driving.camera.chase.cameraDown': 'Back down from overhead',
 
   // The top-down proximity inset.
   'driving.inset.label': 'Proximity view',
@@ -119,6 +130,7 @@ export default {
   'driving.dash.lever': 'Direction lever',
   'driving.dash.lever.auto': 'Auto',
   'driving.dash.lever.autoHint': 'Direction follows W and S',
+  'driving.dash.lever.shifter': 'The shifter sets the direction',
   'driving.dash.seatbelt': 'Seatbelt',
   'driving.dash.parkingBrake': 'Park brake',
   'driving.dash.horn': 'Horn',
@@ -128,8 +140,8 @@ export default {
   'driving.dash.tiltLever': 'Tilt',
   'driving.dash.controls': 'Controls',
   'driving.dash.shortcut': '{label} ({key})',
-  'driving.key.cameraNext': 'Change view',
-  'driving.key.cameraJump': 'Jump to view',
+  'driving.key.cameraNext': 'First-person / chase',
+  'driving.key.cameraJump': 'Look around / move the camera',
   'driving.key.inset': 'Proximity view',
   'driving.key.horn': 'Horn',
   'driving.key.seatbelt': 'Seatbelt',
@@ -138,7 +150,9 @@ export default {
   'driving.parking.enterBay': 'Drive into the bay',
   'driving.parking.straighten': 'Straighten up between the lines',
   'driving.parking.stop': 'Come to a complete stop',
+  'driving.parking.neutral': 'Put the direction lever in N',
   'driving.parking.lowerForks': 'Lower the forks (F)',
+  'driving.parking.parkingBrake': 'Set the parking brake (Space)',
   'driving.parking.engineOff': 'Switch the engine off (E)',
   'driving.parking.done': 'Parked - well done',
 }

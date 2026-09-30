@@ -18,6 +18,7 @@ import hubDefaultsEn from './en/hubDefaults.js'
 import moduleEn from './en/module.js'
 import walkAroundEn from './en/walkAround.js'
 import drivingEn from './en/driving.js'
+import controllerEn from './en/controller.js'
 import scopeEn from './en/scope.js'
 import partsEn from './en/parts.js'
 import assessmentEn from './en/assessment.js'
@@ -32,6 +33,7 @@ import hubDefaultsFil from './fil/hubDefaults.js'
 import moduleFil from './fil/module.js'
 import walkAroundFil from './fil/walkAround.js'
 import drivingFil from './fil/driving.js'
+import controllerFil from './fil/controller.js'
 import scopeFil from './fil/scope.js'
 import partsFil from './fil/parts.js'
 import assessmentFil from './fil/assessment.js'
@@ -48,6 +50,7 @@ export const catalog = {
     ...moduleEn,
     ...walkAroundEn,
     ...drivingEn,
+    ...controllerEn,
     ...scopeEn,
     ...partsEn,
     ...assessmentEn,
@@ -63,6 +66,7 @@ export const catalog = {
     ...moduleFil,
     ...walkAroundFil,
     ...drivingFil,
+    ...controllerFil,
     ...scopeFil,
     ...partsFil,
     ...assessmentFil,

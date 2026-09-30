@@ -22,9 +22,17 @@ export const FORKLIFT_RIG_GEOMETRY = {
   forkTipOffset: 0.6436886749311639,
   forkReach: 0.43905675060262617,
   wheelRadius: { FL: 0.07857618934745933, FR: 0.07857618934745933, RL: 0.0602971522630387, RR: 0.0602971522630387 },
+  // Axle lines along the truck's length (the wheel centres' z), for the
+  // rear-steer bicycle model in stepDrive: the truck turns about a point on
+  // the front axle line. Measured in Blender on 2026-09-29.
+  frontAxleZ: 0.195,
+  rearAxleZ: -0.188,
 }
 
+export const wheelbase = (geometry = FORKLIFT_RIG_GEOMETRY) => geometry.frontAxleZ - geometry.rearAxleZ
+
 const TOLERANCE = 1e-4
+const AXLE_TOLERANCE = 0.005
 
 // Differences between the coded geometry and a rig buildVehicleRig() built,
 // as readable strings. Empty when they agree.
@@ -44,5 +52,12 @@ export function rigGeometryMismatches(rig, geometry = FORKLIFT_RIG_GEOMETRY) {
   for (const [key, wheel] of Object.entries(rig.wheels || {})) {
     compare(`wheel ${key} radius`, geometry.wheelRadius[key], wheel.radius)
   }
+  // The axle positions only need to be close: the bicycle model is not
+  // sensitive to a millimetre, and Blender's figures are rounded.
+  const axleZ = (keys) => keys.map((key) => rig.wheels?.[key]?.centreZ).filter((z) => typeof z === 'number')
+  const front = axleZ(['FL', 'FR'])
+  const rear = axleZ(['RL', 'RR'])
+  if (front.length && Math.abs(front[0] - geometry.frontAxleZ) > AXLE_TOLERANCE) mismatches.push(`front axle z: coded ${geometry.frontAxleZ}, model ${front[0]}`)
+  if (rear.length && Math.abs(rear[0] - geometry.rearAxleZ) > AXLE_TOLERANCE) mismatches.push(`rear axle z: coded ${geometry.rearAxleZ}, model ${rear[0]}`)
   return mismatches
 }

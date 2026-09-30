@@ -19,46 +19,60 @@ async (page) => {
   // until the JS expression `until` (over `d` = window.__drivingDebug) is
   // true; { wait } sleeps; { set } calls __drivingDebugSet mid-run.
   // `expect` is a list of JS expressions over `d` that must all be true.
+  //
+  // Since Phase 4 the engine only starts through the pre-start interlock
+  // (seatbelt, parking brake, direction N) and the parking brake holds the
+  // truck. START is the learner's sequence on real keys: B (seatbelt), Space
+  // (parking brake on), E, Space (parking brake off). A scenario can instead
+  // set the switches with __drivingDebugSet ({ seatbelt, parkingBrake,
+  // direction }), as cone-fail does.
+  const START = [{ press: 'b' }, { press: 'Space' }, { press: 'e' }, { press: 'Space' }]
   const SCENARIOS = {
     smoke: {
       module: 'load-handling', step: 'Accelerate Course',
-      actions: [{ press: 'e' }, { hold: 'w', until: 'd.speed > 0.5', timeout: 5000 }],
-      expect: ['d.engineOn', 'd.speed > 0', 'd.z > 0', '!d.failed'],
+      actions: [...START, { hold: 'w', until: 'd.speed > 0.5', timeout: 8000 }],
+      expect: ['d.engineOn', 'd.seatbelt', '!d.parkingBrake', 'd.speed > 0', 'd.z > 0', '!d.failed'],
     },
     accelerate: {
       module: 'load-handling', step: 'Accelerate Course',
-      actions: [{ press: 'e' }, { hold: 'w', until: 'd.checkpointIndex >= 1', timeout: 25000 }, { hold: 's', until: 'd.speed < 0.06', timeout: 5000 }],
+      actions: [...START, { hold: 'w', until: 'd.checkpointIndex >= 1', timeout: 25000 }, { hold: 's', until: 'd.speed < 0.06', timeout: 5000 }],
       expect: ['d.checkpointIndex === 1', '!d.failed'],
     },
     brake: {
       module: 'load-handling', step: 'Accelerate and Brake',
-      actions: [{ press: 'e' }, { hold: 'w', until: 'd.z >= 10.5', timeout: 25000 }, { hold: 's', until: 'd.speed < 0.06', timeout: 5000 }, { wait: 1500 }],
+      actions: [...START, { hold: 'w', until: 'd.z >= 10.5', timeout: 25000 }, { hold: 's', until: 'd.speed < 0.06', timeout: 5000 }, { wait: 1500 }],
       expect: ['d.checkpointIndex === 1', 'Math.abs(d.speed) < 0.05', '!d.failed'],
     },
     'cone-fail': {
       module: 'post-operation', step: 'Secure Parking',
-      setup: { x: 1.2, z: 2.8, heading: 0 },
-      actions: [{ press: 'e' }, { hold: 'w', until: 'd.failed', timeout: 8000 }],
+      // The switches through the debug hook instead of keys.
+      setup: { x: 1.2, z: 2.8, heading: 0, seatbelt: true, parkingBrake: true },
+      actions: [{ press: 'e' }, { set: { parkingBrake: false } }, { hold: 'w', until: 'd.failed', timeout: 8000 }],
       expect: ["d.failReason === 'cone'"],
     },
     park: {
       module: 'post-operation', step: 'Secure Parking',
       setup: { x: -2.6, z: 15.4, heading: 0 },
       actions: [
-        { press: 'e' },
+        ...START,
         { hold: 'w', until: 'd.z >= 15.7', timeout: 8000 },
         { hold: 's', until: 'd.speed < 0.02', timeout: 5000 },
         { wait: 1200 },
+        // Stopped in the bay with the keyboard's lever in N. Key off alone
+        // is not parked since Phase 4 (the log shows the engine off and not
+        // yet parked); setting the parking brake completes it.
         { press: 'e' },
         { wait: 500 },
+        { press: 'Space' },
+        { wait: 500 },
       ],
-      expect: ['d.parked', "d.parkingStatus === 'driving.parking.done'"],
+      expect: ['d.parked', "d.parkingStatus === 'driving.parking.done'", 'd.parkingBrake', "d.direction === 'N'", '!d.engineOn'],
     },
     'pallet-pickup': {
       module: 'pallet-testing', step: 'Precision Carry',
       setup: { x: 0, z: 4.0, heading: 0 },
       actions: [
-        { press: 'e' },
+        ...START,
         { hold: 'w', until: 'd.z > 4.1 && d.speed === 0', timeout: 8000 },
         { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
         { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
@@ -69,7 +83,7 @@ async (page) => {
       module: 'pallet-testing', step: 'Precision Carry',
       setup: { x: 0, z: 4.0, heading: 0 },
       actions: [
-        { press: 'e' },
+        ...START,
         { hold: 'w', until: 'd.z > 4.1 && d.speed === 0', timeout: 8000 },
         { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
         { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
@@ -87,7 +101,7 @@ async (page) => {
       module: 'pallet-testing', step: 'Load Limits',
       setup: { x: 0, z: 6.0, heading: 0 },
       actions: [
-        { press: 'e' },
+        ...START,
         { hold: 'w', until: 'd.z > 6.05 && d.speed === 0', timeout: 8000 },
         { hold: 'r', until: 'd.failed', timeout: 5000 },
         { wait: 1500 },
@@ -98,7 +112,7 @@ async (page) => {
       module: 'pallet-testing', step: 'Rack Storage',
       setup: { x: 0, z: 5.0, heading: 0 },
       actions: [
-        { press: 'e' },
+        ...START,
         { hold: 'w', until: 'd.z > 5.1 && d.speed === 0', timeout: 8000 },
         { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
         { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
@@ -107,9 +121,31 @@ async (page) => {
         // centimetres, so a held key can't creep; a learner feathers it.
         { set: { x: 0, z: 14.36, speed: 0 } },
         { hold: 'r', until: 'd.forkHeight >= 0.375', timeout: 5000 },
-        { hold: 'g', until: 'd.deliveredCount >= 1 || d.tilt >= 0.119', timeout: 5000 },
+        // Forward tilt stops at 6 degrees (0.1047 rad) since Phase 4.
+        { hold: 'g', until: 'd.deliveredCount >= 1 || d.tilt >= 0.104', timeout: 5000 },
       ],
       expect: ['d.deliveredCount === 1', "d.palletStates[0] === 'delivered'", '!d.failed'],
+    },
+    interlock: {
+      module: 'load-handling', step: 'Accelerate Course',
+      actions: [
+        // E alone: refused, seatbelt and parking brake missing.
+        { press: 'e' },
+        { wait: 200 },
+        { press: 'b' },
+        // Seatbelt on: still refused, parking brake missing.
+        { press: 'e' },
+        { wait: 200 },
+        { press: 'Space' },
+        { press: 'e' },
+        { wait: 200 },
+        // Running with the parking brake set: W does not move the truck, so
+        // this hold is expected to time out with z still 0.
+        { hold: 'w', until: 'd.z > 0.05', timeout: 1500 },
+        { press: 'Space' },
+        { hold: 'w', until: 'd.speed > 0.3', timeout: 8000 },
+      ],
+      expect: ['d.engineOn', 'd.interlockMissing.length === 0', '!d.parkingBrake', 'd.z > 0.1'],
     },
   }
 
@@ -120,6 +156,19 @@ async (page) => {
   // to a frame or two a second, and the fixed-step sim then crawls: holds
   // time out with the truck barely moved. Keep the tab in front.
   await page.bringToFront()
+
+  // A steering wheel plugged into this machine is live in the browser too, and
+  // a limp wheel resting a few degrees off centre steers the truck (as it
+  // should). The keyboard scenarios hide gamepads so they drive the same on
+  // any machine; the flag is read by an init script on every page load.
+  if (!page.__simVerifyGamepadStub) {
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('sim-verify-hide-gamepads') === '1') navigator.getGamepads = () => []
+    })
+    page.__simVerifyGamepadStub = true
+  }
+  await page.goto(`${BASE}/login`)
+  await page.evaluate((hide) => sessionStorage.setItem('sim-verify-hide-gamepads', hide ? '1' : '0'), !scenario.gamepads)
 
   const consoleErrors = []
   page.on('console', (message) => {

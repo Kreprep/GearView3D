@@ -6,12 +6,14 @@
 // courseGoals directly to validate a course on publish).
 //
 // Nothing here is a real-world measurement. The scene's convention is roughly
-// metres/4 (see the comment above MAX_STEER_ANGLE in DrivingSimulationViewer),
-// and these are gameplay thresholds tuned for feel against that.
+// metres/4 (lib/driving/units.js), and these are gameplay thresholds tuned for
+// feel against that.
 
 // Used when a pallet model's bounding box cannot be measured. The viewer
 // measures each loaded pallet GLB instead, the same way buildVehicleRig
 // measures the carriage to derive forkTipOffset.
+import { G } from '../lib/driving/units.js'
+
 export const PALLET_FALLBACK_FOOTPRINT = { halfWidth: 0.15, halfDepth: 0.15 }
 
 // --- Insertion quality --------------------------------------------------
@@ -45,9 +47,14 @@ export const SLIP_FAIL_RATIO = 0.3 // depth ratio at which the load leaves the f
 // second of hard cornering, or a few seconds of travelling mast-forward, while
 // a nearly-seated one survives all three.
 export const SLIP_DECEL_GAIN = 0.2 // per unit of deceleration, while braking hard
-export const SLIP_TURN_GAIN = 0.12 // per unit of sharp-turn load
+// Per unit of lateral acceleration past SHARP_TURN_LATERAL_ACCEL. Scaled in
+// Phase 4 (from 0.12 per unit of |steer| x speed) so a full-speed keyboard
+// swerve sheds a half-seated load about as fast as it did before the
+// bicycle model.
+export const SLIP_TURN_GAIN = 0.33
 export const SLIP_TILT_GAIN = 0.2 // per radian the mast is short of tilted back
-export const SHARP_TURN_LOAD_MIN = 0.55 // |steer input| * |speed| that counts as a sharp turn
+// Sideways acceleration (scene units/s^2) that counts as a sharp turn: 0.2 g.
+export const SHARP_TURN_LATERAL_ACCEL = 0.2 * G
 
 // --- Setting a load down ------------------------------------------------
 // How close to the surface below it a carried load has to get before that
@@ -61,4 +68,4 @@ export const LOAD_LAND_CLEARANCE = 0.02
 export const TILT_RELEASE_ANGLE = 0.06
 export const LOAD_TIP_HEIGHT = 0.45 // fork height above which forward tilt can tip the truck
 export const LOAD_TIP_WEIGHT_RATIO = 0.6 // fraction of the course's capacityKg
-export const LOAD_TIP_TILT_RATIO = 0.75 // fraction of TILT_MAX_ANGLE, forward
+export const LOAD_TIP_TILT_RATIO = 0.75 // fraction of TILT_FORWARD_MAX

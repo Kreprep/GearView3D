@@ -34,7 +34,7 @@ import {
   SAFE_TRAVEL_HEIGHT,
   SUDDEN_STOP_DECEL,
   SUDDEN_STOP_MIN_SPEED,
-  TILT_MAX_ANGLE,
+  TILT_FORWARD_MAX,
   TILT_SECURE_ANGLE,
 } from './constants.js'
 
@@ -70,7 +70,7 @@ function emitPalletEvent(state, event, nextState) {
 export function stepPallet(state, world, dt) {
   const { truck, forks, pallets, frame } = state
   const { course, racks, halfLength, geometry } = world
-  const { forwardX, forwardZ, turnInput, prevSpeed } = frame
+  const { forwardX, forwardZ, lateralAccel, prevSpeed } = frame
 
   if (!pallets.length) return
 
@@ -82,7 +82,7 @@ export function stepPallet(state, world, dt) {
   const tipZ = truck.z + forwardZ * attachOffset
   const decel = prevSpeed > SUDDEN_STOP_MIN_SPEED ? (prevSpeed - truck.speed) / dt : 0
   const brakingHard = decel > SUDDEN_STOP_DECEL
-  const turnLoad = Math.abs(turnInput) * Math.abs(truck.speed)
+  const turnLoad = Math.abs(lateralAccel)
   let liveQuality = 'none'
   // Racking blocks the truck body, so the fork tip can only ever reach a
   // little way past the rack's front face - and how far depends on the
@@ -275,7 +275,7 @@ export function stepPallet(state, world, dt) {
         !atTargetSlot &&
         !sim.landed &&
         forks.height > LOAD_TIP_HEIGHT &&
-        forks.tilt >= TILT_MAX_ANGLE * LOAD_TIP_TILT_RATIO &&
+        forks.tilt >= TILT_FORWARD_MAX * LOAD_TIP_TILT_RATIO &&
         (palletDef.weightKg ?? 0) > capacity * LOAD_TIP_WEIGHT_RATIO
 
       if (tipsForward) {

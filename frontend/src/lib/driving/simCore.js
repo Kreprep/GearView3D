@@ -1,5 +1,6 @@
 import { clamp } from '../math.js'
-import { FORK_MAX_HEIGHT, TILT_MAX_ANGLE } from './constants.js'
+import { FORK_MAX_HEIGHT, TILT_BACK_MAX, TILT_FORWARD_MAX } from './constants.js'
+import { startInterlockMissing } from './interlock.js'
 import { createSimState, createSimWorld } from './simState.js'
 import { stepDrive } from './stepDrive.js'
 import { stepCollisionBody, stepCollisionHazards } from './stepCollision.js'
@@ -15,12 +16,13 @@ import { stepCheckpoints, stepParking } from './stepGoals.js'
 // node --test.
 //
 //   const core = createSimCore(course, profile)
-//   core.command('engineToggle')
+//   core.command('engineStart')      // or 'engineStop'
 //   core.step(SIM_DT, controls)      // controls: lib/driving/controls.js
 //   core.drainEvents()               // what happened, in order
 //
 // Events (all plain data):
 //   { type: 'engine', on }
+//   { type: 'engine-blocked', missing }  the pre-start interlock refused a start
 //   { type: 'fail', reason }
 //   { type: 'checkpoint', index, checkpoint, isLast }
 //   { type: 'pallet', event, nextState }   event is the viewer's pallet-* event
@@ -31,13 +33,26 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
   let commands = []
   let events = []
 
-  const applyCommands = () => {
+  // Commands apply against the controls of the step they land in, since the
+  // interlock reads the seatbelt, parking brake and direction lever.
+  const applyCommands = (controls) => {
     for (const command of commands) {
-      if (command === 'engineToggle') {
-        // A failed attempt is frozen: the engine stays as it was.
-        if (state.failed) continue
-        state.truck.engineOn = !state.truck.engineOn
-        state.events.push({ type: 'engine', on: state.truck.engineOn })
+      // A failed attempt is frozen: the engine stays as it was.
+      if (state.failed) continue
+      const { truck } = state
+      if (command === 'engineStart' && !truck.engineOn) {
+        const missing = startInterlockMissing(controls)
+        if (missing.length) {
+          state.interlock = { missing, at: state.time }
+          state.events.push({ type: 'engine-blocked', missing })
+          continue
+        }
+        state.interlock = { missing: [], at: null }
+        truck.engineOn = true
+        state.events.push({ type: 'engine', on: true })
+      } else if (command === 'engineStop' && truck.engineOn) {
+        truck.engineOn = false
+        state.events.push({ type: 'engine', on: false })
       }
     }
     commands = []
@@ -64,7 +79,7 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
     // The ordered pipeline. Each step reads what the previous ones wrote on
     // state.frame, in this order.
     step(dt, controls) {
-      applyCommands()
+      applyCommands(controls)
       stepDrive(state, world, controls, dt)
       stepCollisionBody(state, world)
       stepForks(state, dt)
@@ -97,7 +112,9 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
     },
 
     // Test and automation hook (window.__drivingDebugSet): warp the truck and
-    // forks directly instead of faking held keys.
+    // forks directly instead of faking held keys. The cab switches
+    // (seatbelt, parking brake, direction lever) are the dashboard source's,
+    // so the viewer handles those itself.
     debugSet(patch = {}) {
       const { truck, forks } = state
       if (typeof patch.x === 'number') truck.x = patch.x
@@ -105,13 +122,15 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
       if (typeof patch.heading === 'number') truck.heading = patch.heading
       if (typeof patch.speed === 'number') truck.speed = patch.speed
       if (typeof patch.forkHeight === 'number') forks.height = clamp(patch.forkHeight, 0, FORK_MAX_HEIGHT)
-      if (typeof patch.tilt === 'number') forks.tilt = clamp(patch.tilt, -TILT_MAX_ANGLE, TILT_MAX_ANGLE)
+      if (typeof patch.tilt === 'number') forks.tilt = clamp(patch.tilt, -TILT_BACK_MAX, TILT_FORWARD_MAX)
       if (typeof patch.engineOn === 'boolean') truck.engineOn = patch.engineOn
     },
 
-    // The same fields window.__drivingDebug has always reported.
+    // What window.__drivingDebug reports. The cab controls are the ones
+    // the last step ran with.
     debugSnapshot() {
       const { truck, forks } = state
+      const controls = state.frame.controls
       return {
         x: truck.x,
         z: truck.z,
@@ -121,6 +140,10 @@ export function createSimCore(course, profile, { palletFootprint, geometry } = {
         tilt: forks.tilt,
         steer: truck.steer,
         engineOn: truck.engineOn,
+        direction: controls?.direction ?? 'N',
+        seatbelt: Boolean(controls?.seatbelt),
+        parkingBrake: Boolean(controls?.parkingBrake),
+        interlockMissing: state.interlock.missing,
         grip: state.grip,
         palletStates: state.pallets.map((pallet) => pallet.state),
         palletRisks: state.pallets.map((pallet) => pallet.risk),

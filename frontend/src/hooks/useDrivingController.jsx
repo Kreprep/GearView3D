@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { courseTaskKey } from '../lib/courseGoals'
 import { evaluateFreeCompletion } from '../lib/customCompletion'
@@ -19,8 +19,13 @@ function unique(items) {
 // admin-authored rule evaluated asynchronously in a Worker (see
 // lib/customCompletion.js). Tracked per step id, so more than one
 // free-practice step can exist in a module.
+//
+// The rule's context is { keysUsed, engineStarted, seatbelt, parkingBrake }.
+// The last two are the cab switches' positions right now (the viewer's
+// cab-switch event), not a history, so they are not saved with progress.
 export function useDrivingController({ moduleSlug, courseById, simulation, gradedStepIds, saveSimulation, markStepComplete, updateSimulation }) {
   const [lastFail, setLastFail] = useState(null)
+  const cabRef = useRef({ seatbelt: false, parkingBrake: false })
   const t = useT()
 
   const keysUsedFor = (stepId) => simulation.keysUsedByStep?.[stepId] || []
@@ -29,15 +34,18 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
   // `simulation` this render closed over: several key events (each awaiting
   // the Worker) can be in flight before React re-renders, and each must
   // build on the previous one.
-  const saveFreePractice = (stepId, partial) => {
-    const merged = { ...simulation, ...partial }
+  const evaluateFreePractice = (stepId, merged) => {
     const keysUsed = merged.keysUsedByStep?.[stepId] || []
-    saveSimulation(partial)
-    evaluateFreeCompletion(courseById[stepId], { keysUsed, engineStarted: merged.engineStarted }).then((done) => {
+    evaluateFreeCompletion(courseById[stepId], { keysUsed, engineStarted: merged.engineStarted, ...cabRef.current }).then((done) => {
       if (!done) return
       const live = buildSimulationState(getStoredProgress().simulations[moduleSlug] || {}, gradedStepIds)
       updateSimulation(moduleSlug, buildSimulationState({ ...live, ...withStepComplete(live, stepId) }, gradedStepIds))
     })
+  }
+
+  const saveFreePractice = (stepId, partial) => {
+    saveSimulation(partial)
+    evaluateFreePractice(stepId, { ...simulation, ...partial })
   }
 
   const handleDrivingEvent = (currentStep) => (event) => {
@@ -52,6 +60,12 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
           },
         })
       }
+      return
+    }
+
+    if (event.type === 'cab-switch') {
+      cabRef.current = { seatbelt: event.seatbelt, parkingBrake: event.parkingBrake }
+      if (isFreePractice) evaluateFreePractice(currentStep.id, simulation)
       return
     }
 

@@ -1,5 +1,6 @@
 import { TILT_RELEASE_ANGLE } from '../../data/palletProfile.js'
 import { STOP_SPEED_EPSILON, tiltStateName } from './constants.js'
+import { startInterlockMissing } from './interlock.js'
 import { proximityTelemetry } from './proximity.js'
 import { toKmh, toMetres } from './units.js'
 
@@ -11,18 +12,20 @@ import { toKmh, toMetres } from './units.js'
 //
 // `controls` are the merged controls of the last sim step, `switches` the
 // dashboard source's (dashboardSource.js), `gauges` the cab gauges
-// (cabGauges.js) and `proximity` a proximityReadout(), or null before the
-// first one.
+// (cabGauges.js), `proximity` a proximityReadout(), or null before the
+// first one, and `wheel` a wheel source's status() (wheelSource.js).
 
 const round = (value, places) => {
   const scale = 10 ** places
   return Math.round(value * scale) / scale
 }
 
-// What the direction indicator shows. A lever the learner set is exact. With
-// the keyboard's automatic direction it is the direction being driven, or the
-// way the truck is rolling once the key is let go, and N at rest.
+// What the direction indicator shows. A lever - a shifter's or the one the
+// learner set on the dashboard - is exact. With the keyboard's automatic
+// direction it is the direction being driven, or the way the truck is
+// rolling once the key is let go, and N at rest.
 export function displayedDirection(state, controls, switches) {
+  if (controls.explicitDirection) return controls.direction
   if (switches.lever) return switches.lever
   if (controls.direction !== 'N') return controls.direction
   if (state.truck.speed > STOP_SPEED_EPSILON) return 'F'
@@ -30,13 +33,23 @@ export function displayedDirection(state, controls, switches) {
   return 'N'
 }
 
-export function cockpitSnapshot(state, course, { controls, switches, gauges, proximity }) {
+const NO_WHEEL = { steering: false, shifter: false }
+
+export function cockpitSnapshot(state, course, { controls, switches, gauges, proximity, wheel = NO_WHEEL }) {
   const { truck, forks } = state
+  // After the interlock refused a start, the items still unmet are pointed
+  // out on the cluster until the engine starts.
+  const unmet = state.interlock.at !== null && !truck.engineOn ? startInterlockMissing(controls) : []
   return {
     // Engine and switches.
     engineOn: truck.engineOn,
     keyPosition: truck.engineOn ? 'on' : switches.key,
-    leverEngaged: switches.lever !== null,
+    leverEngaged: switches.lever !== null || wheel.shifter,
+    shifterActive: wheel.shifter,
+    wheelActive: wheel.steering,
+    needSeatbelt: unmet.includes('seatbelt'),
+    needParkingBrake: unmet.includes('parkingBrake'),
+    needNeutral: unmet.includes('neutral'),
     direction: displayedDirection(state, controls, switches),
     seatbelt: switches.seatbelt,
     parkingBrake: switches.parkingBrake,

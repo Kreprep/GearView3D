@@ -16,7 +16,7 @@ import {
   FORK_LATERAL_SECURE_RATIO,
   FORK_YAW_MAX,
   FORK_YAW_SECURE,
-  SHARP_TURN_LOAD_MIN,
+  SHARP_TURN_LATERAL_ACCEL,
   SLIP_DECEL_GAIN,
   SLIP_TILT_GAIN,
   SLIP_TURN_GAIN,
@@ -138,8 +138,8 @@ export function slipThisFrame({
   if (enabled.suddenStop && decel > 0) {
     sources.push({ amount: SLIP_DECEL_GAIN * decel * dt, cause: 'load-dropped' })
   }
-  if (enabled.sharpTurn && turnLoad > SHARP_TURN_LOAD_MIN) {
-    sources.push({ amount: SLIP_TURN_GAIN * (turnLoad - SHARP_TURN_LOAD_MIN) * dt, cause: 'load-slipped' })
+  if (enabled.sharpTurn && turnLoad > SHARP_TURN_LATERAL_ACCEL) {
+    sources.push({ amount: SLIP_TURN_GAIN * (turnLoad - SHARP_TURN_LATERAL_ACCEL) * dt, cause: 'load-slipped' })
   }
   if (enabled.unsecuredTravel && tiltAngle > tiltSecureAngle) {
     sources.push({ amount: SLIP_TILT_GAIN * (tiltAngle - tiltSecureAngle) * dt, cause: 'unsecured-load' })

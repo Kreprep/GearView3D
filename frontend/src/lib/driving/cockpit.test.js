@@ -22,7 +22,7 @@ test('the key switch cranks a stopped engine on START and springs back to ON', (
   assert.equal(dashboard.switches.key, 'on')
 
   dashboard.turnKey('start', false)
-  assert.deepEqual(dashboard.drainCommands(), ['engineToggle'])
+  assert.deepEqual(dashboard.drainCommands(), ['engineStart'])
   assert.equal(dashboard.switches.key, 'on')
 
   // START on a running engine does nothing.
@@ -30,17 +30,17 @@ test('the key switch cranks a stopped engine on START and springs back to ON', (
   assert.deepEqual(dashboard.drainCommands(), [])
 
   dashboard.turnKey('off', true)
-  assert.deepEqual(dashboard.drainCommands(), ['engineToggle'])
+  assert.deepEqual(dashboard.drainCommands(), ['engineStop'])
   assert.equal(dashboard.switches.key, 'off')
 })
 
 test('the keyboard E goes through the key switch', () => {
   const dashboard = createDashboardSource()
   dashboard.toggleEngine(false)
-  assert.deepEqual(dashboard.drainCommands(), ['engineToggle'])
+  assert.deepEqual(dashboard.drainCommands(), ['engineStart'])
   assert.equal(dashboard.switches.key, 'on')
   dashboard.toggleEngine(true)
-  assert.deepEqual(dashboard.drainCommands(), ['engineToggle'])
+  assert.deepEqual(dashboard.drainCommands(), ['engineStop'])
   assert.equal(dashboard.switches.key, 'off')
 })
 
@@ -105,18 +105,20 @@ test('with the lever engaged it sets the direction and S is only the brake', () 
 
 test('camera, inset and cab keys raise one command per press', () => {
   const keyboard = createKeyboardSource()
-  for (const key of ['c', '1', '5', 'v', 'h', 'b', ' ']) assert.equal(keyboard.keyDown(key), true)
+  for (const key of ['c', 'ArrowLeft', 'ArrowUp', 'v', 'h', 'b', ' ']) assert.equal(keyboard.keyDown(key), true)
   keyboard.keyDown('c', true) // auto-repeat
   assert.deepEqual(keyboard.drainCommands(), [
-    'cameraNext',
-    'camera:first-person',
-    'camera:front',
+    'cameraToggle',
+    'cameraLeft',
+    'cameraUp',
     'toggleInset',
     'horn',
     'seatbeltToggle',
     'parkingBrakeToggle',
   ])
-  assert.equal(VIEW_COMMAND_BY_KEY['2'], 'camera:chase')
+  assert.equal(VIEW_COMMAND_BY_KEY.arrowdown, 'cameraDown')
+  // The number keys no longer pick views.
+  assert.equal(keyboard.keyDown('1'), false)
   // They are commands, not held controls or legacy keysUsed letters.
   assert.deepEqual(keyboard.drainLetters(), [])
   assert.equal(keyboard.keyDown('x'), false)

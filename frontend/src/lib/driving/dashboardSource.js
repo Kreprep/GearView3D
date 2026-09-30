@@ -9,10 +9,10 @@ import { DIRECTIONS, neutralControls } from './controls.js'
 // here rather than in the keyboard source: B and Space toggle the same
 // seatbelt and parking brake the dashboard shows, so the two never disagree.
 //
-// Phase 3 scope: the seatbelt and parking brake are real switches that the
-// cluster lamps follow, but the simulation does not act on them yet. The
-// pre-start interlock, the parking brake holding the truck and the parking
-// goal's brake-and-neutral check arrive with the Phase 4 drive model.
+// The simulation acts on the switches through the merged controls: the
+// pre-start interlock reads the seatbelt, parking brake and lever
+// (interlock.js), the parking brake holds the truck (stepDrive.js) and the
+// parking goal wants it set with the lever in N (stepGoals.js).
 
 export const KEY_POSITIONS = ['off', 'on', 'start']
 export const CAB_SWITCHES = ['seatbelt', 'parkingBrake', 'lights']
@@ -47,15 +47,16 @@ export function createDashboardSource() {
 
     // Turn the key. `engineOn` is the simulation's engine state, since
     // START on a running engine and OFF on a stopped one change nothing but
-    // the key's position.
+    // the key's position. START only asks: the simulation's interlock decides
+    // whether the engine cranks.
     turnKey(position, engineOn) {
       if (!KEY_POSITIONS.includes(position)) return
       mark()
       if (position === 'start') {
-        if (!engineOn) commands.push('engineToggle')
+        if (!engineOn) commands.push('engineStart')
         switches.key = 'on'
       } else {
-        if (position === 'off' && engineOn) commands.push('engineToggle')
+        if (position === 'off' && engineOn) commands.push('engineStop')
         switches.key = position
       }
     },
@@ -83,11 +84,18 @@ export function createDashboardSource() {
       mark()
     },
 
+    set(name, value) {
+      if (!CAB_SWITCHES.includes(name) || switches[name] === Boolean(value)) return
+      switches[name] = Boolean(value)
+      mark()
+    },
+
     horn() {
       commands.push('horn')
     },
 
-    // Edge-triggered commands since the last call ('engineToggle', 'horn').
+    // Edge-triggered commands since the last call ('engineStart',
+    // 'engineStop', 'horn').
     drainCommands() {
       const drained = commands
       commands = []
