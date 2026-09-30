@@ -157,6 +157,12 @@ export async function getModuleCourses(moduleSlug) {
   return request(`/content/courses/${encodeURIComponent(moduleSlug)}`)
 }
 
+// The Skills Checklist catalogue: each skill with its evidence rules and the
+// modules it is linked to ({ moduleId, moduleSlug, relation }).
+export async function getSkills() {
+  return request('/content/skills')
+}
+
 // --- Progress (per signed-in user) ---
 
 // The document plus the `revision` it is at, or null when nothing is saved.
@@ -168,6 +174,13 @@ export async function getProgress() {
 // the write with a 409 once the learner's progress has been reset since then.
 export async function saveProgress(progress, baseRevision) {
   return request('/progress', { method: 'PUT', body: { ...progress, baseRevision } })
+}
+
+// The signed-in learner's skills, judged on the server by lib/skillProgress.js:
+// { results: [{ skillId, status, evidence, met, total, signoff }] }, where
+// `signoff` is the stamp ({ actorName, actorRemoved, createdAt }) or null.
+export async function getMySkills() {
+  return request('/progress/skills')
 }
 
 // --- Admin ---
@@ -329,4 +342,59 @@ export async function adminReorderHotspots(ids) {
 
 export async function adminDeleteHotspot(hotspotId) {
   return request(`/admin/hotspots/${encodeURIComponent(hotspotId)}`, { method: 'DELETE' })
+}
+
+// --- Admin: skills checklist ---
+// The catalogue and module links are content.edit. A learner's skills are
+// progress.view, and signing off or revoking is skills.signoff, both within
+// the caller's reach.
+
+export async function adminListSkills() {
+  return request('/admin/skills')
+}
+
+export async function adminCreateSkill(payload) {
+  return request('/admin/skills', { method: 'POST', body: payload })
+}
+
+export async function adminUpdateSkill(skillId, payload) {
+  return request(`/admin/skills/${encodeURIComponent(skillId)}`, { method: 'PATCH', body: payload })
+}
+
+export async function adminResetSkill(skillId) {
+  return request(`/admin/skills/${encodeURIComponent(skillId)}/reset`, { method: 'POST' })
+}
+
+export async function adminReorderSkills(ids) {
+  return request('/admin/skills/reorder', { method: 'POST', body: { ids } })
+}
+
+export async function adminDeleteSkill(skillId) {
+  return request(`/admin/skills/${encodeURIComponent(skillId)}`, { method: 'DELETE' })
+}
+
+// Replaces a module's links: [{ skillId, relation: 'teaches' | 'requires' }].
+export async function adminSetModuleSkills(moduleId, links) {
+  return request(`/admin/modules/${encodeURIComponent(moduleId)}/skills`, { method: 'PUT', body: { links } })
+}
+
+// { user, skills, results, history }: the catalogue, the evidence, the
+// current sign-off and the whole trail, newest first.
+export async function adminGetUserSkills(userId) {
+  return request(`/admin/users/${encodeURIComponent(userId)}/skills`)
+}
+
+export async function adminSignOffSkill(userId, skillId, note) {
+  return request(`/admin/users/${encodeURIComponent(userId)}/skills/${encodeURIComponent(skillId)}/signoff`, {
+    method: 'POST',
+    body: { note },
+  })
+}
+
+// A revoke needs a note saying why.
+export async function adminRevokeSkill(userId, skillId, note) {
+  return request(`/admin/users/${encodeURIComponent(userId)}/skills/${encodeURIComponent(skillId)}/revoke`, {
+    method: 'POST',
+    body: { note },
+  })
 }

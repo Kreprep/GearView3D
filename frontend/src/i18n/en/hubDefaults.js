@@ -28,9 +28,19 @@ export default {
   'hubDefaults.partsTitle': 'Learn the parts',
   'hubDefaults.partsDescription': 'See each part of the {equipment} and what it does.',
   'hubDefaults.partsCta': 'Open parts',
+  'hubDefaults.skillsTitle': 'Skills checklist',
+  'hubDefaults.skillsDescription': 'See the skills you have shown and the ones an instructor has signed off.',
+  'hubDefaults.skillsCta': 'Open skills',
   'hubDefaults.activityTitle': 'Help improve GearView3D',
   'hubDefaults.activityBody':
     'Share your feedback on the GearView3D Survey to help us improve this training tool.',
   'hubDefaults.moduleListHeading': '{equipment} - Training modules',
   'hubDefaults.moduleListIntro': 'Pick a module. Start with number 1.',
+  'hubDefaults.skillsPageHeading': 'Skills checklist',
+  'hubDefaults.skillsPageIntro':
+    'Each skill fills in as you finish the training. An instructor signs a skill off once they have seen you do it.',
+  'hubDefaults.entryRequirementsTitle': 'Before the training',
+  'hubDefaults.entryRequirements': '> Trainees or students who wish to enter this training should possess the following requirements:\n>\n> - At least Junior High School Level Completer or an Alternative Learning System (ALS) Certificate of Completion with grade 10 equivalent holder\n> - Must possess good communication skills\n> - Can perform basic mathematical computation\n> - Physically fit\n\nSource: TESDA Training Regulations, Heavy Equipment Operation (Forklift) NC II, Revision 01 (promulgated 11/07/2019), section 3.3, page 93.',
+  'hubDefaults.entryRequirementsNote':
+    'These are the entry requirements for the TESDA Forklift NC II training program, as applied by TESDA-accredited training institutions. {equipment} training in GearView prepares you for that program. It does not replace it or certify you.',
 }

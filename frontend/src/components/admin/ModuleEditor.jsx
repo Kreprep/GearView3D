@@ -3,6 +3,7 @@ import { adminCreateCourse, adminListCourses, adminReorderCourses, adminUpdateMo
 import ChecklistAdmin from './ChecklistAdmin'
 import CourseEditor from './CourseEditor'
 import HotspotAdmin from './HotspotAdmin'
+import ModuleSkillLinks from './ModuleSkillLinks'
 import QuizAdmin from './QuizAdmin'
 import { Button } from '../ui/button'
 import { Panel, PanelHeader, PanelNote } from '../ui/panel'
@@ -229,6 +230,8 @@ function ModuleEditor({
           </Field>
         </div>
       </Panel>
+
+      <ModuleSkillLinks module={module} onMessage={onMessage} />
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
         <Panel>

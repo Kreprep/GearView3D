@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import PartDetailCard from './PartDetailCard'
+import { ModuleSkills } from './ModuleSkills'
 import { useT } from '../i18n'
 import { ProgressBar } from './ui/progress'
 import './ModuleSimulationShell.css'
@@ -9,6 +10,7 @@ function ModuleSimulationShell({
   steps,
   currentStepIndex,
   objectives = [],
+  moduleSkills,
   progress = 0,
   score,
   canProceed = true,
@@ -81,6 +83,12 @@ function ModuleSimulationShell({
             </ul>
             {showHint && <p className="simulation-hint-text">{currentStep?.hint || t('module.hint.none')}</p>}
           </section>
+
+          {(moduleSkills?.practise.length > 0 || moduleSkills?.need.length > 0) && (
+            <section className="simulation-panel">
+              <ModuleSkills practise={moduleSkills.practise} need={moduleSkills.need} compact />
+            </section>
+          )}
 
           <section className="simulation-panel">
             <p className="simulation-panel-label">{t('module.panel.steps')}</p>

@@ -73,6 +73,38 @@ const routes = [
   { method: 'post', path: '/courses/:id/reset', url: `/courses/${ids.builtInCourse}/reset`, permissions: ['content.edit'], allowed: STAFF },
   { method: 'post', path: '/courses/reorder', permissions: ['content.edit'], allowed: STAFF, body: { moduleSlug: ids.moduleSlug, ids: [ids.course] } },
   { method: 'delete', path: '/courses/:id', url: `/courses/${ids.course}`, permissions: ['content.edit'], allowed: STAFF },
+
+  { method: 'get', path: '/skills', permissions: ['content.edit'], allowed: STAFF },
+  { method: 'post', path: '/skills', permissions: ['content.edit'], allowed: STAFF, body: { title: 'New skill' } },
+  { method: 'post', path: '/skills/reorder', permissions: ['content.edit'], allowed: STAFF, body: { ids: [ids.skill, ids.builtInSkill] } },
+  { method: 'patch', path: '/skills/:id', url: `/skills/${ids.skill}`, permissions: ['content.edit'], allowed: STAFF, body: { title: 'Renamed skill' } },
+  { method: 'post', path: '/skills/:id/reset', url: `/skills/${ids.builtInSkill}/reset`, permissions: ['content.edit'], allowed: STAFF },
+  { method: 'delete', path: '/skills/:id', url: `/skills/${ids.skill}`, permissions: ['content.edit'], allowed: STAFF },
+  {
+    method: 'put',
+    path: '/modules/:id/skills',
+    url: `/modules/${ids.moduleId}/skills`,
+    permissions: ['content.edit'],
+    allowed: STAFF,
+    body: { links: [{ skillId: ids.skill, relation: 'requires' }] },
+  },
+  { method: 'get', path: '/users/:id/skills', url: `/users/${ids.otherTrainee}/skills`, permissions: ['progress.view'], allowed: STAFF },
+  {
+    method: 'post',
+    path: '/users/:id/skills/:skillId/signoff',
+    url: `/users/${ids.otherTrainee}/skills/${ids.skill}/signoff`,
+    permissions: ['skills.signoff'],
+    allowed: STAFF,
+    body: { note: 'Seen in hands-on training' },
+  },
+  {
+    method: 'post',
+    path: '/users/:id/skills/:skillId/revoke',
+    url: `/users/${ids.otherTrainee}/skills/${ids.builtInSkill}/revoke`,
+    permissions: ['skills.signoff'],
+    allowed: STAFF,
+    body: { note: 'Drove into the rack on the next run' },
+  },
 ]
 
 const callers = [

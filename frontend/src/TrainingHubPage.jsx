@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, Gamepad2, RotateCcw } from 'lucide-react'
-import { getEquipment, getHotspots, getQuizQuestions, getTrainingModules } from './lib/api'
+import { getEquipment, getHotspots, getMySkills, getQuizQuestions, getTrainingModules } from './lib/api'
 import { getModulesProgress, getOverallProgress, getPartsProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
 import { usePageTitle } from './hooks/usePageTitle'
 import { useLanguage, useT } from './i18n'
 import { hubContentContext, resolveHubContent } from './lib/hubContent'
+import { skillsPercentage } from './lib/skillProgress'
 import { routes } from './lib/router'
 import PageLayout from './components/PageLayout'
 import { ControllerSetup } from './components/driving/ControllerSetup'
@@ -140,6 +141,7 @@ function TrainingHubPage({ user, onLogout, onNavigate }) {
   const [modules, setModules] = useState([])
   const [hotspots, setHotspots] = useState([])
   const [hasPartsQuiz, setHasPartsQuiz] = useState(false)
+  const [skillResults, setSkillResults] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [controllerSetupOpen, setControllerSetupOpen] = useState(false)
@@ -157,13 +159,16 @@ function TrainingHubPage({ user, onLogout, onNavigate }) {
       // The parts quiz is optional - having no questions is not an error - so
       // this one call swallows its own failure. The other three are the page.
       getQuizQuestions({ context: 'parts' }).catch(() => []),
+      // Optional too: the hub still works without the skills step.
+      getMySkills().catch(() => ({ results: [] })),
     ])
-      .then(([equipmentRow, moduleRows, hotspotRows, partsQuestions]) => {
+      .then(([equipmentRow, moduleRows, hotspotRows, partsQuestions, skills]) => {
         if (cancelled) return
         setEquipment(equipmentRow)
         setModules(moduleRows)
         setHotspots(hotspotRows)
         setHasPartsQuiz(partsQuestions.length > 0)
+        setSkillResults(skills.results)
         setError(null)
         setLoading(false)
       })
@@ -234,6 +239,17 @@ function TrainingHubPage({ user, onLogout, onNavigate }) {
       showBar: true,
       cta: copy.partsCta,
       onOpen: () => onNavigate(routes.parts),
+    },
+    // The skills checklist reads the modules and parts steps' evidence, so it
+    // comes after them and before the final check. Shown once there are skills.
+    skillResults.length > 0 && {
+      id: 'skills',
+      title: copy.skillsTitle,
+      description: copy.skillsDescription,
+      percent: skillsPercentage(skillResults),
+      showBar: true,
+      cta: copy.skillsCta,
+      onOpen: () => onNavigate(routes.skills),
     },
     {
       id: 'assessment',

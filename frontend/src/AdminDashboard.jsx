@@ -4,6 +4,7 @@ import {
   BarChart3,
   Layers,
   LayoutGrid,
+  ListChecks,
   TrendingUp,
   Truck,
   Users as UsersIcon,
@@ -16,6 +17,7 @@ import HotspotAdmin from './components/admin/HotspotAdmin'
 import ModuleListAdmin from './components/admin/ModuleListAdmin'
 import QuizAdmin from './components/admin/QuizAdmin'
 import ReportsPanel from './components/admin/ReportsPanel'
+import SkillAdmin from './components/admin/SkillAdmin'
 import VehicleProfileEditor from './components/admin/VehicleProfileEditor'
 import { Button } from './components/ui/button'
 import { Panel, PanelHeader, PanelNote } from './components/ui/panel'
@@ -39,7 +41,7 @@ import {
 import { adminModuleRoute, routes } from './lib/router'
 import { can, canActOnRole, canOpenDashboard, ROLE_LABELS, ROLES } from './data/permissions.js'
 
-// The three sections under Training Content. Steps, checklist items and quiz
+// The four sections under Training Content. Steps, checklist items and quiz
 // questions have no section of their own - they live inside a module.
 //
 // Each tab names the permission it needs. Hiding a tab is only presentation:
@@ -47,6 +49,7 @@ import { can, canActOnRole, canOpenDashboard, ROLE_LABELS, ROLES } from './data/
 const trainingContentTabs = [
   [routes.adminModules, 'Modules', Layers, 'content.edit'],
   [routes.adminParts, 'Parts Identification', Wrench, 'content.edit'],
+  [routes.adminSkills, 'Skills', ListChecks, 'content.edit'],
   [routes.adminSettings, 'Equipment Settings', Wrench, 'equipment.edit'],
 ]
 
@@ -538,6 +541,12 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             </main>
           )}
 
+          {activePath === routes.adminSkills && (
+            <main className={CONTENT_WRAP}>
+              <SkillAdmin modules={content.modules} onMessage={refreshMessage} />
+            </main>
+          )}
+
           {activePath === routes.adminSettings && (
             <main className={`${CONTENT_WRAP} ${TWO_COL}`}>
               <Panel>
@@ -671,6 +680,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
           {activePath === routes.adminReports && (
             <main className={CONTENT_WRAP}>
               <ReportsPanel
+                viewer={user}
+                onMessage={refreshMessage}
                 modules={content.modules}
                 users={content.users}
                 progress={content.progress}

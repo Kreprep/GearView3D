@@ -1,20 +1,22 @@
 // The training pages live under /training (parsed in App.jsx): the hub at
-// /training, then /training/modules[/<slug>], /training/parts and
-// /training/assessment. Module pages have no key of their own - build them
+// /training, then /training/modules[/<slug>], /training/parts,
+// /training/skills and /training/assessment. Module pages have no key of their own - build them
 // with moduleRoute().
 export const routes = {
   login: '/login',
   home: '/training',
   modules: '/training/modules',
   parts: '/training/parts',
+  skills: '/training/skills',
   assessment: '/training/assessment',
   admin: '/admin',
-  // Training Content: three sections. Steps, checklist items and quiz
+  // Training Content: four sections. Steps, checklist items and quiz
   // questions have no paths of their own - they are edited inside a module at
   // /admin/modules/:slug.
   adminModules: '/admin/modules',
   adminParts: '/admin/parts',
   adminSettings: '/admin/settings',
+  adminSkills: '/admin/skills',
   adminUsers: '/admin/users',
   adminReports: '/admin/reports',
 }

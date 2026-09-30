@@ -25,6 +25,18 @@ import {
   validateCoursePayload,
 } from '../lib/courses.js'
 import {
+  defaultSkillFor,
+  evaluateUserSkills,
+  findSkill,
+  historyEvent,
+  isSkillCategory,
+  listSkills,
+  recordSignoffEvent,
+  skillFields,
+  staffResults,
+} from '../lib/skills.js'
+import { normalizeEvidence, SKILL_RELATIONS } from '../../../frontend/src/lib/skillProgress.js'
+import {
   adminHotspot,
   defaultHotspotFor,
   editableHotspot,
@@ -43,6 +55,8 @@ const canEditContent = requirePermission('content.edit')
 const canEditEquipment = requirePermission('equipment.edit')
 const canManageUsers = requirePermission('users.manage')
 const canResetProgress = requirePermission('progress.reset')
+const canViewProgress = requirePermission('progress.view')
+const canSignOffSkills = requirePermission('skills.signoff')
 
 // Update payloads arrive as whole objects from the dashboard; keep only the
 // columns each model actually owns.
@@ -792,5 +806,212 @@ router.delete('/courses/:id', canEditContent, async (req, res) => {
   await prisma.course.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })
+
+// --- Skills checklist -------------------------------------------------------
+// The catalogue and its module links are content (content.edit) and save
+// immediately, like modules. A learner's skills and their sign-offs are not:
+// reading them is progress.view and signing one off or revoking it is
+// skills.signoff, both within the caller's reach (an instructor's is
+// trainees), the same rule as the progress reset.
+
+// A skill payload's editable fields, checked. Returns { data } or { error }.
+function skillData(payload, { creating = false } = {}) {
+  const data = pick(payload, skillFields)
+
+  if ('title' in data || creating) {
+    data.title = String(data.title ?? '').trim()
+    if (!data.title) return { error: 'Skill title is required' }
+  }
+  for (const key of ['description', 'tesdaRef']) {
+    if (key in data) data[key] = String(data[key] ?? '').trim()
+  }
+  if ('category' in data && !isSkillCategory(data.category)) return { error: 'Unknown skill category' }
+  if ('sortOrder' in data && !Number.isInteger(data.sortOrder)) return { error: 'sortOrder must be a whole number' }
+  if ('evidence' in data) {
+    const { evidence, problems } = normalizeEvidence(data.evidence)
+    if (problems.length) return { error: 'Skill evidence is not valid', problems }
+    data.evidence = evidence
+  }
+  return { data }
+}
+
+function refuse(res, { error, problems }) {
+  return res.status(400).json(problems ? { error, problems } : { error })
+}
+
+router.get('/skills', canEditContent, async (req, res) => {
+  res.json({ skills: await listSkills() })
+})
+
+// The id is the slugified title and is fixed at creation, because sign-offs
+// reference it; a clash is refused rather than renamed.
+router.post('/skills', canEditContent, async (req, res) => {
+  const payload = req.body || {}
+  const checked = skillData({ category: 'knowledge', evidence: [], ...payload }, { creating: true })
+  if (checked.error) return refuse(res, checked)
+
+  const id = slugify(payload.id || checked.data.title)
+  if (!id) return res.status(400).json({ error: 'Skill id could not be derived from the title' })
+  if (await prisma.skill.findUnique({ where: { id } })) {
+    return res.status(409).json({ error: `A skill with id "${id}" already exists` })
+  }
+
+  const last = await prisma.skill.findFirst({ orderBy: { sortOrder: 'desc' } })
+  await prisma.skill.create({
+    data: { ...checked.data, id, sortOrder: (last?.sortOrder || 0) + 1, builtIn: false },
+  })
+  res.json({ skill: await findSkill(id) })
+})
+
+// Whole-list reorder; ids not in the list are left alone.
+router.post('/skills/reorder', canEditContent, async (req, res) => {
+  const { ids } = req.body || {}
+  if (!Array.isArray(ids)) {
+    return res.status(400).json({ error: 'ids is required' })
+  }
+
+  await prisma.$transaction(
+    ids.map((id, index) => prisma.skill.updateMany({ where: { id: String(id) }, data: { sortOrder: index + 1 } })),
+  )
+  res.json({ skills: await listSkills() })
+})
+
+router.patch('/skills/:id', canEditContent, async (req, res) => {
+  const checked = skillData(req.body || {})
+  if (checked.error) return refuse(res, checked)
+
+  await prisma.skill.update({ where: { id: req.params.id }, data: checked.data })
+  res.json({ skill: await findSkill(req.params.id) })
+})
+
+// Built-in skills only: restores the stock wording and evidence
+// (data/skillDefaults.js). Its place in the list and its module links stay.
+router.post('/skills/:id/reset', canEditContent, async (req, res) => {
+  const row = await prisma.skill.findUnique({ where: { id: req.params.id } })
+  if (!row) return res.status(404).json({ error: 'Skill not found' })
+
+  const defaults = defaultSkillFor(row.id)
+  if (!row.builtIn || !defaults) {
+    return res.status(400).json({ error: 'This skill has no built-in default to reset to' })
+  }
+
+  const { id: _id, sortOrder: _sortOrder, ...data } = defaults
+  await prisma.skill.update({ where: { id: row.id }, data })
+  res.json({ skill: await findSkill(row.id) })
+})
+
+// A skill that has been signed off or revoked for anyone keeps its trail, so
+// it cannot be deleted (the foreign key is Restrict as well); its module links
+// go with it.
+router.delete('/skills/:id', canEditContent, async (req, res) => {
+  const events = await prisma.skillSignoffEvent.count({ where: { skillId: req.params.id } })
+  if (events) {
+    return res.status(409).json({ error: `This skill has ${events} sign-off record(s) and cannot be deleted` })
+  }
+
+  await prisma.skill.delete({ where: { id: req.params.id } })
+  res.json({ deleted: true })
+})
+
+// Replaces one module's skill links: { links: [{ skillId, relation }] }, each
+// skill at most once, relation 'teaches' or 'requires'.
+router.put('/modules/:id/skills', canEditContent, async (req, res) => {
+  const module = await prisma.module.findUnique({ where: { id: Number(req.params.id) } })
+  if (!module) return res.status(404).json({ error: 'Record not found' })
+
+  const links = req.body?.links
+  if (!Array.isArray(links)) return res.status(400).json({ error: 'links is required' })
+  if (links.some((link) => !SKILL_RELATIONS.includes(link?.relation) || typeof link?.skillId !== 'string')) {
+    return res.status(400).json({ error: 'Each link needs a skill and a relation of teaches or requires' })
+  }
+  const skillIds = links.map((link) => link.skillId)
+  if (new Set(skillIds).size !== skillIds.length) {
+    return res.status(400).json({ error: 'A skill can be linked to a module once' })
+  }
+  if ((await prisma.skill.count({ where: { id: { in: skillIds } } })) !== skillIds.length) {
+    return res.status(400).json({ error: 'Unknown skill' })
+  }
+
+  await prisma.$transaction([
+    prisma.moduleSkill.deleteMany({ where: { moduleId: module.id } }),
+    prisma.moduleSkill.createMany({
+      data: links.map((link) => ({ moduleId: module.id, skillId: link.skillId, relation: link.relation })),
+    }),
+  ])
+  res.json({ skills: await listSkills() })
+})
+
+// The learner an instructor or admin is acting on, when within their reach.
+// Answers the request itself and returns null otherwise.
+async function learnerWithinReach(req, res) {
+  const target = await prisma.user.findUnique({ where: { id: req.params.id } })
+  if (!target) {
+    res.status(404).json({ error: 'Record not found' })
+    return null
+  }
+  if (!canActOnRole(req.user, target.role)) {
+    res.status(403).json({ error: 'You do not have permission to see this account' })
+    return null
+  }
+  return target
+}
+
+// One learner's skills: the catalogue, per skill the evidence and the current
+// sign-off, and the whole trail, newest first, notes included.
+router.get('/users/:id/skills', canViewProgress, async (req, res) => {
+  const target = await learnerWithinReach(req, res)
+  if (!target) return
+
+  const { skills, results, events } = await evaluateUserSkills(target.id)
+  res.json({ user: publicUser(target), skills, results: staffResults(results), history: events.map(historyEvent) })
+})
+
+const NOTE_LIMIT = 1000
+
+// Signing off and revoking insert one event each and never change or remove
+// one. Nobody signs off their own skills, whatever their role. A sign-off on
+// evidence not yet demonstrated is allowed (the instructor may have seen the
+// skill in hands-on training, decided 2026-10-01) but needs a note saying why;
+// a revoke always needs one. The evidence status at that moment is recorded
+// with the event.
+function signoffRoute(action) {
+  return async (req, res) => {
+    const target = await learnerWithinReach(req, res)
+    if (!target) return
+    if (target.id === req.user.id) {
+      return res.status(403).json({ error: 'You cannot sign off your own skills' })
+    }
+
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim() : ''
+    if (note.length > NOTE_LIMIT) {
+      return res.status(400).json({ error: `The note is too long (${NOTE_LIMIT} characters at most)` })
+    }
+
+    const { results } = await evaluateUserSkills(target.id)
+    const result = results.find((entry) => entry.skillId === req.params.skillId)
+    if (!result) return res.status(404).json({ error: 'Skill not found' })
+
+    const signedOff = result.status === 'signed-off'
+    if (action === 'signoff' && signedOff) return res.status(409).json({ error: 'This skill is already signed off' })
+    if (action === 'revoke' && !signedOff) return res.status(409).json({ error: 'This skill is not signed off' })
+    if (action === 'revoke' && !note) return res.status(400).json({ error: 'A revoke needs a note saying why' })
+    if (action === 'signoff' && result.evidenceStatus !== 'demonstrated' && !note) {
+      return res.status(400).json({ error: 'The evidence is not complete yet: add a note saying why you are signing it off' })
+    }
+
+    const event = await recordSignoffEvent({
+      userId: target.id,
+      skillId: result.skillId,
+      actor: req.user,
+      action,
+      note,
+      evidenceStatus: result.evidenceStatus,
+    })
+    res.json({ event: historyEvent(event) })
+  }
+}
+
+router.post('/users/:id/skills/:skillId/signoff', canSignOffSkills, signoffRoute('signoff'))
+router.post('/users/:id/skills/:skillId/revoke', canSignOffSkills, signoffRoute('revoke'))
 
 export default router

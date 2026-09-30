@@ -126,6 +126,25 @@ export const HUB_CONTENT_FIELDS = [
     default: (context, lang) => translate(lang, 'hubDefaults.partsCta'),
   },
   {
+    key: 'skillsTitle',
+    label: 'Skills card title',
+    section: 'Skills checklist card',
+    default: (context, lang) => translate(lang, 'hubDefaults.skillsTitle'),
+  },
+  {
+    key: 'skillsDescription',
+    label: 'Skills card description',
+    section: 'Skills checklist card',
+    multiline: true,
+    default: (context, lang) => translate(lang, 'hubDefaults.skillsDescription'),
+  },
+  {
+    key: 'skillsCta',
+    label: 'Skills card button',
+    section: 'Skills checklist card',
+    default: (context, lang) => translate(lang, 'hubDefaults.skillsCta'),
+  },
+  {
     key: 'activityTitle',
     label: 'Activity card title',
     section: 'Activity card',
@@ -150,5 +169,41 @@ export const HUB_CONTENT_FIELDS = [
     section: 'Module list page',
     multiline: true,
     default: (context, lang) => translate(lang, 'hubDefaults.moduleListIntro'),
+  },
+  {
+    key: 'skillsPageHeading',
+    label: 'Skills page heading',
+    section: 'Skills checklist page',
+    default: (context, lang) => translate(lang, 'hubDefaults.skillsPageHeading'),
+  },
+  {
+    key: 'skillsPageIntro',
+    label: 'Skills page description',
+    section: 'Skills checklist page',
+    multiline: true,
+    default: (context, lang) => translate(lang, 'hubDefaults.skillsPageIntro'),
+  },
+  {
+    key: 'entryRequirementsTitle',
+    label: 'Entry requirements title',
+    section: 'Skills checklist page',
+    default: (context, lang) => translate(lang, 'hubDefaults.entryRequirementsTitle'),
+  },
+  // Markdown. The stock text quotes HEO (Forklift) NC II TR Rev. 01 section
+  // 3.3 verbatim, in English in both languages: a regulation is quoted, not
+  // paraphrased (plan 4.8). Only the citation's label is translated.
+  {
+    key: 'entryRequirements',
+    label: 'Entry requirements (markdown)',
+    section: 'Skills checklist page',
+    multiline: true,
+    default: (context, lang) => translate(lang, 'hubDefaults.entryRequirements'),
+  },
+  {
+    key: 'entryRequirementsNote',
+    label: 'Entry requirements note',
+    section: 'Skills checklist page',
+    multiline: true,
+    default: (context, lang) => translate(lang, 'hubDefaults.entryRequirementsNote'),
   },
 ]

@@ -24,6 +24,10 @@ model User {
   role         Role              @default(TRAINEE)
   progress     ProgressSnapshot?
   createdAt    DateTime          @default(now())
+
+  // Sign-offs of this user's skills, and the ones this user made as staff.
+  skillSignoffs     SkillSignoffEvent[] @relation("SkillSignoffSubject")
+  skillSignoffsMade SkillSignoffEvent[] @relation("SkillSignoffActor")
 }
 
 // The one piece of equipment the app trains on - the forklift. A single row of
@@ -65,6 +69,78 @@ model Module {
   sortOrder      Int             @default(0)
   checklistItems ChecklistItem[]
   quizQuestions  QuizQuestion[]
+  skills         ModuleSkill[]
+}
+
+// One competency of the Skills Checklist (docs/revisions/post-defense-plan.md
+// 4.8), mapped to the TESDA HEO (Forklift) NC II training regulations by
+// `tesdaRef` (e.g. "CON834218 el. 3"). `category` is one of knowledge |
+// perceptual | motor | safety | procedural.
+//
+// `evidence` is the list of rules that show the skill in the learner's
+// progress document ({ type: 'step-complete', module, stepId }, ...); the
+// types and how each is judged are frontend/src/lib/skillProgress.js, which
+// the learner page and the instructor's view both use. A skill with no rules
+// can only be signed off.
+//
+// No draft column: short labels, the same call as Module. `builtIn` rows have
+// a baseline in frontend/src/data/skillDefaults.js they can be reset to.
+model Skill {
+  id          String  @id
+  title       String
+  description String  @default("")
+  category    String  @default("knowledge")
+  tesdaRef    String  @default("")
+  sortOrder   Int     @default(0)
+  builtIn     Boolean @default(false)
+  evidence    Json    @default("[]")
+
+  modules  ModuleSkill[]
+  signoffs SkillSignoffEvent[]
+}
+
+// Which skills a module teaches ("Skills you'll practise") and which it
+// expects the learner to bring ("Skills you need"). One relation per pair.
+model ModuleSkill {
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId Int
+  skill    Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  skillId  String
+  // 'teaches' | 'requires'
+  relation String
+
+  @@id([moduleId, skillId])
+  @@index([skillId])
+}
+
+// An instructor's or admin's sign-off of one learner's skill, or its revoke:
+// an append-only audit trail. Rows are only ever inserted; the current state
+// of (userId, skillId) is its latest event. Sign-offs are the trust anchor of
+// the checklist, so they live here and never in ProgressSnapshot, whose
+// document the learner's browser writes (a trainee could forge one there).
+//
+// `actorName` is a snapshot of who acted, so the history still reads when that
+// account is deleted (`actorId` goes null and the page shows the name, or
+// "former staff"). A skill with events cannot be deleted (Restrict), so the
+// trail is never cascaded away with it. `evidenceStatus` is what the
+// learner's evidence showed when the event was recorded (skillProgress.js).
+model SkillSignoffEvent {
+  id             String   @id @default(cuid())
+  user           User     @relation("SkillSignoffSubject", fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  skill          Skill    @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  skillId        String
+  actor          User?    @relation("SkillSignoffActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorId        String?
+  actorName      String
+  // 'signoff' | 'revoke'
+  action         String
+  note           String   @default("")
+  evidenceStatus String   @default("")
+  createdAt      DateTime @default(now())
+
+  @@index([userId, skillId, createdAt])
+  @@index([actorId])
 }
 
 // Every 3D marker on the forklift model - one row per physical component,

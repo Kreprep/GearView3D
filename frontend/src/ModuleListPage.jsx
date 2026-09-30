@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { getEquipment, getTrainingModules } from './lib/api'
+import { getEquipment, getSkills, getTrainingModules } from './lib/api'
 import { getModuleProgress } from './lib/progressService'
 import { useProgress } from './hooks/useProgress'
 import { usePageTitle } from './hooks/usePageTitle'
@@ -18,7 +18,7 @@ import { ProgressBar } from './components/ui/progress'
 // module's guided simulation. Cards come straight from the Module rows, so an
 // admin adding a module adds a card here with no code change.
 function ModuleListPage({ user, onLogout, onBack, onNavigate }) {
-  const [loaded, setLoaded] = useState({ done: false, equipment: null, modules: [], error: null })
+  const [loaded, setLoaded] = useState({ done: false, equipment: null, modules: [], skills: [], error: null })
   const { summary } = useProgress()
   const t = useT()
   const language = useLanguage()
@@ -26,14 +26,15 @@ function ModuleListPage({ user, onLogout, onBack, onNavigate }) {
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getEquipment(), getTrainingModules()])
-      .then(([equipmentRow, moduleRows]) => {
+    // The skill chips are extra: without them the list still works.
+    Promise.all([getEquipment(), getTrainingModules(), getSkills().catch(() => [])])
+      .then(([equipmentRow, moduleRows, skills]) => {
         if (cancelled) return
-        setLoaded({ done: true, equipment: equipmentRow, modules: moduleRows, error: null })
+        setLoaded({ done: true, equipment: equipmentRow, modules: moduleRows, skills, error: null })
       })
       .catch((err) => {
         if (cancelled) return
-        setLoaded({ done: true, equipment: null, modules: [], error: err.message })
+        setLoaded({ done: true, equipment: null, modules: [], skills: [], error: err.message })
       })
 
     return () => {
@@ -41,7 +42,7 @@ function ModuleListPage({ user, onLogout, onBack, onNavigate }) {
     }
   }, [])
 
-  const { equipment, modules, error } = loaded
+  const { equipment, modules, skills, error } = loaded
   const loading = !loaded.done
 
   const equipmentTitle = equipment?.title || 'Equipment'
@@ -73,6 +74,10 @@ function ModuleListPage({ user, onLogout, onBack, onNavigate }) {
         {!loading && !error && modules.map((module, index) => {
           const percentage = getModuleProgress(summary.raw, module.slug)
           const percentId = `module-percent-${module.id}`
+          // The skills the module teaches, as chips under its description.
+          const taught = skills.filter((skill) =>
+            skill.modules.some((link) => link.moduleSlug === module.slug && link.relation === 'teaches'),
+          )
 
           return (
             <Card key={module.id} padding="none" interactive stretchedAction>
@@ -96,6 +101,17 @@ function ModuleListPage({ user, onLogout, onBack, onNavigate }) {
                   {module.subtitle || module.title}
                 </h2>
                 <p className="m-0 text-[13.5px] leading-relaxed text-body">{module.description}</p>
+                {taught.length > 0 && (
+                  <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0" aria-label={t('skills.module.chips')}>
+                    {taught.map((skill) => (
+                      // Not a Badge: skill titles are long, and Badge never wraps (it is
+                      // built to sit beside a heading), so the chip would overflow the card.
+                      <li key={skill.id} className="rounded-xl bg-slate-100 px-2.5 py-1 text-xs font-semibold leading-snug text-slate-600">
+                        {skill.title}
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
                 {/* mt-auto: descriptions run 4-7 lines, so without this the
                     meter and button land at a different height on every card. */}

@@ -233,6 +233,9 @@ function GenericAssessmentPage({ user, onLogout, onBack, onNavigate }) {
               {t('assessment.action.parts')}
             </Button>
           )}
+          <Button variant="deep" onClick={() => onNavigate(routes.skills)}>
+            {t('skills.open')}
+          </Button>
         </div>
       </section>
     </PageLayout>

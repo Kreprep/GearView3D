@@ -68,3 +68,18 @@ test('hubContentDefault is the same string the editor shows as a placeholder', (
   assert.equal(hubContentDefault('partsCta', context, 'fil'), 'Buksan ang mga parte')
   assert.equal(hubContentDefault('nope', context, 'fil'), '')
 })
+
+test('the entry requirements quote TR section 3.3 verbatim, in English in both languages, with the citation', () => {
+  const quoted = [
+    'Trainees or students who wish to enter this training should possess the following requirements:',
+    '- At least Junior High School Level Completer or an Alternative Learning System (ALS) Certificate of Completion with grade 10 equivalent holder',
+    '- Must possess good communication skills',
+    '- Can perform basic mathematical computation',
+    '- Physically fit',
+  ]
+  for (const lang of ['en', 'fil']) {
+    const text = resolveHubContent(null, context, lang).entryRequirements
+    for (const line of quoted) assert.ok(text.includes(line), `${lang}: ${line}`)
+    assert.match(text, /Heavy Equipment Operation \(Forklift\) NC II, Revision 01 .*section 3\.3, page 93/)
+  }
+})
