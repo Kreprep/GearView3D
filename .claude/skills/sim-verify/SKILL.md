@@ -1,6 +1,6 @@
 ---
 name: sim-verify
-description: Drive the GearView3D forklift driving simulation in the real browser app and report what it did. Starts the dev servers if needed, signs in as the demo trainee (or the admin's Module Editor preview when the step is still locked), opens a driving step, runs a named scenario (accelerate, brake, park, cone-fail, pallet-pickup, pallet-deliver, overload, rack-store, smoke) through window.__drivingDebugSet plus real key presses, and reports window.__drivingDebug, the HUD and console errors. Use this whenever a change touches the driving sim (lib/driving/*, DrivingSimulationViewer, controls, telemetry, the vehicle profile, courses), to re-verify built-in courses after a post-defense phase, or whenever someone asks to check, smoke-test or confirm the driving/forklift simulation still works in the browser, even if they don't name the skill.
+description: Drive the GearView3D forklift driving simulation in the real browser app and report what it did. Starts the dev servers if needed, signs in as the demo trainee (or the admin's Module Editor preview when the step is still locked), opens a driving step, runs a named scenario (accelerate, brake, park, cone-fail, pallet-pickup, pallet-deliver, overload, rack-store, smoke, interlock, sound, or a sign-* safety-sign scenario) through window.__drivingDebugSet plus real key presses, and reports window.__drivingDebug, the HUD and console errors. Use this whenever a change touches the driving sim (lib/driving/*, DrivingSimulationViewer, controls, telemetry, the safety rules and signs, the vehicle profile, courses), to re-verify built-in courses after a post-defense phase, or whenever someone asks to check, smoke-test or confirm the driving/forklift simulation still works in the browser, even if they don't name the skill.
 ---
 
 # sim-verify
@@ -57,6 +57,13 @@ limiter.
 | `rack-store` | Pallet Testing, Rack Storage | load set on the middle shelf is delivered |
 | `interlock` | Load Handling, Accelerate Course | E is refused without seatbelt and parking brake; the parking brake holds the truck against W |
 | `sound` | Load Handling, Accelerate Course | the samples load, the six loops run, and the denial tone, switch clicks, starter, horn and reverse beeper are asked for |
+| `sign-interlock` | Load Handling, Accelerate Course | a refused start raises the start-interlock sign; W against the parking brake raises parking-brake-on |
+| `sign-obstacle` | Post-Operation, Secure Parking | driving at a cone raises obstacle-ahead and steps it up to danger before the strike |
+| `sign-overspeed` | Load Handling, Left and Right Turning | full throttle passes the default 8 km/h limit; the sign clears after stopping |
+| `sign-load` | Pallet Testing, Precision Carry | driving off with the forks high and the mast upright raises forks-high-travel and mast-not-back, two signs stacked |
+| `sign-overload` | Pallet Testing, Load Limits | forks into the 1,500 kg pallet raise the overload danger sign before anything is lifted |
+| `sign-reverse` | Load Handling, Accelerate Course | reversing in first-person raises look-direction; looking behind (arrow down) clears it |
+| `sign-record` | Load Handling, Accelerate Course | completing the step saves attemptStats with the learner's progress and shows the summary (trainee mode only) |
 
 Since Phase 4 the engine only starts through the pre-start interlock
 (seatbelt, parking brake, direction lever in N), and the parking brake holds
@@ -84,6 +91,24 @@ fields are listed in `core.debugSnapshot()` in
 to frame, so hold keys *until* a condition rather than for a fixed time. Don't
 approach a rack with a held W: it passes the rack-strike speed (0.3 units/s)
 quickly, so warp to the rack face instead.
+
+Since Phase 6 `__drivingDebug` also carries the safety signs
+(`lib/driving/safetyMonitor.js`): `signs` (the ones shown, `[{ id, severity,
+kind }]`) and this attempt's `violations` and `dangers` (`{ ruleId: n }`). A
+sign needs its rule to hold for 150 ms and stays 500 ms after it stops, so
+hold a key *until* `d.violations[...]` rather than checking `d.signs` at one
+instant. Expressions can also read `l`, the signs' layout sampled through the
+run (`maxSigns`, `overlap` with the dashboard or the proximity inset, which
+must stay false, and the task panel's `summary` text), and `p`, the step's
+saved `attemptStats` entry from the learner's progress (null in the admin
+preview, which saves none). The report includes them as `layout` and
+`record`. The `sign-*` scenarios cover one rule family each; the rest of the
+rules (tail swing, turn speed, obstacle behind, seatbelt, forks raised when
+parked, lifting on the move, tilting a raised load forward, shuttling the
+lever) fire in the headless drives of
+`frontend/src/lib/driving/safetyMonitor.test.js`. The stock 8 km/h speed
+limit means a held W raises the overspeed sign on most courses; that is
+expected, not a failure.
 
 Expressions can also read `a`, the audio engine's `window.__audioDebug()`
 (`debugSnapshot()` in `frontend/src/lib/audio/audioEngine.js`): `state`, the
