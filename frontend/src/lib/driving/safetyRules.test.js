@@ -198,8 +198,8 @@ test('direction-change-moving: shuttling a lever against the way the truck is ro
   quiet('direction-change-moving', { lever: null, speed: -kmh(4), throttle: 1 })
 })
 
-test('forks-high-travel: travelling with the forks above 15 cm, laden or not', () => {
-  fires('forks-high-travel', { speed: kmh(3), forkHeight: m(0.2) })
+test('forks-high-travel: travelling with the forks above travel height, laden or not', () => {
+  fires('forks-high-travel', { speed: kmh(3), forkHeight: FORKS_TRAVEL_HEIGHT + m(0.05) })
   fires('forks-high-travel', { ...CARRYING, speed: -kmh(3), forkHeight: m(0.5) })
   quiet('forks-high-travel', { speed: kmh(3), forkHeight: FORKS_TRAVEL_HEIGHT })
   quiet('forks-high-travel', { speed: CREEP_SPEED, forkHeight: m(1) })

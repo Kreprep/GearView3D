@@ -51,13 +51,17 @@ export const TURN_MAX_STEER = 0.5
 export const TURN_MAX_STEER_RATE = 1.5
 
 // (n)(7)(iii): forks raised only as far as necessary to clear the road
-// surface. 15 cm is the usual travel height. GearView default.
+// surface. GearView default: 30 cm. The usual real travel height is about
+// 15 cm, which was the first value here; driven by hand it was too tight,
+// because a load only lifts at 48 cm (LIFT_THRESHOLD) and lands again at 8 cm
+// (LOAD_LAND_CLEARANCE), which left a 7 cm band to lower into. 30 cm leaves
+// 22 cm. It also counts as "raised" for tilt-forward-elevated.
 //
 // The highTravel fail (constants.js, SAFE_TRAVEL_HEIGHT) is this rule's
 // escalation but does not share the value yet: it is still the pre-Phase 6
 // 0.22 units at speed, because moving it changes the simulation. The two
 // unify in Phase 7, which re-records the characterization trace anyway.
-export const FORKS_TRAVEL_HEIGHT = m(0.15)
+export const FORKS_TRAVEL_HEIGHT = m(0.3)
 
 // (o)(6): no forward tilt with the load elevated, except to deposit it. The
 // mast this far forward of vertical counts as tilted forward. GearView
