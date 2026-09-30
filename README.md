@@ -157,9 +157,13 @@ The driving simulation also takes a steering wheel, pedals and H-pattern shifter
 - Press any button on the wheel with the page focused (browsers only reveal controllers after a button press), then open **Wheel setup** from the home screen or the driving screen. There you can calibrate the steering and pedals, record the shifter's gears, and change any button. Settings are saved in this browser only.
 - Starting the forklift works as on a real truck: seatbelt, parking brake and neutral first, then the engine, then release the parking brake.
 
+## Safety Signs
+
+While a learner drives, safety rules watch the driving and the load handling and raise signs above the dashboard: a yellow triangle warns, a blue circle says what must be done, a red circle what must not (obstacle ahead, speed limit, forks too high for travel, mast not tilted back, overload and so on). The signs never fail an attempt. They are counted, and a completed step shows how many came up. In the Module Editor a driving step's **Safety signs** panel sets the course's speed limit (8 km/h by default) and switches the non-essential rules on or off; collisions, overload and the start checks are always on. The thresholds are in `frontend/src/data/safetyThresholds.js`, each with the OSHA 29 CFR 1910.178 paragraph it implements.
+
 ## Sound
 
-The driving simulation and the walk-around device tests play recorded sounds: the engine, the reverse beeper, the hydraulics, the lift chain, the horn and the cab's switches. Volume and mute are on the operator dashboard and on the walk-around step, and are saved in this browser only. If the browser holds the sound back, the driving screen shows **Click to enable sound**; a click or a key press starts it (a steering wheel's buttons may not).
+The driving simulation and the walk-around device tests play recorded sounds: the engine, the reverse beeper, the hydraulics, the lift chain, the horn, the cab's switches, and a chime or an alarm with the safety signs. Volume and mute are on the operator dashboard and on the walk-around step, and are saved in this browser only. If the browser holds the sound back, the driving screen shows **Click to enable sound**; a click or a key press starts it (a steering wheel's buttons may not).
 
 Every sound is a CC0 recording from Freesound. The source, author and licence of each file are listed in [`frontend/public/audio/CREDITS.md`](frontend/public/audio/CREDITS.md). To rebuild a file from its original, put the download in `frontend/audio-src/raw/` and run `node scripts/build-audio.mjs` from `frontend/` (needs [ffmpeg](https://ffmpeg.org/) on the PATH).
 
