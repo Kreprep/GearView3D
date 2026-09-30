@@ -12,6 +12,10 @@ export default {
   'common.notFound.title': 'Hindi mahanap ang pahina',
   'common.notFound.body': 'Ang pahinang binuksan mo ay wala sa kasalukuyang daloy ng training ng GearView3D.',
   'common.notFound.action': 'Pumunta sa training',
+  'common.audio.label': 'Tunog',
+  'common.audio.mute': 'I-mute ang tunog',
+  'common.audio.unmute': 'Buksan ang tunog',
+  'common.audio.volume': 'Lakas ng tunog',
   'common.desktopOnly.title': 'Buksan ang GearView3D sa computer',
   'common.desktopOnly.body':
     'Kailangan ng keyboard at mas malaking screen ang 3D training, kaya masyadong maliit ang screen na ito.',

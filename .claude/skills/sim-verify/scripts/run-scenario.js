@@ -18,7 +18,8 @@ async (page) => {
   // Each action: { press } taps a key; { hold, until, timeout } holds a key
   // until the JS expression `until` (over `d` = window.__drivingDebug) is
   // true; { wait } sleeps; { set } calls __drivingDebugSet mid-run.
-  // `expect` is a list of JS expressions over `d` that must all be true.
+  // `expect` is a list of JS expressions over `d` that must all be true;
+  // they can also read `a`, the audio engine's window.__audioDebug().
   //
   // Since Phase 4 the engine only starts through the pre-start interlock
   // (seatbelt, parking brake, direction N) and the parking brake holds the
@@ -147,6 +148,22 @@ async (page) => {
       ],
       expect: ['d.engineOn', 'd.interlockMissing.length === 0', '!d.parkingBrake', 'd.z > 0.1'],
     },
+    sound: {
+      module: 'load-handling', step: 'Accelerate Course',
+      // A refused start (the denial tone), the start sequence (switch clicks
+      // and the starter), the horn, then reverse for the beeper. It proves
+      // the samples load and the right ones are asked for, not how they
+      // sound: that needs ears.
+      actions: [{ press: 'e' }, { wait: 300 }, ...START, { wait: 900 }, { press: 'h' }, { hold: 's', until: 'd.speed < -0.2', timeout: 6000 }],
+      expect: [
+        'd.engineOn',
+        "a.state === 'running'",
+        "['denied', 'keyClick', 'seatbelt', 'parkingBrake', 'engineStart', 'horn'].every((name) => a.played.includes(name))",
+        'a.loops.length === 6 && a.loops.every((loop) => loop.playing)',
+        "a.loops.find((loop) => loop.name === 'reverseBeeper').gain > 0",
+        "a.loops.find((loop) => loop.name === 'engineIdle').gain > 0",
+      ],
+    },
   }
 
   const scenario = SCENARIOS[SCENARIO]
@@ -273,10 +290,16 @@ async (page) => {
 
   await page.waitForTimeout(300)
   const final = await debug()
-  const checks = scenario.expect.map((expression) => ({
-    expression,
-    passed: Boolean(new Function('d', `return (${expression})`)(final)),
-  }))
+  const audio = await page.evaluate(() => window.__audioDebug?.() ?? null)
+  const checks = scenario.expect.map((expression) => {
+    let passed = false
+    try {
+      passed = Boolean(new Function('d', 'a', `return (${expression})`)(final, audio))
+    } catch {
+      // An expression over `a` with no audio engine on the page.
+    }
+    return { expression, passed }
+  })
   const hud = await page.locator('.driving-hud-status').first().innerText().catch(() => null)
 
   return JSON.stringify(
@@ -288,6 +311,7 @@ async (page) => {
       log,
       hud: hud?.split('\n'),
       debug: final,
+      audio,
       consoleErrors,
     },
   )

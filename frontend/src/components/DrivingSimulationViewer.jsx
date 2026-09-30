@@ -3,15 +3,16 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Grid, OrbitControls, useGLTF } from '@react-three/drei'
 import { DoubleSide } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Gamepad2, Locate, Radar, RotateCcw } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Gamepad2, Locate, Radar, RotateCcw, VolumeX } from 'lucide-react'
 import { useT } from '../i18n'
 import { buildVehicleRig } from '../lib/vehicleRig'
 import { clamp } from '../lib/math'
-import { playDeviceSound } from '../lib/deviceAudio'
+import { getAudioEngine } from '../lib/audio/audioEngine'
 import { resolveCourseBounds } from '../lib/courseGoals'
 import { resolveVehicleProfile } from '../lib/vehicleProfile'
 import { RACK_MODEL_URL } from '../data/rackProfile'
 import { EQUIPMENT_MODEL_URL } from '../data/equipment'
+import { DRIVING_SOUNDS } from '../data/soundBank'
 import {
   CARGO_BOX_MODEL_URL,
   CARGO_BOX_STACK_MODEL_URL,
@@ -26,6 +27,7 @@ import { CAMERA_COMMANDS, CAMERA_VIEWS, cameraReducer, cameraShot, FREE_CAMERA_V
 import { cockpitSnapshot } from '../lib/driving/cockpitTelemetry'
 import { createKeyActiveTracker, mergeControls, neutralControls } from '../lib/driving/controls'
 import { createDashboardSource } from '../lib/driving/dashboardSource'
+import { createDrivingAudio } from '../lib/driving/drivingAudio'
 import { loadControllerConfig, subscribeToControllerConfig } from '../lib/driving/controllerStore'
 import { snapshotGamepads } from '../lib/driving/gamepadBrowser'
 import { createWheelSource } from '../lib/driving/wheelSource'
@@ -38,6 +40,7 @@ import { createTelemetryStore, TELEMETRY_INTERVAL } from '../lib/driving/telemet
 import { stepCamera } from '../lib/driving/stepCamera'
 import { useDrivingInput } from '../hooks/useDrivingInput'
 import { useDrivingSceneRefs } from '../hooks/useDrivingSceneRefs'
+import { useAudioSuspended } from '../hooks/useAudio'
 import { useTelemetry } from '../hooks/useTelemetry'
 import { PathBreadcrumbs } from './driving/PathBreadcrumbs'
 import { CheckpointMarker } from './driving/CheckpointMarker'
@@ -106,7 +109,7 @@ function publishCockpit(telemetry, core, course, { controls, switches, gauges, w
   )
 }
 
-function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, wheel, onSimEvent, onKeyActive, onCabChange, onViewCommand, cameraState, insetEnabled, insetFrameRef, camAdjustedRef }) {
+function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, wheel, audioRef, onSimEvent, onKeyActive, onCabChange, onViewCommand, cameraState, insetEnabled, insetFrameRef, camAdjustedRef }) {
   const { scene } = useGLTF(EQUIPMENT_MODEL_URL)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const { camera, gl } = useThree()
@@ -306,7 +309,7 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, w
       else onViewCommand(VIEW_COMMAND_ALIASES[command] || command)
     }
     for (const command of dashboard.drainCommands()) {
-      if (command === 'horn') playDeviceSound('horn')
+      if (command === 'horn') audioRef.current?.horn()
       else core.command(command)
     }
     const { alpha } = sim.loop.advance(rawDelta)
@@ -314,6 +317,8 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, w
 
     const events = core.drainEvents()
     events.forEach(onSimEvent)
+    // Sound follows the state the steps just left (lib/driving/drivingAudio.js).
+    audioRef.current?.update(core.state, dashboard.switches)
     sim.freshKeys().forEach(onKeyActive)
     const cab = sim.cabChange()
     if (cab) onCabChange(cab)
@@ -519,6 +524,22 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   })
   const { source: keyboard, pressed } = useDrivingInput()
   const [failInfo, setFailInfo] = useState(null)
+  const soundSuspended = useAudioSuspended()
+
+  // This attempt's sound. The samples are fetched here, when a driving step
+  // mounts, and nowhere earlier. Built in an effect because it starts loops
+  // on the shared audio engine, which the cleanup has to stop.
+  const audioRef = useRef(null)
+  useEffect(() => {
+    const engine = getAudioEngine()
+    engine.preload(DRIVING_SOUNDS)
+    const audio = createDrivingAudio(engine, { capacityKg: course.capacityKg })
+    audioRef.current = audio
+    return () => {
+      audioRef.current = null
+      audio.dispose()
+    }
+  }, [course.capacityKg])
 
   useEffect(() => {
     core.setProfile(profile)
@@ -565,11 +586,11 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   // from inside the frame loop, so they reach the page on the next tick.
   const emit = (event) => setTimeout(() => onEventRef.current?.(event), 0)
   const handleSimEvent = (event) => {
+    // The starter, the engine stopping and the interlock's refusal (which
+    // the cluster also shows: cockpitSnapshot's need*).
+    audioRef.current?.handleEvent(event)
     if (event.type === 'engine') {
       emit({ type: event.on ? 'engine-on' : 'engine-off' })
-    } else if (event.type === 'engine-blocked') {
-      // The cluster points at what is missing (cockpitSnapshot's need*).
-      playDeviceSound('denied')
     } else if (event.type === 'fail') {
       const info = profile.failMessages[event.reason] || { title: 'Attempt Failed', message: 'Reset the attempt and try again.' }
       setFailInfo({ reason: event.reason, ...info })
@@ -701,6 +722,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
             keyboard={keyboard}
             dashboard={dashboard}
             wheel={wheel}
+            audioRef={audioRef}
             onSimEvent={handleSimEvent}
             onKeyActive={handleKeyActive}
             onCabChange={handleCabChange}
@@ -729,6 +751,11 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
 
       <div className="driving-hud-bottom">
         {insetEnabled && <ProximityInsetFrame telemetry={telemetry} frameRef={insetFrameRef} />}
+        {soundSuspended && (
+          <button type="button" className="driving-reset-button driving-sound-prompt" onClick={() => getAudioEngine().resume()}>
+            <VolumeX size={14} aria-hidden="true" /> {t('driving.hud.enableSound')}
+          </button>
+        )}
         {hint && <p className="driving-hud-help">{hint}</p>}
         <OperatorDashboard telemetry={telemetry} dashboard={dashboard} capacityKg={course.capacityKg} keyLegend={profile.keyLegend} pressed={pressed} />
       </div>

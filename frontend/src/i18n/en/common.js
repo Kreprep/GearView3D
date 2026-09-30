@@ -15,6 +15,11 @@ export default {
   'common.notFound.title': 'Page not found',
   'common.notFound.body': 'The page you opened is not part of the current GearView3D training flow.',
   'common.notFound.action': 'Go to training',
+  // Volume and mute (components/AudioControl.jsx).
+  'common.audio.label': 'Sound',
+  'common.audio.mute': 'Mute sound',
+  'common.audio.unmute': 'Turn sound on',
+  'common.audio.volume': 'Volume',
   'common.desktopOnly.title': 'Open GearView3D on a computer',
   'common.desktopOnly.body':
     'The 3D training needs a keyboard and a bigger screen, so this screen is too small to use it.',

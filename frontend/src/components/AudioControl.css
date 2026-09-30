@@ -1,0 +1,55 @@
+/* Volume and mute. Two tones: `plate` sits on the operator dashboard's dark
+   ground beside its switches, `panel` on a light task panel. */
+
+.audio-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  --audio-control-ink: #475569;
+  --audio-control-border: #cbd5e1;
+  --audio-control-ground: #ffffff;
+  --audio-control-accent: #0891b2;
+}
+
+.audio-control-plate {
+  --audio-control-ink: #e2e8f0;
+  --audio-control-border: rgba(255, 255, 255, 0.16);
+  --audio-control-ground: #1e293b;
+  --audio-control-accent: var(--surface-deep-accent);
+}
+
+.audio-control-mute {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--audio-control-border);
+  background: var(--audio-control-ground);
+  color: var(--audio-control-ink);
+  cursor: pointer;
+}
+
+.audio-control-mute:hover {
+  border-color: var(--audio-control-accent);
+}
+
+.audio-control-mute:focus-visible,
+.audio-control-volume:focus-visible {
+  outline: 2px solid var(--audio-control-accent);
+  outline-offset: 1px;
+}
+
+.audio-control-mute.is-muted {
+  color: #f87171;
+}
+
+.audio-control-panel .audio-control-mute.is-muted {
+  color: #dc2626;
+}
+
+.audio-control-volume {
+  width: 72px;
+  accent-color: var(--audio-control-accent);
+  cursor: pointer;
+}

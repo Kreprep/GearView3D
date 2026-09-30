@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { engineOnDeviceEffects, resolveEffectLamps } from '../data/viewerHotspots'
-import { playDeviceSound, stopDeviceSound } from '../lib/deviceAudio'
+import { SOUND_BANK } from '../data/soundBank'
+import { getAudioEngine } from '../lib/audio/audioEngine'
 import { getHotspotDetails } from '../lib/api'
 import { preloadImages } from '../lib/imagePreload'
 import { isPhaseComplete, phaseStateFor, withPhaseState } from '../lib/walkAroundStep'
@@ -9,6 +10,11 @@ import { getStoredProgress } from '../lib/progressService'
 import { buildSimulationState, withStepComplete } from '../lib/simulationProgress'
 
 const ENGINE_START_DELAY_MS = 1500
+
+// The samples the device tests play, loaded up front so the first test is
+// heard on time.
+const DEVICE_SOUNDS = [...new Set(Object.values(engineOnDeviceEffects).map((effect) => effect.sound).filter(Boolean))]
+const NO_SOUND = () => {}
 
 function unique(items) {
   return [...new Set(items)]
@@ -26,9 +32,13 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
   const [activeScenarioId, setActiveScenarioId] = useState(null)
   const deviceEffectTimer = useRef(null)
   const engineStartTimer = useRef(null)
+  // Cuts off the device sound that is playing, if any.
+  const stopDeviceSound = useRef(NO_SOUND)
 
   useEffect(() => {
     if (!hasWalkAround) return
+
+    getAudioEngine().preload(DEVICE_SOUNDS)
 
     getHotspotDetails()
       .then((details) => {
@@ -41,8 +51,26 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
   useEffect(() => () => {
     clearTimeout(deviceEffectTimer.current)
     clearTimeout(engineStartTimer.current)
-    stopDeviceSound()
+    stopDeviceSound.current()
   }, [])
+
+  // One device sound at a time, from the same bank the driving simulation
+  // plays (data/soundBank.js): a new test cuts off the previous one.
+  const playDeviceSound = (name, duration) => {
+    stopDeviceSound.current()
+    const engine = getAudioEngine()
+    if (!SOUND_BANK[name]?.loop) {
+      stopDeviceSound.current = engine.playOneShot(name)
+      return
+    }
+    const loop = engine.createLoop(name)
+    loop.setGain(1)
+    const timer = setTimeout(loop.stop, duration)
+    stopDeviceSound.current = () => {
+      clearTimeout(timer)
+      loop.stop()
+    }
+  }
 
   const buildDetail = (id, fallback) => {
     const detail = partDetails[id] || {}
@@ -62,7 +90,7 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
     const hotspot = hotspots.find((entry) => entry.id === deviceId)
     clearTimeout(deviceEffectTimer.current)
     setActiveDeviceEffect({ ...effect, lamps: resolveEffectLamps(effect, hotspot) })
-    if (effect.sound) playDeviceSound(effect.sound)
+    if (effect.sound) playDeviceSound(effect.sound, effect.duration)
     deviceEffectTimer.current = setTimeout(() => setActiveDeviceEffect(null), effect.duration)
   }
 

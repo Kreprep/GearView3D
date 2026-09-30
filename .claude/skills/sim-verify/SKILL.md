@@ -56,6 +56,7 @@ limiter.
 | `overload` | Pallet Testing, Load Limits | lifting the 1,500 kg pallet fails and tips |
 | `rack-store` | Pallet Testing, Rack Storage | load set on the middle shelf is delivered |
 | `interlock` | Load Handling, Accelerate Course | E is refused without seatbelt and parking brake; the parking brake holds the truck against W |
+| `sound` | Load Handling, Accelerate Course | the samples load, the six loops run, and the denial tone, switch clicks, starter, horn and reverse beeper are asked for |
 
 Since Phase 4 the engine only starts through the pre-start interlock
 (seatbelt, parking brake, direction lever in N), and the parking brake holds
@@ -83,6 +84,13 @@ fields are listed in `core.debugSnapshot()` in
 to frame, so hold keys *until* a condition rather than for a fixed time. Don't
 approach a rack with a held W: it passes the rack-strike speed (0.3 units/s)
 quickly, so warp to the rack face instead.
+
+Expressions can also read `a`, the audio engine's `window.__audioDebug()`
+(`debugSnapshot()` in `frontend/src/lib/audio/audioEngine.js`): `state`, the
+`loaded` sample names, the open `loops` with the `gain` and `rate` each is
+heading for, and the one-shots `played`. The report includes it as `audio`.
+That shows which sounds were asked for. Whether they click, gap or are too
+loud is for the user to judge by ear.
 
 ## 3. Report
 

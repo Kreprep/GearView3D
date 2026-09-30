@@ -258,7 +258,9 @@ export const walkAroundViewerHotspots = [
 ]
 
 // Visual/audible reaction played on the model when an engine-on safety device is
-// tested. `mode: 'blink'` flashes the lamps, 'steady' holds them lit.
+// tested. `mode: 'blink'` flashes the lamps, 'steady' holds them lit. `sound`
+// names a sample in data/soundBank.js: a one-shot plays once, a loop (the
+// backup alarm) for as long as the effect lasts.
 //
 // Lamp positions are DERIVED from the matching hotspot above, so moving a hotspot
 // moves its lamp automatically - do not hardcode coordinates here. For paired
@@ -268,7 +270,7 @@ export const walkAroundViewerHotspots = [
 export const engineOnDeviceEffects = {
   ignition: {
     duration: 2400,
-    sound: 'engine-start',
+    sound: 'engineStart',
     color: '#4ade80',
     mode: 'blink',
     radius: 0.03,
@@ -308,8 +310,9 @@ export const engineOnDeviceEffects = {
     radius: 0.05,
   },
   'backup-alarm': {
-    duration: 2400,
-    sound: 'alarm',
+    // Two beeps of the reverse-beeper loop (one period is 1.01 s).
+    duration: 2000,
+    sound: 'reverseBeeper',
     color: '#ff3b30',
     mode: 'blink',
     radius: 0.045,

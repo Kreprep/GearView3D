@@ -87,6 +87,11 @@
 
 .reference-card,
 .lesson-bubble,
+.walkaround-audio {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .task-note {
   border: 1px solid #dbe3ef;
   border-radius: var(--radius-lg);

@@ -54,6 +54,7 @@ export default {
   'driving.hud.hint.engineOff': 'Para mag-start: ikabit ang seatbelt (B), i-set ang parking brake (Space), panatilihin ang lever sa N, tapos pindutin ang E o ipihit ang susi sa START. Bitawan ang parking brake (Space) para magmaneho.',
   'driving.hud.hint.interlock': 'Hindi pa aandar ang makina. Gawin muna ang mga may marka: nakakabit ang seatbelt, naka-set ang parking brake, nasa N ang direction lever.',
   'driving.hud.hint.look': 'I-drag ang eksena para tumingin sa paligid.',
+  'driving.hud.enableSound': 'I-click para buksan ang tunog',
 
   'driving.camera.label': 'View ng camera',
   'driving.camera.hint': 'Pindutin ang C para magpalit ng view; ang mga arrow key ang gumagalaw sa camera',

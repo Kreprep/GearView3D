@@ -17,6 +17,7 @@ import { useTelemetry } from '../../hooks/useTelemetry'
 import { KEY_POSITIONS } from '../../lib/driving/dashboardSource'
 import { GRIP_LABEL_KEYS } from '../../lib/driving/constants'
 import { DIRECTIONS } from '../../lib/driving/controls'
+import { AudioControl } from '../AudioControl'
 import './OperatorDashboard.css'
 
 // The operator's instrument cluster and controls (docs/revisions/
@@ -28,7 +29,7 @@ import './OperatorDashboard.css'
 //
 // Three panels: the key switch and direction lever on the left, the meter
 // and warning lamps in the middle, the cab switches and hydraulic levers on
-// the right. Lamps light only with the key on, as a real cluster's do. The
+// the right, with the volume and mute. Lamps light only with the key on, as a real cluster's do. The
 // oil-pressure and charge lamps are lit with the key on and the engine
 // stopped, which is the bulb check an operator does before cranking.
 //
@@ -260,6 +261,7 @@ export function OperatorDashboard({ telemetry, dashboard, capacityKg, keyLegend,
         <div className="operator-levers" role="group" aria-label={t('driving.dash.hydraulics')}>
           <LeverIndicator label={t('driving.dash.liftLever')} value={liftInput} />
           <LeverIndicator label={t('driving.dash.tiltLever')} value={-tiltInput} />
+          <AudioControl tone="plate" />
           <button type="button" className="operator-switch operator-drawer-toggle" aria-expanded={drawerOpen} onClick={() => setDrawerOpen((open) => !open)}>
             {drawerOpen ? <ChevronDown size={13} aria-hidden="true" /> : <ChevronUp size={13} aria-hidden="true" />} {t('driving.dash.controls')}
           </button>
