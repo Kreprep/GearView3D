@@ -26,6 +26,7 @@ import { moduleObjectives, nextModuleRoute } from './lib/moduleContent'
 import { routes } from './lib/router'
 import { buildSimulationState, isStepComplete, withStepComplete } from './lib/simulationProgress'
 import { equipmentUsageModules } from './lib/trainingData'
+import { can } from './data/permissions.js'
 import './GenericModulePage.css'
 
 const NEXT_MODULE_DELAY_MS = 1400
@@ -50,7 +51,9 @@ const ENGINE_ON_CAMERA = { position: [1.05, 0.82, 0.95], fov: 46, minDistance: 0
 function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
   const t = useT()
   const language = useLanguage()
-  const isAdmin = user?.role === 'ADMIN'
+  // The viewers' authoring tools (free camera, colliders) are for whoever
+  // edits the content, so they follow content.edit rather than a role.
+  const showAuthoringTools = can(user, 'content.edit')
   // Forklift's modules keep their static definitions as the fallback record
   // (objectives, fullTitle); admin-created modules fall back to a blank
   // fullTitle deliberately - useModuleRecord only overrides a field when the
@@ -229,7 +232,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
           deviceEffect={walkAroundController.activeDeviceEffect}
           defectOverlays={walkAroundDefectOverlays}
           cameraPreset={step.walkAround?.phase === 'engine-on' ? ENGINE_ON_CAMERA : undefined}
-          isAdmin={isAdmin}
+          isAdmin={showAuthoringTools}
           onHotspotSelect={(hotspot) => handleWalkAroundHotspot(step, hotspot)}
           onResetView={() => walkAroundController.setFocusedHotspotId(null)}
         />
@@ -257,7 +260,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
             profile={vehicleProfile}
             course={course}
             onEvent={handleDrivingEvent(currentStep)}
-            isAdmin={isAdmin}
+            isAdmin={showAuthoringTools}
           />
         </div>
       )

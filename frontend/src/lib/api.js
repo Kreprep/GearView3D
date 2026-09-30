@@ -68,7 +68,11 @@ async function request(path, { method = 'GET', body } = {}) {
       authToken = null
       window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
     }
-    throw new Error(data?.error || `Request failed (${response.status})`)
+    // The status rides on the error for callers that act on one: 403 is "not
+    // allowed", 409 on a progress save is "reset since you last read it".
+    const error = new Error(data?.error || `Request failed (${response.status})`)
+    error.status = response.status
+    throw error
   }
 
   return data
@@ -155,12 +159,15 @@ export async function getModuleCourses(moduleSlug) {
 
 // --- Progress (per signed-in user) ---
 
+// The document plus the `revision` it is at, or null when nothing is saved.
 export async function getProgress() {
   return request('/progress')
 }
 
-export async function saveProgress(progress) {
-  return request('/progress', { method: 'PUT', body: progress })
+// `baseRevision` is the revision the document was read at. The server refuses
+// the write with a 409 once the learner's progress has been reset since then.
+export async function saveProgress(progress, baseRevision) {
+  return request('/progress', { method: 'PUT', body: { ...progress, baseRevision } })
 }
 
 // --- Admin ---
@@ -240,6 +247,12 @@ export async function adminUpdateUser(userId, payload) {
 
 export async function adminDeleteUser(userId) {
   return request(`/admin/users/${encodeURIComponent(userId)}`, { method: 'DELETE' })
+}
+
+// Clears a learner's saved progress (progress.reset). An instructor may only
+// reset a trainee.
+export async function adminResetUserProgress(userId) {
+  return request(`/admin/users/${encodeURIComponent(userId)}/progress/reset`, { method: 'POST' })
 }
 
 // --- Admin: driving course editor ---

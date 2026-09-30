@@ -14,6 +14,7 @@ import {
   resetStoredProgress,
 } from './lib/progressService'
 import { goTo, legacyRedirect, normalizePath, routes } from './lib/router'
+import { canOpenDashboard } from './data/permissions.js'
 import { useMediaQuery } from './hooks/useMediaQuery'
 import DesktopOnlyNotice, { DESKTOP_MEDIA_QUERY } from './components/DesktopOnlyNotice'
 import './App.css'
@@ -206,7 +207,9 @@ function App() {
   }
 
   if (path === routes.admin || path.startsWith('/admin/')) {
-    if (user?.role !== 'ADMIN') {
+    // Whoever holds a permission with a screen there: admins and instructors.
+    // What each sees inside is AdminDashboard's business, and the API's.
+    if (!canOpenDashboard(user)) {
       return <NotFoundPage user={user} onLogout={handleLogout} onNavigate={navigate} />
     }
 

@@ -21,19 +21,28 @@ function cancelServerPush() {
   serverPushTimer = null
 }
 
+// The server copy carries a `revision` that only a reset changes, and a push
+// says which revision it was based on. A 409 means an instructor reset this
+// learner since that read, and the local copy is what they reset: it is
+// dropped and the reset document read back, rather than pushed over it.
 function scheduleServerPush(progress) {
   cancelServerPush()
   serverPushTimer = setTimeout(() => {
     serverPushTimer = null
-    pushServerProgress(progress).catch(() => {
-      // Offline or logged out; local copy is still saved.
+    const { revision = 0, ...document } = progress
+    pushServerProgress(document, revision).catch((error) => {
+      if (error.status === 409) {
+        hydrateProgressFromServer().catch(() => {})
+      }
+      // Anything else: offline or logged out; the local copy is still saved.
     })
   }, SERVER_PUSH_DELAY_MS)
 }
 
-// Called after login/session restore: replaces the local copy with the
-// signed-in user's server copy (if any) so progress follows the account,
-// not the browser.
+// Called after login/session restore, after a quiz is graded and after a push
+// is refused as stale: replaces the local copy with the signed-in user's server
+// copy (if any), `revision` included, so progress follows the account, not the
+// browser.
 export async function hydrateProgressFromServer() {
   const serverProgress = await fetchServerProgress()
   cancelServerPush()
@@ -83,6 +92,9 @@ function checklistTotal(moduleSlug) {
 function emptyProgress() {
   return {
     version: 1,
+    // The server revision this copy was read at (see scheduleServerPush); 0
+    // until the server has a snapshot.
+    revision: 0,
     checklists: {},
     parts: {
       viewedPartIds: [],
