@@ -1,6 +1,6 @@
 ---
 name: sim-verify
-description: Drive the GearView3D forklift driving simulation in the real browser app and report what it did. Starts the dev servers if needed, signs in as the demo trainee (or the admin's Module Editor preview when the step is still locked), opens a driving step, runs a named scenario (accelerate, brake, park, cone-fail, pallet-pickup, pallet-deliver, overload, rack-store, smoke, interlock, sound, or a sign-* safety-sign scenario) through window.__drivingDebugSet plus real key presses, and reports window.__drivingDebug, the HUD and console errors. Use this whenever a change touches the driving sim (lib/driving/*, DrivingSimulationViewer, controls, telemetry, the safety rules and signs, the vehicle profile, courses), to re-verify built-in courses after a post-defense phase, or whenever someone asks to check, smoke-test or confirm the driving/forklift simulation still works in the browser, even if they don't name the skill.
+description: Drive the GearView3D forklift driving simulation in the real browser app and report what it did. Starts the dev servers if needed, signs in as the demo trainee (or the admin's Module Editor preview when the step is still locked), opens a driving step, runs a named scenario (accelerate, brake, park, cone-fail, pallet-pickup, pallet-deliver, overload, rack-store, pallet-impact, load-drop, tip-over, smoke, interlock, sound, or a sign-* safety-sign scenario) through window.__drivingDebugSet plus real key presses, and reports window.__drivingDebug, the HUD and console errors. Use this whenever a change touches the driving sim (lib/driving/*, lib/physics/*, DrivingSimulationViewer, controls, telemetry, the safety rules and signs, the vehicle profile, courses), to re-verify built-in courses after a post-defense phase, or whenever someone asks to check, smoke-test or confirm the driving/forklift simulation still works in the browser, even if they don't name the skill.
 ---
 
 # sim-verify
@@ -9,8 +9,10 @@ Checks the driving simulation end to end in the running app. The headless
 tests (`npm test` in `frontend/`, especially
 `src/lib/driving/simCore.characterization.test.js`) prove the sim logic; this
 skill proves the wiring around it: the viewer, keyboard input, the fixed-step
-loop in `useFrame`, `syncView`, the HUD telemetry and the debug hooks. Run both
-after a sim change.
+loop in `useFrame`, the physics engine loading in the browser, `syncView`, the
+HUD telemetry and the debug hooks. Run both after a sim change. The headless
+counterparts of the physics scenarios are in
+`src/lib/driving/physicsScenarios.test.js`.
 
 ## 1. Servers
 
@@ -51,19 +53,22 @@ limiter.
 | `brake` | Load Handling, Accelerate and Brake | S brakes to a stop inside the stop zone |
 | `cone-fail` | Post-Operation, Secure Parking | cone collision fails the attempt |
 | `park` | Post-Operation, Secure Parking | bay + stop + N + engine off + parking brake latches parked |
-| `pallet-pickup` | Pallet Testing, Precision Carry | forks enter, lift, secure grip, tilt back |
-| `pallet-deliver` | Pallet Testing, Precision Carry | lower, tilt forward, back away: delivered |
-| `overload` | Pallet Testing, Load Limits | lifting the 1,500 kg pallet fails and tips |
-| `rack-store` | Pallet Testing, Rack Storage | load set on the middle shelf is delivered |
+| `pallet-pickup` | Pallet Testing, Precision Carry | the forks lift the pallet off the floor: carried, on the forks, secure grip, mast back |
+| `pallet-deliver` | Pallet Testing, Precision Carry | level the mast, lower, back out: the pallet rests on the floor of the drop zone, delivered |
+| `overload` | Pallet Testing, Load Limits | lifting the 1,500 kg pallet fails as an overload |
+| `rack-store` | Pallet Testing, Rack Storage | a load lowered onto the middle shelf rests at shelf height and is delivered once the forks are out |
+| `pallet-impact` | Load Handling, Pallet Pickup & Placement | forks too high for the pockets, driven at the pallet: fails as a pallet impact, and the pallet is shoved |
+| `load-drop` | Pallet Testing, Precision Carry | forks two thirds in, full brake from speed: the load slides off, the load-shifting sign comes up, the attempt fails as a lost load |
+| `tip-over` | Load Handling, Pallet Pickup & Placement | a load carried high through a swerve: tip-risk sign, then the truck rolls onto its right side |
 | `interlock` | Load Handling, Accelerate Course | E is refused without seatbelt and parking brake; the parking brake holds the truck against W |
 | `sound` | Load Handling, Accelerate Course | the samples load, the six loops run, and the denial tone, switch clicks, starter, horn and reverse beeper are asked for |
 | `sign-interlock` | Load Handling, Accelerate Course | a refused start raises the start-interlock sign; W against the parking brake raises parking-brake-on |
 | `sign-obstacle` | Post-Operation, Secure Parking | driving at a cone raises obstacle-ahead and steps it up to danger before the strike |
 | `sign-overspeed` | Load Handling, Left and Right Turning | full throttle passes the default 8 km/h limit; the sign clears after stopping |
 | `sign-load` | Pallet Testing, Precision Carry | driving off with the forks high and the mast upright raises forks-high-travel and mast-not-back, two signs stacked |
-| `sign-overload` | Pallet Testing, Load Limits | forks into the 1,500 kg pallet raise the overload danger sign before anything is lifted |
+| `sign-overload` | Pallet Testing, Load Limits | forks in the 1,500 kg pallet raise the overload danger sign before anything is lifted |
 | `sign-reverse` | Load Handling, Accelerate Course | reversing in first-person raises look-direction; looking behind (arrow down) clears it |
-| `sign-release` | Pallet Testing, Precision Carry | a load resting in the drop zone raises the release-load hint, which is not counted and clears once the load is set down |
+| `sign-release` | Pallet Testing, Precision Carry | a load lowered into the drop zone with the mast still back raises the release-load hint, which is not counted and clears once the mast is level and the load is set down |
 | `sign-record` | Load Handling, Accelerate Course | completing the step saves attemptStats with the learner's progress and shows the summary (trainee mode only) |
 
 Since Phase 4 the engine only starts through the pre-start interlock
@@ -81,6 +86,19 @@ scenario sets `gamepads: true`, so the keyboard scenarios drive the same on
 any machine. For a hardware check, have the user drive in the same window
 and read `__drivingDebug` back.
 
+Since Phase 7 pallets and cones are physics bodies (Rapier), and the pallet
+scenarios changed with them. A held W cannot creep the forks into a pallet,
+and striking one at speed is a fail, so they warp the truck to where its
+lowered forks are already in the pockets (`FORKS_IN` in the script: the
+pallet's near face, less 0.3105) and use real keys from there. A load on the
+forks goes with a warp. `__drivingDebug` gained `palletPositions`,
+`palletOnForks`, `palletSlipSpeeds`, `conesHit`, `load` (`{ kg, centre,
+deratedKg, overCapacity }`, the capacity plate's reading), `stability`
+(`{ longitudinal, lateral }` margins), `limits` (what the forks are up
+against) and `tipAxis`; `palletRisks` and `palletInsertDepths` are gone. A
+hold can take several keys (`hold: ['w', 'a']`). The `sound` scenario expects
+seven loops (the fork scrape was added).
+
 Scenarios warp the truck with `__drivingDebugSet` to skip the long drives and
 then use real key presses for the part being checked. So they exercise the
 keyboard source, the telemetry-backed HUD and events, not just state writes. To
@@ -91,7 +109,8 @@ fields are listed in `core.debugSnapshot()` in
 `frontend/src/lib/driving/simCore.js`). Timing in the browser varies from frame
 to frame, so hold keys *until* a condition rather than for a fixed time. Don't
 approach a rack with a held W: it passes the rack-strike speed (0.3 units/s)
-quickly, so warp to the rack face instead.
+quickly, so warp to the rack face instead (z 14.369 for the stock rack at
+z 15), with the load already raised above the shelf.
 
 Since Phase 6 `__drivingDebug` also carries the safety signs
 (`lib/driving/safetyMonitor.js`): `signs` (the ones shown, `[{ id, severity,
