@@ -10,6 +10,7 @@ import { useT } from './i18n'
 import { getEquipment, getHotspotCategories, getHotspots, getQuizQuestions } from './lib/api'
 import { getPartsProgress } from './lib/progressService'
 import { preloadImages } from './lib/imagePreload'
+import { can } from './data/permissions.js'
 import './PartsIdentificationPage.css'
 
 // Parts Identification. It renders the `inParts` hotspots: the category list
@@ -62,7 +63,9 @@ function buildDetail(hotspot) {
 
 function PartsIdentificationPage({ user, onBack }) {
   const t = useT()
-  const isAdmin = user?.role === 'ADMIN'
+  // The viewers' authoring tools (free camera, colliders) are for whoever
+  // edits the content, so they follow content.edit rather than a role.
+  const showAuthoringTools = can(user, 'content.edit')
   const [equipment, setEquipment] = useState(null)
   const [hotspots, setHotspots] = useState([])
   const [categories, setCategories] = useState([])
@@ -140,7 +143,7 @@ function PartsIdentificationPage({ user, onBack }) {
         selectedHotspotId={selectedPartId}
         onHotspotSelect={selectPart}
         onResetView={() => setSelectedPartId(null)}
-        isAdmin={isAdmin}
+        isAdmin={showAuthoringTools}
       />
     </div>
   )

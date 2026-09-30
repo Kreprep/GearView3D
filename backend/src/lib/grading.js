@@ -6,7 +6,7 @@
 // the one the reports are built from. Grading in the browser would mean both
 // the answer key and the score were under the learner's control.
 import { randomUUID } from 'node:crypto'
-import { prisma } from './prisma.js'
+import { mergeProgress } from './progress.js'
 import { migrateParts } from '../../../frontend/src/lib/migrateParts.js'
 
 export { migrateParts }
@@ -53,18 +53,11 @@ export function buildAttempt({ score, total, percentage }) {
 // attempt is merged into whatever is currently stored rather than replacing it.
 // The client re-reads its copy from the server after submitting, so its next
 // debounced push carries the attempt instead of overwriting it.
+//
+// mergeProgress() leaves the snapshot's revision alone: only a reset bumps it,
+// and a bump here would refuse the learner's next push (lib/progress.js).
 export async function appendAttempt(userId, attempt, place) {
-  const snapshot = await prisma.progressSnapshot.findUnique({ where: { userId } })
-  const data = snapshot?.data || { version: 1, checklists: {}, parts: { viewedPartIds: [], quizAttempts: [] }, quizzes: {}, simulations: {} }
-  const next = place(data, attempt)
-
-  await prisma.progressSnapshot.upsert({
-    where: { userId },
-    update: { data: next },
-    create: { userId, data: next },
-  })
-
-  return next
+  return mergeProgress(userId, (data) => place(data, attempt))
 }
 
 export function intoModuleQuiz(moduleSlug) {

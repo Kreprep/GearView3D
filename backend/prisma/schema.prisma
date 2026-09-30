@@ -7,9 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// What each role may do is frontend/src/data/permissions.js (ROLE_PERMISSIONS),
+// which the API and the dashboard both read. INSTRUCTOR is last because it was
+// added to the type later (ALTER TYPE ... ADD VALUE appends).
 enum Role {
   ADMIN
   TRAINEE
+  INSTRUCTOR
 }
 
 model User {
@@ -223,10 +227,18 @@ model QuizQuestion {
 // localStorage (checklists / parts / quizzes / simulations). Stored as a
 // snapshot instead of normalized tables so the training flow can evolve
 // without schema migrations.
+//
+// `revision` counts resets, and nothing else bumps it. The learner's browser
+// keeps its own copy of the document and pushes it whole, so after an
+// instructor resets someone who is signed in, that copy would be written
+// straight back. The client therefore sends the revision it last read with
+// every write and the API refuses one that is older (src/lib/progress.js).
+// Quiz grading also writes `data`, and must leave `revision` alone.
 model ProgressSnapshot {
   id        String   @id @default(cuid())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String   @unique
   data      Json
+  revision  Int      @default(0)
   updatedAt DateTime @updatedAt
 }

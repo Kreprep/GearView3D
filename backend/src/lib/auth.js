@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { prisma } from './prisma.js'
+import { canAny } from '../../../frontend/src/data/permissions.js'
 
 const TOKEN_LIFETIME = '7d'
 
@@ -58,9 +59,32 @@ export async function requireAuth(req, res, next) {
   next()
 }
 
-export function requireAdmin(req, res, next) {
-  if (req.user?.role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Admin access required' })
+// Gates a route on a permission (frontend/src/data/permissions.js), after
+// requireAuth. `req.user` is the row requireAuth just read, so a role changed
+// since the token was signed is judged as it is now, not as the token says.
+//
+// A refusal is a 403, never a 401: the client signs the user out on any 401
+// (lib/api.js), and someone who may not do this is still signed in.
+//
+// The permissions are kept on the middleware so the route tests can read what
+// each route asks for, and fail on a route that asks for nothing.
+function permissionGuard(permissions) {
+  function guard(req, res, next) {
+    if (!canAny(req.user, permissions)) {
+      return res.status(403).json({ error: 'You do not have permission to do this' })
+    }
+    next()
   }
-  next()
+  guard.permissions = permissions
+  return guard
+}
+
+export function requirePermission(permission) {
+  return permissionGuard([permission])
+}
+
+// For a route that serves several screens: holding any one of them is enough
+// to call it, and the handler decides what each permission gets back.
+export function requireAnyPermission(permissions) {
+  return permissionGuard(permissions)
 }

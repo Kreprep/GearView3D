@@ -28,6 +28,12 @@ const demoUsers = [
     role: 'ADMIN',
   },
   {
+    email: 'instructor@mail.com',
+    password: 'instructor123',
+    fullName: 'Sample Instructor',
+    role: 'INSTRUCTOR',
+  },
+  {
     email: 'trainee@mail.com',
     password: 'trainee123',
     fullName: 'Sample Trainee',
@@ -39,6 +45,7 @@ async function seedUsers() {
   // SEED_DEMO_USERS gates the known-password demo accounts. Local dev keeps
   // them on by default (.env.example); production (docker-compose.yml) sets
   // it to false so admin@mail.com/admin123 doesn't come back on every boot.
+  // Create-if-missing: an existing account, its role included, is left as is.
   if (process.env.SEED_DEMO_USERS === 'false') {
     console.log('SEED_DEMO_USERS=false - skipping demo user seed')
     return

@@ -1,7 +1,15 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma.js'
-import { publicUser, requireAdmin, requireAuth } from '../lib/auth.js'
+import { publicUser, requireAnyPermission, requireAuth, requirePermission } from '../lib/auth.js'
+import { resetProgress } from '../lib/progress.js'
+import {
+  can,
+  canActOnRole,
+  DASHBOARD_PERMISSIONS,
+  ROLES,
+  rolesWithinReach,
+} from '../../../frontend/src/data/permissions.js'
 import { buildAdminProgressReport } from '../lib/progressSummary.js'
 import { slugify, uniqueSlug } from '../lib/slug.js'
 import { EQUIPMENT_ID, findEquipment } from '../lib/equipment.js'
@@ -25,7 +33,16 @@ import {
 
 const router = Router()
 
-router.use(requireAuth, requireAdmin)
+// Everyone here is signed in; what they may do is decided per route, by the
+// guard each one names. There is no blanket role check: a route added without
+// a guard fails test/adminPermissions.test.js.
+router.use(requireAuth)
+
+const canOpenDashboard = requireAnyPermission(DASHBOARD_PERMISSIONS)
+const canEditContent = requirePermission('content.edit')
+const canEditEquipment = requirePermission('equipment.edit')
+const canManageUsers = requirePermission('users.manage')
+const canResetProgress = requirePermission('progress.reset')
 
 // Update payloads arrive as whole objects from the dashboard; keep only the
 // columns each model actually owns.
@@ -62,7 +79,13 @@ function normalizeOptions(options = []) {
   return (Array.isArray(options) ? options : []).filter((option) => typeof option === 'string' && option)
 }
 
-router.get('/content', async (req, res) => {
+// Everything the dashboard opens with, for whoever may open it. What comes
+// back depends on the caller: the answer keys need content.edit, the accounts
+// users.view and the scores progress.view, and the last two only ever cover
+// the roles within the caller's reach (an instructor's is trainees).
+router.get('/content', canOpenDashboard, async (req, res) => {
+  const reach = rolesWithinReach(req.user)
+
   const [
     equipment,
     modules,
@@ -77,9 +100,15 @@ router.get('/content', async (req, res) => {
     prisma.module.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.hotspotCategory.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.checklistItem.findMany({ orderBy: [{ moduleId: 'asc' }, { sortOrder: 'asc' }] }),
-    prisma.quizQuestion.findMany({ orderBy: [{ context: 'asc' }, { sortOrder: 'asc' }] }),
-    prisma.user.findMany({ orderBy: { createdAt: 'asc' } }),
-    prisma.progressSnapshot.findMany({ include: { user: true } }),
+    can(req.user, 'content.edit')
+      ? prisma.quizQuestion.findMany({ orderBy: [{ context: 'asc' }, { sortOrder: 'asc' }] })
+      : [],
+    can(req.user, 'users.view')
+      ? prisma.user.findMany({ where: { role: { in: reach } }, orderBy: { createdAt: 'asc' } })
+      : [],
+    can(req.user, 'progress.view')
+      ? prisma.progressSnapshot.findMany({ where: { user: { role: { in: reach } } }, include: { user: true } })
+      : [],
     prisma.hotspot.count({ where: { published: true, inParts: true } }),
   ])
 
@@ -119,12 +148,12 @@ router.get('/content', async (req, res) => {
 // keep seeing the published columns until Publish, and a `builtIn` row can be
 // reset to its baseline in frontend/src/data/hotspotDefaults.js.
 
-router.get('/hotspots', async (req, res) => {
+router.get('/hotspots', canEditContent, async (req, res) => {
   const rows = await prisma.hotspot.findMany({ orderBy: { sortOrder: 'asc' } })
   res.json({ hotspots: rows.map(adminHotspot) })
 })
 
-router.post('/hotspots', async (req, res) => {
+router.post('/hotspots', canEditContent, async (req, res) => {
   const payload = req.body || {}
   if (!payload.label?.trim()) {
     return res.status(400).json({ error: 'Hotspot label is required' })
@@ -177,7 +206,7 @@ router.post('/hotspots', async (req, res) => {
 
 // Saves an edit as a draft; learners keep seeing the published position/text
 // until Publish.
-router.put('/hotspots/:id', async (req, res) => {
+router.put('/hotspots/:id', canEditContent, async (req, res) => {
   const row = await prisma.hotspot.findUnique({ where: { id: req.params.id } })
   if (!row) return res.status(404).json({ error: 'Hotspot not found' })
 
@@ -192,7 +221,7 @@ router.put('/hotspots/:id', async (req, res) => {
   res.json({ hotspot: adminHotspot(hotspot) })
 })
 
-router.post('/hotspots/:id/publish', async (req, res) => {
+router.post('/hotspots/:id/publish', canEditContent, async (req, res) => {
   const row = await prisma.hotspot.findUnique({ where: { id: req.params.id } })
   if (!row) return res.status(404).json({ error: 'Hotspot not found' })
   if (!row.draft) return res.status(400).json({ error: 'There is no draft to publish' })
@@ -204,7 +233,7 @@ router.post('/hotspots/:id/publish', async (req, res) => {
   res.json({ hotspot: adminHotspot(hotspot) })
 })
 
-router.post('/hotspots/:id/revert', async (req, res) => {
+router.post('/hotspots/:id/revert', canEditContent, async (req, res) => {
   const hotspot = await prisma.hotspot.update({
     where: { id: req.params.id },
     data: { draft: null },
@@ -213,7 +242,7 @@ router.post('/hotspots/:id/revert', async (req, res) => {
 })
 
 // Built-in hotspots only: restores the seeded content and clears any draft.
-router.post('/hotspots/:id/reset', async (req, res) => {
+router.post('/hotspots/:id/reset', canEditContent, async (req, res) => {
   const row = await prisma.hotspot.findUnique({ where: { id: req.params.id } })
   if (!row) return res.status(404).json({ error: 'Hotspot not found' })
 
@@ -230,7 +259,7 @@ router.post('/hotspots/:id/reset', async (req, res) => {
 })
 
 // Whole-list reorder; ids not in the list are left alone.
-router.post('/hotspots/reorder', async (req, res) => {
+router.post('/hotspots/reorder', canEditContent, async (req, res) => {
   const { ids } = req.body || {}
   if (!Array.isArray(ids)) {
     return res.status(400).json({ error: 'ids is required' })
@@ -248,14 +277,14 @@ router.post('/hotspots/reorder', async (req, res) => {
   res.json({ hotspots: rows.map(adminHotspot) })
 })
 
-router.delete('/hotspots/:id', async (req, res) => {
+router.delete('/hotspots/:id', canEditContent, async (req, res) => {
   await prisma.hotspot.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })
 
 // Category rows are a short list of labels with no learner-visible body text,
 // so they save immediately rather than through a draft.
-router.post('/hotspot-categories', async (req, res) => {
+router.post('/hotspot-categories', canEditContent, async (req, res) => {
   const payload = req.body || {}
   if (!payload.label) {
     return res.status(400).json({ error: 'Category label is required' })
@@ -272,7 +301,7 @@ router.post('/hotspot-categories', async (req, res) => {
   res.json({ category })
 })
 
-router.patch('/hotspot-categories/:id', async (req, res) => {
+router.patch('/hotspot-categories/:id', canEditContent, async (req, res) => {
   const category = await prisma.hotspotCategory.update({
     where: { id: req.params.id },
     data: pick(req.body, hotspotCategoryFields),
@@ -280,7 +309,7 @@ router.patch('/hotspot-categories/:id', async (req, res) => {
   res.json({ category })
 })
 
-router.delete('/hotspot-categories/:id', async (req, res) => {
+router.delete('/hotspot-categories/:id', canEditContent, async (req, res) => {
   const inUse = await prisma.hotspot.count({ where: { category: req.params.id } })
   if (inUse) {
     return res.status(400).json({ error: `${inUse} hotspot(s) still use this category` })
@@ -291,7 +320,7 @@ router.delete('/hotspot-categories/:id', async (req, res) => {
 })
 
 // The one Equipment row: title, hub artwork, hub copy and driving overrides.
-router.patch('/equipment', async (req, res) => {
+router.patch('/equipment', canEditEquipment, async (req, res) => {
   const data = pick(req.body, equipmentFields)
 
   // Only overrides are stored: a key an admin cleared is dropped so the coded
@@ -322,7 +351,7 @@ router.patch('/equipment', async (req, res) => {
 
 // A module created here starts with one briefing step, so the Module Editor
 // (and the learner page) has something to show instead of an empty shell.
-router.post('/modules', async (req, res) => {
+router.post('/modules', canEditContent, async (req, res) => {
   const payload = req.body || {}
   const title = String(payload.title || '').trim()
 
@@ -369,7 +398,7 @@ router.post('/modules', async (req, res) => {
 
 // Whole-list reorder; ids not in the list are left alone. Mirrors
 // /courses/reorder.
-router.post('/modules/reorder', async (req, res) => {
+router.post('/modules/reorder', canEditContent, async (req, res) => {
   const { ids } = req.body || {}
   if (!Array.isArray(ids)) {
     return res.status(400).json({ error: 'ids is required' })
@@ -387,7 +416,7 @@ router.post('/modules/reorder', async (req, res) => {
   res.json({ modules })
 })
 
-router.patch('/modules/:id', async (req, res) => {
+router.patch('/modules/:id', canEditContent, async (req, res) => {
   const module = await prisma.module.update({
     where: { id: Number(req.params.id) },
     data: pick(req.body, moduleFields),
@@ -397,7 +426,7 @@ router.patch('/modules/:id', async (req, res) => {
 
 // ChecklistItem and QuizQuestion cascade with the FK; Course rows reference the
 // module by slug rather than by relation, so they are removed here.
-router.delete('/modules/:id', async (req, res) => {
+router.delete('/modules/:id', canEditContent, async (req, res) => {
   const module = await prisma.module.findUnique({ where: { id: Number(req.params.id) } })
   if (!module) return res.status(404).json({ error: 'Record not found' })
 
@@ -407,16 +436,23 @@ router.delete('/modules/:id', async (req, res) => {
 })
 
 // --- Users ------------------------------------------------------------------
-// Learner/admin accounts save immediately, no draft/publish - there's nothing
-// for a learner to see ahead of time, just an account that works or doesn't.
+// Accounts save immediately, no draft/publish - there's nothing for a learner
+// to see ahead of time, just an account that works or doesn't.
+//
+// Creating, editing and deleting one is users.manage, which only an admin
+// holds. An instructor sees the list (GET /content) and can reset a trainee's
+// progress, below, and nothing else.
 
-router.post('/users', async (req, res) => {
+router.post('/users', canManageUsers, async (req, res) => {
   const payload = req.body || {}
   const email = String(payload.email || '').trim().toLowerCase()
-  const role = payload.role === 'ADMIN' ? 'ADMIN' : 'TRAINEE'
+  const role = payload.role ?? 'TRAINEE'
 
   if (!email || !payload.fullName?.trim() || !payload.password) {
     return res.status(400).json({ error: 'Email, full name, and password are required' })
+  }
+  if (!ROLES.includes(role)) {
+    return res.status(400).json({ error: 'Unknown role' })
   }
   if (payload.password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' })
@@ -437,7 +473,7 @@ router.post('/users', async (req, res) => {
 })
 
 // `password` is optional: omit it to leave the account's password unchanged.
-router.patch('/users/:id', async (req, res) => {
+router.patch('/users/:id', canManageUsers, async (req, res) => {
   const payload = req.body || {}
   const data = {}
 
@@ -455,11 +491,13 @@ router.patch('/users/:id', async (req, res) => {
     data.email = email
   }
   if (payload.role !== undefined) {
-    const role = payload.role === 'ADMIN' ? 'ADMIN' : 'TRAINEE'
-    if (req.params.id === req.user.id && role !== 'ADMIN') {
+    if (!ROLES.includes(payload.role)) {
+      return res.status(400).json({ error: 'Unknown role' })
+    }
+    if (req.params.id === req.user.id && payload.role !== req.user.role) {
       return res.status(400).json({ error: 'You cannot change your own role' })
     }
-    data.role = role
+    data.role = payload.role
   }
   if (payload.password) {
     if (payload.password.length < 8) {
@@ -474,7 +512,7 @@ router.patch('/users/:id', async (req, res) => {
 
 // An admin cannot delete their own account - the dashboard they're using to
 // do it would disappear out from under them.
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/:id', canManageUsers, async (req, res) => {
   if (req.params.id === req.user.id) {
     return res.status(400).json({ error: 'You cannot delete your own account' })
   }
@@ -483,7 +521,27 @@ router.delete('/users/:id', async (req, res) => {
   res.json({ deleted: true })
 })
 
-router.post('/checklist-items', async (req, res) => {
+// Clears what a learner has saved, so they start the training again. The
+// account is untouched, and so are skill sign-offs (Phase 9): those are an
+// instructor's judgement with their own trail, in their own table, not part of
+// the progress document.
+//
+// The target has to be within the caller's reach: an instructor resets
+// trainees, never an admin or another instructor. The reset bumps the
+// snapshot's revision, which is what stops a browser the learner is still
+// signed in on from writing its copy straight back (lib/progress.js).
+router.post('/users/:id/progress/reset', canResetProgress, async (req, res) => {
+  const target = await prisma.user.findUnique({ where: { id: req.params.id } })
+  if (!target) return res.status(404).json({ error: 'Record not found' })
+  if (!canActOnRole(req.user, target.role)) {
+    return res.status(403).json({ error: 'You do not have permission to reset this account' })
+  }
+
+  const snapshot = await resetProgress(target.id)
+  res.json({ reset: true, revision: snapshot.revision })
+})
+
+router.post('/checklist-items', canEditContent, async (req, res) => {
   const payload = req.body || {}
   const module = payload.moduleId
     ? await prisma.module.findUnique({ where: { id: Number(payload.moduleId) } })
@@ -508,7 +566,7 @@ router.post('/checklist-items', async (req, res) => {
   res.json({ item })
 })
 
-router.patch('/checklist-items/:id', async (req, res) => {
+router.patch('/checklist-items/:id', canEditContent, async (req, res) => {
   const item = await prisma.checklistItem.update({
     where: { id: req.params.id },
     data: pick(req.body, checklistFields),
@@ -516,14 +574,14 @@ router.patch('/checklist-items/:id', async (req, res) => {
   res.json({ item })
 })
 
-router.delete('/checklist-items/:id', async (req, res) => {
+router.delete('/checklist-items/:id', canEditContent, async (req, res) => {
   await prisma.checklistItem.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })
 
 // Quiz questions, module and parts alike - one table, one editor. A parts
 // question has no module; a module question is scoped by `moduleId`.
-router.post('/quiz-questions', async (req, res) => {
+router.post('/quiz-questions', canEditContent, async (req, res) => {
   const payload = req.body || {}
   if (!payload.prompt?.trim()) {
     return res.status(400).json({ error: 'Question prompt is required' })
@@ -559,7 +617,7 @@ router.post('/quiz-questions', async (req, res) => {
   res.json({ question })
 })
 
-router.patch('/quiz-questions/:id', async (req, res) => {
+router.patch('/quiz-questions/:id', canEditContent, async (req, res) => {
   const data = pick(req.body, quizFields)
   if (req.body?.options) {
     data.options = normalizeOptions(req.body.options)
@@ -571,7 +629,7 @@ router.patch('/quiz-questions/:id', async (req, res) => {
   res.json({ question })
 })
 
-router.delete('/quiz-questions/:id', async (req, res) => {
+router.delete('/quiz-questions/:id', canEditContent, async (req, res) => {
   await prisma.quizQuestion.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })
@@ -580,13 +638,13 @@ router.delete('/quiz-questions/:id', async (req, res) => {
 // Courses are kept out of GET /content on purpose: the geometry blobs are large
 // and only the Courses tab needs them.
 
-router.get('/courses', async (req, res) => {
+router.get('/courses', canEditContent, async (req, res) => {
   const where = req.query.module ? { moduleSlug: req.query.module } : {}
   const rows = await prisma.course.findMany({ where, orderBy: [{ moduleSlug: 'asc' }, { sortOrder: 'asc' }] })
   res.json({ courses: rows.map(adminCourse), creatableKinds: CREATABLE_KINDS })
 })
 
-router.post('/courses', async (req, res) => {
+router.post('/courses', canEditContent, async (req, res) => {
   const payload = req.body || {}
   const moduleSlug = payload.moduleSlug
   const kind = payload.kind || 'driving'
@@ -643,7 +701,7 @@ router.post('/courses', async (req, res) => {
 
 // Saves an edit as a draft. Invalid drafts are allowed - work in progress is
 // only blocked at publish time.
-router.put('/courses/:id', async (req, res) => {
+router.put('/courses/:id', canEditContent, async (req, res) => {
   const row = await prisma.course.findUnique({ where: { id: req.params.id } })
   if (!row) return res.status(404).json({ error: 'Course not found' })
 
@@ -658,7 +716,7 @@ router.put('/courses/:id', async (req, res) => {
   res.json({ course: adminCourse(course), problems: validateCoursePayload(row.kind, draft) })
 })
 
-router.post('/courses/:id/publish', async (req, res) => {
+router.post('/courses/:id/publish', canEditContent, async (req, res) => {
   const row = await prisma.course.findUnique({ where: { id: req.params.id } })
   if (!row) return res.status(404).json({ error: 'Course not found' })
 
@@ -676,13 +734,13 @@ router.post('/courses/:id/publish', async (req, res) => {
 })
 
 // Throws the pending draft away, leaving the published version in place.
-router.post('/courses/:id/revert', async (req, res) => {
+router.post('/courses/:id/revert', canEditContent, async (req, res) => {
   const course = await prisma.course.update({ where: { id: req.params.id }, data: { draft: null } })
   res.json({ course: adminCourse(course) })
 })
 
 // Built-in courses only: restores the seeded baseline and clears any draft.
-router.post('/courses/:id/reset', async (req, res) => {
+router.post('/courses/:id/reset', canEditContent, async (req, res) => {
   const row = await prisma.course.findUnique({ where: { id: req.params.id } })
   if (!row) return res.status(404).json({ error: 'Course not found' })
 
@@ -710,7 +768,7 @@ router.post('/courses/:id/reset', async (req, res) => {
 })
 
 // Whole-list reorder for one module; ids not in the list are left alone.
-router.post('/courses/reorder', async (req, res) => {
+router.post('/courses/reorder', canEditContent, async (req, res) => {
   const { moduleSlug, ids } = req.body || {}
   if (!(await isCourseCapableModuleSlug(moduleSlug)) || !Array.isArray(ids)) {
     return res.status(400).json({ error: 'moduleSlug and ids are required' })
@@ -730,7 +788,7 @@ router.post('/courses/reorder', async (req, res) => {
 
 // Learner progress entries for a deleted step are left in place, not pruned, so
 // re-adding the course restores completion (see lib/simulationProgress.js).
-router.delete('/courses/:id', async (req, res) => {
+router.delete('/courses/:id', canEditContent, async (req, res) => {
   await prisma.course.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })

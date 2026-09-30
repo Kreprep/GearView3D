@@ -1,5 +1,6 @@
 import { ClipboardList, GraduationCap, LogOut, ShieldCheck } from 'lucide-react'
 import { routes } from '../lib/router'
+import { canOpenDashboard, normalizeRole } from '../data/permissions.js'
 import { useT } from '../i18n'
 import LanguageToggle from './LanguageToggle'
 import './AppHeader.css'
@@ -35,10 +36,10 @@ function AppHeader({ user, onLogout, onNavigate }) {
           <ClipboardList size={16} />
           {t('header.nav.survey')}
         </a>
-        {user?.role === 'ADMIN' && (
+        {canOpenDashboard(user) && (
           <button className="nav-link" onClick={() => onNavigate(routes.admin)}>
             <ShieldCheck size={16} />
-            {t('header.nav.admin')}
+            {t('header.nav.dashboard')}
           </button>
         )}
       </nav>
@@ -47,7 +48,10 @@ function AppHeader({ user, onLogout, onNavigate }) {
         <LanguageToggle />
         <div className="account-chip">
           <span className="account-avatar">{initials(user)}</span>
-          <span className="account-name">{user?.fullName || user?.email}</span>
+          <span className="account-text">
+            <span className="account-name">{user?.fullName || user?.email}</span>
+            <span className="account-role">{t(`header.role.${normalizeRole(user?.role)}`)}</span>
+          </span>
         </div>
         <button className="logout-button" onClick={onLogout} aria-label={t('header.logout')} title={t('header.logout')}>
           <LogOut size={16} />

@@ -32,26 +32,39 @@ import {
   adminDeleteHotspotCategory,
   adminDeleteUser,
   adminListContent,
+  adminResetUserProgress,
   adminUpdateHotspotCategory,
   adminUpdateUser,
 } from './lib/api'
 import { adminModuleRoute, routes } from './lib/router'
+import { can, canActOnRole, canOpenDashboard, ROLE_LABELS, ROLES } from './data/permissions.js'
 
 // The three sections under Training Content. Steps, checklist items and quiz
 // questions have no section of their own - they live inside a module.
+//
+// Each tab names the permission it needs. Hiding a tab is only presentation:
+// the API refuses the same calls with a 403 (backend/src/routes/admin.js).
 const trainingContentTabs = [
-  [routes.adminModules, 'Modules', Layers],
-  [routes.adminParts, 'Parts Identification', Wrench],
-  [routes.adminSettings, 'Equipment Settings', Wrench],
+  [routes.adminModules, 'Modules', Layers, 'content.edit'],
+  [routes.adminParts, 'Parts Identification', Wrench, 'content.edit'],
+  [routes.adminSettings, 'Equipment Settings', Wrench, 'equipment.edit'],
 ]
 
 // Module-level so QuizAdmin gets one stable object.
 const PARTS_QUIZ_SCOPE = { context: 'parts' }
 
 const trailingTabs = [
-  [routes.adminUsers, 'Users', UsersIcon],
-  [routes.adminReports, 'Reports', BarChart3],
+  [routes.adminUsers, 'Users', UsersIcon, 'users.view'],
+  [routes.adminReports, 'Reports', BarChart3, 'progress.view'],
 ]
+
+const EMPTY_NEW_USER = { email: '', fullName: '', role: 'TRAINEE', password: '' }
+
+// The permission a dashboard path needs; the module editor is content.
+function sectionPermission(path) {
+  if (path.startsWith(`${routes.adminModules}/`)) return 'content.edit'
+  return [...trainingContentTabs, ...trailingTabs].find(([tabPath]) => tabPath === path)?.[3] || null
+}
 
 // Everything but the dashboard root gets its own tab label appended to
 // "Admin Panel" for the tab title; the module editor's label comes from the
@@ -137,7 +150,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [content, setContent] = useState(EMPTY_ADMIN_CONTENT)
   const [editingUser, setEditingUser] = useState(null)
   const [newCategory, setNewCategory] = useState('')
-  const [newUser, setNewUser] = useState({ email: '', fullName: '', role: 'TRAINEE', password: '' })
+  const [newUser, setNewUser] = useState(EMPTY_NEW_USER)
   const [saveMessage, setSaveMessage] = useState('')
   const [contentLoading, setContentLoading] = useState(true)
   const [contentError, setContentError] = useState(null)
@@ -147,6 +160,11 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
   const [loadedAt] = useState(() => Date.now())
 
   const activePath = path || routes.admin
+  const allowedContentTabs = trainingContentTabs.filter(([, , , permission]) => can(user, permission))
+  const allowedTrailingTabs = trailingTabs.filter(([, , , permission]) => can(user, permission))
+  const requiredPermission = sectionPermission(activePath)
+  const sectionAllowed = !requiredPermission || can(user, requiredPermission)
+  const canManageUsers = can(user, 'users.manage')
   // The module editor lives under /admin/modules/:slug, so the Training
   // Content section covers that path too.
   const editingModuleSlug = activePath.startsWith(`${routes.adminModules}/`)
@@ -154,6 +172,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     : null
   const isTrainingContentSection =
     trainingContentTabs.some(([tabPath]) => tabPath === activePath) || Boolean(editingModuleSlug)
+  const trainingContentHome = allowedContentTabs[0]?.[0]
   const moduleTitleBySlug = useMemo(() => {
     return content.modules.reduce((map, module) => ({ ...map, [module.slug]: module.title || module.fullTitle }), {})
   }, [content.modules])
@@ -174,7 +193,8 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
 
   // The Overview tab is built entirely from data adminListContent() already
   // fetched (content.progress / content.activityLogs) - no extra API calls.
-  const traineeCount = useMemo(() => content.users.filter((entry) => entry.role === 'TRAINEE').length, [content.users])
+  // Learners are the accounts with no dashboard of their own.
+  const traineeCount = useMemo(() => content.users.filter((entry) => !canOpenDashboard(entry)).length, [content.users])
   const averageCompletion = useMemo(() => {
     if (!content.progress.length) return 0
     return Math.round(content.progress.reduce((sum, entry) => sum + entry.progress, 0) / content.progress.length)
@@ -212,6 +232,13 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
         setContentLoading(false)
       })
   }, [])
+
+  // The reports and the overview are built server-side from every snapshot,
+  // so after a reset they are fetched again rather than patched here.
+  const reloadContent = async () => {
+    const data = await adminListContent()
+    setContent({ ...EMPTY_ADMIN_CONTENT, ...data })
+  }
 
   useEffect(() => () => clearTimeout(saveMessageTimer.current), [])
 
@@ -261,7 +288,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     try {
       const result = await adminCreateUser(newUser)
       setContent((current) => ({ ...current, users: [...current.users, result.user] }))
-      setNewUser({ email: '', fullName: '', role: 'TRAINEE', password: '' })
+      setNewUser(EMPTY_NEW_USER)
       refreshMessage('User created.')
     } catch (err) {
       refreshMessage(err.message)
@@ -295,14 +322,34 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
     }
   }
 
+  // Named in the dialog so the wrong row is hard to confirm. The account itself
+  // and any skill sign-offs are kept; only the saved progress goes.
+  const handleResetProgress = async (learner) => {
+    const name = learner.fullName || learner.email
+    const confirmed = window.confirm(
+      `Reset ${name}'s progress (${learner.email})?\n\n` +
+        'Every module step, checklist, quiz attempt and viewed part they have saved is cleared, and they start the training again. Their account is kept. This cannot be undone.',
+    )
+    if (!confirmed) return
+    try {
+      await adminResetUserProgress(learner.id)
+      await reloadContent()
+      refreshMessage(`${name}'s progress was reset.`)
+    } catch (err) {
+      refreshMessage(err.message)
+    }
+  }
+
   return (
     <div className="min-h-svh bg-bg text-left text-ink">
       <div className="sticky top-0 z-20">
         <header className="flex flex-wrap items-start justify-between gap-4.5 border-b border-border bg-panel px-8 py-4">
           <div>
-            <p className="m-0 text-[13px] font-semibold text-accent-strong">GearView3D Admin</p>
+            <p className="m-0 text-[13px] font-semibold text-accent-strong">GearView3D Dashboard</p>
             <h1 className="my-1 text-[22px] font-extrabold text-ink">Content Management</h1>
-            <p className="m-0 text-[13px] text-muted">Signed in as {user?.email}</p>
+            <p className="m-0 text-[13px] text-muted">
+              Signed in as {user?.email} ({ROLE_LABELS[user?.role] || user?.role})
+            </p>
           </div>
           <div className="flex flex-none gap-2.5 pt-0.5">
             <Button variant="secondary" onClick={onBack}>Back to App</Button>
@@ -314,11 +361,13 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             <LayoutGrid size={16} />
             Overview
           </button>
-          <button className={NAV_TAB_CLASSES(isTrainingContentSection)} onClick={() => onNavigate(routes.adminModules)}>
-            <Truck size={16} />
-            Training Content
-          </button>
-          {trailingTabs.map(([tabPath, label, Icon]) => (
+          {trainingContentHome && (
+            <button className={NAV_TAB_CLASSES(isTrainingContentSection)} onClick={() => onNavigate(trainingContentHome)}>
+              <Truck size={16} />
+              Training Content
+            </button>
+          )}
+          {allowedTrailingTabs.map(([tabPath, label, Icon]) => (
             <button key={tabPath} className={NAV_TAB_CLASSES(activePath === tabPath)} onClick={() => onNavigate(tabPath)}>
               <Icon size={16} />
               {label}
@@ -331,7 +380,7 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             className="flex flex-wrap gap-1 border-b border-border bg-panel px-8 py-1.5 md:pl-[52px]"
             aria-label="Training content sections"
           >
-            {trainingContentTabs.map(([tabPath, label, Icon]) => (
+            {allowedContentTabs.map(([tabPath, label, Icon]) => (
               <button key={tabPath} className={SUBNAV_TAB_CLASSES(activePath === tabPath)} onClick={() => onNavigate(tabPath)}>
                 <Icon size={16} />
                 {label}
@@ -352,6 +401,15 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
       {contentLoading ? (
         <main className={CONTENT_WRAP}>
           <PanelNote>Loading admin content...</PanelNote>
+        </main>
+      ) : !sectionAllowed ? (
+        <main className={CONTENT_WRAP}>
+          <Panel wide>
+            <PanelNote>Your account does not have access to this section.</PanelNote>
+            <Toolbar>
+              <Button onClick={() => onNavigate(routes.admin)}>Back to the overview</Button>
+            </Toolbar>
+          </Panel>
         </main>
       ) : (
         <>
@@ -515,6 +573,11 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
             <main className={`${CONTENT_WRAP} ${TWO_COL}`}>
               <Panel wide>
                 <PanelHeader>Users</PanelHeader>
+                {!canManageUsers && (
+                  <PanelNote>
+                    Trainee accounts. An admin creates accounts and changes names, emails, passwords and roles.
+                  </PanelNote>
+                )}
                 <div className="grid gap-0.5">
                   {content.users.map((learner) => (
                     <article
@@ -526,10 +589,15 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                       }`}
                     >
                       <h3 className="m-0 mb-1.5 text-sm font-extrabold text-ink">{learner.fullName}</h3>
-                      <p className="text-[13px] text-muted">{learner.email} - {learner.role}</p>
+                      <p className="text-[13px] text-muted">{learner.email} - {ROLE_LABELS[learner.role] || learner.role}</p>
                       <Toolbar>
-                        <Button size="sm" variant="secondary" onClick={() => setEditingUser({ ...learner, password: '' })}>Edit</Button>
-                        {learner.id !== user.id && (
+                        {canManageUsers && (
+                          <Button size="sm" variant="secondary" onClick={() => setEditingUser({ ...learner, password: '' })}>Edit</Button>
+                        )}
+                        {can(user, 'progress.reset') && canActOnRole(user, learner.role) && (
+                          <Button size="sm" variant="secondary" onClick={() => handleResetProgress(learner)}>Reset progress</Button>
+                        )}
+                        {canManageUsers && learner.id !== user.id && (
                           <Button size="sm" variant="danger" onClick={() => handleDeleteUser(learner.id)}>Delete</Button>
                         )}
                       </Toolbar>
@@ -537,64 +605,66 @@ function AdminDashboard({ user, onBack, path, onNavigate }) {
                   ))}
                 </div>
               </Panel>
-              <Panel>
-                <PanelHeader>New user</PanelHeader>
-                <div className="grid gap-3.5">
-                  <Field label="Full name">
-                    <Input value={newUser.fullName} onChange={(event) => setNewUser({ ...newUser, fullName: event.target.value })} />
-                  </Field>
-                  <Field label="Email">
-                    <Input value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} />
-                  </Field>
-                  <Field label="Password">
-                    <Input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} />
-                  </Field>
-                  <Field label="Role">
-                    <Select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
-                      <option value="TRAINEE">Trainee</option>
-                      <option value="ADMIN">Admin</option>
-                    </Select>
-                  </Field>
-                  <Toolbar>
-                    <Button onClick={handleCreateUser}>Create user</Button>
-                  </Toolbar>
-                </div>
-              </Panel>
-              <Panel>
-                <PanelHeader>Edit user</PanelHeader>
-                {editingUser ? (
-                  <div className="mt-3.5 grid gap-3.5">
-                    <Field label="Full name">
-                      <Input value={editingUser.fullName} onChange={(event) => setEditingUser({ ...editingUser, fullName: event.target.value })} />
-                    </Field>
-                    <Field label="Email">
-                      <Input value={editingUser.email} onChange={(event) => setEditingUser({ ...editingUser, email: event.target.value })} />
-                    </Field>
-                    <Field label="New password">
-                      <Input
-                        type="password"
-                        value={editingUser.password}
-                        placeholder="Leave blank to keep the current password"
-                        onChange={(event) => setEditingUser({ ...editingUser, password: event.target.value })}
-                      />
-                    </Field>
-                    <Field label="Role">
-                      <Select
-                        value={editingUser.role}
-                        disabled={editingUser.id === user.id}
-                        onChange={(event) => setEditingUser({ ...editingUser, role: event.target.value })}
-                      >
-                        <option value="TRAINEE">Trainee</option>
-                        <option value="ADMIN">Admin</option>
-                      </Select>
-                    </Field>
-                    {editingUser.id === user.id && <PanelNote>You cannot change your own role.</PanelNote>}
-                    <Toolbar>
-                      <Button onClick={handleSaveUser}>Save user</Button>
-                    </Toolbar>
-                  </div>
-                ) : <p className="mt-3.5 text-sm text-body">Select a user to edit.</p>}
-              </Panel>
+              {canManageUsers && (
+                <>
+                  <Panel>
+                    <PanelHeader>New user</PanelHeader>
+                    <div className="grid gap-3.5">
+                      <Field label="Full name">
+                        <Input value={newUser.fullName} onChange={(event) => setNewUser({ ...newUser, fullName: event.target.value })} />
+                      </Field>
+                      <Field label="Email">
+                        <Input value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} />
+                      </Field>
+                      <Field label="Password">
+                        <Input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} />
+                      </Field>
+                      <Field label="Role">
+                        <Select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
+                          {ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
+                        </Select>
+                      </Field>
+                      <Toolbar>
+                        <Button onClick={handleCreateUser}>Create user</Button>
+                      </Toolbar>
+                    </div>
+                  </Panel>
+                  <Panel>
+                    <PanelHeader>Edit user</PanelHeader>
+                    {editingUser ? (
+                      <div className="mt-3.5 grid gap-3.5">
+                        <Field label="Full name">
+                          <Input value={editingUser.fullName} onChange={(event) => setEditingUser({ ...editingUser, fullName: event.target.value })} />
+                        </Field>
+                        <Field label="Email">
+                          <Input value={editingUser.email} onChange={(event) => setEditingUser({ ...editingUser, email: event.target.value })} />
+                        </Field>
+                        <Field label="New password">
+                          <Input
+                            type="password"
+                            value={editingUser.password}
+                            placeholder="Leave blank to keep the current password"
+                            onChange={(event) => setEditingUser({ ...editingUser, password: event.target.value })}
+                          />
+                        </Field>
+                        <Field label="Role">
+                          <Select
+                            value={editingUser.role}
+                            disabled={editingUser.id === user.id}
+                            onChange={(event) => setEditingUser({ ...editingUser, role: event.target.value })}
+                          >
+                            {ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
+                          </Select>
+                        </Field>
+                        {editingUser.id === user.id && <PanelNote>You cannot change your own role.</PanelNote>}
+                        <Toolbar>
+                          <Button onClick={handleSaveUser}>Save user</Button>
+                        </Toolbar>
+                      </div>
+                    ) : <p className="mt-3.5 text-sm text-body">Select a user to edit.</p>}
+                  </Panel>
+                </>
+              )}
             </main>
           )}
 
