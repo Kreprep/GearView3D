@@ -16,6 +16,8 @@ import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
 import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
 import { withMissingAlertDefaults } from '../../frontend/src/lib/courseAlerts.js'
 import { withMissingCompletionCode } from '../../frontend/src/lib/courseGoals.js'
+import { canonicalJson, COURSE_STOCK_FIELDS, MODULE_STOCK_FIELDS, staleStockUpgrades } from '../src/lib/stockHistory.js'
+import { STOCK_HISTORY } from './stockHistory.js'
 import { EQUIPMENT_DEFAULTS } from '../../frontend/src/data/equipment.js'
 import { buildDefaultHotspots } from '../../frontend/src/data/hotspotDefaults.js'
 import { SKILL_DEFAULTS, skillRowDefaults } from '../../frontend/src/data/skillDefaults.js'
@@ -100,6 +102,16 @@ async function seedModules() {
         },
       })
       continue
+    }
+
+    // Untouched stock from an earlier release (the card's title, description,
+    // artwork) moves to today's; anything an admin typed is left alone
+    // (src/lib/stockHistory.js).
+    const stock = { ...module, fullTitle: module.fullTitle || module.title }
+    const upgrades = staleStockUpgrades(existing, stock, STOCK_HISTORY.Module?.[module.slug], MODULE_STOCK_FIELDS)
+    if (Object.keys(upgrades).length) {
+      await prisma.module.update({ where: { id: module.id }, data: upgrades })
+      Object.assign(existing, upgrades)
     }
 
     // fullTitle is newer than the rows themselves, so a row that predates it
@@ -215,8 +227,9 @@ async function seedCourses() {
       continue
     }
 
-    // Still create-if-missing for everything the admin can edit, with one
-    // exception: a key added to the defaults *after* a row was seeded is
+    // Still create-if-missing for everything the admin can edit, with two
+    // exceptions. Untouched stock from an earlier release is upgraded (below).
+    // And a key added to the defaults *after* a row was seeded is
     // backfilled, because the row has no value for it at all. Keys the row
     // already has - including ones an admin deliberately blanked - always win.
     // That covers every content key, and in a driving step's data only the
@@ -224,22 +237,36 @@ async function seedCourses() {
     // completion code (without which the step can never be finished): the
     // geometry is never touched.
     if (!existing.builtIn) continue
+
+    // A field still holding an earlier release's stock value, never edited,
+    // moves to today's stock (src/lib/stockHistory.js). Fields an admin
+    // changed match no earlier stock and are left alone.
+    const history = STOCK_HISTORY.Course?.[course.id]
+    const row = { ...existing, ...staleStockUpgrades(existing, course, history) }
+    const draft = existing.draft && { ...existing.draft, ...staleStockUpgrades(existing.draft, course, history) }
     const update = {}
+    for (const field of COURSE_STOCK_FIELDS) {
+      if (row[field] !== existing[field]) update[field] = row[field]
+    }
 
     if (course.content) {
-      const current = existing.content || {}
+      const current = row.content || {}
       const missing = Object.keys(course.content).filter((key) => !(key in current))
       if (missing.length) update.content = { ...course.content, ...current }
     }
 
+    let draftData = draft?.data
     if (course.kind === 'driving' && course.data) {
       const backfill = (stored) => withMissingCompletionCode(withMissingAlertDefaults(stored, course.data), course.data)
-      const data = backfill(existing.data)
+      const data = backfill(row.data)
       if (data !== existing.data) update.data = data
       // A pending draft is a whole payload: publishing it must not drop what
       // the published row was just given.
-      const draftData = backfill(existing.draft?.data)
-      if (draftData !== existing.draft?.data) update.draft = { ...existing.draft, data: draftData }
+      draftData = backfill(draft?.data)
+    }
+    if (draft) {
+      const nextDraft = { ...draft, ...(draftData !== undefined ? { data: draftData } : {}) }
+      if (canonicalJson(nextDraft) !== canonicalJson(existing.draft)) update.draft = nextDraft
     }
 
     if (Object.keys(update).length) await prisma.course.update({ where: { id: course.id }, data: update })

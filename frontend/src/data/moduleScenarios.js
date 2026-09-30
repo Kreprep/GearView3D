@@ -45,9 +45,9 @@ export const moduleScenarioSteps = {
     {
       id: 'briefing',
       title: 'Scenario Briefing',
-      objective: 'Prepare for a simplified guided driving exercise, without real forklift physics.',
+      objective: 'Prepare for a guided driving exercise on a simulated forklift.',
       instructions: 'Review why operational-control familiarization comes before supervised practical training.',
-      hint: 'The goal is control familiarization and decision-making, not physics-accurate driving.',
+      hint: 'The goal is control familiarization and decision-making before supervised practical training.',
     },
     {
       id: 'controls-intro',

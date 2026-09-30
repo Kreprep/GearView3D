@@ -57,7 +57,7 @@ export const equipmentUsageModules = [
     subtitle: 'Operational Controls',
     imageUrl: '/images/modules/load-handling.png',
     description:
-      'Practice basic forklift operational controls in a simplified guided drive: engine start-up, acceleration, braking, and steering, without real vehicle physics or collision.',
+      "Practice basic forklift operational controls in a guided drive: the start sequence, acceleration, braking, and steering, with collisions and the forklift's handling simulated.",
     syllabusLocation: 'Section 2',
     unitCode: '505833315',
     unitTitle: 'Perform productive operation for forklift',
@@ -72,7 +72,7 @@ export const equipmentUsageModules = [
     ],
     lessonContent: [
       'This simplified simulation lets you practice the basic operating controls of a forklift: starting the engine, accelerating, braking, and steering.',
-      'This is a simplified control-familiarization exercise, not a physics-accurate driving simulator. It does not model collisions, real vehicle dynamics, or unsupervised operation.',
+      "This is a control-familiarization exercise, not a replacement for supervised practice on a real forklift. Collisions, the load on the forks and the forklift's stability are simulated, but no simulation reproduces everything a real truck does.",
       'Each guided step introduces one control at a time before combining them in a short driving course.',
       'Before starting the engine, fasten the seatbelt, set the parking brake and put the direction lever in neutral (N). Like a real truck\'s interlock, the engine will not crank otherwise. Release the parking brake before driving off.',
     ],
