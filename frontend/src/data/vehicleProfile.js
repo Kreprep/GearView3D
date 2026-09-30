@@ -56,8 +56,12 @@ export const DEFAULT_RIG = {
   // The steering wheel, split out of Forklift_Body by
   // scripts/split-steering-wheel.mjs. It turns about the ring's normal (the
   // column's axis, tilted 28 degrees toward the seat) through the ring's
-  // centre. Measured in Blender on 2026-09-30.
-  steeringWheel: { node: 'Steering_Wheel', centre: [0, 0.3197, 0.0672], axis: [0, 0.8804, -0.4743] },
+  // centre. The axis was measured in Blender on 2026-09-30. The centre is the
+  // rim's, fitted to the split mesh in the viewer on 2026-10-01: the point
+  // first measured (0, 0.3197, 0.0672, which the split script still uses to
+  // pick the wheel's faces) sat 0.0118 units up the wheel's face from it, so
+  // the wheel swung about a point off its hub.
+  steeringWheel: { node: 'Steering_Wheel', centre: [0, 0.3253, 0.0775], axis: [0, 0.8804, -0.4743] },
   // The hydraulic levers to the operator's right, innermost first: lift, then
   // tilt (Lever_R, an attachment lever, has nothing to drive). Each rocks
   // fore and aft about the model's X axis through the base of its stem.
