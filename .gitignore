@@ -39,3 +39,7 @@ Thumbs.db
 
 # Playwright MCP output
 .playwright-mcp/
+
+# Audio originals as downloaded (Phase 5). The processed files in
+# frontend/public/audio/ are what ships; scripts/build-audio.mjs rebuilds them.
+frontend/audio-src/raw/

@@ -61,6 +61,9 @@ export default {
   'driving.hud.hint.engineOff': 'To start: fasten the seatbelt (B), set the parking brake (Space), keep the lever in N, then press E or turn the key to START. Release the parking brake (Space) to drive.',
   'driving.hud.hint.interlock': 'The engine will not start yet. Do the marked steps first: seatbelt fastened, parking brake set, direction lever in N.',
   'driving.hud.hint.look': 'Drag the scene to look around.',
+  // Shown while the browser holds the sound back until it sees a click or a
+  // key press (a steering wheel's buttons may not count).
+  'driving.hud.enableSound': 'Click to enable sound',
 
   // Camera modes (lib/driving/cameraModes.js).
   'driving.camera.label': 'Camera view',

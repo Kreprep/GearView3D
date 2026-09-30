@@ -1,5 +1,6 @@
 import HotspotViewer from './HotspotViewer'
 import MarkdownContent from './MarkdownContent'
+import { AudioControl } from './AudioControl'
 import { useT } from '../i18n'
 import { PHASE_TITLE_KEYS, gaugeScore, isPhaseComplete, scenarioScore, visibleHotspotIds } from '../lib/walkAroundStep'
 import './WalkAroundStep.css'
@@ -252,6 +253,13 @@ export function WalkAroundTask({ data, content, state, engineStarted, activeScen
 
   return (
     <div className="walkaround-task-stack">
+      {/* The device tests and the engine start are heard, and the volume is
+          shared with the driving simulation's dashboard. */}
+      {PHASE_TITLE_KEYS[phase] && (
+        <div className="walkaround-audio">
+          <AudioControl tone="panel" />
+        </div>
+      )}
       {content?.body && <MarkdownContent className="walkaround-intro">{content.body}</MarkdownContent>}
 
       {phase === 'engine-off' && (

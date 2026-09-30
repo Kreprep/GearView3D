@@ -176,6 +176,12 @@
   border-radius: var(--radius-lg);
 }
 
+/* The browser is holding the sound back until a click or a key press. */
+.driving-sound-prompt {
+  pointer-events: auto;
+  border-color: #fbbf24;
+}
+
 .driving-checkpoint-label {
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-2);
