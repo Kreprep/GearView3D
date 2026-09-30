@@ -27,8 +27,8 @@ test('units convert real values into the quarter-scale scene and back', () => {
   close(mps2(9.81), G)
   close(toMetres(m(2.64)), 2.64)
   close(toKmh(kmh(17.6)), 17.6)
-  // Today's top speed is 1.5 units/s, which the plan quotes as 21.6 km/h.
-  close(toKmh(MAX_SPEED), 21.6)
+  // The 8FGU25's top speed (Phase 4; it was 1.5 units/s, 21.6 km/h).
+  close(toKmh(MAX_SPEED), 17.6)
 })
 
 // --- controls -------------------------------------------------------------
@@ -102,18 +102,29 @@ function pick({ throttle, brake, direction }) {
   return { throttle, brake, direction }
 }
 
+// Read the keyboard for `seconds` of sim steps and return the last reading.
+function readFor(keyboard, state, seconds) {
+  let controls
+  for (let step = 0; step < Math.round(seconds / SIM_DT); step += 1) controls = keyboard.read(state)
+  return controls
+}
+
 test('keyboard: steering, lift and tilt, with the old key priorities', () => {
   const keyboard = createKeyboardSource()
   const state = { truck: { speed: 0 } }
   keyboard.keyDown('a')
   keyboard.keyDown('r')
   keyboard.keyDown('t')
-  assert.deepEqual([keyboard.read(state).steer, keyboard.read(state).lift, keyboard.read(state).tilt], [1, 1, -1])
+  // A and D turn a virtual wheel, which reaches full lock at a standstill.
+  const held = readFor(keyboard, state, 1)
+  assert.deepEqual([held.steer, held.lift, held.tilt], [1, 1, -1])
   keyboard.keyDown('d')
   keyboard.keyDown('f')
   keyboard.keyDown('g')
-  // Both steering keys cancel; raise beats lower and tilt-back beats forward.
-  assert.deepEqual([keyboard.read(state).steer, keyboard.read(state).lift, keyboard.read(state).tilt], [0, 1, -1])
+  // Both steering keys cancel (the wheel self-centres); raise beats lower and
+  // tilt-back beats forward.
+  const both = readFor(keyboard, state, 1)
+  assert.deepEqual([both.steer, both.lift, both.tilt], [0, 1, -1])
 })
 
 test('keyboard: E queues one engine toggle per press, ignoring key repeat', () => {
@@ -198,12 +209,24 @@ function scriptedControls(time) {
   return controls
 }
 
+// Start the engine through the pre-start interlock: seatbelt, parking brake,
+// neutral.
+function startEngine(core) {
+  core.command('engineStart')
+  core.step(SIM_DT, { ...neutralControls(), seatbelt: true, parkingBrake: true })
+}
+
 function driveAtRate(frameDeltas) {
   const core = createSimCore(drivingCourses['precision-carry'], profile, { palletFootprint: measuredPalletFootprint })
-  core.command('engineToggle')
-  const loop = createSimLoop((dt) => core.step(dt, scriptedControls(core.state.time)))
+  startEngine(core)
+  const END = 5 - 1e-9
+  // A long frame can run several steps; none may run past the end, or rates
+  // that land there differently would compare different step counts.
+  const loop = createSimLoop((dt) => {
+    if (core.state.time < END) core.step(dt, scriptedControls(core.state.time))
+  })
   let frame = 0
-  while (core.state.time < 5 - 1e-9) {
+  while (core.state.time < END) {
     loop.advance(frameDeltas(frame))
     frame += 1
   }
@@ -223,10 +246,10 @@ test('the same inputs drive the same attempt at 60 Hz, 144 Hz and a jittery rate
 
 test('the headless core completes a course in node --test', () => {
   const core = createSimCore(drivingCourses['accelerate-course'], profile)
-  core.command('engineToggle')
+  startEngine(core)
   const throttle = { ...neutralControls(), throttle: 1, direction: 'F' }
-  const events = []
-  for (let step = 0; step < 900 && !events.some((event) => event.isLast); step += 1) {
+  const events = [...core.drainEvents()]
+  for (let step = 0; step < 1200 && !events.some((event) => event.isLast); step += 1) {
     core.step(SIM_DT, throttle)
     events.push(...core.drainEvents())
   }
@@ -238,12 +261,12 @@ test('the headless core completes a course in node --test', () => {
 test('a failed attempt ignores the engine key', () => {
   const core = createSimCore(drivingCourses['rack-storage'], profile)
   core.debugSet({ z: 10 })
-  core.command('engineToggle')
+  startEngine(core)
   const throttle = { ...neutralControls(), throttle: 1, direction: 'F' }
   for (let step = 0; step < 600 && !core.state.failed; step += 1) core.step(SIM_DT, throttle)
   assert.equal(core.state.failReason, 'rack')
   core.drainEvents()
-  core.command('engineToggle')
+  core.command('engineStop')
   core.step(SIM_DT, throttle)
   assert.equal(core.state.truck.engineOn, true)
   assert.deepEqual(core.drainEvents(), [])

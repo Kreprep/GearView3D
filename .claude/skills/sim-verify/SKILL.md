@@ -46,15 +46,31 @@ limiter.
 
 | Scenario | Step | What passing proves |
 |---|---|---|
-| `smoke` | Load Handling, Accelerate Course | scene mounts, E starts the engine, W drives |
+| `smoke` | Load Handling, Accelerate Course | scene mounts, the start sequence starts the engine, W drives |
 | `accelerate` | Load Handling, Accelerate Course | finish line checkpoint fires |
 | `brake` | Load Handling, Accelerate and Brake | S brakes to a stop inside the stop zone |
 | `cone-fail` | Post-Operation, Secure Parking | cone collision fails the attempt |
-| `park` | Post-Operation, Secure Parking | bay + stop + engine off latches parked |
+| `park` | Post-Operation, Secure Parking | bay + stop + N + engine off + parking brake latches parked |
 | `pallet-pickup` | Pallet Testing, Precision Carry | forks enter, lift, secure grip, tilt back |
 | `pallet-deliver` | Pallet Testing, Precision Carry | lower, tilt forward, back away: delivered |
 | `overload` | Pallet Testing, Load Limits | lifting the 1,500 kg pallet fails and tips |
 | `rack-store` | Pallet Testing, Rack Storage | load set on the middle shelf is delivered |
+| `interlock` | Load Handling, Accelerate Course | E is refused without seatbelt and parking brake; the parking brake holds the truck against W |
+
+Since Phase 4 the engine only starts through the pre-start interlock
+(seatbelt, parking brake, direction lever in N), and the parking brake holds
+the truck. Scenarios start with `START`, the learner's sequence on real keys
+(B, Space, E, Space). `__drivingDebugSet` also takes `seatbelt`,
+`parkingBrake` and `direction` ('F' | 'N' | 'R', or 'auto' to hand direction
+back to the keyboard), and `__drivingDebug` reports `direction`, `seatbelt`,
+`parkingBrake` and `interlockMissing`.
+
+A steering wheel plugged into the machine is live in the Playwright browser
+too, and a wheel resting a few degrees off centre steers the truck. The runner
+hides gamepads (an init script stubs `navigator.getGamepads`) unless a
+scenario sets `gamepads: true`, so the keyboard scenarios drive the same on
+any machine. For a hardware check, have the user drive in the same window
+and read `__drivingDebug` back.
 
 Scenarios warp the truck with `__drivingDebugSet` to skip the long drives and
 then use real key presses for the part being checked. So they exercise the
@@ -66,7 +82,7 @@ fields are listed in `core.debugSnapshot()` in
 `frontend/src/lib/driving/simCore.js`). Timing in the browser varies from frame
 to frame, so hold keys *until* a condition rather than for a fixed time. Don't
 approach a rack with a held W: it passes the rack-strike speed (0.3 units/s)
-within a few centimetres, so warp to the rack face instead.
+quickly, so warp to the rack face instead.
 
 ## 3. Report
 

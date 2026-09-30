@@ -90,13 +90,13 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
       steer.add(spin)
       steer.updateMatrixWorld(true)
       spin.attach(mesh)
-      wheels[key] = { spin, steer, radius }
+      wheels[key] = { spin, steer, radius, centreZ: center.z }
     } else {
       spin.position.copy(localCenter)
       parent.add(spin)
       spin.updateMatrixWorld(true)
       spin.attach(mesh)
-      wheels[key] = { spin, radius }
+      wheels[key] = { spin, radius, centreZ: center.z }
     }
   })
 

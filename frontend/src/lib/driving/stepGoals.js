@@ -30,8 +30,12 @@ export function stepCheckpoints(state, world) {
 
 // Secure-parking proficiency: report the first unmet requirement while the
 // learner works the bay, then latch "parked" once everything is satisfied.
+// The requirements follow the shutdown order TESDA CON834216 element 5.2 and
+// OSHA 1910.178(m)(5)(i) describe: stopped, controls in neutral, forks
+// lowered, parking brake set, engine off.
 export function stepParking(state, world) {
-  const { truck, forks, parking } = state
+  const { truck, forks, parking, frame } = state
+  const controls = frame.controls
   const { course } = world
 
   if (!(course.parkingBay && !parking.parked && !state.failed)) return
@@ -57,7 +61,9 @@ export function stepParking(state, world) {
   if (!inside) status = 'driving.parking.enterBay'
   else if (!aligned) status = 'driving.parking.straighten'
   else if (Math.abs(truck.speed) > PARKING_SPEED_EPSILON) status = 'driving.parking.stop'
+  else if (controls.direction !== 'N') status = 'driving.parking.neutral'
   else if (forks.height > PARKING_FORK_MAX) status = 'driving.parking.lowerForks'
+  else if (!controls.parkingBrake) status = 'driving.parking.parkingBrake'
   else if (truck.engineOn) status = 'driving.parking.engineOff'
   else {
     status = 'driving.parking.done'

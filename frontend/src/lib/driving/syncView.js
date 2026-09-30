@@ -90,15 +90,17 @@ export function syncView(view, state, prev, alpha, world, dt = 0) {
     if (rig.carriageLift) rig.carriageLift.position.y = forkHeight
     if (rig.mastLift) rig.mastLift.position.y = forkHeight * MAST_LIFT_RATIO
     if (rig.tiltPivot) rig.tiltPivot.rotation.x = tilt
-    // Full rear-wheel lock (steer is negative for a left turn) turns the
-    // wheel STEERING_WHEEL_LOCK anticlockwise, as the operator sees it.
+    // A physical steering wheel shows its own rotation. Otherwise full
+    // rear-wheel lock (steer is negative for a left turn) turns the wheel
+    // STEERING_WHEEL_LOCK anticlockwise, as the operator sees it. Before the
+    // first step there are no controls yet.
+    const controls = state.frame.controls
     if (rig.steeringWheel) {
-      rig.steeringWheel.pivot.quaternion.setFromAxisAngle(rig.steeringWheel.axis, (-steer / MAX_STEER_ANGLE) * STEERING_WHEEL_LOCK)
+      const wheelAngle = controls?.steeringWheelAngle ?? (-steer / MAX_STEER_ANGLE) * STEERING_WHEEL_LOCK
+      rig.steeringWheel.pivot.quaternion.setFromAxisAngle(rig.steeringWheel.axis, wheelAngle)
     }
     // The levers follow the operator's hands, not the hydraulics, so they
-    // move with the engine off too. Before the first step there are no
-    // controls yet.
-    const controls = state.frame.controls
+    // move with the engine off too.
     for (const [input, lever] of Object.entries(rig.levers || {})) {
       const target = controls ? LEVER_TARGETS[input](controls) : 0
       lever.angle += (target - lever.angle) * Math.min(LEVER_DAMP * dt, 1)

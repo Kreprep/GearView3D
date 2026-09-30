@@ -19,6 +19,9 @@ export function useDrivingSceneRefs() {
     // direction (radians), driven by dragging the scene.
     lookYawRef: useRef(0),
     lookPitchRef: useRef(0),
+    // A D-pad glance the look is easing toward ({ yaw, pitch }), or null.
+    // Dragging cancels it.
+    glanceRef: useRef(null),
     orbitTargetRef: useRef(new Vector3()),
     prevOrbitTargetRef: useRef(new Vector3()),
     orbitDeltaRef: useRef(new Vector3()),

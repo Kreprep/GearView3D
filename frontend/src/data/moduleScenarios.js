@@ -52,15 +52,16 @@ export const moduleScenarioSteps = {
     {
       id: 'controls-intro',
       title: 'Controls & Engine Start',
-      objective: 'Learn the WASD driving controls and start the engine.',
-      instructions: 'Press E to start the engine, then try W, A, S, and D at least once each on the open practice pad.',
-      hint: 'The engine must be running before the forklift will accelerate or steer.',
+      objective: 'Learn the start sequence and the WASD driving controls.',
+      instructions:
+        'Start the engine the way a real forklift is started: fasten the seatbelt (B), set the parking brake (Space), keep the direction lever in N, then press E. Release the parking brake (Space), then try W, A, S, and D at least once each on the open practice pad.',
+      hint: 'The engine will not crank until the seatbelt is fastened, the parking brake is set and the lever is in N - the dashboard marks whatever is missing. The truck will not move while the parking brake is on.',
     },
     {
       id: 'accelerate-course',
       title: 'Accelerate Course',
       objective: 'Practice accelerating the forklift forward using the W key.',
-      instructions: 'Press E to start the engine if needed, then press W to accelerate forward to the finish line.',
+      instructions: 'Start the engine if needed (seatbelt B, parking brake Space, then E), release the parking brake with Space, then press W to accelerate forward to the finish line.',
       hint: 'Hold W steadily - you do not need to reach maximum speed to finish.',
     },
     {
@@ -163,7 +164,7 @@ export const moduleScenarioSteps = {
       title: 'Secure Parking',
       objective: 'Park the forklift inside the painted bay without striking a cone.',
       instructions:
-        'Drive the cone-lined route to the painted parking bay, straighten up between the lines, stop completely, lower the forks with F, then switch the engine off with E. Hitting a cone fails the attempt.',
+        'Drive the cone-lined route to the painted parking bay, straighten up between the lines and stop completely. Then secure the forklift: direction lever in N, forks lowered with F, parking brake set with Space, engine off with E. Hitting a cone fails the attempt.',
       hint: 'The status badge at the top tells you which parking requirement is still missing.',
     },
     {
@@ -171,7 +172,7 @@ export const moduleScenarioSteps = {
       title: 'Parallel Parking',
       objective: 'Ease sideways into a narrow parallel bay between the boundary cones.',
       instructions:
-        'Steer into the gap in the left-hand cone line, straighten up so the forklift sits flush with the bay, then stop, lower the forks with F, and switch off with E.',
+        'Steer into the gap in the left-hand cone line, straighten up so the forklift sits flush with the bay, then stop and secure it: lever in N, forks lowered with F, parking brake set with Space, engine off with E.',
       hint: 'The bay is only slightly wider than the forklift - small steering corrections beat big ones.',
     },
     {
@@ -179,7 +180,7 @@ export const moduleScenarioSteps = {
       title: 'Parking Between Forklifts',
       objective: 'Park in a tight gap between two parked forklifts without clipping either one.',
       instructions:
-        'Approach slowly and centered - the parked forklifts on both sides are live obstacles, so drifting toward either one ends the attempt just like hitting a wall.',
+        'Approach slowly and centered - the parked forklifts on both sides are live obstacles, so drifting toward either one ends the attempt just like hitting a wall. Once stopped, secure the forklift as before: lever in N, forks down, parking brake set, engine off.',
       hint: 'Center up early. There is very little room to correct once you are between the two forklifts.',
     },
     {

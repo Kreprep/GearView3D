@@ -61,6 +61,39 @@ function playHorn(context) {
   }
 }
 
+/**
+ * Two short low beeps: the pre-start interlock refusing to crank. Stands in
+ * until the Phase 5 sample bank has an alert chime.
+ */
+function playDenied(context) {
+  const now = context.currentTime
+  const master = context.createGain()
+  master.connect(context.destination)
+  master.gain.setValueAtTime(0.0001, now)
+
+  const oscillator = context.createOscillator()
+  oscillator.type = 'square'
+  oscillator.frequency.setValueAtTime(330, now)
+  oscillator.connect(master)
+  ;[0, 0.18].forEach((offset) => {
+    master.gain.setValueAtTime(0.0001, now + offset)
+    master.gain.exponentialRampToValueAtTime(0.12, now + offset + 0.02)
+    master.gain.setValueAtTime(0.12, now + offset + 0.1)
+    master.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.13)
+  })
+  oscillator.start(now)
+  oscillator.stop(now + 0.34)
+
+  return () => {
+    try {
+      oscillator.stop()
+    } catch {
+      // already stopped
+    }
+    master.disconnect()
+  }
+}
+
 /** Intermittent reverse beeper. */
 function playBackupAlarm(context) {
   const now = context.currentTime
@@ -169,6 +202,7 @@ const players = {
   horn: playHorn,
   alarm: playBackupAlarm,
   'engine-start': playEngineStart,
+  denied: playDenied,
 }
 
 /** Plays one of the synthesized device sounds, cutting off any previous one. */

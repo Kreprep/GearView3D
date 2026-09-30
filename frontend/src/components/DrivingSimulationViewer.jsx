@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Grid, OrbitControls, useGLTF } from '@react-three/drei'
 import { DoubleSide } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { Compass, Locate, Radar, RotateCcw } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Gamepad2, Locate, Radar, RotateCcw } from 'lucide-react'
 import { useT } from '../i18n'
 import { buildVehicleRig } from '../lib/vehicleRig'
 import { clamp } from '../lib/math'
@@ -22,10 +22,13 @@ import {
 } from '../lib/driving/models'
 import { LOOK_MAX_PITCH, LOOK_SENSITIVITY, PALLET_STATE_LABEL_KEYS, TIP_PIVOT_Y, TIP_PIVOT_Z } from '../lib/driving/constants'
 import { createCabGauges, stepCabGauges } from '../lib/driving/cabGauges'
-import { CAMERA_MODES, DEFAULT_CAMERA_MODE, FREE_CAMERA_MODE, nextCameraMode } from '../lib/driving/cameraModes'
+import { CAMERA_COMMANDS, CAMERA_VIEWS, cameraReducer, cameraShot, FREE_CAMERA_VIEW, glanceTargetYaw, initialCameraState } from '../lib/driving/cameraModes'
 import { cockpitSnapshot } from '../lib/driving/cockpitTelemetry'
 import { createKeyActiveTracker, mergeControls, neutralControls } from '../lib/driving/controls'
 import { createDashboardSource } from '../lib/driving/dashboardSource'
+import { loadControllerConfig, subscribeToControllerConfig } from '../lib/driving/controllerStore'
+import { snapshotGamepads } from '../lib/driving/gamepadBrowser'
+import { createWheelSource } from '../lib/driving/wheelSource'
 import { proximityReadout } from '../lib/driving/proximity'
 import { rigGeometryMismatches } from '../lib/driving/rigGeometry'
 import { createSimCore } from '../lib/driving/simCore'
@@ -47,6 +50,7 @@ import { RackLevelMarker } from './driving/RackLevelMarker'
 import { ParkingBayMarker } from './driving/ParkingBayMarker'
 import { DrivingLoadingPanel } from './driving/DrivingLoadingPanel'
 import { OperatorDashboard } from './driving/OperatorDashboard'
+import { ControllerSetup } from './driving/ControllerSetup'
 import { InsetRenderer, ProximityInsetFrame, ProximityRings } from './driving/ProximityInset'
 import './DrivingSimulationViewer.css'
 
@@ -61,34 +65,48 @@ const HEADLIGHT_INTENSITY = 6
 const CAMERA_LABEL_KEYS = {
   'first-person': 'driving.camera.firstPerson',
   chase: 'driving.camera.chase',
-  top: 'driving.camera.top',
-  side: 'driving.camera.side',
-  front: 'driving.camera.front',
   free: 'driving.camera.free',
 }
 
-// Keyboard commands that work the cab's switches. E is handled on its own
-// (it turns the key), and anything else is the view's (camera, inset).
+// The on-screen D-pad: the same commands as the arrow keys and the wheel's
+// D-pad. Its buttons are named for what they do in the current view.
+const CAMERA_ARROWS = [
+  { command: 'cameraLeft', icon: ChevronLeft },
+  { command: 'cameraUp', icon: ChevronUp },
+  { command: 'cameraDown', icon: ChevronDown },
+  { command: 'cameraRight', icon: ChevronRight },
+]
+
+// Keyboard and wheel commands that work the cab's switches, by the names
+// each source raises (keyboardSource's VIEW_COMMAND_BY_KEY and E, gamepad.js's
+// COMMAND_ACTIONS). Anything else is the view's (camera, inset).
 const CAB_COMMANDS = {
+  engineToggle: (dashboard, engineOn) => dashboard.toggleEngine(engineOn),
+  engine: (dashboard, engineOn) => dashboard.toggleEngine(engineOn),
   seatbeltToggle: (dashboard) => dashboard.toggle('seatbelt'),
+  seatbelt: (dashboard) => dashboard.toggle('seatbelt'),
   parkingBrakeToggle: (dashboard) => dashboard.toggle('parkingBrake'),
+  parkingBrake: (dashboard) => dashboard.toggle('parkingBrake'),
   horn: (dashboard) => dashboard.horn(),
 }
+// The wheel's name for a view command, where it differs from the keyboard's.
+const VIEW_COMMAND_ALIASES = { inset: 'toggleInset' }
 
 // Everything the driving screen shows, published into the telemetry store
 // (lib/driving/telemetry.js) rather than set as React state every frame.
-function publishCockpit(telemetry, core, course, { controls, switches, gauges }) {
+function publishCockpit(telemetry, core, course, { controls, switches, gauges, wheel }) {
   telemetry.publish(
     cockpitSnapshot(core.state, course, {
       controls,
       switches,
       gauges,
+      wheel,
       proximity: proximityReadout(core.state, core.world),
     }),
   )
 }
 
-function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, onSimEvent, onKeyActive, onViewCommand, cameraMode, insetEnabled, insetFrameRef, camAdjustedRef }) {
+function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, wheel, onSimEvent, onKeyActive, onCabChange, onViewCommand, cameraState, insetEnabled, insetFrameRef, camAdjustedRef }) {
   const { scene } = useGLTF(EQUIPMENT_MODEL_URL)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const { camera, gl } = useThree()
@@ -103,7 +121,7 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
   const parked = useTelemetry(telemetry, (snapshot) => snapshot.parked)
 
   const refs = useDrivingSceneRefs()
-  const { rigRef, truckGroupRef, tipPivotRef, palletObjectsRef, coneObjectsRef, vehicleOrbitRef, lookYawRef, lookPitchRef } = refs
+  const { rigRef, truckGroupRef, tipPivotRef, palletObjectsRef, coneObjectsRef, vehicleOrbitRef, lookYawRef, lookPitchRef, glanceRef } = refs
   const sunLightRef = useRef()
   const sunTargetRef = useRef()
   const headlightRef = useRef()
@@ -111,7 +129,8 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
   const telemetryClockRef = useRef(0)
   // The truck pose syncView drew this frame, for the inset's camera.
   const renderPoseRef = useRef(null)
-  const firstPerson = cameraMode === 'first-person'
+  const firstPerson = cameraState.view === 'first-person'
+  const shot = cameraShot(cameraState)
 
   // The fixed-step loop. Each step first records the pose it starts from, so
   // syncView can interpolate the render between the last two steps.
@@ -119,10 +138,13 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
     const prevPose = capturePose(core.state, createPoseBuffer())
     const keyTracker = createKeyActiveTracker()
     let lastControls = neutralControls()
+    // The cab switches the completion code can read, as last reported.
+    let lastCab = null
     const loop = createSimLoop((dt) => {
       capturePose(core.state, prevPose)
-      const leverEngaged = dashboard.switches.lever !== null
-      lastControls = mergeControls([keyboard.read(core.state, { leverEngaged }), dashboard.read()])
+      // The wheel first: a shifter's lever beats the dashboard's.
+      const leverEngaged = dashboard.switches.lever !== null || wheel.status().shifter
+      lastControls = mergeControls([wheel.read(), keyboard.read(core.state, { leverEngaged, dt }), dashboard.read()])
       core.step(dt, lastControls)
     })
     return {
@@ -135,6 +157,14 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
       // The keysUsed adapter: the old keyboard letters, reported once per
       // press, for free-practice completion code.
       freshKeys: () => keyTracker.update(lastControls, keyboard.drainLetters()),
+      // The seatbelt and parking brake when either changed since the last
+      // call, else null.
+      cabChange: () => {
+        const { seatbelt, parkingBrake } = lastControls
+        if (lastCab && lastCab.seatbelt === seatbelt && lastCab.parkingBrake === parkingBrake) return null
+        lastCab = { seatbelt, parkingBrake }
+        return lastCab
+      },
     }
   })
 
@@ -186,6 +216,12 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
     if (!import.meta.env.DEV) return undefined
     window.__drivingDebugSet = (patch = {}) => {
       core.debugSet(patch)
+      // The cab switches are the dashboard's. `direction` sets its lever;
+      // 'auto' hands direction back to the keyboard.
+      if (typeof patch.seatbelt === 'boolean') dashboard.set('seatbelt', patch.seatbelt)
+      if (typeof patch.parkingBrake === 'boolean') dashboard.set('parkingBrake', patch.parkingBrake)
+      if (patch.direction === 'auto') dashboard.releaseLever()
+      else if (typeof patch.direction === 'string') dashboard.setLever(patch.direction)
       // A warp is not motion: don't smear the render across it.
       capturePose(core.state, sim.prevPose)
     }
@@ -193,7 +229,7 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
       delete window.__drivingDebugSet
       delete window.__drivingDebug
     }
-  }, [core, sim])
+  }, [core, sim, dashboard])
 
   // Recentre the look-around offset every time first-person is (re-)entered,
   // same idea as the chase-cam's "Reset Camera" button - a leftover look
@@ -202,7 +238,17 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
     if (!firstPerson) return
     lookYawRef.current = 0
     lookPitchRef.current = 0
-  }, [firstPerson, lookYawRef, lookPitchRef])
+    glanceRef.current = null
+  }, [firstPerson, lookYawRef, lookPitchRef, glanceRef])
+
+  // A D-pad glance in first-person eases the look to that side (or behind)
+  // and levels it (stepCamera does the easing). Drag-to-look carries on from
+  // wherever it is.
+  const { glance, glanceCount } = cameraState
+  useEffect(() => {
+    if (!glanceCount) return
+    glanceRef.current = { yaw: glanceTargetYaw(glance, lookYawRef.current), pitch: 0 }
+  }, [glance, glanceCount, lookYawRef, glanceRef])
 
   // Click-and-drag look-around: the camera stays pinned to the seat (still
   // riding along with the vehicle every frame, see stepCamera), only the
@@ -220,6 +266,7 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
     const handlePointerDown = (event) => {
       if (event.button !== 0) return
       dragging = true
+      glanceRef.current = null
       lastX = event.clientX
       lastY = event.clientY
     }
@@ -244,16 +291,19 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerup', handlePointerUp)
     }
-  }, [firstPerson, gl, lookYawRef, lookPitchRef])
+  }, [firstPerson, gl, lookYawRef, lookPitchRef, glanceRef])
 
   useFrame((_, rawDelta) => {
-    // Keyboard commands first: E turns the dashboard's key, B / Space / H
-    // work its switches, and the rest (camera, inset) go to the view. Then
-    // whatever the key switch decided reaches the simulation.
-    for (const command of keyboard.drainCommands()) {
-      if (command === 'engineToggle') dashboard.toggleEngine(core.state.truck.engineOn)
-      else if (CAB_COMMANDS[command]) CAB_COMMANDS[command](dashboard)
-      else onViewCommand(command)
+    // Poll the wheel once per frame; the browser updates gamepad state no
+    // faster than that.
+    wheel.update(snapshotGamepads())
+    // Keyboard and wheel commands first: E (or the wheel's engine button)
+    // turns the dashboard's key, B / Space / H work its switches, and the
+    // rest (camera, inset) go to the view. Then whatever the key switch
+    // decided reaches the simulation.
+    for (const command of [...keyboard.drainCommands(), ...wheel.drainCommands()]) {
+      if (CAB_COMMANDS[command]) CAB_COMMANDS[command](dashboard, core.state.truck.engineOn)
+      else onViewCommand(VIEW_COMMAND_ALIASES[command] || command)
     }
     for (const command of dashboard.drainCommands()) {
       if (command === 'horn') playDeviceSound('horn')
@@ -265,6 +315,8 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
     const events = core.drainEvents()
     events.forEach(onSimEvent)
     sim.freshKeys().forEach(onKeyActive)
+    const cab = sim.cabChange()
+    if (cab) onCabChange(cab)
 
     const pose = syncView(
       {
@@ -281,7 +333,7 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
       rawDelta,
     )
     renderPoseRef.current = pose
-    stepCamera({ ...refs, profile, camera, cameraMode, forkHeight: core.state.forks.height, camAdjustedRef }, pose, rawDelta)
+    stepCamera({ ...refs, profile, camera, cameraState, forkHeight: core.state.forks.height, camAdjustedRef }, pose, rawDelta)
     if (headlightRef.current) headlightRef.current.intensity = dashboard.switches.lights ? HEADLIGHT_INTENSITY : 0
 
     if (import.meta.env.DEV) window.__drivingDebug = core.debugSnapshot()
@@ -291,7 +343,7 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
     telemetryClockRef.current += rawDelta
     if (dashboard.takeChanged() || events.length || telemetryClockRef.current >= TELEMETRY_INTERVAL) {
       telemetryClockRef.current = 0
-      publishCockpit(telemetry, core, course, { controls: sim.controls(), switches: dashboard.switches, gauges: sim.gauges })
+      publishCockpit(telemetry, core, course, { controls: sim.controls(), switches: dashboard.switches, gauges: sim.gauges, wheel: wheel.status() })
     }
   })
 
@@ -427,8 +479,8 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
 
       <InsetRenderer enabled={insetEnabled} frameRef={insetFrameRef} poseRef={renderPoseRef} />
 
-      {cameraMode === FREE_CAMERA_MODE && <OrbitControls makeDefault enableDamping dampingFactor={0.15} minDistance={0.5} maxDistance={80} />}
-      {cameraMode === 'chase' && (
+      {shot === FREE_CAMERA_VIEW && <OrbitControls makeDefault enableDamping dampingFactor={0.15} minDistance={0.5} maxDistance={80} />}
+      {shot === 'behind' && (
         <OrbitControls
           ref={vehicleOrbitRef}
           makeDefault
@@ -447,7 +499,8 @@ function DrivingScene({ profile, course, core, telemetry, keyboard, dashboard, o
 
 function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, className, isAdmin }) {
   // First-person on every entry (docs/revisions/post-defense-plan.md, 4.1).
-  const [cameraMode, setCameraMode] = useState(DEFAULT_CAMERA_MODE)
+  const [cameraState, setCameraState] = useState(initialCameraState)
+  const shot = cameraShot(cameraState)
   const [insetOn, setInsetOn] = useState(true)
   const camAdjustedRef = useRef(false)
   const insetFrameRef = useRef(null)
@@ -457,6 +510,8 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   // "Reset Attempt" builds a fresh core, dashboard and gauges.
   const [core] = useState(() => createSimCore(course, profile))
   const [dashboard] = useState(createDashboardSource)
+  const [wheel] = useState(() => createWheelSource(loadControllerConfig()))
+  const [setupOpen, setSetupOpen] = useState(false)
   const [telemetry] = useState(() => {
     const store = createTelemetryStore(null)
     publishCockpit(store, core, course, { controls: neutralControls(), switches: dashboard.switches, gauges: createCabGauges() })
@@ -469,33 +524,33 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
     core.setProfile(profile)
   }, [core, profile])
 
-  const hud = useTelemetry(telemetry, (snapshot) => snapshot)
-  const { engineOn, leverEngaged, checkpointIndex, palletState, parkingStatus, parked } = hud
+  // A binding changed in Controller Setup applies to the running attempt.
+  useEffect(() => subscribeToControllerConfig((config) => wheel.setConfig(config)), [wheel])
 
-  const chooseCamera = (mode) => {
+  const hud = useTelemetry(telemetry, (snapshot) => snapshot)
+  const { engineOn, leverEngaged, shifterActive, checkpointIndex, palletState, parkingStatus, parked, needSeatbelt, needParkingBrake, needNeutral } = hud
+
+  // Any camera move drops a hand-orbited chase back onto its computed pose.
+  const moveCamera = (command) => {
     camAdjustedRef.current = false
-    setCameraMode(mode)
+    setCameraState((state) => cameraReducer(state, command))
   }
-  // Camera and inset keys, raised from the frame loop on a key press (never
-  // per frame). C from the admin's free camera goes back to first-person.
+  // Camera and inset keys, raised from the frame loop on a key or D-pad press
+  // (never per frame).
   const handleViewCommand = (command) => {
-    if (command === 'cameraNext') {
-      chooseCamera(cameraMode === FREE_CAMERA_MODE ? DEFAULT_CAMERA_MODE : nextCameraMode(cameraMode))
-    } else if (command === 'toggleInset') {
-      setInsetOn((on) => !on)
-    } else if (command.startsWith('camera:')) {
-      chooseCamera(command.slice('camera:'.length))
-    }
+    if (command === 'toggleInset') setInsetOn((on) => !on)
+    else if (CAMERA_COMMANDS.includes(command)) moveCamera(command)
   }
-  // The top view already is the bird's-eye picture.
-  const insetEnabled = insetOn && cameraMode !== 'top'
+  // Overhead already is the bird's-eye picture.
+  const insetEnabled = insetOn && shot !== 'overhead'
   // One short line over the dashboard: how to start, what the lever does,
   // how to look around. Every key is listed in the dashboard's Controls
   // drawer.
+  const interlockBlocked = needSeatbelt || needParkingBrake || needNeutral
   const hint = [
-    !engineOn && t('driving.hud.hint.engineOff'),
-    engineOn && leverEngaged && t('driving.hud.hint.lever'),
-    cameraMode === 'first-person' && t('driving.hud.hint.look'),
+    !engineOn && t(interlockBlocked ? 'driving.hud.hint.interlock' : 'driving.hud.hint.engineOff'),
+    engineOn && leverEngaged && t(shifterActive ? 'driving.hud.hint.shifter' : 'driving.hud.hint.lever'),
+    shot === 'first-person' && t('driving.hud.hint.look'),
   ]
     .filter(Boolean)
     .join(' ')
@@ -512,6 +567,9 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   const handleSimEvent = (event) => {
     if (event.type === 'engine') {
       emit({ type: event.on ? 'engine-on' : 'engine-off' })
+    } else if (event.type === 'engine-blocked') {
+      // The cluster points at what is missing (cockpitSnapshot's need*).
+      playDeviceSound('denied')
     } else if (event.type === 'fail') {
       const info = profile.failMessages[event.reason] || { title: 'Attempt Failed', message: 'Reset the attempt and try again.' }
       setFailInfo({ reason: event.reason, ...info })
@@ -531,6 +589,8 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
     }
   }
   const handleKeyActive = (key) => emit({ type: 'key-active', key })
+  // For free-practice completion code (context.seatbelt / parkingBrake).
+  const handleCabChange = ({ seatbelt, parkingBrake }) => emit({ type: 'cab-switch', seatbelt, parkingBrake })
 
   const checkpoints = course.checkpoints || []
   // Stored courses always use `pallets`; the singular `pallet` is the older
@@ -565,30 +625,41 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
             <RotateCcw size={14} /> {t('driving.hud.resetAttempt')}
           </button>
           <div className="driving-camera-modes" role="group" aria-label={t('driving.camera.label')} title={t('driving.camera.hint')}>
-            {CAMERA_MODES.map((mode, index) => (
+            {CAMERA_VIEWS.map((view) => (
               <button
-                key={mode}
+                key={view}
                 type="button"
-                className={`driving-reset-button ${cameraMode === mode ? 'is-active' : ''}`}
-                aria-pressed={cameraMode === mode}
-                onClick={() => chooseCamera(mode)}
+                className={`driving-reset-button ${cameraState.view === view ? 'is-active' : ''}`}
+                aria-pressed={cameraState.view === view}
+                onClick={() => moveCamera(`view:${view}`)}
               >
-                <span className="driving-camera-shortcut" aria-hidden="true">{index + 1}</span>
-                {t(CAMERA_LABEL_KEYS[mode])}
+                {t(CAMERA_LABEL_KEYS[view])}
               </button>
             ))}
             {isAdmin && (
               <button
                 type="button"
-                className={`driving-reset-button ${cameraMode === FREE_CAMERA_MODE ? 'is-active' : ''}`}
-                aria-pressed={cameraMode === FREE_CAMERA_MODE}
-                onClick={() => chooseCamera(FREE_CAMERA_MODE)}
+                className={`driving-reset-button ${shot === FREE_CAMERA_VIEW ? 'is-active' : ''}`}
+                aria-pressed={shot === FREE_CAMERA_VIEW}
+                onClick={() => moveCamera(`view:${FREE_CAMERA_VIEW}`)}
               >
                 <Compass size={14} /> {t(CAMERA_LABEL_KEYS.free)}
               </button>
             )}
           </div>
-          {cameraMode === 'chase' && (
+          {shot !== FREE_CAMERA_VIEW && (
+            <div className="driving-camera-modes" role="group" aria-label={t(`driving.camera.arrows.${cameraState.view}`)}>
+              {CAMERA_ARROWS.map(({ command, icon: Icon }) => {
+                const label = t(`driving.camera.${cameraState.view}.${command}`)
+                return (
+                  <button key={command} type="button" className="driving-reset-button" aria-label={label} title={label} onClick={() => moveCamera(command)}>
+                    <Icon size={14} aria-hidden="true" />
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {shot === 'behind' && (
             <button
               type="button"
               className="driving-reset-button"
@@ -607,6 +678,9 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
           >
             <Radar size={14} /> {t('driving.inset.toggle')}
           </button>
+          <button type="button" className="driving-reset-button" onClick={() => setSetupOpen(true)}>
+            <Gamepad2 size={14} /> {t('controller.open')}
+          </button>
         </div>
       </div>
 
@@ -616,7 +690,7 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
         shadows="percentage"
         dpr={[1, 1.35]}
         camera={{ position: [0, 2, -4], fov: 55 }}
-        className={cameraMode === 'first-person' ? 'driving-canvas-lookable' : undefined}
+        className={shot === 'first-person' ? 'driving-canvas-lookable' : undefined}
       >
         <Suspense fallback={<DrivingLoadingPanel />}>
           <DrivingScene
@@ -626,16 +700,20 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
             telemetry={telemetry}
             keyboard={keyboard}
             dashboard={dashboard}
+            wheel={wheel}
             onSimEvent={handleSimEvent}
             onKeyActive={handleKeyActive}
+            onCabChange={handleCabChange}
             onViewCommand={handleViewCommand}
-            cameraMode={cameraMode}
+            cameraState={cameraState}
             insetEnabled={insetEnabled}
             insetFrameRef={insetFrameRef}
             camAdjustedRef={camAdjustedRef}
           />
         </Suspense>
       </Canvas>
+
+      {setupOpen && <ControllerSetup onClose={() => setSetupOpen(false)} />}
 
       {failInfo && (
         <div className="driving-fail-overlay">

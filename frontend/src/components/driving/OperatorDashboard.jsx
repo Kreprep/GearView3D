@@ -31,10 +31,15 @@ import './OperatorDashboard.css'
 // the right. Lamps light only with the key on, as a real cluster's do. The
 // oil-pressure and charge lamps are lit with the key on and the engine
 // stopped, which is the bulb check an operator does before cranking.
+//
+// When the pre-start interlock refuses a start, the controls it still wants
+// (seatbelt, parking brake, lever in N) are marked until the engine starts.
+// A connected shifter owns the direction lever, so the on-screen lever only
+// shows it.
 
 const CAB_KEYS = [
   { key: 'C', captionKey: 'driving.key.cameraNext' },
-  { key: '1-5', captionKey: 'driving.key.cameraJump' },
+  { key: '← ↑ ↓ →', captionKey: 'driving.key.cameraJump' },
   { key: 'V', captionKey: 'driving.key.inset' },
   { key: 'H', captionKey: 'driving.key.horn' },
   { key: 'B', captionKey: 'driving.key.seatbelt' },
@@ -99,7 +104,8 @@ export function OperatorDashboard({ telemetry, dashboard, capacityKg, keyLegend,
   // Nearly every field is on show, and the store only replaces the snapshot
   // when something in it changed, so the cluster reads it whole.
   const {
-    engineOn, keyPosition, direction, leverEngaged, seatbelt, parkingBrake, lights,
+    engineOn, keyPosition, direction, leverEngaged, shifterActive, seatbelt, parkingBrake, lights,
+    needSeatbelt, needParkingBrake, needNeutral,
     speedKmh, forkHeightM, tiltDeg, tilt, grip, palletState, carriedLoadKg,
     fuel, temp, hours, liftInput, tiltInput,
   } = useTelemetry(telemetry, wholeSnapshot)
@@ -128,28 +134,30 @@ export function OperatorDashboard({ telemetry, dashboard, capacityKg, keyLegend,
           ))}
         </fieldset>
 
-        <fieldset className="operator-group">
+        <fieldset className="operator-group" disabled={shifterActive} title={shifterActive ? t('driving.dash.lever.shifter') : undefined}>
           <legend>{t('driving.dash.lever')}</legend>
           {DIRECTIONS.map((value) => (
             <button
               key={value}
               type="button"
-              className={`operator-switch ${leverEngaged && direction === value ? 'is-active' : ''}`}
+              className={`operator-switch ${leverEngaged && direction === value ? 'is-active' : ''} ${value === 'N' && needNeutral ? 'is-required' : ''}`}
               aria-pressed={leverEngaged && direction === value}
               onClick={() => dashboard.setLever(value)}
             >
               {value}
             </button>
           ))}
-          <button
-            type="button"
-            className={`operator-switch ${leverEngaged ? '' : 'is-active'}`}
-            aria-pressed={!leverEngaged}
-            title={t('driving.dash.lever.autoHint')}
-            onClick={() => dashboard.releaseLever()}
-          >
-            {t('driving.dash.lever.auto')}
-          </button>
+          {!shifterActive && (
+            <button
+              type="button"
+              className={`operator-switch ${leverEngaged ? '' : 'is-active'}`}
+              aria-pressed={!leverEngaged}
+              title={t('driving.dash.lever.autoHint')}
+              onClick={() => dashboard.releaseLever()}
+            >
+              {t('driving.dash.lever.auto')}
+            </button>
+          )}
         </fieldset>
       </div>
 
@@ -226,7 +234,7 @@ export function OperatorDashboard({ telemetry, dashboard, capacityKg, keyLegend,
         <div className="operator-toggles">
           <button
             type="button"
-            className={`operator-switch ${seatbelt ? 'is-active' : ''}`}
+            className={`operator-switch ${seatbelt ? 'is-active' : ''} ${needSeatbelt ? 'is-required' : ''}`}
             aria-pressed={seatbelt}
             title={t('driving.dash.shortcut', { label: t('driving.dash.seatbelt'), key: 'B' })}
             onClick={() => dashboard.toggle('seatbelt')}
@@ -235,7 +243,7 @@ export function OperatorDashboard({ telemetry, dashboard, capacityKg, keyLegend,
           </button>
           <button
             type="button"
-            className={`operator-switch ${parkingBrake ? 'is-active' : ''}`}
+            className={`operator-switch ${parkingBrake ? 'is-active' : ''} ${needParkingBrake ? 'is-required' : ''}`}
             aria-pressed={parkingBrake}
             title={t('driving.dash.shortcut', { label: t('driving.dash.parkingBrake'), key: 'Space' })}
             onClick={() => dashboard.toggle('parkingBrake')}

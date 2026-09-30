@@ -23,18 +23,20 @@ import {
 // once they have bottomed out against the carriage, and gets shoved aside
 // when the truck hits it off-square.
 //
-// Resolves stepDrive's intended nextX/nextZ against rack and pallet-as-
-// obstacle collision and commits the result to the truck's position. Must run
-// before stepForks/stepFail/stepPallet, which read the committed position.
+// Resolves stepDrive's intended pose (nextX/nextZ/nextHeading) against rack
+// and pallet-as-obstacle collision and commits the result to the truck. A
+// blocked move keeps the old pose entirely, heading included: with rear-wheel
+// steer the tail swings as the truck turns, so turning is movement too. Must
+// run before stepForks/stepFail/stepPallet, which read the committed pose.
 export function stepCollisionBody(state, world) {
   const { truck, forks, pallets, frame } = state
   const { halfWidth, halfLength, rackColliders, geometry, scratch } = world
-  const { nextX, nextZ } = frame
+  const { nextX, nextZ, nextHeading } = frame
 
   const body = scratch.bodyRect
   body.x = nextX
   body.z = nextZ
-  body.rotation = truck.heading
+  body.rotation = nextHeading
   body.halfX = halfWidth
   body.halfZ = halfLength
 
@@ -48,9 +50,11 @@ export function stepCollisionBody(state, world) {
     if (!next) return null
     body.x = truck.x
     body.z = truck.z
+    body.rotation = truck.heading
     const now = orientedRectOverlap(body, rect, margin)
     body.x = nextX
     body.z = nextZ
+    body.rotation = nextHeading
     return !now || next.depth > now.depth + 1e-4 ? next : null
   }
 
@@ -90,7 +94,7 @@ export function stepCollisionBody(state, world) {
         palletHalf,
         vehicleX: nextX,
         vehicleZ: nextZ,
-        heading: truck.heading,
+        heading: nextHeading,
         forkTipOffset: geometry.forkTipOffset,
         forkReach: geometry.forkReach,
       })
@@ -110,9 +114,13 @@ export function stepCollisionBody(state, world) {
 
   if (blocked) {
     truck.speed = 0
+    frame.forwardX = Math.sin(truck.heading)
+    frame.forwardZ = Math.cos(truck.heading)
+    frame.lateralAccel = 0
   } else {
     truck.x = nextX
     truck.z = nextZ
+    truck.heading = nextHeading
   }
 }
 

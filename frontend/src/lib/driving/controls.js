@@ -23,6 +23,10 @@ export function neutralControls() {
     // Set by a source whose direction is a physical lever (a shifter or the
     // dashboard). An explicit lever beats the keyboard's automatic direction.
     explicitDirection: false,
+    // A physical steering wheel's real rotation (radians, + anticlockwise as
+    // the operator sees it), so the cab's wheel can show it. null when no
+    // wheel is steering.
+    steeringWheelAngle: null,
   }
 }
 
@@ -32,7 +36,9 @@ const BOOLEAN_KEYS = ['horn', 'parkingBrake', 'seatbelt']
 // Combine every source's reading into one. For analog values the largest
 // magnitude wins (a keyboard tap does not cancel a half-pressed pedal, and
 // vice versa). Booleans are OR-ed. Direction comes from the first explicit
-// lever if there is one, otherwise from the first source that is not in N.
+// lever if there is one, otherwise from the first source that is not in N, so
+// list a shifter before the dashboard. The steering wheel's angle comes from
+// the first source that has one.
 export function mergeControls(readings) {
   const merged = neutralControls()
   let leverDirection = null
@@ -46,6 +52,9 @@ export function mergeControls(readings) {
     }
     for (const key of BOOLEAN_KEYS) {
       if (reading[key]) merged[key] = true
+    }
+    if (merged.steeringWheelAngle === null && typeof reading.steeringWheelAngle === 'number') {
+      merged.steeringWheelAngle = reading.steeringWheelAngle
     }
     if (DIRECTIONS.includes(reading.direction)) {
       if (reading.explicitDirection) {

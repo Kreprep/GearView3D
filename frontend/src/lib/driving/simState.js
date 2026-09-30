@@ -117,6 +117,10 @@ export function createSimState(course, { palletFootprint } = {}) {
     grip: 'none',
     cones: courseCones(course).map(() => ({ hit: false, angle: 0, dirX: 0, dirZ: 1 })),
     parking: { parked: false, status: '' },
+    // The last start the pre-start interlock refused: what was missing and
+    // when (state.time), for the dashboard to point at. `at` is null once the
+    // engine has started.
+    interlock: { missing: [], at: null },
     // What the HUD shows that only changes on events.
     hud: {
       palletState: 'ground',
