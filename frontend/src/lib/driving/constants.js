@@ -101,7 +101,7 @@ export const SUDDEN_STOP_MIN_SPEED = kmh(10)
 // for gameplay feel, not a real-world cm conversion.
 //
 // This is the highTravel *fail*. The forks-high-travel safety sign warns from
-// 15 cm (FORKS_TRAVEL_HEIGHT, data/safetyThresholds.js); the two values unify
+// 30 cm (FORKS_TRAVEL_HEIGHT, data/safetyThresholds.js); the two values unify
 // in Phase 7, since moving this one changes the simulation.
 export const SAFE_TRAVEL_HEIGHT = 0.22
 export const HIGH_TRAVEL_MIN_SPEED = 0.4
