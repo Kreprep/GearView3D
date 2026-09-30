@@ -240,6 +240,25 @@ async (page) => {
       ],
       expect: ["d.violations['look-direction'] === 1", "!d.signs.some((sign) => sign.id === 'look-direction')", '!l.overlap'],
     },
+    'sign-release': {
+      module: 'pallet-testing', step: 'Precision Carry',
+      setup: { x: 0, z: 4.0, heading: 0 },
+      // pallet-deliver's drive up to the load resting in the drop zone: the
+      // hint to tilt the mast forward comes up, is not counted, and clears
+      // once the load is off the forks.
+      actions: [
+        ...START,
+        { hold: 'w', until: 'd.z > 4.1 && d.speed === 0', timeout: 8000 },
+        { hold: 'r', until: 'd.forkHeight >= 0.15', timeout: 5000 },
+        { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
+        { set: { x: 0, z: 18.2, speed: 0 } },
+        { wait: 300 },
+        { hold: 'f', until: "d.signs.some((sign) => sign.id === 'release-load')", timeout: 6000 },
+        { hold: 'g', until: "d.palletStates[0] !== 'carried'", timeout: 5000 },
+        { wait: 800 },
+      ],
+      expect: ["d.palletStates[0] === 'released'", "!d.signs.some((sign) => sign.id === 'release-load')", "d.violations['release-load'] === undefined", 'l.maxSigns >= 1', '!l.overlap', '!d.failed'],
+    },
     'sign-record': {
       module: 'load-handling', step: 'Accelerate Course',
       // Completing a step saves what the signs logged with the learner's

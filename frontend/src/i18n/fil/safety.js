@@ -26,6 +26,7 @@ export default {
   'safety.sign.parking-brake-on': 'Bitawan ang parking brake',
   'safety.sign.seatbelt-off': 'Ikabit ang seatbelt',
   'safety.sign.forks-raised-parked': 'Ibaba ang forks hanggang sa lupa',
+  'safety.sign.release-load': 'Ihilig paharap ang mast para maibaba ang karga',
 
   'safety.summary.clean': 'Malinis na takbo: walang babala sa kaligtasan sa subok na ito.',
   // Filipino does not inflect after a numeral, so both variants read the same.

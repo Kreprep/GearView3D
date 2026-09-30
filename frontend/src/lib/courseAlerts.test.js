@@ -1,7 +1,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DEFAULT_SPEED_LIMIT_KMH } from '../data/safetyThresholds.js'
-import { ALERT_RULES, alertProblems, resolveAlerts, resolveSpeedLimitKmh, withAlertSwitch } from './courseAlerts.js'
+import { buildDefaultCourse } from '../data/courseDefaults.js'
+import {
+  ALERT_RULES,
+  alertProblems,
+  resolveAlerts,
+  resolveSpeedLimitKmh,
+  withAlertSwitch,
+  withMissingAlertDefaults,
+} from './courseAlerts.js'
 
 const essential = ALERT_RULES.filter((rule) => rule.essential).map((rule) => rule.id)
 const optional = ALERT_RULES.filter((rule) => !rule.essential).map((rule) => rule.id)
@@ -61,4 +69,33 @@ test('a speed limit that is not a positive number is a problem; blank is not', (
   assert.deepEqual(alertProblems({ speedLimitKmh: 10 }), [])
   assert.equal(alertProblems({ speedLimitKmh: 0 }).length, 1)
   assert.equal(alertProblems({ speedLimitKmh: -3 }).length, 1)
+})
+
+test('a stock speed limit is laid into a stored course that has no value for it', () => {
+  const stored = { start: { position: [0, 0, 0], heading: 0 }, checkpoints: [{ id: 'mine' }] }
+  const filled = withMissingAlertDefaults(stored, { checkpoints: [], speedLimitKmh: 18 })
+  assert.deepEqual(filled, { ...stored, speedLimitKmh: 18 })
+  // Only the safety keys: the admin's own geometry is never touched.
+  assert.deepEqual(filled.checkpoints, [{ id: 'mine' }])
+})
+
+test('a value the stored course already has always wins, a blanked one included', () => {
+  const defaults = { speedLimitKmh: 18, alerts: { overspeed: false } }
+  for (const stored of [{ speedLimitKmh: 10, alerts: {} }, { speedLimitKmh: null, alerts: { 'turn-speed': false } }]) {
+    assert.equal(withMissingAlertDefaults(stored, defaults), stored)
+  }
+})
+
+test('nothing is added where the stock course sets nothing, or there is no data', () => {
+  const stored = { checkpoints: [] }
+  assert.equal(withMissingAlertDefaults(stored, { checkpoints: [] }), stored)
+  assert.equal(withMissingAlertDefaults(null, { speedLimitKmh: 18 }), null)
+  assert.equal(withMissingAlertDefaults(stored, null), stored)
+})
+
+test('the stock acceleration lanes carry their speed limit into the seeded course rows', () => {
+  assert.equal(buildDefaultCourse('accelerate-course').data.speedLimitKmh, 18)
+  assert.equal(buildDefaultCourse('accelerate-brake').data.speedLimitKmh, 18)
+  // A course that sets none stores none, and gets the default.
+  assert.equal('speedLimitKmh' in buildDefaultCourse('turning-practice').data, false)
 })

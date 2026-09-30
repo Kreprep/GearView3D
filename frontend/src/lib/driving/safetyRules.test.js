@@ -9,6 +9,7 @@ import {
   TAIL_SWING_REACH,
   TILT_FORWARD_ANGLE,
 } from '../../data/safetyThresholds.js'
+import { TILT_RELEASE_ANGLE } from '../../data/palletProfile.js'
 import { ALERT_RULES, resolveAlerts } from '../courseAlerts.js'
 import { TILT_SECURE_ANGLE } from './constants.js'
 import {
@@ -42,6 +43,7 @@ const snapshot = (overrides = {}) => ({
   grip: 'none',
   carrying: false,
   loadLanded: false,
+  loadAtDestination: false,
   atStack: false,
   overCapacity: false,
   interlockMissing: [],
@@ -200,7 +202,7 @@ test('direction-change-moving: shuttling a lever against the way the truck is ro
 
 test('forks-high-travel: travelling with the forks above travel height, laden or not', () => {
   fires('forks-high-travel', { speed: kmh(3), forkHeight: FORKS_TRAVEL_HEIGHT + m(0.05) })
-  fires('forks-high-travel', { ...CARRYING, speed: -kmh(3), forkHeight: m(0.5) })
+  fires('forks-high-travel', { ...CARRYING, speed: -kmh(3), forkHeight: m(1) })
   quiet('forks-high-travel', { speed: kmh(3), forkHeight: FORKS_TRAVEL_HEIGHT })
   quiet('forks-high-travel', { speed: CREEP_SPEED, forkHeight: m(1) })
   // In a rack's bay the forks have to be up, storing a load or backing out.
@@ -264,6 +266,22 @@ test('forks-raised-parked: forks up with the engine off or the parking brake set
   quiet('forks-raised-parked', { engineOn: false, forkHeight: PARKED_FORKS_MAX })
 })
 
+test('release-load: a load resting where it is going, until the mast is tilted forward', () => {
+  const resting = { ...CARRYING, forkHeight: 0, loadLanded: true, loadAtDestination: true }
+  const hint = alertFor('release-load', resting)
+  assert.deepEqual([hint.severity, hint.kind, hint.sound, hint.hint], ['info', 'mandatory', null, true])
+  fires('release-load', { ...resting, mastTilt: 0 })
+  quiet('release-load', { ...resting, mastTilt: TILT_RELEASE_ANGLE })
+  // Landed somewhere else, or still in the air: nothing to release yet.
+  quiet('release-load', { ...resting, loadAtDestination: false })
+  quiet('release-load', CARRYING)
+})
+
+test('only release-load is a hint; every other rule is logged', () => {
+  assert.deepEqual(SAFETY_RULES.filter((rule) => rule.hint).map((rule) => rule.id), ['release-load'])
+  assert.equal(alertFor('overspeed', { speed: kmh(9) }).hint, false)
+})
+
 // --- The alert queue ---------------------------------------------------------
 
 const alert = (id, severity = 'caution', extra = {}) => ({
@@ -304,7 +322,7 @@ test('a sign comes up only after its rule has held for 150 ms', () => {
 
   const shown = run([[ALERT_SHOW_AFTER + 2 * DT, [alert('overspeed')]]])
   assert.deepEqual(shownIds(shown.queue), ['overspeed'])
-  assert.deepEqual(shown.edges, [{ id: 'overspeed', severity: 'caution', sound: 'cautionChime', escalation: false }])
+  assert.deepEqual(shown.edges, [{ id: 'overspeed', severity: 'caution', sound: 'cautionChime', escalation: false, hint: false }])
 })
 
 test('a rule that holds for less than 150 ms never shows and is never logged', () => {
@@ -378,7 +396,7 @@ test('a sign steps up to danger at once, and the step is logged as an escalation
   const up = run([[0.3, [alert('obstacle-ahead')]]])
   const stepped = stepAlertQueue(up.queue, [alert('obstacle-ahead', 'danger')], up.time + DT)
   assert.equal(stepped.shown[0].severity, 'danger')
-  assert.deepEqual(stepped.edges, [{ id: 'obstacle-ahead', severity: 'danger', sound: 'dangerAlarm', escalation: true }])
+  assert.deepEqual(stepped.edges, [{ id: 'obstacle-ahead', severity: 'danger', sound: 'dangerAlarm', escalation: true, hint: false }])
 })
 
 test('a sign steps back down from danger only after 500 ms, so it cannot flicker between the two', () => {
@@ -394,9 +412,14 @@ test('a sign steps back down from danger only after 500 ms, so it cannot flicker
   assert.deepEqual(settled.edges, [])
 })
 
+test('a hint\'s edge says so, for the log to leave it out', () => {
+  const { edges } = run([[0.3, [alert('release-load', 'info', { hint: true })]]])
+  assert.deepEqual(edges, [{ id: 'release-load', severity: 'info', sound: null, escalation: false, hint: true }])
+})
+
 test('a sign that came up as danger is one violation, not an escalation', () => {
   const { edges } = run([[0.3, [alert('overload', 'danger')]]])
-  assert.deepEqual(edges, [{ id: 'overload', severity: 'danger', sound: 'dangerAlarm', escalation: false }])
+  assert.deepEqual(edges, [{ id: 'overload', severity: 'danger', sound: 'dangerAlarm', escalation: false, hint: false }])
 })
 
 test('a sign that is up keeps the same alert object, and `shown` the same array, until it changes', () => {

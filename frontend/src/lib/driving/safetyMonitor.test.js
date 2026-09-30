@@ -190,6 +190,15 @@ test('turn-speed: a steering wheel held past half lock above 5 km/h', () => {
   assert.equal(monitor.tally().violations['turn-speed'], 1)
 })
 
+test('release-load: a delivery shows the hint at the drop zone and on the shelf, and does not count it', () => {
+  for (const id of ['precision-carry-delivery', 'rack-storage-delivery']) {
+    const { violations, edges, state } = watch(scenarioById(id), { view: CHASE })
+    assert.equal(state.deliveredCount, 1, id)
+    assert.equal(edges.filter((edge) => edge.id === 'release-load').length, 1, id)
+    assert.equal(violations['release-load'], undefined, id)
+  }
+})
+
 // --- Clean drives stay clean ---------------------------------------------------
 
 test('a careful drive raises no sign: both parking courses and the slalom', () => {

@@ -36,6 +36,7 @@ export const ALERT_RULES = [
   { id: 'parking-brake-on', essential: false, label: 'Driving against the parking brake' },
   { id: 'seatbelt-off', essential: false, label: 'Seatbelt unfastened with the engine running' },
   { id: 'forks-raised-parked', essential: false, label: 'Forks left raised when parked' },
+  { id: 'release-load', essential: false, label: 'Hint: tilt the mast forward to set a load down (not counted)' },
 ]
 
 export const ALERT_RULE_IDS = ALERT_RULES.map((rule) => rule.id)
@@ -58,6 +59,23 @@ export function withAlertSwitch(alerts, ruleId, on) {
     if (!enabled) next[rule.id] = false
   }
   return Object.keys(next).length ? next : undefined
+}
+
+// The keys of a course's data this file reads. A stock course sets one only
+// where it differs from the default (data/drivingCourse.js).
+export const COURSE_ALERT_KEYS = ['speedLimitKmh', 'alerts']
+
+// The stock values of those keys that a stored course has no value for at
+// all, laid into its data: what prisma/seed.js backfills into a built-in row
+// seeded before the key existed, so a stock speed limit reaches a database
+// that is already in use. A key the row has always wins, including one an
+// admin blanked (the Course Editor stores null for a blank speed limit).
+// Returns `data` itself when nothing is missing.
+export function withMissingAlertDefaults(data, defaults) {
+  if (!data || !defaults) return data
+  const missing = COURSE_ALERT_KEYS.filter((key) => defaults[key] !== undefined && !(key in data))
+  if (!missing.length) return data
+  return { ...data, ...Object.fromEntries(missing.map((key) => [key, defaults[key]])) }
 }
 
 const validSpeedLimit = (value) => typeof value === 'number' && Number.isFinite(value) && value > 0
