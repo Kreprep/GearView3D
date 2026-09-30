@@ -47,7 +47,8 @@ export function canAny(user, permissions) {
 }
 
 // The permissions that open the admin dashboard: every one that has a screen
-// there. `skills.signoff` joins them with Phase 9's trainee view.
+// there. `skills.signoff` does not need to: the sign-off controls are in
+// Reports, which is progress.view, and every role holding one holds both.
 export const DASHBOARD_PERMISSIONS = ['content.edit', 'equipment.edit', 'users.view', 'progress.view']
 
 export function canOpenDashboard(user) {
