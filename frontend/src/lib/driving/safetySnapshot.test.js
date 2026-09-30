@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { RACK_FOOTPRINT } from '../../data/rackProfile.js'
+import { RACK_FOOTPRINT, RACK_LEVEL_HEIGHTS } from '../../data/rackProfile.js'
 import { LOOK_AHEAD_HALF_ANGLE, PATH_MARGIN } from '../../data/safetyThresholds.js'
 import { defaultVehicleProfile } from '../../data/vehicleProfile.js'
 import { GLANCE_YAW, glanceTargetYaw } from './cameraModes.js'
@@ -176,6 +176,39 @@ test('carrying and landed follow the carried pallet', () => {
   assert.deepEqual([snapshotOf(sim).carrying, snapshotOf(sim).loadLanded], [true, false])
   sim.state.pallets[0].landed = true
   assert.equal(snapshotOf(sim).loadLanded, true)
+})
+
+test('a landed load is at its destination in the drop zone or on its target shelf, nowhere else', () => {
+  const pallets = [{ id: 'p1', position: [0, 0, 2], rotation: 0, weightKg: 400, targetRack: 'rack-1', targetLevel: 'middle' }]
+  const course = { pallets, racks: [rack(6)], dropZone: { position: [0, 0, 2], radius: 0.5 } }
+  const carry = (patch, truck = {}) => {
+    const sim = setup(course, { truck })
+    sim.state.carriedIndex = 0
+    Object.assign(sim.state.pallets[0], { state: 'carried', landed: true, restY: 0 }, patch)
+    return snapshotOf(sim).loadAtDestination
+  }
+  // On the floor inside the zone; still in the air; on the floor outside it.
+  assert.equal(carry({}), true)
+  assert.equal(carry({ landed: false }), false)
+  const outside = setup(course)
+  outside.state.carriedIndex = 0
+  Object.assign(outside.state.pallets[0], { state: 'carried', landed: true, restY: 0 })
+  outside.state.pallets[0].position.set(3, 0, 2)
+  assert.equal(snapshotOf(outside).loadAtDestination, false)
+
+  // On the target shelf, the fork tips in the rack's bay; on another shelf.
+  const atFace = { z: 6 - RACK_FOOTPRINT.halfDepth - halfLength - 0.05 }
+  const shelf = (restY) => {
+    const sim = setup(course, { truck: atFace })
+    sim.state.carriedIndex = 0
+    Object.assign(sim.state.pallets[0], { state: 'carried', landed: true, restY })
+    sim.state.pallets[0].position.set(0, restY, 6)
+    return snapshotOf(sim).loadAtDestination
+  }
+  assert.equal(shelf(RACK_LEVEL_HEIGHTS.middle), true)
+  assert.equal(shelf(RACK_LEVEL_HEIGHTS.bottom), false)
+  // No load at all.
+  assert.equal(snapshotOf(setup(course)).loadAtDestination, false)
 })
 
 test('the forks are at the stack while their tips are in a rack’s bay, laden or not', () => {

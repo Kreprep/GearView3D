@@ -29,7 +29,8 @@ export function createSafetyMonitor(course) {
       const snapshot = buildSafetySnapshot(state, world, { view, speedLimitKmh, previous })
       previous = snapshot
       queue = stepAlertQueue(queue, activeAlerts(snapshot, enabled), snapshot.time)
-      for (const edge of queue.edges) tally = tallyAlert(tally, edge)
+      // A hint says what to do next; it is not a violation.
+      for (const edge of queue.edges) if (!edge.hint) tally = tallyAlert(tally, edge)
       return queue
     },
 

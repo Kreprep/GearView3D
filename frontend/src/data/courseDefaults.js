@@ -7,6 +7,7 @@
 //
 // A step's `kind` picks how the module page renders it - see the Course model
 // in backend/prisma/schema.prisma.
+import { COURSE_ALERT_KEYS } from '../lib/courseAlerts.js'
 import { courseGoalType } from '../lib/courseGoals.js'
 import { drivingCourses } from './drivingCourse.js'
 import {
@@ -102,6 +103,9 @@ export function normalizeCourseGeometry(course = {}) {
     capacityKg: typeof course.capacityKg === 'number' ? course.capacityKg : null,
     failConditions: course.failConditions || null,
     completionCode: course.completionCode || null,
+    // The safety signs' settings, only where the course sets them: a missing
+    // key means the default (lib/courseAlerts.js).
+    ...Object.fromEntries(COURSE_ALERT_KEYS.filter((key) => course[key] !== undefined).map((key) => [key, course[key]])),
   }
 }
 

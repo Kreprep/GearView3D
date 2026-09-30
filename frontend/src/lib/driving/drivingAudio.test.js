@@ -1,9 +1,18 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { SOUND_BANK } from '../../data/soundBank.js'
-import { FORK_MAX_HEIGHT, TILT_BACK_MAX } from './constants.js'
+import { FORK_MAX_HEIGHT, MAX_SPEED, TILT_BACK_MAX } from './constants.js'
 import { neutralControls } from './controls.js'
-import { alertSounds, audioTargets, createDrivingAudio, eventSounds, LOOP_NAMES, switchSounds } from './drivingAudio.js'
+import {
+  alertSounds,
+  audioTargets,
+  createDrivingAudio,
+  engineRevTarget,
+  eventSounds,
+  LOOP_NAMES,
+  slewRev,
+  switchSounds,
+} from './drivingAudio.js'
 import { createSimState } from './simState.js'
 
 const COURSE = { start: { position: [0, 0, 0], heading: 0 } }
@@ -70,6 +79,35 @@ test('a failed attempt locks the controls, so the engine drops to idle', () => {
 test('raising the forks loads the engine, so it revs a little without the throttle', () => {
   const { engineHigh } = audioTargets(simState({ forkHeight: 0.3, controls: { lift: 1 } }))
   assert.ok(engineHigh.gain > 0 && engineHigh.gain < 1)
+})
+
+test('a rolling truck holds the engine off idle with the pedal released', () => {
+  const coasting = engineRevTarget(simState({ speed: MAX_SPEED / 2 }))
+  assert.ok(coasting > 0 && coasting < 0.5)
+  assert.ok(engineRevTarget(simState({ speed: MAX_SPEED })) > coasting)
+  close(engineRevTarget(simState({ speed: -MAX_SPEED / 2 })), coasting, 'reversing is the same')
+  // The throttle still wins, and a stopped truck idles.
+  assert.equal(engineRevTarget(simState({ speed: MAX_SPEED / 2, controls: { throttle: 1, direction: 'F' } })), 1)
+  assert.equal(engineRevTarget(simState()), 0)
+  assert.equal(engineRevTarget(simState({ engineOn: false, speed: MAX_SPEED })), 0)
+  assert.equal(engineRevTarget(simState({ failed: true, speed: MAX_SPEED, controls: { throttle: 1 } })), 0)
+  assert.ok(audioTargets(simState({ speed: MAX_SPEED / 2 })).engineHigh.gain > 0)
+})
+
+test('the revs climb and fall at an engine\'s pace, falling slower than they climb', () => {
+  assert.equal(slewRev(0, 1, 0), 0)
+  const up = slewRev(0, 1, 0.1)
+  const down = 1 - slewRev(1, 0, 0.1)
+  assert.ok(up > 0 && up < 1 && down > 0 && down < up)
+  // Never past the target, either way.
+  assert.equal(slewRev(0, 0.2, 5), 0.2)
+  assert.equal(slewRev(1, 0.2, 5), 0.2)
+})
+
+test('audioTargets sounds the revs it is given rather than the throttle', () => {
+  const state = simState({ controls: { throttle: 1, direction: 'F' } })
+  close(audioTargets(state, { rev: 0 }).engineIdle.gain, 1, 'idle gain')
+  close(audioTargets(state, { rev: 1 }).engineHigh.gain, 1, 'high gain')
 })
 
 // --- audioTargets: reverse beeper ------------------------------------------
@@ -244,6 +282,34 @@ test('switching off during the crank does not leave the loops waiting on the nex
   // An engine set running directly (window.__drivingDebugSet) has no crank.
   audio.update(simState(), SWITCHES)
   assert.equal(engine.loops.engineIdle.gain, 1)
+})
+
+test('feathering the throttle moves the revs gradually instead of flipping idle and full', () => {
+  const engine = fakeEngine()
+  const audio = createDrivingAudio(engine)
+  const off = simState()
+  const on = simState({ controls: { throttle: 1, direction: 'F' } })
+  audio.update(off, SWITCHES)
+  assert.equal(engine.loops.engineHigh.gain, 0)
+
+  // A 100 ms tap of full throttle: on the way up, not there.
+  engine.time = 0.1
+  audio.update(on, SWITCHES)
+  const tapped = engine.loops.engineHigh.gain
+  assert.ok(tapped > 0 && tapped < 1)
+  // Released for 100 ms: easing back, not at idle.
+  engine.time = 0.2
+  audio.update(off, SWITCHES)
+  assert.ok(engine.loops.engineHigh.gain > 0 && engine.loops.engineHigh.gain < tapped)
+  // Held: full revs.
+  engine.time = 2
+  audio.update(on, SWITCHES)
+  close(engine.loops.engineHigh.gain, 1, 'high gain')
+  // Switched off: no revs carried into the next start.
+  audio.update(simState({ engineOn: false }), SWITCHES)
+  engine.time = 2.01
+  audio.update(off, SWITCHES)
+  assert.equal(engine.loops.engineHigh.gain, 0)
 })
 
 test('the horn, a refused start and the cab switches play their one-shots', () => {

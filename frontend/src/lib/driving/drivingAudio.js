@@ -1,7 +1,7 @@
 import { SOUND_BANK } from '../../data/soundBank.js'
 import { clamp } from '../math.js'
 import { displayedDirection } from './cockpitTelemetry.js'
-import { FORK_MAX_HEIGHT } from './constants.js'
+import { FORK_MAX_HEIGHT, MAX_SPEED } from './constants.js'
 import { neutralControls } from './controls.js'
 
 // What the driving simulation sounds like (docs/revisions/
@@ -9,7 +9,8 @@ import { neutralControls } from './controls.js'
 // state each frame, like syncView.js, and never writes it.
 //
 // - audioTargets(state) says how loud and at what pitch each loop should be
-//   right now. Pure, and where the tests are.
+//   right now. Pure, and where the tests are. engineRevTarget(state) is the
+//   engine speed it asks for, and slewRev() how fast a real engine gets there.
 // - eventSounds(event) / switchSounds(previous, next) / alertSounds(edges)
 //   name the one-shots a sim event, a moved cab switch or a safety sign
 //   plays. Pure.
@@ -22,6 +23,18 @@ export const LOOP_NAMES = ['engineIdle', 'engineHigh', 'reverseBeeper', 'hydraul
 // Working the lift makes the pump load the engine, which the governor answers
 // with a few more revs, as a fraction of the throttle's range.
 const LIFT_REV = 0.3
+// A truck rolling in gear keeps its engine turning: with the pedal released
+// the revs settle at this fraction of the throttle's range at top speed, less
+// the slower it rolls, instead of dropping straight to idle. Without it,
+// easing off to hold a speed limit sounded like the engine cutting out.
+const ROAD_REV = 0.5
+// An engine has inertia: its revs climb and fall at these rates (the
+// throttle's whole range per second), falling slower than they climb. A
+// keyboard's throttle is all or nothing, so feathering W to hold a speed is a
+// string of taps; followed exactly, each tap flipped the sound between idle
+// and full revs.
+const REV_RISE_RATE = 2.5
+const REV_FALL_RATE = 1.0
 // How far the pump's pitch rises from no load to a load at the rated capacity.
 const LOAD_PITCH_RISE = 0.25
 // The reference truck's rated capacity (Toyota 8FGU25, public spec listing),
@@ -65,23 +78,44 @@ function engineLoops(rev) {
 }
 
 // The gain (0..1) and playback rate every loop should be heading for, given
+// The engine speed the controls and the road ask for right now, 0 (idle) to
+// 1 (full throttle). The throttle sets the revs whatever the direction lever
+// says: in N, and against the parking brake or the inching pedal, it still
+// revs the engine. A raised lift lever loads it a little, and a rolling truck
+// holds it off idle (ROAD_REV). A failed attempt locks the controls
+// (stepDrive), and the engine idles.
+export function engineRevTarget(state) {
+  if (!state.truck.engineOn || state.failed) return 0
+  const controls = state.frame.controls || NO_CONTROLS
+  const throttle = clamp(controls.throttle, 0, 1)
+  const lift = clamp(controls.lift, -1, 1)
+  const road = ROAD_REV * clamp(Math.abs(state.truck.speed) / MAX_SPEED, 0, 1)
+  return Math.max(throttle, lift > 0 ? lift * LIFT_REV : 0, road)
+}
+
+// Move the engine's revs toward `target` over `dt` seconds, no faster than an
+// engine gains or loses them.
+export function slewRev(rev, target, dt) {
+  if (target > rev) return Math.min(rev + REV_RISE_RATE * dt, target)
+  return Math.max(rev - REV_FALL_RATE * dt, target)
+}
+
 // the sim state as the last step left it. `capacityKg` is the course's rated
-// capacity, which the carried load is weighed against.
-export function audioTargets(state, { capacityKg } = {}) {
+// capacity, which the carried load is weighed against. `rev` is the engine
+// speed to sound (createDrivingAudio passes its slewed one); left out, it is
+// the one the state asks for.
+export function audioTargets(state, { capacityKg, rev = engineRevTarget(state) } = {}) {
   const { truck, forks } = state
   const controls = state.frame.controls || NO_CONTROLS
   const targets = Object.fromEntries(LOOP_NAMES.map((name) => [name, silent()]))
   if (!truck.engineOn) return targets
 
-  // A failed attempt locks the controls (stepDrive), and the engine idles.
+  // A failed attempt locks the controls (stepDrive).
   const live = !state.failed
-  const throttle = live ? clamp(controls.throttle, 0, 1) : 0
   const lift = live ? clamp(controls.lift, -1, 1) : 0
   const tilt = live ? clamp(controls.tilt, -1, 1) : 0
 
-  // The throttle sets the revs whatever the direction lever says: in N, and
-  // against the parking brake or the inching pedal, it still revs the engine.
-  Object.assign(targets, engineLoops(Math.max(throttle, lift > 0 ? lift * LIFT_REV : 0)))
+  Object.assign(targets, engineLoops(clamp(rev, 0, 1)))
 
   if (displayedDirection(state, controls, NO_SWITCHES) === 'R') targets.reverseBeeper.gain = 1
 
@@ -137,13 +171,22 @@ export function createDrivingAudio(engine, { capacityKg } = {}) {
   let lastSwitches = null
   // While the start recording cranks, the engine loops wait for it to fire.
   let engineCatchAt = 0
+  // The engine's revs, following engineRevTarget() with inertia (slewRev),
+  // and the audio clock when they were last moved.
+  let rev = null
+  let revAt = 0
 
   return {
     // Every frame: point the loops at their targets and click any switch
     // that moved. `switches` are the dashboard source's.
     update(state, switches) {
-      const targets = audioTargets(state, { capacityKg })
-      if (engine.now() < engineCatchAt) {
+      const now = engine.now()
+      const revTarget = engineRevTarget(state)
+      // The first frame, and a stopped engine, have no revs to carry over.
+      rev = rev === null || !state.truck.engineOn ? revTarget : slewRev(rev, revTarget, now - revAt)
+      revAt = now
+      const targets = audioTargets(state, { capacityKg, rev })
+      if (now < engineCatchAt) {
         targets.engineIdle.gain = 0
         targets.engineHigh.gain = 0
       }

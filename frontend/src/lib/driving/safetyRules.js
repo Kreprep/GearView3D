@@ -13,6 +13,7 @@ import {
   TURN_MAX_STEER_RATE,
   TURN_SPEED,
 } from '../../data/safetyThresholds.js'
+import { TILT_RELEASE_ANGLE } from '../../data/palletProfile.js'
 import { TILT_SECURE_ANGLE } from './constants.js'
 
 // The driving simulation's safety rules (docs/revisions/post-defense-plan.md,
@@ -33,6 +34,8 @@ import { TILT_SECURE_ANGLE } from './constants.js'
 //   when(snapshot)  false, true, or an object overriding any of severity,
 //              kind, pictogram, messageKey, sound and giving the message's
 //              `values`
+//   hint       true for a sign that only says what to do next. It is shown
+//              like any other but is not a violation, so it is not logged.
 //
 // Which rules a course may switch off is lib/courseAlerts.js, which lists the
 // same ids. tip-risk and load-shifting arrive in Phase 7.
@@ -219,6 +222,18 @@ export const SAFETY_RULES = [
     osha: '(m)(5)(i)',
     when: (s) => (!s.engineOn || s.parkingBrake) && s.forkHeight > PARKED_FORKS_MAX,
   },
+  {
+    // The second move of setting a load down: it is resting in the drop zone
+    // or on its shelf, and comes off the tines once the mast tilts forward.
+    id: 'release-load',
+    ...INFO,
+    hint: true,
+    kind: 'mandatory',
+    pictogram: 'tilt-forward',
+    messageKey: 'safety.sign.release-load',
+    osha: '(o)(6)',
+    when: (s) => s.loadAtDestination && s.mastTilt < TILT_RELEASE_ANGLE,
+  },
 ]
 
 const NO_VALUES = Object.freeze({})
@@ -233,8 +248,8 @@ export function activeAlerts(snapshot, enabled) {
     if (!enabled[rule.id]) continue
     const result = rule.when(snapshot)
     if (!result) continue
-    const { id, severity, kind, pictogram, messageKey, sound } = rule
-    alerts.push({ id, severity, kind, pictogram, messageKey, sound, values: NO_VALUES, ...(result === true ? null : result) })
+    const { id, severity, kind, pictogram, messageKey, sound, hint = false } = rule
+    alerts.push({ id, severity, kind, pictogram, messageKey, sound, hint, values: NO_VALUES, ...(result === true ? null : result) })
   }
   return alerts
 }
@@ -246,9 +261,9 @@ export function activeAlerts(snapshot, enabled) {
 // the next queue, with
 //   shown   the signs to draw: most severe first, at most ALERT_MAX_SHOWN
 //   edges   what began this step, for the chime and the violation log:
-//           { id, severity, sound, escalation }. A sign coming up is one edge;
-//           a sign already up that rises to danger is another, marked
-//           `escalation`.
+//           { id, severity, sound, escalation, hint }. A sign coming up is one
+//           edge; a sign already up that rises to danger is another, marked
+//           `escalation`. A `hint` edge is not a violation.
 //
 // A rule has to hold for ALERT_SHOW_AFTER before its sign comes up, and its
 // sign stays for ALERT_CLEAR_AFTER after the rule stops holding. A sign steps
@@ -276,7 +291,13 @@ const sameValues = (a, b) => {
 const sameAlert = (a, b) =>
   a.severity === b.severity && a.kind === b.kind && a.pictogram === b.pictogram && a.messageKey === b.messageKey && sameValues(a.values, b.values)
 
-const edgeOf = (alert, escalation) => ({ id: alert.id, severity: alert.severity, sound: alert.sound, escalation })
+const edgeOf = (alert, escalation) => ({
+  id: alert.id,
+  severity: alert.severity,
+  sound: alert.sound,
+  escalation,
+  hint: Boolean(alert.hint),
+})
 
 // An entry is one rule's place in the queue: { id, alert, since, lastActive,
 // shownAt, levelAt }. `shownAt` is null until the sign comes up; `levelAt` is

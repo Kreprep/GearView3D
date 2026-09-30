@@ -31,6 +31,8 @@ export default {
   'safety.sign.parking-brake-on': 'Release the parking brake',
   'safety.sign.seatbelt-off': 'Fasten the seatbelt',
   'safety.sign.forks-raised-parked': 'Lower the forks to the ground',
+  // A hint, not a fault: it has no line in the summary.
+  'safety.sign.release-load': 'Tilt the mast forward to set the load down',
 
   // The end-of-attempt summary: "3 safety signs on this attempt: travelled
   // with the forks raised, went over the speed limit (x2)."

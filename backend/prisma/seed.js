@@ -14,6 +14,7 @@ import { buildDefaultHotspotCategories } from '../../frontend/src/data/partsData
 import { buildDefaultPartsQuizQuestions } from '../../frontend/src/data/partsQuizzes.js'
 import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
 import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
+import { withMissingAlertDefaults } from '../../frontend/src/lib/courseAlerts.js'
 import { EQUIPMENT_DEFAULTS } from '../../frontend/src/data/equipment.js'
 import { buildDefaultHotspots } from '../../frontend/src/data/hotspotDefaults.js'
 
@@ -206,19 +207,31 @@ async function seedCourses() {
     }
 
     // Still create-if-missing for everything the admin can edit, with one
-    // exception: a content key added to the defaults *after* a row was seeded
-    // is backfilled, because the row has no value for it at all. Keys the row
+    // exception: a key added to the defaults *after* a row was seeded is
+    // backfilled, because the row has no value for it at all. Keys the row
     // already has - including ones an admin deliberately blanked - always win.
-    if (!existing.builtIn || !course.content) continue
+    // That covers every content key, and in a driving step's data only the
+    // safety signs' settings (a stock speed limit): the geometry is never
+    // touched.
+    if (!existing.builtIn) continue
+    const update = {}
 
-    const current = existing.content || {}
-    const missing = Object.keys(course.content).filter((key) => !(key in current))
-    if (!missing.length) continue
+    if (course.content) {
+      const current = existing.content || {}
+      const missing = Object.keys(course.content).filter((key) => !(key in current))
+      if (missing.length) update.content = { ...course.content, ...current }
+    }
 
-    await prisma.course.update({
-      where: { id: course.id },
-      data: { content: { ...course.content, ...current } },
-    })
+    if (course.kind === 'driving' && course.data) {
+      const data = withMissingAlertDefaults(existing.data, course.data)
+      if (data !== existing.data) update.data = data
+      // A pending draft is a whole payload: publishing it must not drop what
+      // the published row was just given.
+      const draftData = withMissingAlertDefaults(existing.draft?.data, course.data)
+      if (draftData !== existing.draft?.data) update.draft = { ...existing.draft, data: draftData }
+    }
+
+    if (Object.keys(update).length) await prisma.course.update({ where: { id: course.id }, data: update })
   }
 }
 

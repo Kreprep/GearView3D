@@ -732,7 +732,9 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
                   step={1}
                   min={1}
                   value={data.speedLimitKmh ?? ''}
-                  onChange={(event) => setCourseValue({ speedLimitKmh: event.target.value === '' ? undefined : Number(event.target.value) })}
+                  // Blank is stored as null, not dropped: a key the row has is the
+                  // admin's choice, which the seed's backfill leaves alone.
+                  onChange={(event) => setCourseValue({ speedLimitKmh: event.target.value === '' ? null : Number(event.target.value) })}
                 />
               </Field>
               {ALERT_RULES.filter((rule) => rule.essential).map((rule) => (

@@ -3,7 +3,7 @@ import { MAX_STEER_ANGLE, STEER_SIGN } from './constants.js'
 import { neutralControls } from './controls.js'
 import { startInterlockMissing } from './interlock.js'
 import { pathClearance, proximityReadout } from './proximity.js'
-import { inRackSlot } from './rackSlot.js'
+import { inRackSlot, targetRackSlot } from './rackSlot.js'
 import { kmh } from './units.js'
 
 // What the safety rules (safetyRules.js) judge: one flat reading of the
@@ -22,8 +22,30 @@ const ANGLE_EPSILON = 1e-3
 
 const wrapAngle = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle))
 
+// Where the fork tips are, in world space.
+function forkTip(state, world) {
+  const { x, z, heading } = state.truck
+  const tipOffset = world.geometry.forkTipOffset
+  return { tipX: x + Math.sin(heading) * tipOffset, tipZ: z + Math.cos(heading) * tipOffset }
+}
+
+// Whether a carried load is resting where it is going: on the floor inside
+// the drop zone, or on its target shelf. All that is left is to tilt the mast
+// forward (stepPallet's release).
+function restingAtDestination(carried, state, world) {
+  if (!carried?.landed) return false
+  const { dropZone } = world.course
+  if (dropZone && carried.restY === 0) {
+    const { x, z } = carried.position
+    if (Math.hypot(x - dropZone.position[0], z - dropZone.position[2]) <= dropZone.radius) return true
+  }
+  const slot = targetRackSlot({ ...forkTip(state, world), forkHeight: state.forks.height }, carried.def, world)
+  return slot.inSlotRect && Math.abs(carried.restY - slot.targetHeight) < 1e-3
+}
+
 // The load on the forks, or about to be: whether it is heavier than the
-// course's rated capacity and whether it is off the ground.
+// course's rated capacity, whether it is off the ground, and whether it is
+// resting where it is going.
 function loadReading(state, world) {
   const { pallets } = state
   const capacity = typeof world.course.capacityKg === 'number' ? world.course.capacityKg : Infinity
@@ -33,6 +55,7 @@ function loadReading(state, world) {
   return {
     carrying: Boolean(carried),
     loadLanded: Boolean(carried?.landed),
+    loadAtDestination: restingAtDestination(carried, state, world),
     // The capacity plate, not the load chart: derating by load centre comes
     // with Phase 7's loadChart.js.
     overCapacity: held.some((pallet) => (pallet.def.weightKg ?? 0) > capacity),
@@ -45,10 +68,7 @@ function loadReading(state, world) {
 // Whether the fork tips are in a rack's bay: storing a load there, or backing
 // the forks out after it.
 function forksAtStack(state, world) {
-  const { x, z, heading } = state.truck
-  const tipOffset = world.geometry.forkTipOffset
-  const tipX = x + Math.sin(heading) * tipOffset
-  const tipZ = z + Math.cos(heading) * tipOffset
+  const { tipX, tipZ } = forkTip(state, world)
   return world.racks.some((rack) => inRackSlot(tipX, tipZ, rack, world))
 }
 
