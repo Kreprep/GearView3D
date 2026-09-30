@@ -63,6 +63,7 @@ limiter.
 | `sign-load` | Pallet Testing, Precision Carry | driving off with the forks high and the mast upright raises forks-high-travel and mast-not-back, two signs stacked |
 | `sign-overload` | Pallet Testing, Load Limits | forks into the 1,500 kg pallet raise the overload danger sign before anything is lifted |
 | `sign-reverse` | Load Handling, Accelerate Course | reversing in first-person raises look-direction; looking behind (arrow down) clears it |
+| `sign-release` | Pallet Testing, Precision Carry | a load resting in the drop zone raises the release-load hint, which is not counted and clears once the load is set down |
 | `sign-record` | Load Handling, Accelerate Course | completing the step saves attemptStats with the learner's progress and shows the summary (trainee mode only) |
 
 Since Phase 4 the engine only starts through the pre-start interlock
