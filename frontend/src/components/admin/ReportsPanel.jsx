@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { describeActivity, formatRelativeTime } from '../../lib/adminActivity'
+import { can } from '../../data/permissions.js'
+import TraineeSkills from './TraineeSkills'
 import { Button } from '../ui/button'
 import { Panel, PanelHeader, PanelNote } from '../ui/panel'
 import { Select } from '../ui/input'
@@ -26,7 +28,9 @@ function userLabel(user) {
 // user who has ever saved a snapshot (see buildAdminProgressReport on the
 // backend) - a user with no snapshot at all gets synthesized zero rows here
 // so the roster always lists every account, not just ones with activity.
-function ReportsPanel({ modules, users, progress, activityLogs }) {
+// Expanding a learner also shows their Skills Checklist, with sign-off and
+// revoke for whoever holds skills.signoff (never on their own account).
+function ReportsPanel({ viewer, modules, users, progress, activityLogs, onMessage }) {
   const [expandedUserIds, setExpandedUserIds] = useState(() => new Set())
   const [userFilter, setUserFilter] = useState('all')
   const [moduleFilter, setModuleFilter] = useState('all')
@@ -156,6 +160,14 @@ function ReportsPanel({ modules, users, progress, activityLogs }) {
                         ))}
                       </div>
                     )}
+                    <div className="mt-2 grid gap-2 border-t border-slate-200 pt-3">
+                      <h3 className="m-0 text-sm font-extrabold text-ink">Skills checklist</h3>
+                      <TraineeSkills
+                        learner={user}
+                        canSignOff={can(viewer, 'skills.signoff') && user.id !== viewer?.id}
+                        onMessage={onMessage}
+                      />
+                    </div>
                   </div>
                 )}
               </article>

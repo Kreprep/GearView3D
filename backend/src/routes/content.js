@@ -4,6 +4,7 @@ import { requireAuth } from '../lib/auth.js'
 import { publishedCourse } from '../lib/courses.js'
 import { findEquipment } from '../lib/equipment.js'
 import { hotspotDetail, publishedHotspot } from '../lib/hotspots.js'
+import { listSkills } from '../lib/skills.js'
 import {
   appendAttempt,
   buildAttempt,
@@ -60,6 +61,13 @@ router.get('/hotspot-details', async (req, res) => {
 router.get('/hotspot-categories', async (req, res) => {
   const categories = await prisma.hotspotCategory.findMany({ orderBy: { sortOrder: 'asc' } })
   res.json(categories)
+})
+
+// The Skills Checklist catalogue, in order, each skill with its evidence rules
+// and the modules that teach or require it. What a learner has shown of each
+// is GET /api/progress/skills.
+router.get('/skills', async (req, res) => {
+  res.json(await listSkills())
 })
 
 // Returns the checklist texts for one module, in order.

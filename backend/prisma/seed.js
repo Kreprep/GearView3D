@@ -17,6 +17,7 @@ import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
 import { withMissingAlertDefaults } from '../../frontend/src/lib/courseAlerts.js'
 import { EQUIPMENT_DEFAULTS } from '../../frontend/src/data/equipment.js'
 import { buildDefaultHotspots } from '../../frontend/src/data/hotspotDefaults.js'
+import { SKILL_DEFAULTS, skillRowDefaults } from '../../frontend/src/data/skillDefaults.js'
 
 const prisma = new PrismaClient()
 
@@ -242,6 +243,25 @@ async function seedCourses() {
   }
 }
 
+// The draft TR-mapped skill catalogue (data/skillDefaults.js), create-if-missing.
+// A skill's module links are created with it and only then, so a link an admin
+// removed stays removed; links to a module that does not exist are skipped.
+async function seedSkills() {
+  const modules = await prisma.module.findMany({ select: { id: true, slug: true } })
+  const moduleIds = Object.fromEntries(modules.map((module) => [module.slug, module.id]))
+
+  for (const [index, skill] of SKILL_DEFAULTS.entries()) {
+    if (await prisma.skill.findUnique({ where: { id: skill.id } })) continue
+
+    const links = skill.modules
+      .filter((link) => moduleIds[link.module])
+      .map((link) => ({ moduleId: moduleIds[link.module], relation: link.relation }))
+    await prisma.skill.create({
+      data: { ...skillRowDefaults(skill, index), builtIn: true, modules: { create: links } },
+    })
+  }
+}
+
 async function main() {
   await seedUsers()
   await seedEquipment()
@@ -252,6 +272,7 @@ async function main() {
   await seedChecklists()
   await seedQuizQuestions()
   await seedCourses()
+  await seedSkills()
 
   const counts = {
     users: await prisma.user.count(),
@@ -262,6 +283,8 @@ async function main() {
     checklistItems: await prisma.checklistItem.count(),
     quizQuestions: await prisma.quizQuestion.count(),
     courses: await prisma.course.count(),
+    skills: await prisma.skill.count(),
+    moduleSkills: await prisma.moduleSkill.count(),
   }
   console.log('Seed complete:', counts)
 }

@@ -1,7 +1,8 @@
 // The rows the route tests act on: one account per role (plus spares to edit,
 // delete and reset), the equipment row, a module with a step, checklist item
-// and quiz question, a part category and hotspots. The built-in step and
-// hotspot are real defaults, so "reset to default" has something to reset to.
+// and quiz question, a part category, hotspots, and two skills linked to the
+// module with one sign-off on record. The built-in step, hotspot and skill are
+// real defaults, so "reset to default" has something to reset to.
 //
 // testDatabase.js is imported first on purpose: it points DATABASE_URL at the
 // test database before anything below creates the Prisma client.
@@ -10,9 +11,11 @@ import { signToken } from '../../src/lib/auth.js'
 import { EQUIPMENT_ID } from '../../src/lib/equipment.js'
 import { buildDefaultCourses } from '../../../frontend/src/data/courseDefaults.js'
 import { buildDefaultHotspots } from '../../../frontend/src/data/hotspotDefaults.js'
+import { SKILL_DEFAULTS, skillRowDefaults } from '../../../frontend/src/data/skillDefaults.js'
 
 const builtInCourse = buildDefaultCourses().find((course) => course.kind === 'briefing')
 const builtInHotspot = buildDefaultHotspots()[0]
+const builtInSkill = skillRowDefaults(SKILL_DEFAULTS[0], 0)
 
 export const ids = {
   admin: 'user-admin',
@@ -31,6 +34,10 @@ export const ids = {
   checklistItem: 'fixture-check',
   moduleQuestion: 'fixture-module-question',
   partsQuestion: 'fixture-parts-question',
+  // Shown by completing the fixture step; nobody has signed it off.
+  skill: 'fixture-skill',
+  // Signed off for otherTrainee by the admin.
+  builtInSkill: builtInSkill.id,
 }
 
 const accounts = [
@@ -120,6 +127,35 @@ export async function loadFixtures() {
         sortOrder: 1,
       },
     ],
+  })
+  await prisma.skill.createMany({
+    data: [
+      { ...builtInSkill, builtIn: true },
+      {
+        id: ids.skill,
+        title: 'Fixture skill',
+        category: 'procedural',
+        sortOrder: 99,
+        evidence: [{ type: 'step-complete', module: ids.moduleSlug, stepId: ids.course }],
+      },
+    ],
+  })
+  await prisma.moduleSkill.createMany({
+    data: [
+      { moduleId: ids.moduleId, skillId: ids.skill, relation: 'teaches' },
+      { moduleId: ids.moduleId, skillId: builtInSkill.id, relation: 'requires' },
+    ],
+  })
+  await prisma.skillSignoffEvent.create({
+    data: {
+      userId: ids.otherTrainee,
+      skillId: builtInSkill.id,
+      actorId: ids.admin,
+      actorName: ids.admin,
+      action: 'signoff',
+      note: 'Seen in the yard',
+      evidenceStatus: 'not-started',
+    },
   })
 }
 

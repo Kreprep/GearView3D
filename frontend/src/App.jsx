@@ -5,6 +5,7 @@ import PartsIdentificationPage from './PartsIdentificationPage'
 import GenericModulePage from './GenericModulePage'
 import ModuleListPage from './ModuleListPage'
 import GenericAssessmentPage from './GenericAssessmentPage'
+import SkillsChecklistPage from './SkillsChecklistPage'
 import AdminDashboard from './AdminDashboard'
 import NotFoundPage from './NotFoundPage'
 import { getCurrentUser, loginUser, signupUser, setAuthToken, subscribeToSessionExpiry } from './lib/api'
@@ -190,6 +191,10 @@ function App() {
 
     if (section === 'parts' && !moduleSlug) {
       return <PartsIdentificationPage user={user} onBack={() => navigate(routes.home)} />
+    }
+
+    if (section === 'skills' && !moduleSlug) {
+      return <SkillsChecklistPage user={user} onLogout={handleLogout} onNavigate={navigate} />
     }
 
     if (section === 'assessment' && !moduleSlug) {

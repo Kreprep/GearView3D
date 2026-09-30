@@ -6,6 +6,7 @@ import ModuleSummary from './components/ModuleSummary'
 import SimulationPageLayout from './components/SimulationPageLayout'
 import { BriefingScene, BriefingTask } from './components/ModuleBriefing'
 import ScopeNoticeModal from './components/ScopeNoticeModal'
+import { ModuleSkills } from './components/ModuleSkills'
 import { ReportingActivity, ShutdownSequenceActivity } from './components/ModuleActivities'
 import { ACTIVITY_IDS } from './lib/activitySteps'
 import { ChecklistScene, ModuleRowsTask, QuizScene } from './components/ModuleChecklistStep'
@@ -19,6 +20,7 @@ import { useActivityController } from './hooks/useActivityController'
 import { useDrivingController } from './hooks/useDrivingController'
 import { useWalkAroundController } from './hooks/useWalkAroundController'
 import { useModuleCourses } from './hooks/useModuleCourses'
+import { useModuleSkills } from './hooks/useModuleSkills'
 import { useModuleRecord } from './hooks/useModuleRecord'
 import { usePageTitle } from './hooks/usePageTitle'
 import { useProgress } from './hooks/useProgress'
@@ -64,6 +66,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
     equipmentUsageModules.find((item) => item.slug === moduleSlug) || { title: 'Module', fullTitle: '' },
   )
   const { steps, stepById, courseById, loading, error } = useModuleCourses(moduleSlug)
+  const moduleSkills = useModuleSkills(moduleSlug)
   const { progress, updateSimulation } = useProgress()
   const savedSimulation = progress.simulations[moduleSlug] || {}
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -299,7 +302,10 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
     const step = stepById[currentStep.id]
     if (step?.kind === 'briefing') {
       return (
-        <BriefingTask content={step.content} module={module} />
+        <>
+          <BriefingTask content={step.content} module={module} />
+          <ModuleSkills practise={moduleSkills.practise} need={moduleSkills.need} />
+        </>
       )
     }
     if (step?.kind === 'walk-around') {
@@ -358,6 +364,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
             steps={steps}
             currentStepIndex={stepIndex}
             objectives={moduleObjectives(steps, module)}
+            moduleSkills={moduleSkills}
             progress={simulation.percentage}
             score={simulation.percentage}
             canProceed={getStepCanProceed(steps[stepIndex].id)}

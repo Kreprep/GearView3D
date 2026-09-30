@@ -24,6 +24,7 @@ import scopeEn from './en/scope.js'
 import partsEn from './en/parts.js'
 import assessmentEn from './en/assessment.js'
 import quizEn from './en/quiz.js'
+import skillsEn from './en/skills.js'
 
 import commonFil from './fil/common.js'
 import headerFil from './fil/header.js'
@@ -40,6 +41,7 @@ import scopeFil from './fil/scope.js'
 import partsFil from './fil/parts.js'
 import assessmentFil from './fil/assessment.js'
 import quizFil from './fil/quiz.js'
+import skillsFil from './fil/skills.js'
 
 export const catalog = {
   en: {
@@ -58,6 +60,7 @@ export const catalog = {
     ...partsEn,
     ...assessmentEn,
     ...quizEn,
+    ...skillsEn,
   },
   fil: {
     ...commonFil,
@@ -75,5 +78,6 @@ export const catalog = {
     ...partsFil,
     ...assessmentFil,
     ...quizFil,
+    ...skillsFil,
   },
 }
