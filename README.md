@@ -101,7 +101,7 @@ Learner progress is saved per account in the database, so the same login shows t
 ## Roles
 
 - **Admin**: everything, including creating accounts and changing a name, email, password or role.
-- **Instructor**: edits the training content and Equipment Settings, sees the trainees and their scores, and can reset a trainee's progress. Cannot create or edit accounts, and does not see admins or other instructors.
+- **Instructor**: edits the training content and Equipment Settings, sees the trainees and their scores, can reset a trainee's progress, and signs trainees' skills off (or revokes a sign-off, with a reason). Cannot create or edit accounts, and does not see admins or other instructors.
 - **Trainee**: the training only.
 
 The permissions are in `frontend/src/data/permissions.js`, and the API enforces them (a refused request is a 403).
@@ -111,14 +111,15 @@ The permissions are in `frontend/src/data/permissions.js`, and the API enforces 
 Admin routes (log in as the admin account; the instructor sees the same dashboard without the account controls):
 
 - `/admin` — overview: learner count, average completion, per-module completion, recent activity
-- **Training Content** — three sections:
+- **Training Content** — four sections:
   - `/admin/modules` — the training modules: Edit, Move up, Move down, Delete, Add module
   - `/admin/modules/:slug` — the **Module Editor**: the module's card fields plus its ordered steps (Read Up, Driving Course, Walk Around, Checklist, Quiz, Built-in Activity, Completion Summary). Selecting a step edits it in place — a driving step gets the 3D map, a walk-around step its inspection checks / gauges / device tests / defect scenarios plus the same 3D hotspot editor, scoped to the markers it shows, a checklist step its items, a quiz step its questions
   - `/admin/parts` — the hotspot list beside the 3D model: add a hotspot, click the model to place its marker or drag one to move it, edit its detail card (Markdown + reference image), then Publish. Every placed hotspot is marked on the model at once, so you can place one against its neighbours. Each hotspot is ticked for the surfaces it appears on — Parts Identification, walk-around inspection, or both — so a component that is both is edited once, not twice. Also part categories and the parts quiz
+  - `/admin/skills` — the **Skills Checklist** catalogue: each skill's title, description, category, TESDA reference and the evidence that shows it (steps completed, clean driving runs, quiz scores, parts viewed). Which skills a module practises or needs is set in that module's editor
   - `/admin/settings` — **Equipment Settings**: the equipment title (what `{equipment}` resolves to in the hub copy) and the **hub artwork image** (the line drawing etched into the training hub's header plate: drop a file in `frontend/public/images/` and point the field at `/images/your-file.png`, or paste any image URL), the **Hub content** (the copy on the training hub and module list; leave a field blank to use the default) and the **Driving Simulation** profile (body footprint and first-person seat)
-- `/admin/users`, `/admin/reports` — learners, progress, CSV export. **Reset progress** on a user clears everything they have saved (the account stays). A learner still signed in somewhere gets the reset copy on their next save rather than writing their old progress back.
+- `/admin/users`, `/admin/reports` — learners, progress, CSV export. **Reset progress** on a user clears everything they have saved (the account stays, and so do skill sign-offs). A learner still signed in somewhere gets the reset copy on their next save rather than writing their old progress back. Expanding a learner in Reports shows their skills checklist with **Sign off** / **Revoke** and the sign-off history, which is only ever added to.
 
-Hotspots and course steps use **Save draft / Publish**: learners keep seeing the published version until you press Publish, and Discard draft throws the pending edit away. Modules, the equipment settings, hub content, part categories, checklists and quiz questions save immediately.
+Hotspots and course steps use **Save draft / Publish**: learners keep seeing the published version until you press Publish, and Discard draft throws the pending edit away. Modules, skills, the equipment settings, hub content, part categories, checklists and quiz questions save immediately.
 
 Admin edits are saved in PostgreSQL through the API and are visible to everyone using the same backend.
 
@@ -140,7 +141,7 @@ npm run content:import          # updates and creates
 npm run content:import -- --prune   # also deletes steps missing from the file
 ```
 
-Unlike `npm run seed`, the import **overwrites** existing rows — that is how one person's edits reach everyone. It covers the equipment settings, modules, hotspots, part categories, courses, checklists and quizzes; it never touches user accounts or learner progress, and unpublished drafts stay local to whoever made them.
+Unlike `npm run seed`, the import **overwrites** existing rows — that is how one person's edits reach everyone. It covers the equipment settings, modules, skills and their module links, hotspots, part categories, courses, checklists and quizzes; it never touches user accounts, learner progress or skill sign-offs, and unpublished drafts stay local to whoever made them.
 
 Once everyone is pointed at one deployed backend (see below), none of this is needed — edits are shared the moment you press Publish.
 
@@ -171,6 +172,10 @@ The driving simulation also takes a steering wheel, pedals and H-pattern shifter
 ## Physics
 
 Pallets, their loads and traffic cones in the driving simulation are rigid bodies in the [Rapier](https://rapier.rs) physics engine (`@dimforge/rapier3d-compat`, pinned to 0.19.3), and the forks are solid: a load is lifted because the forks are under it, rides on them by friction, slides under hard braking and is set down by levelling the mast and lowering it. The forklift itself is driven by the simulation's own model, and tipping over comes from a stability calculation (the stability triangle and the combined centre of gravity), with the capacity derated by load centre as on a load chart. Once it tips, the fall itself is simulated: the forklift becomes a free body and ends on its fork tips or lying on its side. The engine is a separate 2.2 MB chunk that is downloaded the first time a driving step opens. Admins can press **Colliders** in a driving step's 3D preview to see the shapes the engine simulates.
+
+## Skills Checklist
+
+`/training/skills` (linked from the training hub and the final check) shows the trainee entry requirements quoted from TESDA HEO (Forklift) NC II Training Regulations, Rev. 01, section 3.3, then each skill with the TESDA unit and element it serves, what evidence counts for it, which of that the trainee has done, and an instructor's sign-off. The evidence comes from progress the trainee's browser saves, so it guides the instructor; only a sign-off (stored server-side, written only by instructors and admins) confirms a skill. The TESDA mapping of the stock skills is a draft awaiting review. The page prints.
 
 ## Safety Signs
 
