@@ -24,7 +24,9 @@ import {
 } from '../../lib/courseEdit'
 import { emptySyllabus, NEXT_ROUTE_TARGETS, SUMMARY_COUNTER_LABELS } from '../../data/courseDefaults'
 import { MODULE_ROUTE_PREFIX } from '../../lib/moduleContent'
+import { ALERT_RULES, resolveAlerts, withAlertSwitch } from '../../lib/courseAlerts'
 import { COURSE_GOAL_TYPES, DEFAULT_COURSE_BOUNDS, resolveCourseBounds, validateCourse } from '../../lib/courseGoals'
+import { DEFAULT_SPEED_LIMIT_KMH } from '../../data/safetyThresholds'
 import { ReportingActivityFields, ShutdownActivityFields } from './ActivityContentFields'
 import WalkAroundContentFields from './WalkAroundContentFields'
 import CourseCanvas from './CourseCanvas'
@@ -279,6 +281,8 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
     () => ({ id: `${course.id}-preview-${previewSeed}`, goalType: draft.goalType, ...data }),
     [course.id, data, draft.goalType, previewSeed],
   )
+
+  const alerts = useMemo(() => resolveAlerts(data), [data])
 
   const itemCounts = useMemo(() => {
     const counts = {}
@@ -710,6 +714,42 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
                 takes its weight, then tilt the mast forward to let it off the tines. This is a mechanic, not a fail
                 rule, so it applies to every driving course.
               </PanelNote>
+            </div>
+          </Panel>
+          )}
+
+          {isDriving && (
+          <Panel>
+            <PanelHeader>Safety signs</PanelHeader>
+            <PanelNote>
+              Signs that come up over the dashboard while the learner drives, and are counted with their progress.
+              They warn; they never fail the attempt. The thresholds are the same for every course.
+            </PanelNote>
+            <div className="mt-3 grid gap-3">
+              <Field label={`Speed limit (km/h, blank for the default ${DEFAULT_SPEED_LIMIT_KMH})`}>
+                <Input
+                  type="number"
+                  step={1}
+                  min={1}
+                  value={data.speedLimitKmh ?? ''}
+                  onChange={(event) => setCourseValue({ speedLimitKmh: event.target.value === '' ? undefined : Number(event.target.value) })}
+                />
+              </Field>
+              {ALERT_RULES.filter((rule) => rule.essential).map((rule) => (
+                <Checkbox key={rule.id} label={`${rule.label} (always on)`} checked disabled readOnly />
+              ))}
+              <PanelNote>
+                The signs above are always on: collisions, overload and the start checks cannot be switched off for a
+                course.
+              </PanelNote>
+              {ALERT_RULES.filter((rule) => !rule.essential).map((rule) => (
+                <Checkbox
+                  key={rule.id}
+                  label={rule.label}
+                  checked={alerts[rule.id]}
+                  onChange={(event) => setCourseValue({ alerts: withAlertSwitch(data.alerts, rule.id, event.target.checked) })}
+                />
+              ))}
             </div>
           </Panel>
           )}

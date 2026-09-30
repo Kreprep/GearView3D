@@ -10,8 +10,9 @@ import { neutralControls } from './controls.js'
 //
 // - audioTargets(state) says how loud and at what pitch each loop should be
 //   right now. Pure, and where the tests are.
-// - eventSounds(event) / switchSounds(previous, next) name the one-shots a
-//   sim event or a moved cab switch plays. Pure.
+// - eventSounds(event) / switchSounds(previous, next) / alertSounds(edges)
+//   name the one-shots a sim event, a moved cab switch or a safety sign
+//   plays. Pure.
 // - createDrivingAudio(engine) holds one attempt's loops and applies all of
 //   the above to an audio engine (lib/audio/audioEngine.js). The engine is
 //   passed in, so this file has no browser APIs.
@@ -118,6 +119,17 @@ export function switchSounds(previous, next) {
   return SWITCH_SOUNDS.filter(([name]) => previous[name] !== next[name]).map(([, sound]) => sound)
 }
 
+// The one-shot for the safety signs that came up this frame (the alert
+// queue's edges, safetyRules.js): a caution chimes and a danger sounds the
+// alarm. Several at once play only the most urgent, not a pile of chimes.
+const ALERT_SOUND_PRIORITY = ['dangerAlarm', 'cautionChime']
+
+export function alertSounds(edges) {
+  const wanted = new Set(edges.map((edge) => edge.sound))
+  const sound = ALERT_SOUND_PRIORITY.find((name) => wanted.has(name))
+  return sound ? [sound] : []
+}
+
 // One attempt's sound. `engine` is an audio engine: createLoop(name) ->
 // { setGain, setRate, stop }, playOneShot(name) and now() (seconds).
 export function createDrivingAudio(engine, { capacityKg } = {}) {
@@ -150,6 +162,11 @@ export function createDrivingAudio(engine, { capacityKg } = {}) {
     handleEvent(event) {
       if (event.type === 'engine') engineCatchAt = event.on ? engine.now() + SOUND_BANK.engineStart.catchAt : 0
       eventSounds(event).forEach((name) => engine.playOneShot(name))
+    },
+
+    // Safety signs that came up since the last frame.
+    handleAlerts(edges) {
+      alertSounds(edges).forEach((name) => engine.playOneShot(name))
     },
 
     horn() {

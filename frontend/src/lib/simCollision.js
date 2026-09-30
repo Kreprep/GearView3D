@@ -149,3 +149,59 @@ export function rectRectClosest(a, b) {
 export function rectRectDistance(a, b) {
   return rectRectClosest(a, b).distance
 }
+
+// The lowest and highest local z of the part of the segment p-q that lies in
+// the strip |x| <= halfWidth, or null when none of it does. z is linear along
+// the segment, so its extremes are at the clipped ends.
+function segmentZRangeInStrip(p, q, halfWidth) {
+  let t0 = 0
+  let t1 = 1
+  const dx = q.x - p.x
+  if (Math.abs(dx) < 1e-12) {
+    if (Math.abs(p.x) > halfWidth) return null
+  } else {
+    const a = (-halfWidth - p.x) / dx
+    const b = (halfWidth - p.x) / dx
+    t0 = Math.max(t0, Math.min(a, b))
+    t1 = Math.min(t1, Math.max(a, b))
+    if (t0 > t1) return null
+  }
+  const z0 = p.z + (q.z - p.z) * t0
+  const z1 = p.z + (q.z - p.z) * t1
+  return { min: Math.min(z0, z1), max: Math.max(z0, z1) }
+}
+
+// How far `rect` can travel straight ahead (along its local +Z) before its
+// front face reaches `other`: the gap to the nearest part of `other` that lies
+// in the path `rect` sweeps, widened by `margin` each side. null when nothing
+// of `other` is in that path ahead of rect's centre; 0 when it is already at
+// or over the front face. For the path behind, pass the rect turned half a
+// turn.
+//
+// Unlike rectRectDistance() this ignores whatever is beside the path, however
+// close, which is what a time-to-contact needs.
+export function forwardGap(rect, other, margin = 0) {
+  const halfWidth = rect.halfX + margin
+  const corners = rectCorners(other).map(([cx, cz]) => toRectLocal(cx, cz, rect))
+  // rectCorners() walks the corners in (-,-), (-,+), (+,-), (+,+) order; the
+  // perimeter is 0-1-3-2.
+  const perimeter = [corners[0], corners[1], corners[3], corners[2]]
+  let min = Infinity
+  let max = -Infinity
+  for (let i = 0; i < perimeter.length; i += 1) {
+    const range = segmentZRangeInStrip(perimeter[i], perimeter[(i + 1) % perimeter.length], halfWidth)
+    if (!range) continue
+    min = Math.min(min, range.min)
+    max = Math.max(max, range.max)
+  }
+  if (max <= 0) return null
+  return Math.max(min - rect.halfZ, 0)
+}
+
+// forwardGap() for a circle (a cone), treated as the square around it.
+export function forwardGapToCircle(rect, circle, margin = 0) {
+  const local = toRectLocal(circle.x, circle.z, rect)
+  if (Math.abs(local.x) > rect.halfX + margin + circle.radius) return null
+  if (local.z + circle.radius <= 0) return null
+  return Math.max(local.z - circle.radius - rect.halfZ, 0)
+}

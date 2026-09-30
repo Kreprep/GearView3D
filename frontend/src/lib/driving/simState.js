@@ -44,8 +44,10 @@ export function createSimWorld(course, profile, geometry = FORKLIFT_RIG_GEOMETRY
     racks,
     liveCones: courseCones(course),
     liveWalls: (course.decorations || []).filter((item) => item.type === 'wall' || decorationType(item) === 'vehicle'),
-    // Racking is solid, functional and decorative alike.
+    // Racking is solid, functional and decorative alike. `id` is a
+    // functional rack's, for telling a pallet's target rack from the rest.
     rackColliders: [...racks, ...(course.decorations || []).filter((item) => DECOR_RACK_KINDS.includes(item.type))].map((item) => ({
+      id: item.id ?? null,
       x: item.position[0],
       z: item.position[2],
       rotation: item.rotation || 0,

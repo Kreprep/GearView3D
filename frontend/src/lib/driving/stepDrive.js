@@ -23,7 +23,7 @@ const approach = (speed, target, step) => (speed < target ? Math.min(speed + ste
 //   torque, so part throttle both pulls gently and tops out lower). Opposite
 //   the way the truck is rolling,
 //   that decelerates it first (shuttling the lever while moving is allowed; the
-//   Phase 6 rules log it).
+//   direction-change-moving safety rule logs it).
 // - The service brake decelerates at up to BRAKE_DECEL at full pedal.
 // - The inching pedal takes the drive away over its first travel and brakes
 //   over the rest, so the forks can be worked at full revs while creeping.

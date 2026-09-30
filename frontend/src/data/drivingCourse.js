@@ -28,9 +28,13 @@ export const drivingCourses = {
     completionCode:
       "return context.engineStarted && ['w', 'a', 's', 'd'].every((key) => context.keysUsed.includes(key))",
   },
+  // The two acceleration lanes are open straights for learning the pedals at
+  // full throttle, so their speed limit is the truck's top speed rather than
+  // the 8 km/h default (lib/courseAlerts.js).
   'accelerate-course': {
     id: 'accelerate-course',
     start: { position: [0, 0, 0], heading: 0 },
+    speedLimitKmh: 18,
     checkpoints: [
       {
         id: 'accelerate-finish',
@@ -47,6 +51,7 @@ export const drivingCourses = {
   'accelerate-brake': {
     id: 'accelerate-brake',
     start: { position: [0, 0, 0], heading: 0 },
+    speedLimitKmh: 18,
     checkpoints: [
       {
         id: 'brake-stop-zone',

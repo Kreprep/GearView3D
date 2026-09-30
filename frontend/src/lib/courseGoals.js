@@ -5,6 +5,7 @@
 
 import { DECOR_RACK_KINDS, RACK_FOOTPRINT } from '../data/rackProfile.js'
 import { PALLET_FALLBACK_FOOTPRINT } from '../data/palletProfile.js'
+import { alertProblems } from './courseAlerts.js'
 import { orientedRectsOverlap } from './simCollision.js'
 
 export const COURSE_GOAL_TYPES = ['checkpoints', 'parking', 'pallet', 'racking', 'free']
@@ -181,6 +182,8 @@ export function validateCourse(course) {
     const liftable = pallets.some((pallet) => (pallet.weightKg ?? 0) <= course.capacityKg)
     if (!liftable) problems.push('Every pallet is over the rated capacity - the course cannot be completed.')
   }
+
+  problems.push(...alertProblems(course))
 
   if (goal === 'free') {
     if (!course?.completionCode) {

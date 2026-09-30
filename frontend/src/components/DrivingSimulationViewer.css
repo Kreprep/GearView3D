@@ -84,6 +84,19 @@
   pointer-events: none;
 }
 
+/* The row above the dashboard: the safety signs in the middle column and the
+   proximity inset at the right-hand end, both sitting on the row's bottom
+   edge. The side columns are equal, so the signs stay centred over the
+   dashboard whether or not the inset is on. */
+.driving-hud-upper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-2);
+  width: 100%;
+  pointer-events: none;
+}
+
 /* Camera modes as one segmented group, each with its number key. */
 .driving-camera-modes {
   display: inline-flex;

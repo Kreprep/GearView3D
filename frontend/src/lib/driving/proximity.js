@@ -1,14 +1,14 @@
 import { TINE } from '../../data/physicsProfile.js'
-import { closestPointOnOrientedRect, rectRectClosest, toRectLocal } from '../simCollision.js'
+import { closestPointOnOrientedRect, forwardGap, forwardGapToCircle, rectRectClosest, toRectLocal } from '../simCollision.js'
 import { CONE_RADIUS, PALLET_SOLID_MAX_Y } from './constants.js'
 import { wallRectInto } from './stepCollision.js'
 import { m, toMetres } from './units.js'
 
 // How close things are to the truck, per sector (docs/revisions/
 // post-defense-plan.md, section 4.1): the readout on the top-down proximity
-// inset, and later the input to the obstacle and tail-swing safety rules
-// (4.5). Pure 2D over the same rects the collision steps use, so it runs
-// headless like the rest of the sim.
+// inset, and the input to the obstacle and tail-swing safety rules (4.5,
+// safetySnapshot.js). Pure 2D over the same rects the collision steps use, so
+// it runs headless like the rest of the sim.
 //
 // The truck's outline is its body footprint plus the forks, since the fork
 // tips are what reaches an obstacle first going forward. Each obstacle counts
@@ -65,7 +65,7 @@ function obstacles(state, world) {
   for (const wall of world.liveWalls) {
     found.push({ kind: wall.type === 'wall' ? 'wall' : 'vehicle', rect: wallRectInto({}, wall, world) })
   }
-  for (const rack of world.rackColliders) found.push({ kind: 'rack', rect: rack })
+  for (const rack of world.rackColliders) found.push({ kind: 'rack', rect: rack, id: rack.id })
   for (const pallet of state.pallets) {
     if (pallet.state === 'carried' || pallet.position.y > PALLET_SOLID_MAX_Y) continue
     found.push({
@@ -148,4 +148,48 @@ export function proximityTelemetry(readout) {
     flat[key] = reading ? Math.round(toMetres(reading.distance) * 100) / 100 : null
   }
   return flat
+}
+
+// What the truck would reach first driving straight on, ahead (`direction` 1)
+// or behind (-1): { distance, kind }, or null when its path is clear. This is
+// what the obstacle-ahead and obstacle-behind safety rules time the truck
+// against (docs/revisions/post-defense-plan.md, section 4.5). Unlike the
+// readout above it counts only what lies in the path the truck sweeps, its
+// own width plus `margin` each side, so a cone beside the lane is not an
+// obstacle ahead.
+//
+// Going forward the path starts at the fork tips, and three things in it are
+// where the forks are meant to go, not obstacles (decided 2026-09-30):
+// - a pallet on the floor: driving into it is how the forks engage;
+// - racking is measured from the truck's body, since the forks reach into a
+//   bay;
+// - the rack the carried pallet is going to, which the truck has to nose up
+//   to.
+// Behind, everything counts.
+export function pathClearance(state, world, direction, margin = 0) {
+  const { body, forks } = truckOutline(state, world)
+  const ahead = direction >= 0
+  const bodyPath = ahead ? body : { ...body, rotation: body.rotation + Math.PI }
+  // Body and forks as one rect, from the rear face to the fork tips: the
+  // forks add their length to the front, which moves the centre half of it.
+  const truckPath = ahead
+    ? {
+        ...body,
+        x: body.x + Math.sin(body.rotation) * forks.halfZ,
+        z: body.z + Math.cos(body.rotation) * forks.halfZ,
+        halfZ: body.halfZ + forks.halfZ,
+      }
+    : bodyPath
+  const targetRackId = ahead ? state.pallets[state.carriedIndex]?.def.targetRack ?? null : null
+
+  let nearest = null
+  for (const obstacle of obstacles(state, world)) {
+    if (ahead && obstacle.kind === 'pallet') continue
+    if (obstacle.kind === 'rack' && targetRackId !== null && obstacle.id === targetRackId) continue
+    const path = obstacle.kind === 'rack' ? bodyPath : truckPath
+    const distance = obstacle.rect ? forwardGap(path, obstacle.rect, margin) : forwardGapToCircle(path, obstacle.circle, margin)
+    if (distance === null) continue
+    if (!nearest || distance < nearest.distance) nearest = { distance, kind: obstacle.kind }
+  }
+  return nearest
 }

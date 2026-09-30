@@ -100,3 +100,10 @@ test('courseGoalType prefers an explicit stored goalType over inferring from mar
 test('courseGoalType infers checkpoints from markers when goalType is missing', () => {
   assert.equal(courseGoalType({ checkpoints: [{ position: [0, 0, 1] }] }), 'checkpoints')
 })
+
+test('validateCourse: a speed limit has to be a positive number, or left out for the default', () => {
+  const course = { start: START, goalType: 'checkpoints', checkpoints: [{ position: [0, 0, 1] }] }
+  assert.deepEqual(validateCourse(course), [])
+  assert.deepEqual(validateCourse({ ...course, speedLimitKmh: 12, alerts: { overspeed: false } }), [])
+  assert.ok(validateCourse({ ...course, speedLimitKmh: 0 }).some((p) => p.includes('speed limit')))
+})

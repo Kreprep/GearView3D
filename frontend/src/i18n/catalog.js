@@ -19,6 +19,7 @@ import moduleEn from './en/module.js'
 import walkAroundEn from './en/walkAround.js'
 import drivingEn from './en/driving.js'
 import controllerEn from './en/controller.js'
+import safetyEn from './en/safety.js'
 import scopeEn from './en/scope.js'
 import partsEn from './en/parts.js'
 import assessmentEn from './en/assessment.js'
@@ -34,6 +35,7 @@ import moduleFil from './fil/module.js'
 import walkAroundFil from './fil/walkAround.js'
 import drivingFil from './fil/driving.js'
 import controllerFil from './fil/controller.js'
+import safetyFil from './fil/safety.js'
 import scopeFil from './fil/scope.js'
 import partsFil from './fil/parts.js'
 import assessmentFil from './fil/assessment.js'
@@ -51,6 +53,7 @@ export const catalog = {
     ...walkAroundEn,
     ...drivingEn,
     ...controllerEn,
+    ...safetyEn,
     ...scopeEn,
     ...partsEn,
     ...assessmentEn,
@@ -67,6 +70,7 @@ export const catalog = {
     ...walkAroundFil,
     ...drivingFil,
     ...controllerFil,
+    ...safetyFil,
     ...scopeFil,
     ...partsFil,
     ...assessmentFil,

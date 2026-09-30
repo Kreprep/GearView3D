@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { SOUND_BANK } from '../../data/soundBank.js'
 import { FORK_MAX_HEIGHT, TILT_BACK_MAX } from './constants.js'
 import { neutralControls } from './controls.js'
-import { audioTargets, createDrivingAudio, eventSounds, LOOP_NAMES, switchSounds } from './drivingAudio.js'
+import { alertSounds, audioTargets, createDrivingAudio, eventSounds, LOOP_NAMES, switchSounds } from './drivingAudio.js'
 import { createSimState } from './simState.js'
 
 const COURSE = { start: { position: [0, 0, 0], heading: 0 } }
@@ -259,6 +259,28 @@ test('the horn, a refused start and the cab switches play their one-shots', () =
   audio.update(state, { ...SWITCHES, seatbelt: true })
   audio.update(state, { ...SWITCHES, seatbelt: true })
   assert.deepEqual(engine.shots, ['horn', 'denied', 'seatbelt'])
+})
+
+test('a caution sign chimes, a danger sounds the alarm, and an information sign is silent', () => {
+  assert.deepEqual(alertSounds([{ id: 'overspeed', sound: 'cautionChime' }]), ['cautionChime'])
+  assert.deepEqual(alertSounds([{ id: 'overload', sound: 'dangerAlarm' }]), ['dangerAlarm'])
+  assert.deepEqual(alertSounds([{ id: 'parking-brake-on', sound: null }]), [])
+  assert.deepEqual(alertSounds([]), [])
+})
+
+test('signs coming up together play only the most urgent sound', () => {
+  const edges = [
+    { id: 'overspeed', sound: 'cautionChime' },
+    { id: 'overload', sound: 'dangerAlarm' },
+    { id: 'turn-speed', sound: 'cautionChime' },
+  ]
+  assert.deepEqual(alertSounds(edges), ['dangerAlarm'])
+
+  const engine = fakeEngine()
+  const audio = createDrivingAudio(engine)
+  audio.handleAlerts(edges)
+  audio.handleAlerts([])
+  assert.deepEqual(engine.shots, ['dangerAlarm'])
 })
 
 test('disposing stops every loop', () => {

@@ -99,3 +99,12 @@ test('validateCoursePayload: non-driving, non-walk-around kinds only check the t
   const problems = validateCoursePayload('summary', { title: 'Done', data: { anything: true } })
   assert.deepEqual(problems, [])
 })
+
+test('validateCoursePayload rejects a driving step whose speed limit is not a positive number', () => {
+  const data = { start: { position: [0, 0, 0], heading: 0 }, checkpoints: [{ position: [0, 0, 1] }] }
+  const payload = { title: 'Drive', goalType: 'checkpoints', data }
+  assert.deepEqual(validateCoursePayload('driving', payload), [])
+  assert.deepEqual(validateCoursePayload('driving', { ...payload, data: { ...data, speedLimitKmh: 10, alerts: { overspeed: false } } }), [])
+  const problems = validateCoursePayload('driving', { ...payload, data: { ...data, speedLimitKmh: -1 } })
+  assert.ok(problems.some((p) => p.includes('speed limit')))
+})
