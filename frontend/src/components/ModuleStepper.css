@@ -1,0 +1,114 @@
+/* The stepper and progress meter in a module page's top bar
+   (ModuleStepper.jsx). */
+
+.module-stepper {
+  min-width: 0;
+}
+
+.module-stepper ol {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A short rule between chips, so the row reads as a sequence. */
+.module-stepper li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.module-stepper li + li::before {
+  content: '';
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: #cbd5e1;
+}
+
+.module-stepper-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  height: 32px;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-pill);
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  padding: 0;
+}
+
+.module-stepper-step:hover:not(:disabled) {
+  border-color: #0891b2;
+}
+
+.module-stepper-step:focus-visible {
+  outline: 2px solid #0891b2;
+  outline-offset: 2px;
+}
+
+.module-stepper-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.module-stepper-mark {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+}
+
+.module-stepper-step.is-done {
+  border-color: #86efac;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.module-stepper-step.is-current {
+  border-color: #0891b2;
+  background: #ecfeff;
+  color: #0f172a;
+  padding-right: var(--space-3);
+}
+
+.module-stepper-step.is-current .module-stepper-mark {
+  background: #0891b2;
+  color: #ffffff;
+}
+
+.module-stepper-title {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-header-progress {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+  color: #334155;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.module-header-progress-bar {
+  width: 120px;
+}
+
+.module-header-progress span {
+  min-width: 3ch;
+  text-align: right;
+}

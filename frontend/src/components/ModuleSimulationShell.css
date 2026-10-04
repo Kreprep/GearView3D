@@ -1,363 +1,39 @@
 /* Sizes come from styles/tokens.css - see that file for why they are clamps. */
 
+/* The scene and the task column side by side under the page's top bar. The
+   column is a grid track, so nothing in the scene sits under it: the driving
+   HUD, the viewer toolbars and the checklist pages centre on the scene. */
 .simulation-shell {
-  position: relative;
+  --task-width: clamp(300px, 19vw, 360px);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) var(--task-width);
   width: 100%;
   height: 100%;
   flex: 1 1 auto;
-  /* No height floor: the page is an app shell (SimulationPageLayout.css), so
-     the scene row takes whatever the briefing and control bar leave over and
-     grows with the viewport. The floor comes back below 1180px, where the
-     layout stacks and the page scrolls. */
   min-height: 0;
   margin: 0;
 }
 
-.simulation-required-note {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  color: #92400e;
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  line-height: 1.3;
-  text-align: right;
+.simulation-shell.is-collapsed {
+  --task-width: 44px;
 }
 
-/* Every row is pinned rather than auto-placed: fullscreen hides the briefing
-   with `display: none`, which drops it out of the grid entirely, and
-   auto-placement would then slide the workspace into the `auto` first row
-   (collapsing it to 0, since its children are absolutely positioned) and
-   stretch the control bar over the `1fr` row. */
-.simulation-briefing {
-  grid-row: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  border: 1px solid #0f172a;
-  border-radius: var(--radius-md);
-  background: #0f172a;
-  color: #ffffff;
-  padding: var(--space-2) var(--space-4);
-}
-
-.simulation-briefing > div:first-child {
-  min-width: 0;
-}
-
-.simulation-kicker,
-.simulation-panel-label {
-  color: #0891b2;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.simulation-briefing .simulation-kicker {
-  color: #67e8f9;
-}
-
-.simulation-briefing h1 {
-  margin: 1px 0 2px;
-  color: #ffffff;
-  font-size: var(--fs-xl);
-  font-weight: 700;
-}
-
-/* Long module descriptions are reference text, not headline copy - cap them
-   so the briefing bar never eats the viewport's vertical space. */
-.simulation-briefing p {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  max-width: 900px;
-  overflow: hidden;
-  color: #cbd5e1;
-  font-size: var(--fs-xs);
-  line-height: 1.4;
-}
-
-.simulation-score-card {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
-  padding: var(--space-1) var(--space-3);
-}
-
-.simulation-score-card span,
-.simulation-score-card small {
-  color: #cbd5e1;
-  font-size: var(--fs-xs);
-  font-weight: 700;
-}
-
-.simulation-score-card strong {
-  color: #ffffff;
-  font-size: var(--fs-lg);
-  font-weight: 700;
-}
-
-.simulation-workspace {
-  grid-row: 2;
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-}
-
-/* The whole shell goes fullscreen (not just the canvas) so the overlay panels
-   and the control bar stay on screen. */
+/* HotspotViewer fullscreens the whole shell (not just its canvas) so the task
+   column stays on screen. */
 .simulation-shell:fullscreen {
   width: 100vw;
   height: 100vh;
-  min-height: 0;
   background: #f4f7fb;
-  padding: var(--space-3);
 }
 
-.simulation-shell:fullscreen .simulation-briefing {
-  display: none;
-}
-
-.simulation-overlay {
-  position: absolute;
-  z-index: var(--z-overlay);
-  display: grid;
-  grid-auto-rows: max-content;
-  align-content: start;
-  gap: var(--space-2);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  /* A lane usually overflows by a few pixels; the platform's default scrollbar
-     is wide enough to look like a broken panel edge over the 3D scene. */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
-  /* This box stretches the full overlay lane (top to bottom) so it can
-     scroll, but its cards rarely fill that height - the empty space below
-     them would otherwise sit on top of the HUD/canvas and swallow clicks
-     meant for what's underneath. Only the cards themselves opt back in. */
-  pointer-events: none;
-}
-
-.simulation-overlay > * {
-  pointer-events: auto;
-}
-
-.simulation-overlay-left,
-.simulation-overlay-right {
-  top: var(--sim-lane-inset);
-  bottom: var(--sim-lane-inset);
-}
-
-.simulation-overlay-left {
-  left: var(--sim-lane-inset);
-  width: var(--sim-lane-left);
-}
-
-.simulation-overlay-right {
-  right: var(--sim-lane-inset);
-  width: var(--sim-lane-right);
-}
-
-/* The scene's own chrome - the driving HUD rows, the hotspot viewer toolbar
-   and its drag/zoom hint - lives in the middle band between the two overlay
-   lanes. Insetting it by the lane widths is what keeps the HUD buttons and the
-   key legend out from under the objectives/steps/current-task cards; because
-   both sides read the same tokens, widening a lane moves the HUD with it. */
-.simulation-workspace .driving-hud-top,
-.simulation-workspace .driving-hud-bottom,
-.simulation-workspace .interactive-viewer-toolbar,
-.simulation-workspace .interactive-viewer-help,
-.simulation-workspace .parts-viewer-toolbar,
-.simulation-workspace .parts-viewer-help {
-  left: calc(var(--sim-lane-left) + var(--sim-lane-inset) * 2);
-  right: calc(var(--sim-lane-right) + var(--sim-lane-inset) * 2);
-}
-
-/* Those two are left-anchored on their own, so centre them once they span the
-   middle band instead of leaving them pinned to its left edge. The hint is a
-   plain box, so it centres by shrinking to its content inside the band. */
-.simulation-workspace .interactive-viewer-toolbar,
-.simulation-workspace .parts-viewer-toolbar {
-  justify-content: center;
-}
-
-.simulation-workspace .interactive-viewer-help,
-.simulation-workspace .parts-viewer-help {
-  width: fit-content;
-  margin-inline: auto;
-  font-size: var(--fs-xs);
-  padding: var(--ctl-pad-y) var(--ctl-pad-x);
-}
-
-/* The scope notice is sized for full-width pages; tighten it inside an overlay. */
-.simulation-overlay .scope-notice {
-  gap: var(--space-2);
-  margin-bottom: 0;
-  padding: var(--space-2) var(--space-3);
-}
-
-.simulation-overlay .scope-notice strong {
-  font-size: var(--fs-xs);
-}
-
-.simulation-overlay .scope-notice p {
-  font-size: var(--fs-xs);
-  line-height: 1.45;
-}
-
-.simulation-panel {
-  border: 1px solid #dbe3ef;
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  padding: var(--space-3);
-}
-
-.simulation-panel h3 {
-  margin: 2px 0 var(--space-1);
-  color: #0f172a;
-  font-size: var(--fs-lg);
-  font-weight: 700;
-}
-
-.simulation-panel p {
-  color: #64748b;
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-}
-
-.simulation-objectives {
-  display: grid;
-  gap: var(--space-1);
-  margin: var(--space-2) 0 0;
-  padding-left: var(--space-4);
-  list-style: disc;
-  color: #475569;
-  font-size: var(--fs-xs);
-  line-height: 1.45;
-}
-
-.simulation-step-list {
-  display: grid;
-  gap: var(--space-1);
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.simulation-step-list li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-2);
-  align-items: center;
-  border: 1px solid #e2e8f0;
-  border-radius: var(--radius-md);
-  background: #f8fafc;
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-}
-
-.simulation-step-list li.locked {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.simulation-step-list span {
-  display: inline-flex;
-  width: clamp(20px, 1.6vw, 24px);
-  height: clamp(20px, 1.6vw, 24px);
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-pill);
-  background: #e2e8f0;
-  color: #334155;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-}
-
-.simulation-step-list p {
-  margin: 0;
-  color: #475569;
-  font-size: var(--fs-xs);
-  font-weight: 800;
-}
-
-.simulation-step-list li.active {
-  border-color: #06b6d4;
-  background: #ecfeff;
-}
-
-.simulation-step-list li.active span {
-  background: #0891b2;
-  color: #ffffff;
-}
-
-.simulation-step-list li.done span {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.simulation-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.simulation-hint-button {
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  color: #0f172a;
-  cursor: pointer;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  padding: var(--ctl-pad-y) var(--ctl-pad-x);
-}
-
-.simulation-panel-header .simulation-hint-button {
-  flex-shrink: 0;
-  font-size: var(--fs-2xs);
-  padding: var(--space-1) var(--space-2);
-}
-
-.simulation-hint-text {
-  margin-top: var(--space-2);
-  border-left: 3px solid #06b6d4;
-  background: #ecfeff;
-  padding: var(--space-2);
-}
-
-/* Sits below the viewport as its own row so it never covers the scene. */
-.simulation-control-bar {
-  grid-row: 3;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-3);
-  border: 1px solid #dbe3ef;
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  padding: var(--space-2) var(--space-3);
-}
-
-/* Absolutely positioned so the canvas's intrinsic size can never keep the
-   workspace from shrinking when the window is resized down. */
+/* min-width/height 0 and the clip, so the canvas's intrinsic size can never
+   keep the track from shrinking when the window is resized down. The scene's
+   content fills it with height: 100%. */
 .simulation-scene {
-  position: absolute;
-  inset: 0;
+  position: relative;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid #dbe3ef;
-  border-radius: var(--radius-lg);
   background: #0f172a;
 }
 
@@ -376,17 +52,179 @@
   color: #cbd5e1;
 }
 
-.hotspot-detail-header {
+/* The task column: header, the scrolling body, the hint, the footer. */
+.simulation-task {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid #dbe3ef;
+  background: #ffffff;
+}
+
+.simulation-task-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-2) var(--space-4);
+}
+
+.simulation-task-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.simulation-task-collapse,
+.simulation-task-tab {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+}
+
+.simulation-task-collapse {
+  width: 32px;
+  height: 32px;
+}
+
+.simulation-task-collapse:hover,
+.simulation-task-tab:hover {
+  background: #f1f5f9;
+}
+
+/* Folded: a full-height tab with the step number under the unfold icon. */
+.simulation-task-tab {
+  align-content: start;
+  gap: var(--space-2);
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  padding-top: var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.simulation-task-body {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.simulation-task-body p {
+  color: #64748b;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.simulation-task-instructions {
+  margin: 0;
+}
+
+.simulation-task-summary {
+  display: grid;
+  gap: var(--space-2);
+  border-top: 1px solid #e2e8f0;
+  padding-top: var(--space-3);
+}
+
+.simulation-task-summary h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+
+.simulation-hint {
+  flex-shrink: 0;
+  border-top: 1px solid #e2e8f0;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--fs-sm);
+}
+
+.simulation-hint summary {
+  color: #0e7490;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.simulation-hint p {
+  max-height: 30vh;
+  margin: var(--space-2) 0 0;
+  overflow-y: auto;
+  border-left: 3px solid #06b6d4;
+  background: #ecfeff;
+  color: #334155;
+  line-height: 1.5;
+  padding: var(--space-2);
+}
+
+.simulation-task-footer {
+  display: grid;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  border-top: 1px solid #e2e8f0;
+  padding: var(--space-3) var(--space-4);
+}
+
+.simulation-required-note {
+  margin: 0;
+  color: #92400e;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.simulation-navigation-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.simulation-navigation-buttons button {
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
+}
+
+.simulation-navigation-buttons .primary {
+  border-color: #0891b2;
+  background: #0891b2;
+  color: #ffffff;
+}
+
+.simulation-navigation-buttons .primary:hover:not(:disabled) {
+  background: #0e7490;
+}
+
+.simulation-navigation-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .hotspot-detail-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-3);
 }
 
 .hotspot-detail-back,
@@ -420,128 +258,28 @@
   background: #0e7490;
 }
 
-.simulation-navigation {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.simulation-navigation-buttons {
-  display: flex;
-  flex-shrink: 0;
-  gap: var(--space-2);
-}
-
-.simulation-navigation button {
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  color: #0f172a;
-  cursor: pointer;
-  font-size: var(--fs-md);
+/* Section labels inside the task body (the briefing's objectives, the
+   module's skills): sentence case, like every other label in the app. */
+.simulation-section-label {
+  margin: 0;
+  color: #0e7490;
+  font-size: var(--fs-sm);
   font-weight: 700;
-  padding: var(--ctl-pad-y) clamp(16px, 1.6vw, 26px);
 }
 
-.simulation-navigation .primary {
-  border-color: #0891b2;
-  background: #0891b2;
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(8, 145, 178, 0.35);
+.simulation-objectives {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  list-style: disc;
+  color: #475569;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
 }
 
-.simulation-navigation .primary:hover:not(:disabled) {
-  background: #0e7490;
-}
-
-.simulation-navigation button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-/* Stacked: the panels drop below the scene, so the lane insets on the scene
-   chrome no longer apply and the shell gets its height floor back. */
-@media (max-width: 1180px) {
-  .simulation-shell {
-    flex: none;
-    height: auto;
-    min-height: 640px;
-  }
-
-  .simulation-workspace {
-    display: grid;
-    gap: var(--space-4);
-  }
-
-  .simulation-overlay {
-    position: static;
-    width: auto;
-    max-height: none;
-    overflow-y: visible;
-  }
-
-  .simulation-overlay-left,
-  .simulation-overlay-right {
-    top: auto;
-    bottom: auto;
-    width: auto;
-  }
-
-  .simulation-workspace .driving-hud-top,
-  .simulation-workspace .driving-hud-bottom,
-  .simulation-workspace .interactive-viewer-toolbar,
-  .simulation-workspace .interactive-viewer-help,
-  .simulation-workspace .parts-viewer-toolbar,
-  .simulation-workspace .parts-viewer-help {
-    left: var(--space-3);
-    right: var(--space-3);
-  }
-
-  .simulation-scene {
-    position: static;
-    height: auto;
-    min-height: 560px;
-  }
-}
-
-@media (max-width: 760px) {
-  .simulation-briefing {
-    flex-direction: column;
-  }
-
-  .simulation-score-card {
-    justify-items: start;
-  }
-
-  .simulation-scene {
-    min-height: 460px;
-  }
-
-  .simulation-control-bar {
-    grid-template-columns: 1fr;
-  }
-
-  .simulation-navigation {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .simulation-required-note {
-    text-align: left;
-  }
-
-  .simulation-navigation-buttons {
-    justify-content: space-between;
-  }
-
-  .simulation-navigation-buttons button {
-    flex: 1;
-  }
-}
-
-/* The module's linked skills (components/ModuleSkills.jsx): compact in the
-   sidebar, with the learner's status in the briefing's task panel. */
+/* The module's linked skills (components/ModuleSkills.jsx), with the
+   learner's status, on the briefing's task panel. */
 .module-skills + .module-skills {
   margin-top: var(--space-3);
 }

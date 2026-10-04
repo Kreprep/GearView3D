@@ -46,18 +46,10 @@
   --radius-pill: 999px;
 
   /* One stacking ladder for the whole viewer stack. The scene's own chrome
-     (HUD chips, viewer toolbar, help bubble) must sit BELOW the shell's
-     overlay panels - it used to be the other way around. */
+     (HUD chips, viewer toolbar, help bubble) sits over the canvas; the
+     module shell's task column is beside the scene, not over it. */
   --z-scene-chrome: 4;
-  --z-overlay: 6;
   --z-page-header: 20;
   --z-scene-modal: 30;
   --z-modal: 60;
-
-  /* Simulation overlay lanes. The scene chrome is inset by these same values
-     (see ModuleSimulationShell.css) so a HUD row can never end up underneath
-     an overlay panel. Change a lane width here and the HUD follows. */
-  --sim-lane-left: clamp(190px, 16vw, 260px);
-  --sim-lane-right: clamp(250px, 21vw, 340px);
-  --sim-lane-inset: var(--space-3);
 }

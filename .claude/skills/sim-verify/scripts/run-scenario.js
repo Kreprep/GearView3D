@@ -387,9 +387,11 @@ async (page) => {
   await page.goto(`${BASE}/training/modules/${scenario.module}`)
   const scope = page.getByRole('button', { name: 'Continue' })
   if (await scope.isVisible({ timeout: 5000 }).catch(() => false)) await scope.click()
-  const stepItem = page.locator('li[role="button"]').filter({ hasText: stepPattern }).first()
+  // The stepper in the top bar: one button per step, named "Step N: <title>"
+  // (the current one by its visible text), disabled while still locked.
+  const stepItem = page.locator('.module-stepper').getByRole('button', { name: stepPattern }).first()
   await stepItem.waitFor({ timeout: 15000 })
-  const locked = (await stepItem.getAttribute('aria-disabled')) === 'true'
+  const locked = await stepItem.isDisabled()
 
   if (!locked) {
     await stepItem.click()

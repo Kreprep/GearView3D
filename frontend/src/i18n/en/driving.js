@@ -69,25 +69,14 @@ export default {
   'driving.hud.loading': 'Loading driving simulation',
   'driving.hud.loadFailed': 'The driving simulation could not load. Check the connection and reload the page.',
   'driving.hud.showColliders': 'Colliders',
+  'driving.hud.more': 'More',
 
   // Camera modes (lib/driving/cameraModes.js).
   'driving.camera.label': 'Camera view',
   'driving.camera.hint': 'Press C to switch view; the arrow keys move the camera',
   'driving.camera.firstPerson': 'First-person',
   'driving.camera.chase': 'Chase',
-  'driving.camera.free': 'Free',
-  // The on-screen D-pad (and the arrow keys): glances in first-person,
-  // steps round the truck in chase.
-  'driving.camera.arrows.first-person': 'Look around',
-  'driving.camera.arrows.chase': 'Move the camera round the forklift',
-  'driving.camera.first-person.cameraLeft': 'Look left',
-  'driving.camera.first-person.cameraRight': 'Look right',
-  'driving.camera.first-person.cameraUp': 'Look ahead',
-  'driving.camera.first-person.cameraDown': 'Look behind',
-  'driving.camera.chase.cameraLeft': 'Move round to the left',
-  'driving.camera.chase.cameraRight': 'Move round to the right',
-  'driving.camera.chase.cameraUp': 'Overhead, or back down',
-  'driving.camera.chase.cameraDown': 'Back down from overhead',
+  'driving.camera.freeCamera': 'Free camera',
 
   // The top-down proximity inset.
   'driving.inset.label': 'Proximity view',

@@ -3,10 +3,8 @@
    stylesheet for every module page. */
 
 /* App shell: the page owns the viewport exactly and never scrolls, so the
-   scene inside it gets every pixel the chrome doesn't use - and grows on a
-   taller display instead of stopping at a fixed height. Below the stacking
-   breakpoint the overlay panels move under the scene, which genuinely needs
-   more room than the viewport has, so scrolling comes back there. */
+   scene inside it gets every pixel the top bar doesn't use - and grows on a
+   taller display instead of stopping at a fixed height. */
 .module-page-container {
   display: flex;
   flex-direction: column;
@@ -15,6 +13,7 @@
   background: #f4f7fb;
 }
 
+/* The one top bar: 56 px at the 1920x929 target. */
 .module-page-header {
   position: sticky;
   top: 0;
@@ -23,42 +22,40 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-3) var(--gutter);
+  min-height: 56px;
+  padding: var(--space-2) var(--gutter);
   border-bottom: 1px solid #dbe3ef;
   background: #ffffff;
 }
 
-.module-page-header.is-compact {
-  gap: var(--space-3);
-  padding: var(--space-2) var(--gutter);
-}
-
-.module-title-section h1 {
+.module-page-title {
+  flex: 0 1 auto;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: #0f172a;
-  font-size: var(--fs-xl);
+  font-size: var(--fs-lg);
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.module-title-section h2 {
-  margin: 2px 0 0;
-  color: #64748b;
-  font-size: var(--fs-sm);
-  font-weight: 800;
-}
-
-/* Compact mode's stand-in for the title block: page context only, since the
-   title itself is printed by the content below. */
-.module-page-context {
-  margin: 0;
-  color: #64748b;
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+/* The page's own bar content (the stepper and progress meter) takes the space
+   between the title and the language toggle. */
+.module-page-header-content {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
 .back-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1);
   border: 1px solid #a5f3fc;
   border-radius: var(--radius-pill);
   background: #ecfeff;
@@ -79,14 +76,4 @@
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  padding: var(--gutter);
-}
-
-/* Stacked layout - the panels sit under the scene, so let the page scroll. */
-@media (max-width: 1180px) {
-  .module-page-container {
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
-  }
 }

@@ -1,31 +1,16 @@
 /* Scene wrapper for the `checklist` and `quiz` steps. Both render a light
    panel on the shell's dark scene area, so the whole block scrolls rather than
-   overflowing the fixed-height stage the 3D viewers use. */
+   overflowing the fixed-height stage the 3D viewers use. The task column is
+   beside the scene, not over it, so nothing needs insetting. */
 .module-rows-scene {
   display: grid;
   gap: 16px;
   align-content: start;
   height: 100%;
-  min-height: 460px;
-  max-height: 70vh;
   overflow-y: auto;
-  /* The shell's objectives/steps and current-task panels are absolutely
-     positioned lanes floating over the scene - right for a 3D canvas, wrong
-     here, where the scene is text the cards would sit on top of. Inset by the
-     same lane tokens ModuleSimulationShell.css uses for the viewer HUD chrome,
-     so widening a lane moves both together. */
-  padding: 24px calc(var(--sim-lane-right) + var(--sim-lane-inset) * 2) 24px
-    calc(var(--sim-lane-left) + var(--sim-lane-inset) * 2);
+  padding: 24px;
   border-radius: 18px;
   background: #0f172a;
-}
-
-/* Stacked: the lanes drop below the scene, so the insets no longer apply -
-   mirrors the same breakpoint in ModuleSimulationShell.css. */
-@media (max-width: 1180px) {
-  .module-rows-scene {
-    padding: 24px;
-  }
 }
 
 .module-rows-intro {

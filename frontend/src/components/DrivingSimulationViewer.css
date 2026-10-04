@@ -1,6 +1,5 @@
-/* Sizes come from styles/tokens.css. The HUD is inset by the overlay lane
-   tokens when this viewer runs inside ModuleSimulationShell - that rule lives
-   in ModuleSimulationShell.css, next to the lanes it has to clear. */
+/* Sizes come from styles/tokens.css. Inside ModuleSimulationShell the task
+   column is beside the scene, so the HUD only has the scene to fit. */
 
 .driving-loading {
   position: absolute;
@@ -53,10 +52,8 @@
 }
 
 /* Status chips left, camera/reset controls right. The controls live up here
-   rather than in the bottom row because the bottom row also carries the key
-   legend and the hint line: on a 1920-wide viewport all three together are
-   wider than the band between the overlay lanes, and they wrapped into a
-   ragged two-row block. */
+   rather than in the bottom row because the bottom row carries the signs,
+   the hint line and the dashboard. */
 .driving-hud-status {
   display: flex;
   flex-wrap: wrap;
@@ -107,28 +104,19 @@
   pointer-events: none;
 }
 
-/* Camera modes as one segmented group, each with its number key. */
+/* First-person / Chase as one segmented group. */
 .driving-camera-modes {
   display: inline-flex;
-  flex-wrap: wrap;
   gap: 2px;
 }
 
-.driving-camera-shortcut {
-  display: inline-grid;
-  place-items: center;
-  min-width: 1.4em;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.14);
-  font-size: var(--fs-2xs);
-}
-
+/* One row: reset, the view, the inset toggle, More. */
 .driving-hud-actions {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: flex-end;
   gap: var(--ctl-gap);
-  flex-wrap: wrap;
   /* The top row is click-through so the canvas can be dragged; the buttons
      opt back in. */
   pointer-events: auto;
@@ -151,6 +139,64 @@
 .driving-reset-button.is-active {
   background: #0891b2;
   border-color: #22d3ee;
+}
+
+.driving-reset-button:focus-visible,
+.driving-hud-menu-item:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+/* An icon-only control (the inset toggle, More): square, named by its
+   aria-label and tooltip. */
+.driving-icon-button {
+  justify-content: center;
+  min-width: 32px;
+  min-height: 30px;
+  padding-inline: var(--space-1);
+}
+
+.driving-hud-menu {
+  position: relative;
+}
+
+.driving-hud-menu-list {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  display: grid;
+  min-width: 200px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--radius-md);
+  background: #0f172a;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.45);
+  padding: var(--space-1);
+}
+
+.driving-hud-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.driving-hud-menu-item:hover,
+.driving-hud-menu-item:focus-visible {
+  background: rgba(8, 145, 178, 0.45);
+}
+
+.driving-hud-menu-check {
+  margin-left: auto;
 }
 
 .driving-key-wrap {

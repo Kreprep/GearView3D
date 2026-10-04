@@ -1,22 +1,43 @@
 import { useEffect, useRef, useState } from 'react'
+import { PanelRightClose, PanelRightOpen } from 'lucide-react'
 import PartDetailCard from './PartDetailCard'
-import { ModuleSkills } from './ModuleSkills'
 import { useT } from '../i18n'
-import { ProgressBar } from './ui/progress'
 import './ModuleSimulationShell.css'
 
+// Whether the task column is folded to its tab: a per-viewer convenience,
+// so it may be missing or unwritable (private window, blocked storage).
+const COLLAPSED_KEY = 'gearview_task_panel_collapsed'
+
+function readCollapsed() {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeCollapsed(collapsed) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0')
+  } catch {
+    // Not remembered; the column still folds for this visit.
+  }
+}
+
+// The scene and the task column of a module page. The page's top bar (the
+// stepper and progress, SimulationPageLayout + ModuleHeaderContent) is the
+// page's own; this is everything under it.
+//
+// The task column is a grid column, not an overlay, so the canvas never sits
+// under it and the scene's HUD centres on the scene. It holds the step title,
+// the instructions once, the task body (the only part that scrolls), the hint
+// as a disclosure, and Back / Next / Complete in its footer. It folds to a
+// narrow tab showing the step number, so a driver can have the whole width.
 function ModuleSimulationShell({
-  module,
   steps,
   currentStepIndex,
-  objectives = [],
-  moduleSkills,
-  progress = 0,
-  score,
   canProceed = true,
-  requiredNote = "Complete this step's required items to continue.",
-  maxSelectableStepIndex = Infinity,
-  onSelectStep,
+  requiredNote,
   onBackStep,
   onNextStep,
   onComplete,
@@ -28,173 +49,133 @@ function ModuleSimulationShell({
   onNextDetail,
 }) {
   const t = useT()
-  const [showHint, setShowHint] = useState(false)
-  const currentTaskRef = useRef(null)
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const bodyRef = useRef(null)
   const currentStep = steps[currentStepIndex] || steps[0]
   const isFirstStep = currentStepIndex === 0
   const isLastStep = currentStepIndex === steps.length - 1
 
-  // Opening or closing a part's detail card swaps the whole panel's content;
-  // without this, whatever scroll position the previous content left behind
-  // carries over, which can strand the panel showing blank space until the
-  // learner scrolls to find the next inspection card.
+  // Opening or closing a part's detail card, or moving to another step, swaps
+  // the body's content; without this, whatever scroll position the previous
+  // content left behind carries over, which can strand the panel showing blank
+  // space until the learner scrolls to find the next inspection card.
   useEffect(() => {
-    currentTaskRef.current?.scrollTo({ top: 0 })
-  }, [selectedDetail])
+    bodyRef.current?.scrollTo({ top: 0 })
+  }, [selectedDetail, currentStepIndex])
+
+  const toggleCollapsed = () => {
+    setCollapsed((value) => {
+      writeCollapsed(!value)
+      return !value
+    })
+  }
 
   return (
-    <section className="simulation-shell">
-      <header className="simulation-briefing">
-        <div>
-          <p className="simulation-kicker">{t('module.kicker')}</p>
-          {/* The page heading: SimulationPageLayout runs in compact mode on
-              every page that renders this shell, so it prints no <h1> of its own. */}
-          <h1>{module.fullTitle || module.title}</h1>
-        </div>
-        <div className="simulation-score-card">
-          <span>{t('module.progress')}</span>
-          <strong>{progress}%</strong>
-          {typeof score === 'number' && <small>{t('module.score', { score })}</small>}
-        </div>
-      </header>
-
-      <div className="simulation-workspace">
-        <div className="simulation-scene">
-          {renderScene ? renderScene({ currentStep, currentStepIndex }) : (
-            <div className="simulation-placeholder-scene">
-              <strong>{t('module.scene.placeholderTitle')}</strong>
-              <p>{t('module.scene.placeholderBody')}</p>
-            </div>
-          )}
-        </div>
-
-        <aside className="simulation-overlay simulation-overlay-left">
-          <section className="simulation-panel">
-            <div className="simulation-panel-header">
-              <p className="simulation-panel-label">{t('module.panel.objectives')}</p>
-              <button className="simulation-hint-button" onClick={() => setShowHint((value) => !value)}>
-                {t(showHint ? 'module.hint.hide' : 'module.hint.show')}
-              </button>
-            </div>
-            <ul className="simulation-objectives">
-              {objectives.map((objective) => (
-                <li key={objective}>{objective}</li>
-              ))}
-            </ul>
-            {showHint && <p className="simulation-hint-text">{currentStep?.hint || t('module.hint.none')}</p>}
-          </section>
-
-          {(moduleSkills?.practise.length > 0 || moduleSkills?.need.length > 0) && (
-            <section className="simulation-panel">
-              <ModuleSkills practise={moduleSkills.practise} need={moduleSkills.need} compact />
-            </section>
-          )}
-
-          <section className="simulation-panel">
-            <p className="simulation-panel-label">{t('module.panel.steps')}</p>
-            <ol className="simulation-step-list">
-              {steps.map((step, index) => {
-                const locked = index > maxSelectableStepIndex
-                return (
-                  <li
-                    key={step.id}
-                    className={[
-                      index === currentStepIndex ? 'active' : '',
-                      index < currentStepIndex ? 'done' : '',
-                      locked ? 'locked' : '',
-                    ].join(' ')}
-                    role="button"
-                    tabIndex={locked ? -1 : 0}
-                    aria-disabled={locked}
-                    aria-current={index === currentStepIndex ? 'step' : undefined}
-                    onClick={() => !locked && onSelectStep?.(index)}
-                    onKeyDown={(event) => {
-                      if (locked || (event.key !== 'Enter' && event.key !== ' ')) return
-                      event.preventDefault()
-                      onSelectStep?.(index)
-                    }}
-                  >
-                    <span>{index + 1}</span>
-                    <p>{step.title}</p>
-                  </li>
-                )
-              })}
-            </ol>
-          </section>
-        </aside>
-
-        <aside className="simulation-overlay simulation-overlay-right" ref={currentTaskRef}>
-          <section className="simulation-panel current-task-panel">
-            {selectedDetail ? (
-              <>
-                <div className="hotspot-detail-header">
-                  <p className="simulation-panel-label">{t('module.panel.partDetails')}</p>
-                </div>
-                <PartDetailCard
-                  title={selectedDetail.title}
-                  subtitle={selectedDetail.subtitle}
-                  image={selectedDetail.image}
-                  description={selectedDetail.description}
-                  status={selectedDetail.status}
-                  statusType={selectedDetail.statusType}
-                />
-                <div className="hotspot-detail-actions">
-                  {onNextDetail && (
-                    <button type="button" className="hotspot-detail-next" onClick={onNextDetail}>
-                      Next Part
-                    </button>
-                  )}
-                  <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
-                    Back to Task
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="simulation-panel-label">{t('module.panel.currentTask')}</p>
-                <h3>{currentStep?.title}</h3>
-                <p>{currentStep?.instructions}</p>
-                {renderTask?.({ currentStep, currentStepIndex })}
-              </>
-            )}
-          </section>
-
-          {isLastStep && completionSummary && (
-            <section className="simulation-panel completion-panel">
-              <p className="simulation-panel-label">{t('module.panel.summary')}</p>
-              {completionSummary}
-            </section>
-          )}
-        </aside>
-
-      </div>
-
-      <div className="simulation-control-bar">
-        <ProgressBar
-          value={progress}
-          label={t('module.progressLabel', { percent: progress })}
-          size="h-[clamp(6px,0.5vw,9px)]"
-        />
-        <div className="simulation-navigation">
-          {!isLastStep && !canProceed && (
-            <p className="simulation-required-note">{requiredNote}</p>
-          )}
-          <div className="simulation-navigation-buttons">
-            <button type="button" onClick={onBackStep} disabled={isFirstStep}>
-              {t('module.nav.back')}
-            </button>
-            {isLastStep ? (
-              <button type="button" className="primary" onClick={onComplete}>
-                {t('module.nav.complete')}
-              </button>
-            ) : (
-              <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
-                {t('module.nav.next')}
-              </button>
-            )}
+    <section className={`simulation-shell ${collapsed ? 'is-collapsed' : ''}`.trim()}>
+      <div className="simulation-scene">
+        {renderScene ? renderScene({ currentStep, currentStepIndex }) : (
+          <div className="simulation-placeholder-scene">
+            <strong>{t('module.scene.placeholderTitle')}</strong>
+            <p>{t('module.scene.placeholderBody')}</p>
           </div>
-        </div>
+        )}
       </div>
+
+      <aside className="simulation-task" aria-label={t('module.task.label')}>
+        {collapsed ? (
+          <button
+            type="button"
+            className="simulation-task-tab"
+            aria-expanded="false"
+            aria-label={t('module.task.expand', { number: currentStepIndex + 1, title: currentStep?.title })}
+            title={t('module.task.expand', { number: currentStepIndex + 1, title: currentStep?.title })}
+            onClick={toggleCollapsed}
+          >
+            <PanelRightOpen size={18} aria-hidden="true" />
+            <span>{currentStepIndex + 1}</span>
+          </button>
+        ) : (
+          <>
+            <header className="simulation-task-header">
+              <h2>{selectedDetail ? t('module.panel.partDetails') : currentStep?.title}</h2>
+              <button
+                type="button"
+                className="simulation-task-collapse"
+                aria-expanded="true"
+                aria-label={t('module.task.collapse')}
+                title={t('module.task.collapse')}
+                onClick={toggleCollapsed}
+              >
+                <PanelRightClose size={18} aria-hidden="true" />
+              </button>
+            </header>
+
+            <div className="simulation-task-body" ref={bodyRef}>
+              {selectedDetail ? (
+                <>
+                  <PartDetailCard
+                    title={selectedDetail.title}
+                    subtitle={selectedDetail.subtitle}
+                    image={selectedDetail.image}
+                    description={selectedDetail.description}
+                    status={selectedDetail.status}
+                    statusType={selectedDetail.statusType}
+                  />
+                  <div className="hotspot-detail-actions">
+                    {onNextDetail && (
+                      <button type="button" className="hotspot-detail-next" onClick={onNextDetail}>
+                        {t('module.detail.nextPart')}
+                      </button>
+                    )}
+                    <button type="button" className="hotspot-detail-back" onClick={onClearDetail}>
+                      {t('module.detail.backToTask')}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {currentStep?.instructions && <p className="simulation-task-instructions">{currentStep.instructions}</p>}
+                  {renderTask?.({ currentStep, currentStepIndex })}
+                  {isLastStep && completionSummary && (
+                    <section className="simulation-task-summary">
+                      <h3>{t('module.panel.summary')}</h3>
+                      {completionSummary}
+                    </section>
+                  )}
+                </>
+              )}
+            </div>
+
+            {!selectedDetail && currentStep?.hint && (
+              // Keyed on the step, so a hint opened on one step is closed on the next.
+              <details key={currentStep.id} className="simulation-hint">
+                <summary>{t('module.hint.label')}</summary>
+                <p>{currentStep.hint}</p>
+              </details>
+            )}
+
+            <footer className="simulation-task-footer">
+              {!isLastStep && !canProceed && (
+                <p className="simulation-required-note">{requiredNote || t('module.task.required')}</p>
+              )}
+              <div className="simulation-navigation-buttons">
+                <button type="button" onClick={onBackStep} disabled={isFirstStep}>
+                  {t('module.nav.back')}
+                </button>
+                {isLastStep ? (
+                  <button type="button" className="primary" onClick={onComplete}>
+                    {t('module.nav.complete')}
+                  </button>
+                ) : (
+                  <button type="button" className="primary" onClick={onNextStep} disabled={!canProceed}>
+                    {t('module.nav.next')}
+                  </button>
+                )}
+              </div>
+            </footer>
+          </>
+        )}
+      </aside>
     </section>
   )
 }

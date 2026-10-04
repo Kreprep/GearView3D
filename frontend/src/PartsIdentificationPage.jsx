@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PartsViewport from './components/PartsViewport'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
+import { ModuleHeaderContent } from './components/ModuleStepper'
 import SimulationPageLayout from './components/SimulationPageLayout'
 import ScopeNoticeModal from './components/ScopeNoticeModal'
 import Quiz from './components/Quiz'
@@ -208,26 +209,26 @@ function PartsIdentificationPage({ user, onBack }) {
       )}
       <SimulationPageLayout
         className="parts-identification-page"
-        compact
         title={t('parts.title')}
-        subtitle={t('parts.subtitle', { equipment: equipmentTitle })}
         onBack={onBack}
+        headerContent={
+          !loading && (
+            <ModuleHeaderContent
+              steps={steps}
+              currentStepIndex={currentStepIndex}
+              onSelectStep={goToStep}
+              progress={percentage}
+            />
+          )
+        }
       >
         {loading ? (
           <p>{t('parts.loading')}</p>
         ) : (
           <ModuleSimulationShell
-            module={{ fullTitle: t('parts.title'), title: t('parts.title') }}
             steps={steps}
             currentStepIndex={currentStepIndex}
-            objectives={[
-              t('parts.objective.explore', { equipment: equipmentTitle }),
-              t('parts.objective.viewAll'),
-              ...(hasQuiz ? [t('parts.objective.quiz')] : []),
-            ]}
-            progress={percentage}
             canProceed
-            onSelectStep={goToStep}
             onBackStep={() => goToStep(currentStepIndex - 1)}
             onNextStep={() => (currentStepIndex + 1 < steps.length ? goToStep(currentStepIndex + 1) : onBack())}
             onComplete={completeModule}
