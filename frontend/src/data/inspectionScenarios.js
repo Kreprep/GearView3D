@@ -203,78 +203,134 @@ export const engineOnControlChecks = [
   },
 ]
 
+// The Defect Recognition Test's stock forklifts (docs/modules/
+// module-improvements-plan.md, 3.4; the shape is in lib/walkAroundStep.js).
+// Every question type and both views, and three good forklifts, so "No" is
+// not always right. Learners meet them shuffled, titled "Forklift 3 of 10";
+// `defects` are data/defectLibrary.js ids. Question text is left blank, so
+// each type's own question shows in the learner's language.
+const REPORT = 'Report it and tag the forklift out of service'
+
 export const defectRecognitionScenarios = [
   {
-    id: 'leaking-oil',
-    title: 'Scenario 1: Obvious defect - leaking oil',
-    visualState: 'oil-leak',
-    question: 'Is this forklift usable for operation?',
-    choices: ['Yes', 'No'],
-    answer: 'No',
-    feedback:
-      'Visible fluid leaks may indicate engine oil, hydraulic oil, coolant, or battery electrolyte problems. The forklift should not be used until the issue is reported and cleared.',
-  },
-  {
     id: 'good-forklift',
-    title: 'Scenario 2: Good forklift',
-    visualState: 'normal',
-    question: 'Is this forklift usable for operation?',
-    choices: ['Yes', 'No'],
-    answer: 'Yes',
-    feedback:
-      'If the walk-around inspection and engine-on controls show no unsafe condition, the forklift may proceed to supervised training use.',
+    view: 'exterior',
+    defects: [],
+    question: { type: 'usable', prompt: '', choices: ['Yes', 'No'], answer: 'Yes' },
+    demo: null,
+    feedback: 'Nothing on this forklift is damaged, loose or leaking. With the rest of the pre-operation check passed, it may be used.',
   },
   {
-    id: 'flat-tire',
-    title: 'Scenario 3: Worn-out or flat tire',
-    visualState: 'flat-tire',
-    question: 'Is this forklift usable for operation?',
-    choices: ['Yes', 'No'],
-    answer: 'No',
-    feedback:
-      'Unsafe tire condition affects steering and stability. The forklift must not be used until the issue is reported and corrected.',
+    id: 'engine-oil-leak',
+    view: 'exterior',
+    defects: ['engine-oil-leak'],
+    question: { type: 'usable', prompt: '', choices: ['Yes', 'No'], answer: 'No' },
+    demo: null,
+    feedback: 'There is fresh oil under the engine, still dripping. Any fluid leak means the forklift must not be used until it is reported and fixed.',
   },
   {
-    id: 'warning-light-blink',
-    title: 'Scenario 4: Dashboard warning light blinking',
-    visualState: 'warning-light-blink',
-    question: 'Is this forklift usable for operation?',
-    choices: ['Yes', 'No'],
-    answer: 'No',
-    feedback:
-      'A warning light that stays lit or blinks points to an active fault in that system. The forklift must not be used until the issue is reported and cleared.',
+    id: 'flat-front-tyre',
+    view: 'exterior',
+    defects: ['flat-front-tyre'],
+    question: {
+      type: 'identify',
+      prompt: '',
+      choices: ['A flat front tyre', 'A hydraulic hose leak', 'A bent fork', 'Nothing, it is fine'],
+      answer: 'A flat front tyre',
+    },
+    demo: null,
+    feedback: 'The left front tyre is flat and the truck leans toward it. A flat tyre upsets steering and stability, so the forklift must not be used.',
   },
   {
-    id: 'red-light-beep',
-    title: 'Scenario 5: Beeping red warning light',
-    visualState: 'red-light-beep',
-    question: 'Is this forklift usable for operation?',
-    choices: ['Yes', 'No'],
-    answer: 'No',
-    feedback:
-      'An audible alarm paired with a red warning light signals a critical fault. The forklift must not be used until the issue is reported and cleared.',
+    id: 'bent-fork-tip',
+    view: 'exterior',
+    defects: ['bent-fork-tip'],
+    question: { type: 'locate', prompt: '', choices: [], answer: 'forks' },
+    demo: null,
+    feedback: 'The left fork droops at its tip. A bent fork can drop or tip a load, so the forklift must be reported and taken out of service.',
   },
   {
-    id: 'brakes-working',
-    title: 'Scenario 6: Brake test',
-    visualState: 'normal',
-    deviceEffectId: 'brakes',
-    demoLabel: 'Play brake test',
-    question:
-      'Press "Play brake test" to watch the forklift roll forward and stop. It stops abruptly with no unusual noise or delay. Is this forklift usable for operation?',
-    choices: ['Yes', 'No'],
-    answer: 'Yes',
-    feedback:
-      'A brake that stops the forklift promptly and smoothly is working as intended. With no other unsafe condition present, the forklift may proceed to supervised training use.',
+    id: 'mast-channel-crack',
+    view: 'exterior',
+    defects: ['mast-channel-crack'],
+    question: { type: 'locate', prompt: '', choices: [], answer: 'mast' },
+    demo: null,
+    feedback: 'There is a crack in the left mast channel. A cracked mast can fail under load: report it before anyone lifts with this forklift.',
   },
   {
-    id: 'mast-tilt',
-    title: 'Scenario 7: Mast stuck tilted',
-    visualState: 'mast-tilt',
-    question: 'Is this forklift usable for operation?',
-    choices: ['Yes', 'No'],
-    answer: 'No',
-    feedback:
-      "A mast that stays tilted forward instead of returning to vertical points to a loose or faulty tilt cylinder connection. This shifts the load's centre of gravity away from the forklift and increases tip-over risk, so the forklift must be reported and removed from operation.",
+    id: 'lpg-leak',
+    view: 'exterior',
+    defects: ['lpg-leak'],
+    question: {
+      type: 'action',
+      prompt: '',
+      choices: [REPORT, 'Use it carefully until the end of the shift', 'Tighten the fitting yourself and carry on'],
+      answer: REPORT,
+    },
+    demo: null,
+    feedback: 'Gas is hissing from the tank fitting and frost has formed on it. An LPG leak is a fire risk: keep sparks away, report it and tag the forklift out. Repairs are for maintenance, not the operator.',
+  },
+  {
+    id: 'good-forklift-brakes',
+    view: 'exterior',
+    defects: [],
+    question: { type: 'usable', prompt: '', choices: ['Yes', 'No'], answer: 'Yes' },
+    demo: 'brake-test',
+    feedback: 'The forklift stops promptly and squarely in the brake test, and nothing else is wrong. It may be used.',
+  },
+  {
+    id: 'uneven-lift-chains',
+    view: 'exterior',
+    defects: ['uneven-lift-chains'],
+    question: {
+      type: 'identify',
+      prompt: '',
+      choices: ['One lift chain is slack and the carriage hangs low', 'The mast is stuck tilted forward', 'A fork tip is bent', 'Nothing, it is fine'],
+      answer: 'One lift chain is slack and the carriage hangs low',
+    },
+    demo: null,
+    feedback: 'The left lift chain is slack and that side of the carriage hangs lower. Uneven chains can let a load slide or a chain fail: report it.',
+  },
+  {
+    id: 'brake-fade',
+    view: 'cab',
+    defects: ['brake-fade'],
+    question: { type: 'usable', prompt: '', choices: ['Yes', 'No'], answer: 'No' },
+    demo: null,
+    feedback: 'The brakes grind and take about twice as far to stop the truck. Brakes that fade must be reported before the forklift is used.',
+  },
+  {
+    id: 'seatbelt-wont-latch',
+    view: 'cab',
+    defects: ['seatbelt-wont-latch'],
+    question: {
+      type: 'identify',
+      prompt: '',
+      choices: ['The seat belt will not latch', 'The parking brake will not release', 'The battery is flat', 'Nothing, it is fine'],
+      answer: 'The seat belt will not latch',
+    },
+    demo: null,
+    feedback: 'The seat belt springs open again and its lamp stays lit, so the truck will not start. A seat belt that does not latch must be reported.',
+  },
+  {
+    id: 'engine-overheating',
+    view: 'cab',
+    defects: ['engine-overheating'],
+    question: {
+      type: 'action',
+      prompt: '',
+      choices: [REPORT, 'Let it cool down, then carry on working', 'Top up the coolant yourself and carry on'],
+      answer: REPORT,
+    },
+    demo: null,
+    feedback: 'The temperature needle climbs into the red and the warning chime sounds. Shut the engine down, report it and tag the forklift out.',
+  },
+  {
+    id: 'good-forklift-cab',
+    view: 'cab',
+    defects: [],
+    question: { type: 'usable', prompt: '', choices: ['Yes', 'No'], answer: 'Yes' },
+    demo: null,
+    feedback: 'Every lamp goes out after the start, the gauges read normal, and the horn, brakes, steering and lift all work. It may be used.',
   },
 ]

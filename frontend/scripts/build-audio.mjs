@@ -88,6 +88,15 @@ const SOUNDS = [
   // Freesound 650701, a dry half-second hit, is the alternative if this one
   // rings too long by ear: change `source` and drop `start` to 0.
   { name: 'metal-impact', source: 568786, start: 0.62, length: 0.9, fadeIn: 0.003, fadeOut: 0.6 },
+  // Module improvements Phase 4, the defect test's faults. The hiss is
+  // steady from end to end; any stretch loops.
+  { name: 'lpg-hiss', source: 453443, loop: true, start: 5, length: 3, crossfade: 0.5 },
+  // The recording is a knocking engine held at one speed.
+  { name: 'engine-knock', source: 675725, loop: true, start: 2, length: 4, crossfade: 0.4 },
+  // The busiest stretch of grinding (4.5 s to 6.1 s); the rest is quieter.
+  { name: 'brake-grind', source: 383808, loop: true, start: 4.5, length: 1.6, crossfade: 0.3 },
+  // The first of the recording's clicks (0.45 s): a horn button with no horn.
+  { name: 'horn-click', source: 760624, start: 0.42, length: 0.18, fadeIn: 0.003, fadeOut: 0.06 },
 ]
 
 const outputFile = (sound) => `${sound.name}.${sound.loop ? 'flac' : 'mp3'}`

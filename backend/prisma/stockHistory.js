@@ -3,7 +3,7 @@
 // scripts/recordStockHistory.js; read by prisma/seed.js through
 // src/lib/stockHistory.js, which moves a field still holding one of them to
 // the current stock. Do not edit by hand.
-export const STOCK_RELEASES = ["7b5763c","c94072f"]
+export const STOCK_RELEASES = ["7b5763c","c94072f","134b86d"]
 
 export const STOCK_HISTORY = {
   "Course": {
@@ -29,6 +29,20 @@ export const STOCK_HISTORY = {
       ],
       "hint": [
         "4293f81d8360d3021e5a6fc7e164ccc1"
+      ]
+    },
+    "defect-recognition": {
+      "objective": [
+        "352d9938cdc1a07855cb1991abdd9426"
+      ],
+      "instructions": [
+        "4df8025c61649409a1079292aa9a650a"
+      ],
+      "hint": [
+        "9a56639dc4e461dd3ba8b2eead75ef98"
+      ],
+      "data": [
+        "8887863e9e2346f9649670cd18a841a0"
       ]
     },
     "forklift-gap-parking": {
