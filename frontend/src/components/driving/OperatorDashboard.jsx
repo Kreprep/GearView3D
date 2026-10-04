@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import {
+  ArrowBigLeft,
+  ArrowBigRight,
   BatteryWarning,
   ChevronDown,
   ChevronUp,
@@ -9,6 +11,7 @@ import {
   Lightbulb,
   Megaphone,
   PackageX,
+  Siren,
   Thermometer,
   Weight,
 } from 'lucide-react'
@@ -30,14 +33,25 @@ import './OperatorDashboard.css'
 //
 // Three panels: the key switch and direction lever on the left, the meter
 // and warning lamps in the middle, the cab switches and hydraulic levers on
-// the right, with the volume and mute. Lamps light only with the key on, as a real cluster's do. The
-// oil-pressure and charge lamps are lit with the key on and the engine
-// stopped, which is the bulb check an operator does before cranking.
+// the right, with the volume and mute. Lamps light only with the key on, as
+// a real cluster's do: at key ON every warning lamp lights for two seconds
+// (the bulb check), and the oil-pressure and charge lamps stay lit until the
+// engine runs.
 //
 // When the pre-start interlock refuses a start, the controls it still wants
 // (seatbelt, parking brake, lever in N) are marked until the engine starts.
 // A connected shifter owns the direction lever, so the on-screen lever only
 // shows it.
+//
+// What each lamp shows is the cockpit snapshot's (lib/driving/
+// cockpitTelemetry.js): the bulb check at key ON and any scripted instrument
+// faults are applied there, not here.
+//
+// `inspect` (optional) is the engine-on inspection's: { targets:
+// { [instrumentId]: status }, selected, onSelect(instrumentId) }, with the
+// instrument ids of lib/inspection/instruments.js and a status of 'pending',
+// 'correct' or 'wrong'. The listed instruments become buttons with a ring in
+// their status's colour. Without it the dashboard is the driver's.
 
 const CAB_KEYS = [
   { key: 'C', captionKey: 'driving.key.cameraNext' },
@@ -46,9 +60,17 @@ const CAB_KEYS = [
   { key: 'H', captionKey: 'driving.key.horn' },
   { key: 'B', captionKey: 'driving.key.seatbelt' },
   { key: 'Space', captionKey: 'driving.key.parkingBrake' },
+  { key: 'L', captionKey: 'driving.key.lights' },
+  { key: 'O', captionKey: 'driving.key.beacon' },
+  { key: '[ ]', captionKey: 'driving.key.turnSignals' },
 ]
 
 const wholeSnapshot = (snapshot) => snapshot
+
+const TURN_SIGNAL_SIDES = [
+  { side: 'left', icon: ArrowBigLeft, key: '[' },
+  { side: 'right', icon: ArrowBigRight, key: ']' },
+]
 
 // The seatbelt warning symbol: a seated figure with a belt across it (lucide
 // has no seatbelt icon), in the same 24-unit stroke style.
@@ -62,29 +84,91 @@ function SeatbeltIcon(props) {
   )
 }
 
-// A warning lamp: a symbol that lights, named for screen readers and on
-// hover, read at a glance like a real cluster's.
-function Lamp({ lit, tone, label, icon: Icon }) {
+// In inspect mode, an instrument the step asks about is a button ringed in
+// its status's colour; any other instrument renders as it is.
+function Inspectable({ inspect, instrument, label, className = '', children }) {
+  const t = useT()
+  const status = inspect?.targets?.[instrument]
+  if (!status) return children
+  return (
+    <button
+      type="button"
+      className={`operator-inspect is-${status} ${inspect.selected === instrument ? 'is-selected' : ''} ${className}`}
+      aria-label={t('driving.dash.inspect', { instrument: label })}
+      title={t('driving.dash.inspect', { instrument: label })}
+      onClick={() => inspect.onSelect?.(instrument)}
+    >
+      {children}
+    </button>
+  )
+}
+
+// A lamp: a symbol that lights, named for screen readers and on hover, read
+// at a glance like a real cluster's. A span inside a lamp row that is itself
+// a button (the inspection's "warning lamps").
+function Lamp({ lit, tone, label, icon: Icon, blink = false, as: Tag = 'li' }) {
   const t = useT()
   return (
-    <li
-      className={`operator-lamp ${tone} ${lit ? 'is-lit' : ''}`}
+    <Tag
+      className={`operator-lamp ${tone} ${lit ? 'is-lit' : ''} ${lit && blink ? 'is-blinking' : ''}`}
       title={label}
       aria-label={t(lit ? 'driving.dash.lampState.on' : 'driving.dash.lampState.off', { lamp: label })}
     >
       <Icon width={15} height={15} aria-hidden="true" />
-    </li>
+    </Tag>
   )
 }
 
 function Gauge({ label, value, bands, icon: Icon }) {
   return (
-    <div className="operator-gauge" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)} title={label}>
+    <span className="operator-gauge" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)} title={label}>
       <Icon width={12} height={12} aria-hidden="true" />
       <span className={`operator-gauge-track ${bands}`} aria-hidden="true">
         <span className="operator-gauge-needle" style={{ left: `${Math.min(Math.max(value, 0), 1) * 100}%` }} />
       </span>
-    </div>
+    </span>
+  )
+}
+
+// The warning row: each lamp's snapshot key, and its instrument
+// (lib/inspection/instruments.js) where the inspection can ask about it.
+const WARNING_LAMP_ROW = [
+  { instrument: 'lamp.parkingBrake', field: 'lampParkingBrake', tone: 'danger', icon: CircleParking, labelKey: 'driving.dash.lamp.parkingBrake' },
+  { instrument: 'lamp.seatbelt', field: 'lampSeatbelt', tone: 'danger', icon: SeatbeltIcon, labelKey: 'driving.dash.lamp.seatbelt' },
+  { instrument: 'lamp.oil', field: 'lampOil', tone: 'danger', icon: Droplet, labelKey: 'driving.dash.lamp.oil' },
+  { instrument: 'lamp.charge', field: 'lampCharge', tone: 'danger', icon: BatteryWarning, labelKey: 'driving.dash.lamp.charge' },
+  { field: 'lampOverload', tone: 'danger', icon: Weight, labelKey: 'driving.dash.lamp.overload' },
+  { field: 'lampLoadInsecure', tone: 'caution', icon: PackageX, labelKey: 'driving.dash.lamp.loadInsecure' },
+]
+
+// The warning lamps as a list, or as one button when the inspection asks
+// about the whole row (judged during the bulb check).
+function WarningLamps({ snapshot, inspect }) {
+  const t = useT()
+  const label = t('driving.dash.lamps')
+  if (inspect?.targets?.lamps) {
+    return (
+      <Inspectable inspect={inspect} instrument="lamps" label={label} className="operator-lamps">
+        {WARNING_LAMP_ROW.map(({ field, tone, icon, labelKey }) => (
+          <Lamp key={field} as="span" lit={snapshot[field]} tone={tone} icon={icon} label={t(labelKey)} />
+        ))}
+      </Inspectable>
+    )
+  }
+  return (
+    <ul className="operator-lamps" aria-label={label}>
+      {WARNING_LAMP_ROW.map(({ instrument, field, tone, icon, labelKey }) =>
+        inspect?.targets?.[instrument] ? (
+          <li key={field}>
+            <Inspectable inspect={inspect} instrument={instrument} label={t(labelKey)}>
+              <Lamp as="span" lit={snapshot[field]} tone={tone} icon={icon} label={t(labelKey)} />
+            </Inspectable>
+          </li>
+        ) : (
+          <Lamp key={field} lit={snapshot[field]} tone={tone} icon={icon} label={t(labelKey)} />
+        ),
+      )}
+    </ul>
   )
 }
 
@@ -132,22 +216,20 @@ function CapacityPlate({ ratedKg, ratedCentre, loadKg, loadCentre, limitKg, over
   )
 }
 
-export function OperatorDashboard({ telemetry, dashboard, keyLegend, pressed }) {
+export function OperatorDashboard({ telemetry, dashboard, keyLegend, pressed, inspect }) {
   const t = useT()
   const [drawerOpen, setDrawerOpen] = useState(false)
   // Nearly every field is on show, and the store only replaces the snapshot
   // when something in it changed, so the cluster reads it whole.
+  const snapshot = useTelemetry(telemetry, wholeSnapshot)
   const {
-    engineOn, keyPosition, direction, leverEngaged, shifterActive, seatbelt, parkingBrake, lights,
+    engineOn, keyPosition, direction, leverEngaged, shifterActive, seatbelt, parkingBrake, lights, beacon, turnSignal,
     needSeatbelt, needParkingBrake, needNeutral,
     speedKmh, forkHeightM, tiltDeg, tilt, grip, palletState,
     ratedCapacityKg, ratedLoadCentreM, plateLoadKg, plateLoadCentreM, plateLimitKg, plateOverCapacity,
+    lampLights, lampBeacon, lampTurnLeft, lampTurnRight,
     fuel, temp, hours, liftInput, tiltInput,
-  } = useTelemetry(telemetry, wholeSnapshot)
-
-  const powered = engineOn || keyPosition === 'on'
-  const overloaded = plateOverCapacity
-  const loadInsecure = palletState === 'carried' && grip !== 'secure'
+  } = snapshot
 
   return (
     <section className="operator-dashboard" aria-label={t('driving.dash.label')}>
@@ -246,19 +328,28 @@ export function OperatorDashboard({ telemetry, dashboard, keyLegend, pressed }) 
         </div>
 
         <div className="operator-status">
-          <ul className="operator-lamps" aria-label={t('driving.dash.lamps')}>
-            <Lamp lit={powered && parkingBrake} tone="danger" icon={CircleParking} label={t('driving.dash.lamp.parkingBrake')} />
-            <Lamp lit={powered && !seatbelt} tone="danger" icon={SeatbeltIcon} label={t('driving.dash.lamp.seatbelt')} />
-            <Lamp lit={keyPosition === 'on' && !engineOn} tone="danger" icon={Droplet} label={t('driving.dash.lamp.oil')} />
-            <Lamp lit={keyPosition === 'on' && !engineOn} tone="danger" icon={BatteryWarning} label={t('driving.dash.lamp.charge')} />
-            <Lamp lit={powered && overloaded} tone="danger" icon={Weight} label={t('driving.dash.lamp.overload')} />
-            <Lamp lit={powered && loadInsecure} tone="caution" icon={PackageX} label={t('driving.dash.lamp.loadInsecure')} />
+          {/* The indicators for what the operator switched on flank the
+              warning row, the turn arrows outermost, as on a real cluster. */}
+          <ul className="operator-lamps" aria-label={t('driving.dash.indicators')}>
+            <Lamp lit={lampTurnLeft} blink tone="indicator" icon={ArrowBigLeft} label={t('driving.dash.turnSignal.left')} />
+            <Lamp lit={lampLights} tone="indicator" icon={Lightbulb} label={t('driving.dash.lights')} />
           </ul>
-          <Gauge label={t('driving.dash.fuel')} value={fuel} bands="fuel" icon={Fuel} />
-          <Gauge label={t('driving.dash.temp')} value={temp} bands="temp" icon={Thermometer} />
-          <span className="operator-hours" title={t('driving.dash.hours')}>
-            {t('driving.dash.hoursValue', { hours: hours.toFixed(1) })}
-          </span>
+          <WarningLamps snapshot={snapshot} inspect={inspect} />
+          <ul className="operator-lamps" aria-label={t('driving.dash.indicators')}>
+            <Lamp lit={lampBeacon} tone="caution" icon={Siren} label={t('driving.dash.beacon')} />
+            <Lamp lit={lampTurnRight} blink tone="indicator" icon={ArrowBigRight} label={t('driving.dash.turnSignal.right')} />
+          </ul>
+          <Inspectable inspect={inspect} instrument="gauge.fuel" label={t('driving.dash.fuel')}>
+            <Gauge label={t('driving.dash.fuel')} value={fuel} bands="fuel" icon={Fuel} />
+          </Inspectable>
+          <Inspectable inspect={inspect} instrument="gauge.temp" label={t('driving.dash.temp')}>
+            <Gauge label={t('driving.dash.temp')} value={temp} bands="temp" icon={Thermometer} />
+          </Inspectable>
+          <Inspectable inspect={inspect} instrument="hours" label={t('driving.dash.hours')}>
+            <span className="operator-hours" title={t('driving.dash.hours')}>
+              {t('driving.dash.hoursValue', { hours: hours.toFixed(1) })}
+            </span>
+          </Inspectable>
         </div>
       </div>
 
@@ -285,9 +376,41 @@ export function OperatorDashboard({ telemetry, dashboard, keyLegend, pressed }) 
           <button type="button" className="operator-switch" title={t('driving.dash.shortcut', { label: t('driving.dash.horn'), key: 'H' })} onClick={() => dashboard.horn()}>
             <Megaphone size={13} aria-hidden="true" /> {t('driving.dash.horn')}
           </button>
-          <button type="button" className={`operator-switch ${lights ? 'is-active' : ''}`} aria-pressed={lights} onClick={() => dashboard.toggle('lights')}>
+          <button
+            type="button"
+            className={`operator-switch ${lights ? 'is-active' : ''}`}
+            aria-pressed={lights}
+            title={t('driving.dash.shortcut', { label: t('driving.dash.lights'), key: 'L' })}
+            onClick={() => dashboard.toggle('lights')}
+          >
             <Lightbulb size={13} aria-hidden="true" /> {t('driving.dash.lights')}
           </button>
+          <button
+            type="button"
+            className={`operator-switch ${beacon ? 'is-active' : ''}`}
+            aria-pressed={beacon}
+            title={t('driving.dash.shortcut', { label: t('driving.dash.beacon'), key: 'O' })}
+            onClick={() => dashboard.toggle('beacon')}
+          >
+            <Siren size={13} aria-hidden="true" /> {t('driving.dash.beacon')}
+          </button>
+          {/* The turn-signal stalk: one side or the other, the same side
+              again to cancel. */}
+          <div className="operator-signal" role="group" aria-label={t('driving.dash.turnSignal')}>
+            {TURN_SIGNAL_SIDES.map(({ side, icon: Icon, key }) => (
+              <button
+                key={side}
+                type="button"
+                className={`operator-switch ${turnSignal === side ? 'is-active' : ''}`}
+                aria-pressed={turnSignal === side}
+                aria-label={t(`driving.dash.turnSignal.${side}`)}
+                title={t('driving.dash.shortcut', { label: t(`driving.dash.turnSignal.${side}`), key })}
+                onClick={() => dashboard.signal(side)}
+              >
+                <Icon size={13} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
         </div>
         <div className="operator-levers" role="group" aria-label={t('driving.dash.hydraulics')}>
           <LeverIndicator label={t('driving.dash.liftLever')} value={liftInput} />

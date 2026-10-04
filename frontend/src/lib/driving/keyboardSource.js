@@ -34,7 +34,9 @@ import { SIM_DT } from './simLoop.js'
 export const DRIVING_KEYS = ['w', 'a', 's', 'd', 'e', 'r', 'f', 't', 'g']
 
 // One press, one command. C switches first-person / chase and the arrow keys
-// do what a wheel's D-pad does (cameraModes.js). Keys are lower-cased
+// do what a wheel's D-pad does (cameraModes.js). The cab keys work the
+// dashboard's switches (dashboardSource.js): [ and ] the turn signals, O the
+// beacon, L the lights (the truck-sim convention). Keys are lower-cased
 // KeyboardEvent.key values.
 export const VIEW_COMMAND_BY_KEY = {
   c: 'cameraToggle',
@@ -46,6 +48,10 @@ export const VIEW_COMMAND_BY_KEY = {
   h: 'horn',
   b: 'seatbeltToggle',
   ' ': 'parkingBrakeToggle',
+  l: 'lights',
+  o: 'beacon',
+  '[': 'turnSignalLeft',
+  ']': 'turnSignalRight',
 }
 
 const HELD_BY_KEY = {

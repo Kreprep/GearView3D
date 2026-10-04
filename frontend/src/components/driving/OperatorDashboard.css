@@ -192,6 +192,82 @@
   box-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
 }
 
+/* The operator's own indicators: lights and turn signals in green. */
+.operator-lamp.indicator.is-lit {
+  color: #052e16;
+  background: #22c55e;
+  border-color: #bbf7d0;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+}
+
+/* A turn signal flashes at about 1.5 Hz while it is on. */
+.operator-lamp.is-blinking {
+  animation: operator-blink 0.66s steps(1, end) infinite;
+}
+
+@keyframes operator-blink {
+  50% {
+    color: #334155;
+    background: #111c30;
+    border-color: #1e293b;
+    box-shadow: none;
+  }
+}
+
+/* An instrument the engine-on inspection asks about: a button ringed in its
+   status's colour, pulsing while it still has to be judged. */
+.operator-inspect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px var(--surface-deep-accent);
+}
+
+.operator-inspect.is-pending {
+  animation: operator-inspect-pulse 1s ease-in-out infinite alternate;
+}
+
+.operator-inspect.is-correct {
+  box-shadow: 0 0 0 2px #22c55e;
+}
+
+.operator-inspect.is-wrong {
+  box-shadow: 0 0 0 2px #f87171;
+}
+
+.operator-inspect.is-selected {
+  background: rgba(103, 232, 249, 0.14);
+}
+
+.operator-inspect:focus-visible {
+  outline: 2px solid #f8fafc;
+  outline-offset: 2px;
+}
+
+@keyframes operator-inspect-pulse {
+  from {
+    box-shadow: 0 0 0 1px var(--surface-deep-accent);
+  }
+  to {
+    box-shadow: 0 0 0 3px var(--surface-deep-accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .operator-lamp.is-blinking,
+  .operator-inspect.is-pending {
+    animation: none;
+  }
+}
+
 .operator-gauge {
   display: inline-flex;
   align-items: center;
@@ -255,8 +331,19 @@
 
 .operator-toggles {
   display: grid;
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: repeat(3, auto);
   gap: 4px;
+}
+
+/* The turn-signal stalk's two sides, one cell of the toggles grid. */
+.operator-signal {
+  display: flex;
+  gap: 2px;
+}
+
+.operator-signal .operator-switch {
+  flex: 1;
+  justify-content: center;
 }
 
 .operator-switch {
