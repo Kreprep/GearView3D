@@ -115,11 +115,6 @@ function EngineOnTask({ data, state, onGauge, onDevice }) {
 
   return (
     <>
-      <p className="task-note">
-        Read each gauge and decide if the reading is normal. Then test the devices and controls, in the panel or
-        directly on the 3D model.
-      </p>
-
       {gauges.length > 0 && (
         <div className="virtual-dashboard">
           <h4>{t('walkAround.gauges.heading')}</h4>

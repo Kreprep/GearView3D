@@ -776,6 +776,9 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
         dpr={[1, 1.35]}
         camera={{ position: [0, 2, -4], fov: 55 }}
         className={shot === 'first-person' ? 'driving-canvas-lookable' : undefined}
+        // The scene's <Html> labels (pallet weights, markers) stack inside the
+        // canvas, under the HUD and the module's panels.
+        style={{ isolation: 'isolate' }}
       >
         <Suspense fallback={<DrivingLoadingPanel />}>
           <DrivingScene
