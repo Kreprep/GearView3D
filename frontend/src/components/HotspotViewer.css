@@ -78,21 +78,34 @@
 }
 
 .hotspot-marker {
-  display: block;
+  /* A 24 px target around the 16 px dot, which is drawn by ::before so the
+     hover and selected transforms scale the dot, not the target. */
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.hotspot-marker::before {
+  content: '';
   width: 16px;
   height: 16px;
+  box-sizing: border-box;
   border: 2px solid rgba(255, 255, 255, 0.8);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.9);
-  cursor: pointer;
   transition: transform 140ms ease;
 }
 
-.hotspot-marker:hover {
+.hotspot-marker:hover::before {
   transform: scale(1.1);
 }
 
-.hotspot-marker.selected {
+.hotspot-marker.selected::before {
   border-color: #67e8f9;
   background: #22d3ee;
   box-shadow: 0 0 10px 3px rgba(34, 211, 238, 0.7);
@@ -100,17 +113,20 @@
   animation: hotspot-pulse 1.4s ease-in-out infinite;
 }
 
-.hotspot-marker.unsafe {
+.hotspot-marker.unsafe::before {
   border-color: #fb923c;
   background: #f97316;
 }
 
-.hotspot-marker.unsafe.selected {
+.hotspot-marker.unsafe.selected::before {
   box-shadow: 0 0 10px 3px rgba(249, 115, 22, 0.7);
 }
 
 .hotspot-marker.admin-editable {
   cursor: grab;
+}
+
+.hotspot-marker.admin-editable::before {
   border-color: #a78bfa;
 }
 

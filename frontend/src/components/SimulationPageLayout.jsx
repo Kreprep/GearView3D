@@ -1,45 +1,32 @@
+import { ArrowLeft } from 'lucide-react'
 import { useT } from '../i18n'
 import LanguageToggle from './LanguageToggle'
 import './SimulationPageLayout.css'
 
-// The outer chrome every full-width simulation page shares: sticky header with
-// a back button and title block, then a <main> the page fills. This is the
-// simulation-page counterpart of PageLayout (which is for standard content
-// pages); the pages that use it render ModuleSimulationShell or a 3D viewport
-// inside `children`.
+// The outer chrome every full-width simulation page shares: one top bar, then
+// a <main> the page fills. This is the simulation-page counterpart of
+// PageLayout (which is for standard content pages); the pages that use it
+// render ModuleSimulationShell inside `children`.
 //
-// `compact` is for pages whose content already prints the title - every page
-// rendering ModuleSimulationShell does, in its briefing bar. There the header
-// would repeat the title one line above it and cost ~45px of scene height, so
-// compact mode keeps only the back button and the subtitle as a context label,
-// and the shell's own <h1> is the page heading.
-function SimulationPageLayout({
-  title,
-  subtitle,
-  backLabel,
-  onBack,
-  className = '',
-  compact = false,
-  children,
-}) {
+// The bar holds the back button, the page's <h1>, whatever the page passes as
+// `headerContent` (a module page's stepper and progress meter,
+// ModuleHeaderContent) and the language toggle. It is the only bar: the shell
+// below it has no title band or control bar of its own, so the scene gets the
+// rest of the viewport.
+function SimulationPageLayout({ title, backLabel, onBack, headerContent, className = '', children }) {
   const t = useT()
   return (
     <div className={`module-page-container ${className}`.trim()}>
-      <header className={`module-page-header ${compact ? 'is-compact' : ''}`.trim()}>
-        <button className="back-button" onClick={onBack}>
+      <header className="module-page-header">
+        <button type="button" className="back-button" onClick={onBack}>
+          <ArrowLeft size={16} aria-hidden="true" />
           {backLabel || t('module.backToModules')}
         </button>
-        {compact ? (
-          subtitle && <p className="module-page-context">{subtitle}</p>
-        ) : (
-          <div className="module-title-section">
-            <h1>{title}</h1>
-            {subtitle && <h2>{subtitle}</h2>}
-          </div>
-        )}
+        <h1 className="module-page-title" title={title}>{title}</h1>
+        {headerContent && <div className="module-page-header-content">{headerContent}</div>}
         {/* These pages replace PageLayout, so they never mount AppHeader and
             had no way to switch language once a learner was inside a module. */}
-        <LanguageToggle className="ml-auto" />
+        <LanguageToggle className="ml-auto shrink-0" />
       </header>
 
       <main className="wide-simulation-content">{children}</main>

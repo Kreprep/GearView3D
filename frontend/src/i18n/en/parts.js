@@ -4,7 +4,6 @@
 export default {
   'parts.pageTitle': '{equipment} parts identification',
   'parts.title': 'Parts identification',
-  'parts.subtitle': '{equipment} familiarization',
   'parts.loading': 'Loading parts...',
 
   'parts.step.explore.title': 'Explore by category',
@@ -14,9 +13,6 @@ export default {
   'parts.step.quiz.instructions': 'Answer each question to check part recognition. Results are saved to learner progress.',
   'parts.step.quiz.hint': 'Revisit any part you are unsure about in the Explore step before answering.',
 
-  'parts.objective.explore': 'Explore major {equipment} parts using the 3D model and the category list.',
-  'parts.objective.viewAll': 'View every part at least once to track exploration progress.',
-  'parts.objective.quiz': 'Answer the quiz questions to check part recognition.',
 
   'parts.viewed': 'Viewed',
   'parts.notViewed': 'Not viewed',

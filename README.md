@@ -159,6 +159,12 @@ Once everyone is pointed at one deployed backend (see below), none of this is ne
 | `frontend/` | `npm run build` | production build |
 | `frontend/` | `npm run lint` | ESLint |
 
+## Module Pages
+
+Every module, and Parts Identification, uses one screen. A single top bar has the back button, the module title, the steps as a row of numbered buttons (a tick on each finished step, steps not reached yet greyed out, only the current one named), the progress and the language switch. Under it the 3D scene takes the rest of the window, with the current step's panel on the right: its instructions, the task, a **Hint** that opens on request, and **Back** / **Next** at the bottom. The panel button at its top right folds it to a narrow tab, so the scene can have the whole width; the browser remembers the choice. A module's objectives and skills are on its briefing step. The layout is built to fit a 1920×1080 screen at 100% scaling without scrolling.
+
+In a driving step the bar over the scene holds **Reset attempt**, First-person / Chase, the proximity view, and a **⋯** menu with Wheel setup, Reset camera (in chase view) and, for content editors, the free camera and the colliders. The arrow keys, the wheel's D-pad and the mouse move the camera; every key is listed under **Controls** on the dashboard.
+
 ## Steering Wheel, Pedals and Shifter (optional)
 
 The driving simulation also takes a steering wheel, pedals and H-pattern shifter through the browser's Gamepad API. It was built and tested with a Thrustmaster **T300 RS** and **TH8A**, and those two come with their buttons already set up. The keyboard keeps working alongside.
@@ -171,7 +177,7 @@ The driving simulation also takes a steering wheel, pedals and H-pattern shifter
 
 ## Physics
 
-Pallets, their loads and traffic cones in the driving simulation are rigid bodies in the [Rapier](https://rapier.rs) physics engine (`@dimforge/rapier3d-compat`, pinned to 0.19.3), and the forks are solid: a load is lifted because the forks are under it, rides on them by friction, slides under hard braking and is set down by levelling the mast and lowering it. The forklift itself is driven by the simulation's own model, and tipping over comes from a stability calculation (the stability triangle and the combined centre of gravity), with the capacity derated by load centre as on a load chart. Once it tips, the fall itself is simulated: the forklift becomes a free body and ends on its fork tips or lying on its side. The engine is a separate 2.2 MB chunk that is downloaded the first time a driving step opens. Admins can press **Colliders** in a driving step's 3D preview to see the shapes the engine simulates.
+Pallets, their loads and traffic cones in the driving simulation are rigid bodies in the [Rapier](https://rapier.rs) physics engine (`@dimforge/rapier3d-compat`, pinned to 0.19.3), and the forks are solid: a load is lifted because the forks are under it, rides on them by friction, slides under hard braking and is set down by levelling the mast and lowering it. The forklift itself is driven by the simulation's own model, and tipping over comes from a stability calculation (the stability triangle and the combined centre of gravity), with the capacity derated by load centre as on a load chart. Once it tips, the fall itself is simulated: the forklift becomes a free body and ends on its fork tips or lying on its side. The engine is a separate 2.2 MB chunk that is downloaded the first time a driving step opens. Content editors can turn on **Colliders** in a driving step's **⋯** menu to see the shapes the engine simulates.
 
 ## Skills Checklist
 

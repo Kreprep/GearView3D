@@ -1,18 +1,23 @@
 export default {
-  'module.kicker': 'Gabay na simulation',
-  'module.progress': 'Progreso',
-  'module.score': 'Puntos: {score}',
   'module.progressLabel': 'Progreso ng simulation {percent}%',
 
+  'module.stepper.label': 'Mga hakbang ng module',
+  'module.stepper.step': 'Hakbang {number}: {title}',
+  'module.stepper.done': 'Hakbang {number}: {title} (tapos na)',
+  'module.stepper.locked': 'Hakbang {number}: {title} (naka-lock)',
+
+  'module.task.label': 'Kasalukuyang hakbang',
+  'module.task.collapse': 'Itago ang panel ng gawain',
+  'module.task.expand': 'Ipakita ang panel ng gawain (hakbang {number}: {title})',
+  'module.task.required': 'Tapusin ang mga kailangan sa hakbang na ito para magpatuloy.',
+  'module.hint.label': 'Hint',
+  'module.detail.nextPart': 'Susunod na parte',
+  'module.detail.backToTask': 'Bumalik sa gawain',
+
   'module.panel.objectives': 'Mga layunin',
-  'module.panel.steps': 'Mga hakbang',
   'module.panel.partDetails': 'Detalye ng parte',
-  'module.panel.currentTask': 'Kasalukuyang gawain',
   'module.panel.summary': 'Buod ng natapos',
 
-  'module.hint.show': 'Ipakita ang hint',
-  'module.hint.hide': 'Itago ang hint',
-  'module.hint.none': 'Walang hint para sa hakbang na ito.',
 
   'module.scene.placeholderTitle': 'Lugar ng interactive na gawain',
   'module.scene.placeholderBody': 'Dito lalabas ang 3D viewer, diagram, o activity scene.',

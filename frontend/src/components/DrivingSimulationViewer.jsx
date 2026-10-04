@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Grid, OrbitControls, useGLTF } from '@react-three/drei'
 import { BufferAttribute, DoubleSide } from 'three'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, Gamepad2, Locate, Radar, RotateCcw, VolumeX } from 'lucide-react'
+import { Box, Compass, Gamepad2, Locate, Radar, RotateCcw, VolumeX } from 'lucide-react'
 import { useT } from '../i18n'
 import { buildVehicleRig } from '../lib/vehicleRig'
 import { clamp } from '../lib/math'
@@ -23,7 +23,7 @@ import {
 } from '../lib/driving/models'
 import { LOOK_MAX_PITCH, LOOK_SENSITIVITY, PALLET_STATE_LABEL_KEYS } from '../lib/driving/constants'
 import { createCabGauges, stepCabGauges } from '../lib/driving/cabGauges'
-import { CAMERA_COMMANDS, CAMERA_VIEWS, cameraReducer, cameraShot, FREE_CAMERA_VIEW, glanceTargetYaw, initialCameraState } from '../lib/driving/cameraModes'
+import { CAMERA_COMMANDS, CAMERA_VIEWS, cameraReducer, cameraShot, DEFAULT_CAMERA_VIEW, FREE_CAMERA_VIEW, glanceTargetYaw, initialCameraState } from '../lib/driving/cameraModes'
 import { cockpitSnapshot } from '../lib/driving/cockpitTelemetry'
 import { createKeyActiveTracker, mergeControls, neutralControls } from '../lib/driving/controls'
 import { createDashboardSource } from '../lib/driving/dashboardSource'
@@ -58,6 +58,7 @@ import { OperatorDashboard } from './driving/OperatorDashboard'
 import { ControllerSetup } from './driving/ControllerSetup'
 import { InsetRenderer, ProximityInsetFrame, ProximityRings } from './driving/ProximityInset'
 import { SafetySigns } from './driving/SafetySigns'
+import { HudMenu } from './driving/HudMenu'
 import './DrivingSimulationViewer.css'
 
 // The coded forklift numbers, used whenever no profile is passed.
@@ -71,17 +72,7 @@ const HEADLIGHT_INTENSITY = 6
 const CAMERA_LABEL_KEYS = {
   'first-person': 'driving.camera.firstPerson',
   chase: 'driving.camera.chase',
-  free: 'driving.camera.free',
 }
-
-// The on-screen D-pad: the same commands as the arrow keys and the wheel's
-// D-pad. Its buttons are named for what they do in the current view.
-const CAMERA_ARROWS = [
-  { command: 'cameraLeft', icon: ChevronLeft },
-  { command: 'cameraUp', icon: ChevronUp },
-  { command: 'cameraDown', icon: ChevronDown },
-  { command: 'cameraRight', icon: ChevronRight },
-]
 
 // Keyboard and wheel commands that work the cab's switches, by the names
 // each source raises (keyboardSource's VIEW_COMMAND_BY_KEY and E, gamepad.js's
@@ -695,9 +686,13 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
             <span className={`driving-parking-badge ${parked ? 'done' : ''}`}>{t(parkingStatus)}</span>
           )}
         </div>
+        {/* One row at every width the app supports: reset, the view, the
+            proximity inset, and a More menu for the rest. The camera's arrow
+            moves are the arrow keys and the wheel's D-pad (and mouse drag),
+            listed in the dashboard's Controls drawer. */}
         <div className="driving-hud-actions">
           <button type="button" className="driving-reset-button" onClick={onRequestReset}>
-            <RotateCcw size={14} /> {t('driving.hud.resetAttempt')}
+            <RotateCcw size={14} aria-hidden="true" /> {t('driving.hud.resetAttempt')}
           </button>
           <div className="driving-camera-modes" role="group" aria-label={t('driving.camera.label')} title={t('driving.camera.hint')}>
             {CAMERA_VIEWS.map((view) => (
@@ -711,61 +706,38 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
                 {t(CAMERA_LABEL_KEYS[view])}
               </button>
             ))}
-            {isAdmin && (
-              <button
-                type="button"
-                className={`driving-reset-button ${shot === FREE_CAMERA_VIEW ? 'is-active' : ''}`}
-                aria-pressed={shot === FREE_CAMERA_VIEW}
-                onClick={() => moveCamera(`view:${FREE_CAMERA_VIEW}`)}
-              >
-                <Compass size={14} /> {t(CAMERA_LABEL_KEYS.free)}
-              </button>
-            )}
           </div>
-          {shot !== FREE_CAMERA_VIEW && (
-            <div className="driving-camera-modes" role="group" aria-label={t(`driving.camera.arrows.${cameraState.view}`)}>
-              {CAMERA_ARROWS.map(({ command, icon: Icon }) => {
-                const label = t(`driving.camera.${cameraState.view}.${command}`)
-                return (
-                  <button key={command} type="button" className="driving-reset-button" aria-label={label} title={label} onClick={() => moveCamera(command)}>
-                    <Icon size={14} aria-hidden="true" />
-                  </button>
-                )
-              })}
-            </div>
-          )}
-          {shot === 'behind' && (
-            <button
-              type="button"
-              className="driving-reset-button"
-              onClick={() => {
-                camAdjustedRef.current = false
-              }}
-            >
-              <Locate size={14} /> {t('driving.hud.resetCamera')}
-            </button>
-          )}
           <button
             type="button"
-            className={`driving-reset-button ${insetOn ? 'is-active' : ''}`}
+            className={`driving-reset-button driving-icon-button ${insetOn ? 'is-active' : ''}`}
             aria-pressed={insetOn}
+            aria-label={t('driving.inset.toggle')}
+            title={t('driving.inset.toggle')}
             onClick={() => setInsetOn((on) => !on)}
           >
-            <Radar size={14} /> {t('driving.inset.toggle')}
+            <Radar size={16} aria-hidden="true" />
           </button>
-          <button type="button" className="driving-reset-button" onClick={() => setSetupOpen(true)}>
-            <Gamepad2 size={14} /> {t('controller.open')}
-          </button>
-          {isAdmin && (
-            <button
-              type="button"
-              className={`driving-reset-button ${showColliders ? 'is-active' : ''}`}
-              aria-pressed={showColliders}
-              onClick={() => setShowColliders((on) => !on)}
-            >
-              <Box size={14} /> {t('driving.hud.showColliders')}
-            </button>
-          )}
+          <HudMenu
+            label={t('driving.hud.more')}
+            items={[
+              { id: 'wheel', label: t('controller.open'), icon: Gamepad2, onSelect: () => setSetupOpen(true) },
+              ...(shot === 'behind'
+                ? [{ id: 'reset-camera', label: t('driving.hud.resetCamera'), icon: Locate, onSelect: () => { camAdjustedRef.current = false } }]
+                : []),
+              ...(isAdmin
+                ? [
+                    {
+                      id: 'free-camera',
+                      label: t('driving.camera.freeCamera'),
+                      icon: Compass,
+                      checked: shot === FREE_CAMERA_VIEW,
+                      onSelect: () => moveCamera(`view:${shot === FREE_CAMERA_VIEW ? DEFAULT_CAMERA_VIEW : FREE_CAMERA_VIEW}`),
+                    },
+                    { id: 'colliders', label: t('driving.hud.showColliders'), icon: Box, checked: showColliders, onSelect: () => setShowColliders((on) => !on) },
+                  ]
+                : []),
+            ]}
+          />
         </div>
       </div>
 

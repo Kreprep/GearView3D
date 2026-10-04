@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import DrivingSimulationViewer from './components/DrivingSimulationViewer'
 import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
+import { ModuleHeaderContent } from './components/ModuleStepper'
 import ModuleSummary from './components/ModuleSummary'
 import SimulationPageLayout from './components/SimulationPageLayout'
 import { BriefingScene, BriefingTask } from './components/ModuleBriefing'
@@ -211,7 +212,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
   const getStepCanProceed = (stepId) =>
     gradedStepIds.includes(stepId) ? isStepComplete(simulation, stepId) : true
 
-  // How far into the step list a learner may jump directly from the sidebar:
+  // How far into the step list a learner may jump directly from the stepper:
   // up to and including the first graded step they have not finished yet, so
   // e.g. Engine-On stays reachable once Engine-Off is done without letting
   // them skip past an incomplete required step.
@@ -219,6 +220,11 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
     const frontier = steps.findIndex((step) => gradedStepIds.includes(step.id) && !isStepComplete(simulation, step.id))
     return frontier === -1 ? steps.length - 1 : frontier
   })()
+
+  // The stepper's tick: a graded step once it is finished, any other step
+  // once the learner is past it.
+  const isStepDone = (index) =>
+    gradedStepIds.includes(steps[index].id) ? isStepComplete(simulation, steps[index].id) : index < stepIndex
 
   const renderScene = ({ currentStep }) => {
     const step = stepById[currentStep.id]
@@ -303,7 +309,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
     if (step?.kind === 'briefing') {
       return (
         <>
-          <BriefingTask content={step.content} module={module} />
+          <BriefingTask content={step.content} module={module} objectives={moduleObjectives(steps, module)} />
           <ModuleSkills practise={moduleSkills.practise} need={moduleSkills.need} />
         </>
       )
@@ -347,10 +353,20 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
       )}
       <SimulationPageLayout
         className="load-simulation-page"
-        compact
         title={moduleTitle}
-        subtitle={t('module.kicker')}
         onBack={onBack}
+        headerContent={
+          steps.length > 0 && (
+            <ModuleHeaderContent
+              steps={steps}
+              currentStepIndex={stepIndex}
+              maxSelectableStepIndex={maxSelectableStepIndex}
+              isStepDone={isStepDone}
+              onSelectStep={changeStep}
+              progress={simulation.percentage}
+            />
+          )
+        }
       >
         {loading || error || hotspotsLoading || hotspotsError ? (
           <ModuleLoadingState loading={loading || hotspotsLoading} error={error || hotspotsError} />
@@ -360,16 +376,9 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
           </div>
         ) : (
           <ModuleSimulationShell
-            module={module}
             steps={steps}
             currentStepIndex={stepIndex}
-            objectives={moduleObjectives(steps, module)}
-            moduleSkills={moduleSkills}
-            progress={simulation.percentage}
-            score={simulation.percentage}
             canProceed={getStepCanProceed(steps[stepIndex].id)}
-            maxSelectableStepIndex={maxSelectableStepIndex}
-            onSelectStep={changeStep}
             onBackStep={() => changeStep(Math.max(stepIndex - 1, 0))}
             onNextStep={() => changeStep(Math.min(stepIndex + 1, steps.length - 1))}
             onComplete={completeModule}

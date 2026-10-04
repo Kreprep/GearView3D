@@ -6,20 +6,28 @@
 // objectives, checklist items, quiz questions - is admin-authored and stays in
 // whatever language it was written in.
 export default {
-  'module.kicker': 'Guided simulation',
-  'module.progress': 'Progress',
-  'module.score': 'Score: {score}',
   'module.progressLabel': 'Simulation progress {percent}%',
 
+  // The stepper in the top bar (components/ModuleStepper.jsx). Only the
+  // current step shows its title; the others are named by these.
+  'module.stepper.label': 'Module steps',
+  'module.stepper.step': 'Step {number}: {title}',
+  'module.stepper.done': 'Step {number}: {title} (complete)',
+  'module.stepper.locked': 'Step {number}: {title} (locked)',
+
+  // The task column (components/ModuleSimulationShell.jsx).
+  'module.task.label': 'Current step',
+  'module.task.collapse': 'Hide the task panel',
+  'module.task.expand': 'Show the task panel (step {number}: {title})',
+  'module.task.required': "Complete this step's required items to continue.",
+  'module.hint.label': 'Hint',
+  'module.detail.nextPart': 'Next part',
+  'module.detail.backToTask': 'Back to task',
+
   'module.panel.objectives': 'Objectives',
-  'module.panel.steps': 'Steps',
   'module.panel.partDetails': 'Part details',
-  'module.panel.currentTask': 'Current task',
   'module.panel.summary': 'Completion summary',
 
-  'module.hint.show': 'Show hint',
-  'module.hint.hide': 'Hide hint',
-  'module.hint.none': 'No hint is available for this step.',
 
   'module.scene.placeholderTitle': 'Interactive task area',
   'module.scene.placeholderBody': '3D viewer, diagram, or activity scene will appear here.',

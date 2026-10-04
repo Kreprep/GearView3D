@@ -69,13 +69,19 @@ function HotspotPin({ hotspot, selected, onSelect, hotspotRefs }) {
               event.stopPropagation()
               onSelect(hotspot)
             }}
-            className={`block h-4 w-4 rounded-full border-2 transition-transform ${
-              selected
-                ? 'scale-125 animate-pulse border-cyan-300 bg-cyan-400 shadow-[0_0_10px_3px_rgba(34,211,238,0.7)]'
-                : 'border-white/80 bg-white/90 hover:scale-110'
-            }`}
+            // A 24 px target around the 16 px dot.
+            className="group/pin grid h-6 w-6 place-items-center"
             aria-label={hotspot.label}
-          />
+          >
+            <span
+              aria-hidden="true"
+              className={`block h-4 w-4 rounded-full border-2 transition-transform ${
+                selected
+                  ? 'scale-125 animate-pulse border-cyan-300 bg-cyan-400 shadow-[0_0_10px_3px_rgba(34,211,238,0.7)]'
+                  : 'border-white/80 bg-white/90 group-hover/pin:scale-110'
+              }`}
+            />
+          </button>
           <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900/90 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
             {hotspot.label}
           </span>

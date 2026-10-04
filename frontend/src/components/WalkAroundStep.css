@@ -451,11 +451,6 @@
 }
 
 @media (max-width: 760px) {
-  .module-page-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
   .device-test-grid,
   .summary-grid {
     grid-template-columns: 1fr;

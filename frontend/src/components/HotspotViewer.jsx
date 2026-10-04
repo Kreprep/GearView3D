@@ -593,8 +593,8 @@ export default function HotspotViewer({
 
   const enterFullscreen = async () => {
     if (!containerRef.current || document.fullscreenElement) return
-    // Inside a simulation shell the panels and control bar are siblings of the
-    // scene, so fullscreen the whole shell to keep them visible.
+    // Inside a simulation shell the task column is a sibling of the scene, so
+    // fullscreen the whole shell to keep it visible.
     const target = containerRef.current.closest('.simulation-shell') || containerRef.current
     await target.requestFullscreen?.()
   }
