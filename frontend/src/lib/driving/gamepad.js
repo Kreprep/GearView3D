@@ -139,8 +139,9 @@ export const PEDAL_ACTIONS = ['throttle', 'brake', 'inching']
 export const AXIS_ACTIONS = [STEER_ACTION, ...PEDAL_ACTIONS]
 // Held while the input is: the hydraulic levers.
 export const HELD_ACTIONS = ['liftUp', 'liftDown', 'tiltBack', 'tiltForward']
-// One command per press.
-export const COMMAND_ACTIONS = ['engine', 'horn', 'seatbelt', 'parkingBrake', ...CAMERA_COMMANDS, 'inset']
+// One command per press. The lights, beacon and turn signals ship unbound:
+// bind them in Controller Setup.
+export const COMMAND_ACTIONS = ['engine', 'horn', 'seatbelt', 'parkingBrake', 'lights', 'beacon', 'turnSignalLeft', 'turnSignalRight', ...CAMERA_COMMANDS, 'inset']
 // The direction lever. H-pattern: any gearForward input held is F, a
 // gearReverse input is R, neither is N. Sequential: shiftUp / shiftDown step
 // R-N-F.

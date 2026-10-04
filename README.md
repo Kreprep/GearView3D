@@ -165,6 +165,8 @@ Every module, and Parts Identification, uses one screen. A single top bar has th
 
 In a driving step the bar over the scene holds **Reset attempt**, First-person / Chase, the proximity view, and a **⋯** menu with Wheel setup, Reset camera (in chase view) and, for content editors, the free camera and the colliders. The arrow keys, the wheel's D-pad and the mouse move the camera; every key is listed under **Controls** on the dashboard.
 
+The dashboard's cab switches work from the keyboard too: **B** the seatbelt, **Space** the parking brake, **E** the key, **H** the horn, **L** the lights, **O** the warning beacon, and **[** / **]** the left / right turn signal (the same key again cancels it). The lights, beacon and turn signals only work with the key on. Their lamps show on the truck in chase view and as indicators on the cluster. When the key is turned on, every warning lamp lights for two seconds as a bulb check.
+
 ## Steering Wheel, Pedals and Shifter (optional)
 
 The driving simulation also takes a steering wheel, pedals and H-pattern shifter through the browser's Gamepad API. It was built and tested with a Thrustmaster **T300 RS** and **TH8A**, and those two come with their buttons already set up. The keyboard keeps working alongside.
@@ -172,7 +174,7 @@ The driving simulation also takes a steering wheel, pedals and H-pattern shifter
 - Use **Chrome or Edge on Windows**, on `localhost` or the HTTPS live instance (the Gamepad API needs a secure context).
 - Install Thrustmaster's PC drivers. In the Thrustmaster Control Panel, set the wheel rotation to **900°** and leave **auto-centre off**. The browser can't drive force feedback, so the wheel stays loose, which is close to a forklift's hydraulic steering.
 - Plug the TH8A into its own USB port and set it to H-pattern. It shows up as a second controller called "T500 RS Gear Shift", which is expected.
-- Press any button on the wheel with the page focused (browsers only reveal controllers after a button press), then open **Wheel setup** from the home screen or the driving screen. There you can calibrate the steering and pedals, record the shifter's gears, and change any button. Settings are saved in this browser only.
+- Press any button on the wheel with the page focused (browsers only reveal controllers after a button press), then open **Wheel setup** from the home screen or the driving screen. There you can calibrate the steering and pedals, record the shifter's gears, and change any button. The lights, beacon and turn signals have no button by default; bind them there if you want them on the wheel. Settings are saved in this browser only.
 - Starting the forklift works as on a real truck: seatbelt, parking brake and neutral first, then the engine, then release the parking brake.
 
 ## Physics

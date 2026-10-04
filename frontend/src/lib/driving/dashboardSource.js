@@ -12,10 +12,45 @@ import { DIRECTIONS, neutralControls } from './controls.js'
 // The simulation acts on the switches through the merged controls: the
 // pre-start interlock reads the seatbelt, parking brake and lever
 // (interlock.js), the parking brake holds the truck (stepDrive.js) and the
-// parking goal wants it set with the lever in N (stepGoals.js).
+// parking goal wants it set with the lever in N (stepGoals.js). The lights,
+// the beacon and the turn signals are view-side: nothing in the simulation
+// reads them (the truck's lamps, components/driving/DrivingStage.jsx, and the
+// inspection detectors, lib/inspection/detectors.js, do).
 
 export const KEY_POSITIONS = ['off', 'on', 'start']
-export const CAB_SWITCHES = ['seatbelt', 'parkingBrake', 'lights']
+export const CAB_SWITCHES = ['seatbelt', 'parkingBrake', 'lights', 'beacon']
+// The turn-signal stalk: off, or flashing one side.
+export const TURN_SIGNALS = ['off', 'left', 'right']
+
+// The cab's commands, by the names the keyboard and the wheel raise
+// (keyboardSource's VIEW_COMMAND_BY_KEY and E, gamepad.js's COMMAND_ACTIONS),
+// applied to a dashboard source. `engineOn` is the simulation's engine.
+const CAB_COMMANDS = {
+  engineToggle: (dashboard, engineOn) => dashboard.toggleEngine(engineOn),
+  engine: (dashboard, engineOn) => dashboard.toggleEngine(engineOn),
+  seatbeltToggle: (dashboard) => dashboard.toggle('seatbelt'),
+  seatbelt: (dashboard) => dashboard.toggle('seatbelt'),
+  parkingBrakeToggle: (dashboard) => dashboard.toggle('parkingBrake'),
+  parkingBrake: (dashboard) => dashboard.toggle('parkingBrake'),
+  horn: (dashboard) => dashboard.horn(),
+  lights: (dashboard) => dashboard.toggle('lights'),
+  beacon: (dashboard) => dashboard.toggle('beacon'),
+  turnSignalLeft: (dashboard) => dashboard.signal('left'),
+  turnSignalRight: (dashboard) => dashboard.signal('right'),
+}
+
+// Work a cab command on the dashboard. Returns false for a command that is
+// not the cab's (the camera's and the inset's are the view's).
+export function applyCabCommand(dashboard, command, engineOn) {
+  const apply = CAB_COMMANDS[command]
+  if (!apply) return false
+  apply(dashboard, engineOn)
+  return true
+}
+
+// Whether the cab's electrics are live: the key at ON (or the engine
+// running). Lamps and the turn signals only work then, as on a real truck.
+export const cabPowered = (switches, engineOn) => engineOn || switches.key !== 'off'
 
 export function createDashboardSource() {
   const switches = {
@@ -26,6 +61,8 @@ export function createDashboardSource() {
     seatbelt: false,
     parkingBrake: false,
     lights: false,
+    beacon: false,
+    turnSignal: 'off',
   }
   let commands = []
   // Set by anything that moves a switch, so the viewer republishes the
@@ -87,6 +124,20 @@ export function createDashboardSource() {
     set(name, value) {
       if (!CAB_SWITCHES.includes(name) || switches[name] === Boolean(value)) return
       switches[name] = Boolean(value)
+      mark()
+    },
+
+    // Push the stalk to one side; pushing it to the side already flashing
+    // cancels it.
+    signal(side) {
+      if (!TURN_SIGNALS.includes(side)) return
+      switches.turnSignal = switches.turnSignal === side ? 'off' : side
+      mark()
+    },
+
+    setSignal(side) {
+      if (!TURN_SIGNALS.includes(side) || switches.turnSignal === side) return
+      switches.turnSignal = side
       mark()
     },
 

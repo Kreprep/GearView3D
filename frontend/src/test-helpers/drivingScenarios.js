@@ -13,7 +13,9 @@
 // (forward/back/left/right/raise/lower/tiltBack/tiltForward); `engineToggle`
 // on a phase presses E once when the phase starts, and `cab` sets the
 // dashboard's switches ({ seatbelt, parkingBrake, lever }, lever 'F' | 'N' |
-// 'R' | null for the keyboard's automatic direction) before that.
+// 'R' | null for the keyboard's automatic direction; also lights, beacon and
+// turnSignal) before that. `press` on a phase taps those keys once when it
+// starts (the cab keys that raise commands: H, L, O, [, ]).
 //
 // Since Phase 4 the engine starts only through the pre-start interlock
 // (seatbelt, parking brake, N) and the parking brake holds the truck, so
@@ -617,7 +619,7 @@ export function runScenario(scenario, adapter) {
       if (phase.until && phase.until(obs, phaseFrame)) break
       const keys = phase.keys(obs, phaseFrame) || NO_KEYS
       const first = phaseFrame === 0
-      adapter.frame(keys, { engineToggle: Boolean(phase.engineToggle) && first, cab: first ? phase.cab : undefined })
+      adapter.frame(keys, { engineToggle: Boolean(phase.engineToggle) && first, cab: first ? phase.cab : undefined, press: first ? phase.press : undefined })
       phaseFrame += 1
       frame += 1
     }

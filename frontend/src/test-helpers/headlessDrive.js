@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import { defaultVehicleProfile } from '../data/vehicleProfile.js'
 import { mergeControls } from '../lib/driving/controls.js'
-import { createDashboardSource } from '../lib/driving/dashboardSource.js'
+import { applyCabCommand, createDashboardSource } from '../lib/driving/dashboardSource.js'
 import { createKeyboardSource } from '../lib/driving/keyboardSource.js'
 import { createSimCore } from '../lib/driving/simCore.js'
 import { createSimLoop } from '../lib/driving/simLoop.js'
@@ -28,9 +28,11 @@ const KEY_BY_HELD = {
 
 // The core, driven the way the viewer drives it: key events into the
 // keyboard source, cab switches on the dashboard source, E through the
-// dashboard's key switch, one fixed step per 1/60 s frame. `afterStep(core)`
-// runs after each step, for a test that watches the simulation as it goes
-// (the safety monitor's).
+// dashboard's key switch, one fixed step per 1/60 s frame. `afterStep(core,
+// cab)` runs after each step, for a test that watches the simulation as it
+// goes (the safety monitor's, the inspection monitor's): `cab` is
+// { switches, horn }, the dashboard's switches and whether the horn sounded
+// this frame.
 export function createHeadlessDrive(course, { afterStep } = {}) {
   const core = createSimCore(course, profile)
   const keyboard = createKeyboardSource()
@@ -105,10 +107,14 @@ export function createHeadlessDrive(course, { afterStep } = {}) {
     },
     // Free the physics world once the drive is over.
     dispose: () => core.dispose(),
-    frame(keys, { engineToggle, cab }) {
+    // `press` taps keys that raise commands (H, L, O, [, ]), as the
+    // keyboard does.
+    frame(keys, { engineToggle, cab, press = [] }) {
       if (cab) {
-        if (typeof cab.seatbelt === 'boolean') dashboard.set('seatbelt', cab.seatbelt)
-        if (typeof cab.parkingBrake === 'boolean') dashboard.set('parkingBrake', cab.parkingBrake)
+        for (const name of ['seatbelt', 'parkingBrake', 'lights', 'beacon']) {
+          if (typeof cab[name] === 'boolean') dashboard.set(name, cab[name])
+        }
+        if (cab.turnSignal) dashboard.setSignal(cab.turnSignal)
         if (cab.lever === null) dashboard.releaseLever()
         else if (cab.lever) dashboard.setLever(cab.lever)
       }
@@ -117,13 +123,21 @@ export function createHeadlessDrive(course, { afterStep } = {}) {
         if (!keys[held] && keyboard.held[held]) keyboard.keyUp(key)
       }
       if (engineToggle) keyboard.keyDown('e')
-      for (const command of keyboard.drainCommands()) {
-        if (command === 'engineToggle') dashboard.toggleEngine(core.state.truck.engineOn)
+      for (const key of press) {
+        keyboard.keyDown(key)
+        keyboard.keyUp(key)
       }
-      dashboard.drainCommands().forEach((command) => core.command(command))
+      for (const command of keyboard.drainCommands()) applyCabCommand(dashboard, command, core.state.truck.engineOn)
+      // The horn is the view's (the viewer plays it); everything else is the
+      // core's.
+      let horn = false
+      for (const command of dashboard.drainCommands()) {
+        if (command === 'horn') horn = true
+        else core.command(command)
+      }
       const { steps } = loop.advance(SCENARIO_DT)
       assert.equal(steps, 1, 'one fixed step per 1/60 s frame')
-      afterStep?.(core)
+      afterStep?.(core, { switches: dashboard.switches, horn })
       for (const event of core.drainEvents()) events.push({ f: frameNo, ...toRecorded(event) })
       frameNo += 1
     },

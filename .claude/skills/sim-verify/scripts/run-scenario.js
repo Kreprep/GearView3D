@@ -147,6 +147,14 @@ async (page) => {
       ],
       expect: ['d.deliveredCount === 1', "d.palletStates[0] === 'delivered'", 'Math.abs(d.palletHeights[0] - 0.3698) < 0.003', '!d.failed'],
     },
+    'cab-switches': {
+      module: 'load-handling', step: 'Accelerate Course',
+      // The cab switches added for the engine-on inspection, on their keys:
+      // L the lights, O the beacon, [ and ] the turn-signal stalk (the
+      // second side replaces the first). View-side: the truck stays put.
+      actions: [...START, { press: 'l' }, { press: 'o' }, { press: '[' }, { press: ']' }, { wait: 300 }],
+      expect: ['d.engineOn', 'd.lights', 'd.beacon', "d.turnSignal === 'right'", 'd.z < 0.05', '!d.failed'],
+    },
     // --- Physics (Phase 7) --------------------------------------------------
     'pallet-impact': {
       module: 'load-handling', step: 'Pallet Pickup & Placement',

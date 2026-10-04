@@ -19,6 +19,8 @@ import { Compass, Eye, Maximize, RotateCcw } from 'lucide-react'
 import { EQUIPMENT_MODEL_URL } from '../data/equipment'
 import { buildVehicleRig, REAR_WHEEL_KEYS } from '../lib/vehicleRig'
 import { CameraFocus, ViewerErrorBoundary, ViewerLoadingPanel } from './viewer/ViewerShared'
+import { DeviceLamps } from './viewer/DeviceLamps'
+import { HotspotMarkers } from './viewer/HotspotMarkers'
 import './HotspotViewer.css'
 
 // ---------------------------------------------------------------------------
@@ -50,16 +52,6 @@ const DEFAULT_CAMERA_PRESET = {
   // Stop the orbit at floor level. Below it the camera looks up from under the
   // ground plane and the grid appears to cut across the forklift.
   maxPolarAngle: Math.PI / 2,
-}
-
-function getScenarioResult(hotspot, scenario) {
-  const unsafe = (hotspot.unsafeScenarios || []).includes(scenario)
-
-  return {
-    ...hotspot,
-    result: unsafe ? 'unsafe' : 'safe',
-    feedback: unsafe ? hotspot.unsafeFeedback : hotspot.safeFeedback,
-  }
 }
 
 /**
@@ -233,84 +225,6 @@ function EquipmentModel({ scenario, deviceEffect, adminEditMode, onSurfaceDown, 
   )
 }
 
-function TrainingHotspot({ hotspot, selected, scenario, onSelect, hotspotRefs, adminEditMode, onMarkerPointerDown }) {
-  const result = getScenarioResult(hotspot, scenario)
-
-  return (
-    <group
-      position={hotspot.position}
-      ref={(node) => {
-        if (node) hotspotRefs.current.set(hotspot.id, node)
-        else hotspotRefs.current.delete(hotspot.id)
-      }}
-    >
-      <Html center zIndexRange={[100, 0]} occlude={false}>
-        <div className="hotspot-marker-wrap">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              onSelect(result)
-            }}
-            onPointerDown={adminEditMode ? (event) => onMarkerPointerDown?.(hotspot.id, event) : undefined}
-            className={`hotspot-marker ${result.result === 'unsafe' ? 'unsafe' : ''} ${selected ? 'selected' : ''} ${adminEditMode ? 'admin-editable' : ''}`}
-            aria-label={hotspot.label}
-          />
-          <span className="hotspot-marker-tooltip">{hotspot.label}</span>
-        </div>
-      </Html>
-    </group>
-  )
-}
-
-/** Glowing lamp played on the model while a safety device is being tested. */
-function DeviceLamp({ position, color, radius, blink }) {
-  const meshRef = useRef(null)
-  const lightRef = useRef(null)
-
-  useFrame(({ clock }) => {
-    // 5 Hz square-ish flash for blinking devices, steady otherwise.
-    const on = blink ? Math.sin(clock.getElapsedTime() * 16) > 0 : true
-    const level = on ? 1 : 0.05
-
-    if (meshRef.current) {
-      meshRef.current.material.opacity = 0.35 + level * 0.55
-      meshRef.current.material.emissiveIntensity = level * 3
-    }
-    if (lightRef.current) {
-      lightRef.current.intensity = level * 1.6
-    }
-  })
-
-  return (
-    <group position={position}>
-      <mesh ref={meshRef}>
-        <sphereGeometry args={[radius, 18, 18]} />
-        <meshStandardMaterial color={color} emissive={color} transparent toneMapped={false} />
-      </mesh>
-      <pointLight ref={lightRef} color={color} distance={0.7} decay={2} />
-    </group>
-  )
-}
-
-function DeviceEffect({ effect }) {
-  if (!effect?.lamps?.length) return null
-
-  return (
-    <group>
-      {effect.lamps.map((position, index) => (
-        <DeviceLamp
-          key={`${position.join(',')}-${index}`}
-          position={position}
-          color={effect.color}
-          radius={effect.radius ?? 0.04}
-          blink={effect.mode === 'blink'}
-        />
-      ))}
-    </group>
-  )
-}
-
 function PuddleOverlay({ id, position, rotation, radius, label, feedback, onScenarioAction }) {
   const [hovered, setHovered] = useState(false)
   const emit = () => onScenarioAction?.({ id, type: 'defect', feedback })
@@ -443,7 +357,7 @@ function InteractiveScene({
               onSurfaceMove={handleSurfacePointerMove}
               onSurfaceUp={stopDragging}
             />
-            <DeviceEffect effect={deviceEffect} />
+            <DeviceLamps lamps={deviceEffect?.lamps} color={deviceEffect?.color} radius={deviceEffect?.radius} mode={deviceEffect?.mode} />
             {defectOverlays
               .filter((overlay) => overlay.scenario === scenario)
               .map((overlay) =>
@@ -453,19 +367,17 @@ function InteractiveScene({
                   <MarkerOverlay key={overlay.id} {...overlay} onScenarioAction={onScenarioAction} />
                 ),
               )}
-            {showHotspots &&
-              hotspots.map((hotspot) => (
-                <TrainingHotspot
-                  key={hotspot.id}
-                  hotspot={hotspot}
-                  scenario={scenario}
-                  selected={selectedHotspotId === hotspot.id}
-                  onSelect={onHotspotSelect}
-                  hotspotRefs={hotspotRefs}
-                  adminEditMode={adminEditMode}
-                  onMarkerPointerDown={handleMarkerPointerDown}
-                />
-              ))}
+            {showHotspots && (
+              <HotspotMarkers
+                hotspots={hotspots}
+                scenario={scenario}
+                selectedHotspotId={selectedHotspotId}
+                onSelect={onHotspotSelect}
+                hotspotRefs={hotspotRefs}
+                adminEditMode={adminEditMode}
+                onMarkerPointerDown={handleMarkerPointerDown}
+              />
+            )}
           </group>
         </Center>
       </Bounds>
