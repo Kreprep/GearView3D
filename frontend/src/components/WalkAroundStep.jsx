@@ -2,14 +2,20 @@ import HotspotViewer from './HotspotViewer'
 import MarkdownContent from './MarkdownContent'
 import { AudioControl } from './AudioControl'
 import { useT } from '../i18n'
-import { PHASE_TITLE_KEYS, gaugeScore, isPhaseComplete, scenarioScore, visibleHotspotIds } from '../lib/walkAroundStep'
+import { deviceDetector } from '../lib/inspection/detectors'
+import { instrumentReadyAt } from '../lib/inspection/instruments'
+import {
+  engineOnGauges,
+  GAUGE_CHOICES,
+  gaugeScore,
+  gaugeStatus,
+  isPhaseComplete,
+  NO_CAB_STATUS,
+  PHASE_TITLE_KEYS,
+  scenarioScore,
+  visibleHotspotIds,
+} from '../lib/walkAroundStep'
 import './WalkAroundStep.css'
-
-// The gauge choices, as a value/label pair rather than one string doing both
-// jobs. `value` is what gets written into the learner's saved progress and
-// compared against `gauge.answer`, which is admin-authored English content in
-// the database - translating it would silently mark every correct answer wrong
-// the moment a learner switched language. Only `labelKey` is translated.
 
 // The `walk-around` step kind: an inspection phase driven entirely by the
 // step row's `data` (checks / gauges / devices / scenarios), so any equipment
@@ -37,12 +43,11 @@ export function WalkAroundScene({
   const activeScenario = (data?.scenarios || []).find((entry) => entry.id === activeScenarioId)
 
   // The defect phase swaps the whole model into a visual state instead of
-  // showing markers; the other phases show the hotspots their state allows.
+  // showing markers; engine-off shows the hotspots its state allows. (The
+  // engine-on phase is the cab's, components/inspection/CabInspectionViewer.jsx.)
   const scenario = isDefectStep
     ? (activeScenario?.visualState === 'normal' ? 'good-forklift' : activeScenario?.visualState || 'good-forklift')
-    : phase === 'engine-on'
-      ? 'engine-on'
-      : 'engine-off'
+    : 'engine-off'
 
   const engineOffComplete = isPhaseComplete({ ...data, requireEngineStart: false }, state, engineStarted)
 
@@ -64,11 +69,6 @@ export function WalkAroundScene({
     </div>
   )
 }
-
-const GAUGE_CHOICES = [
-  { value: 'Normal', labelKey: 'walkAround.gauges.normal' },
-  { value: 'Abnormal', labelKey: 'walkAround.gauges.abnormal' },
-]
 
 function EngineOffTask({ data, state, engineStarted, onCheck, onStartEngine }) {
   const t = useT()
@@ -103,75 +103,132 @@ function EngineOffTask({ data, state, engineStarted, onCheck, onStartEngine }) {
   )
 }
 
-function EngineOnTask({ data, state, onGauge, onDevice }) {
+// One item of the checklist: a tick when done, said aloud as well.
+function CheckRow({ done, label, detail }) {
   const t = useT()
-  const gauges = data.gauges || []
+  return (
+    <li className={done ? 'cab-check done' : 'cab-check'}>
+      <span className="cab-check-mark" aria-hidden="true">{done ? '✓' : ''}</span>
+      <span className="cab-check-body">
+        <span>
+          {label}
+          <span className="sr-only"> ({t(done ? 'walkAround.cab.status.done' : 'walkAround.cab.status.notDone')})</span>
+        </span>
+        {detail && <small>{detail}</small>}
+      </span>
+    </li>
+  )
+}
+
+// A gauge judged from a card here rather than on the dashboard: one whose row
+// names no instrument the dashboard has (an admin-made gauge).
+function GaugeCard({ gauge, answer, onGauge }) {
+  const t = useT()
+  const correct = answer === gauge.answer
+  return (
+    <div className={answer ? (correct ? 'gauge-card done' : 'gauge-card wrong') : 'gauge-card'}>
+      <div className="gauge-dial" aria-hidden="true">
+        <i style={{ transform: `rotate(${gauge.dialAngle || 0}deg)` }} />
+      </div>
+      <div className="gauge-readout">
+        <span>{gauge.label}</span>
+        <strong>{gauge.reading}</strong>
+      </div>
+      <div className="gauge-answer-row">
+        {GAUGE_CHOICES.map(({ value, labelKey }) => (
+          <button key={value} type="button" className={answer === value ? 'selected' : ''} onClick={() => onGauge(gauge, value)}>
+            {t(labelKey)}
+          </button>
+        ))}
+      </div>
+      {answer && (
+        <p className={correct ? 'gauge-verdict correct' : 'gauge-verdict incorrect'}>
+          {t(correct ? 'walkAround.gauges.correct' : 'walkAround.gauges.reread')}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// The engine-on step's checklist, in the cab (docs/modules/
+// module-improvements-plan.md, 3.3): start-up, read live from the cab;
+// instruments, judged on the dashboard's judge popover (or a card here for
+// a gauge with no instrument); devices and controls, ticked by the
+// inspection monitor as the learner does each test.
+function EngineOnTask({ data, state, cab, onGauge }) {
+  const t = useT()
   const devices = data.devices || []
-  const done = new Set(state.devices)
+  const tested = new Set(state.devices)
+  const { dashboard, cards } = engineOnGauges(data)
+  const waitingForKey = dashboard.some(({ instrument }) => instrumentReadyAt(instrument) === 'key') && !cab.keyOn
+  const waitingForStart = dashboard.some(({ instrument }) => instrumentReadyAt(instrument) === 'start') && !cab.engineRan
   const groups = [
     ['walkAround.devices.safety', devices.filter((device) => device.group !== 'controls')],
     ['walkAround.devices.controls', devices.filter((device) => device.group === 'controls')],
   ]
+  const verdict = (gauge) => {
+    const status = gaugeStatus(gauge, state)
+    if (status === 'pending') return t('walkAround.cab.status.pending')
+    return status === 'correct' ? gauge.correctFeedback || t('walkAround.gauges.correct') : gauge.incorrectFeedback || t('walkAround.gauges.reread')
+  }
 
   return (
     <>
-      {gauges.length > 0 && (
-        <div className="virtual-dashboard">
-          <h4>{t('walkAround.gauges.heading')}</h4>
-          {gauges.map((gauge) => {
-            const answer = state.gauges[gauge.id]
-            const correct = answer === gauge.answer
+      <p className="subsection-label">{t('walkAround.cab.startup')}</p>
+      <ul className="cab-checklist">
+        <CheckRow done={cab.seatbelt || cab.engineOn} label={t('walkAround.cab.startup.seatbelt')} />
+        <CheckRow done={cab.parkingBrake || cab.engineOn} label={t('walkAround.cab.startup.parkingBrake')} />
+        <CheckRow done={cab.neutral || cab.engineOn} label={t('walkAround.cab.startup.neutral')} />
+        <CheckRow done={cab.keyOn} label={t('walkAround.cab.startup.keyOn')} />
+        <CheckRow
+          done={cab.engineOn}
+          label={t('walkAround.cab.startup.start')}
+          detail={cab.engineOn ? t('walkAround.cab.startup.started') : null}
+        />
+      </ul>
 
-            return (
-              <div key={gauge.id} className={answer ? (correct ? 'gauge-card done' : 'gauge-card wrong') : 'gauge-card'}>
-                <div className="gauge-dial" aria-hidden="true">
-                  <i style={{ transform: `rotate(${gauge.dialAngle || 0}deg)` }} />
-                </div>
-                <div className="gauge-readout">
-                  <span>{gauge.label}</span>
-                  <strong>{gauge.reading}</strong>
-                </div>
-                <div className="gauge-answer-row">
-                  {GAUGE_CHOICES.map(({ value, labelKey }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={answer === value ? 'selected' : ''}
-                      onClick={() => onGauge(gauge, value)}
-                    >
-                      {t(labelKey)}
-                    </button>
-                  ))}
-                </div>
-                {answer && (
-                  <p className={correct ? 'gauge-verdict correct' : 'gauge-verdict incorrect'}>
-                    {t(correct ? 'walkAround.gauges.correct' : 'walkAround.gauges.reread')}
-                  </p>
-                )}
-              </div>
-            )
-          })}
-          <p className="gauge-score">
-            {t('walkAround.gauges.score', { correct: gaugeScore(data, state), total: gauges.length })}
+      {data.gauges?.length > 0 && (
+        <>
+          <p className="subsection-label">{t('walkAround.cab.instruments')}</p>
+          {dashboard.length > 0 && (
+            <>
+              <p className="task-note">{t('walkAround.cab.instruments.hint')}</p>
+              {waitingForKey && <p className="task-note">{t('walkAround.cab.instruments.waitKey')}</p>}
+              {!waitingForKey && waitingForStart && <p className="task-note">{t('walkAround.cab.instruments.waitStart')}</p>}
+              <ul className="cab-checklist">
+                {dashboard.map(({ gauge }) => (
+                  <CheckRow key={gauge.id} done={gaugeStatus(gauge, state) === 'correct'} label={gauge.label} detail={verdict(gauge)} />
+                ))}
+              </ul>
+            </>
+          )}
+          {cards.length > 0 && (
+            <div className="virtual-dashboard">
+              <h4>{t('walkAround.cab.instruments.cards')}</h4>
+              {cards.map((gauge) => (
+                <GaugeCard key={gauge.id} gauge={gauge} answer={state.gauges[gauge.id]} onGauge={onGauge} />
+              ))}
+            </div>
+          )}
+          <p className="task-note">
+            {t('walkAround.gauges.score', { correct: gaugeScore(data, state), total: data.gauges.length })}
           </p>
-        </div>
+        </>
       )}
 
       {groups.map(([labelKey, items]) => items.length > 0 && (
         <div key={labelKey}>
           <p className="subsection-label">{t(labelKey)}</p>
-          <div className="device-test-grid">
-            {items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={done.has(item.id) ? 'device-test done' : 'device-test'}
-                onClick={() => onDevice(item)}
-              >
-                {item.label}
-              </button>
+          <ul className="cab-checklist">
+            {items.map((device) => (
+              <CheckRow
+                key={device.id}
+                done={tested.has(device.id)}
+                label={device.label}
+                detail={tested.has(device.id) ? device.feedback : t(`walkAround.cab.detect.${deviceDetector(device)}`)}
+              />
             ))}
-          </div>
+          </ul>
         </div>
       ))}
     </>
@@ -242,7 +299,7 @@ function DefectTask({ data, state, activeScenarioId, onSelectScenario, onAnswerS
   )
 }
 
-export function WalkAroundTask({ data, content, state, engineStarted, activeScenarioId, handlers }) {
+export function WalkAroundTask({ data, content, state, engineStarted, cab = NO_CAB_STATUS, activeScenarioId, handlers }) {
   const t = useT()
   const phase = data?.phase
 
@@ -267,7 +324,7 @@ export function WalkAroundTask({ data, content, state, engineStarted, activeScen
         />
       )}
       {phase === 'engine-on' && (
-        <EngineOnTask data={data} state={state} onGauge={handlers.onGauge} onDevice={handlers.onDevice} />
+        <EngineOnTask data={data} state={state} cab={cab} onGauge={handlers.onGauge} />
       )}
       {phase === 'defect-test' && (
         <DefectTask

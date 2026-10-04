@@ -77,6 +77,10 @@ export const DETECTORS = {
   // without a detector of its own, as the walk-around always worked.
   marker: (memo, snapshot, device) => (snapshot.marked.includes(device.id) ? done(memo) : memo),
 
+  // The device's marker clicked while the lights are on: a lamp the operator
+  // cannot see from the seat (the tail lights), checked from outside.
+  'lit-marker': (memo, snapshot, device) => (snapshot.lights && snapshot.marked.includes(device.id) ? done(memo) : memo),
+
   horn: (memo, snapshot) => (snapshot.horn ? done(memo) : memo),
 
   lights: (memo, snapshot) => (snapshot.lights ? done(memo) : memo),
@@ -152,7 +156,7 @@ export const DETECTOR_IDS = Object.keys(DETECTORS)
 export const STOCK_DEVICE_DETECTORS = {
   horn: 'horn',
   headlights: 'lights',
-  'tail-lights': 'marker',
+  'tail-lights': 'lit-marker',
   'turn-signals': 'turn-signals',
   'warning-beacon': 'beacon',
   'backup-alarm': 'backup-alarm',

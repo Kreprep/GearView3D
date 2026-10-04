@@ -4,7 +4,7 @@ import { SOUND_BANK } from '../data/soundBank'
 import { getAudioEngine } from '../lib/audio/audioEngine'
 import { getHotspotDetails } from '../lib/api'
 import { preloadImages } from '../lib/imagePreload'
-import { isPhaseComplete, phaseStateFor, withPhaseState } from '../lib/walkAroundStep'
+import { isPhaseComplete, NO_CAB_STATUS, phaseStateFor, withPhaseState } from '../lib/walkAroundStep'
 import { useInspectionHotspots } from './useInspectionHotspots'
 import { getStoredProgress } from '../lib/progressService'
 import { buildSimulationState, withStepComplete } from '../lib/simulationProgress'
@@ -23,6 +23,11 @@ function unique(items) {
 // Every walk-around phase (engine-off, engine-on, defect-test) grades itself
 // against its own row's data, so an inspection check or gauge an admin adds
 // is required and one they delete stops blocking completion.
+//
+// The engine-on phase runs in the cab (components/inspection/
+// CabInspectionViewer.jsx): its device tests tick when the inspection
+// monitor sees them done, not on a click, and the start there is recorded
+// for the step (`started`) as well as module-wide (`engineStarted`).
 export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, gradedStepIds, simulation, updateSimulation, changeStep }) {
   const { hotspots, loading: hotspotsLoading, error: hotspotsError } = useInspectionHotspots(hasWalkAround)
   const [partDetails, setPartDetails] = useState({})
@@ -30,6 +35,8 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
   const [focusedHotspotId, setFocusedHotspotId] = useState(null)
   const [activeDeviceEffect, setActiveDeviceEffect] = useState(null)
   const [activeScenarioId, setActiveScenarioId] = useState(null)
+  // The cab's start-up switches, as the engine-on scene last reported them.
+  const [cabStatus, setCabStatus] = useState(NO_CAB_STATUS)
   const deviceEffectTimer = useRef(null)
   const engineStartTimer = useRef(null)
   // Cuts off the device sound that is playing, if any.
@@ -171,20 +178,14 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
     }, ENGINE_START_DELAY_MS)
   }
 
-  const handleDevice = (step, device, hotspot) => {
-    savePhase(step, (current) => ({ devices: unique([...current.devices, device.id]) }))
-    setFocusedHotspotId(device.id)
-    triggerDeviceEffect(device.id)
-    setSelectedDetail({
-      ...buildDetail(device.id, {
-        title: hotspot?.label || device.label,
-        subtitle: hotspot?.category || 'Engine-on check',
-        description: hotspot?.inspect,
-        image: hotspot?.image,
-      }),
-      status: device.feedback,
-      statusType: 'correct',
-    })
+  // The cab's events: the engine started in this step's cab, and device
+  // tests the inspection monitor saw done.
+  const handleCabEvent = (step) => (event) => {
+    if (event.type === 'engine-on') {
+      savePhase(step, () => ({ started: true }), { engineStarted: true })
+    } else if (event.type === 'devices-tested') {
+      savePhase(step, (current) => ({ devices: unique([...current.devices, ...event.ids]) }))
+    }
   }
 
   const handleGauge = (step, gauge, choice) => {
@@ -204,8 +205,9 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
     savePhase(step, (current) => ({ scenarios: { ...current.scenarios, [scenario.id]: choice } }))
   }
 
-  // Clicking a marker runs the check it belongs to; anything else just opens
-  // its detail card.
+  // Clicking a marker runs the engine-off check it belongs to; anything else
+  // just opens its detail card. (In the cab the click is also seen by the
+  // inspection monitor, which ticks a device tested by its marker.)
   const handleWalkAroundHotspot = (step, hotspot) => {
     const data = step.walkAround || {}
 
@@ -214,17 +216,15 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
       return
     }
 
-    const check = (data.checks || []).find((item) => item.id === hotspot.id)
+    const check = data.phase === 'engine-off' && (data.checks || []).find((item) => item.id === hotspot.id)
     if (check) {
       handleCheck(step, check)
       return
     }
 
+    // A device's card carries its feedback once it has been tested.
     const device = (data.devices || []).find((item) => item.id === hotspot.id)
-    if (device) {
-      handleDevice(step, device, hotspot)
-      return
-    }
+    const tested = device && phaseStateFor(liveSimulation(), step.id).devices.includes(device.id)
 
     setFocusedHotspotId(hotspot.id)
     setSelectedDetail({
@@ -234,18 +234,17 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
         description: hotspot.inspect || hotspot.description,
         image: hotspot.image,
       }),
-      status: hotspot.feedback,
+      status: tested ? device.feedback : hotspot.feedback,
       statusType: hotspot.result === 'unsafe' ? 'warning' : 'correct',
     })
   }
 
   // The item after whatever selectedDetail is currently showing, so the
   // detail panel can offer a "Next Part" shortcut instead of forcing Back
-  // then a fresh click for engine-off checks and engine-on device tests -
-  // the two flows where the cards are meant to be worked through in order.
-  // Gauges and hotspots opened outside a check/device have no defined
-  // "next", so they only ever show Back. Returns data, not a handler, so the
-  // click callback stays a plain inline arrow at the call site.
+  // then a fresh click for engine-off checks, where the cards are meant to
+  // be worked through in order. Engine-on devices are tested by doing them
+  // in the cab, so a card is no shortcut there. Returns data, not a handler,
+  // so the click callback stays a plain inline arrow at the call site.
   const nextWalkAroundItem = (step) => {
     const data = step.walkAround || {}
     const state = phaseStateFor(simulation, step.id)
@@ -255,18 +254,12 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
       return check ? { kind: 'check', item: check } : null
     }
 
-    if (data.phase === 'engine-on') {
-      const device = (data.devices || []).find((item) => !state.devices.includes(item.id))
-      return device ? { kind: 'device', item: device } : null
-    }
-
     return null
   }
 
   const walkAroundHandlers = (step) => ({
     onCheck: (check) => handleCheck(step, check),
     onStartEngine: () => startEngine(step),
-    onDevice: (device) => handleDevice(step, device, hotspots.find((entry) => entry.id === device.id)),
     onGauge: (gauge, choice) => handleGauge(step, gauge, choice),
     onSelectScenario: setActiveScenarioId,
     onAnswerScenario: (scenario, choice) => handleScenario(step, scenario, choice),
@@ -289,7 +282,10 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
     activeDeviceEffect,
     activeScenarioId,
     handleCheck,
-    handleDevice,
+    handleGauge,
+    handleCabEvent,
+    cabStatus,
+    setCabStatus,
     handleWalkAroundHotspot,
     walkAroundHandlers,
     scenarioIdFor,

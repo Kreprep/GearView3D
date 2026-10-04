@@ -1,4 +1,6 @@
 import { WALK_AROUND_PHASES } from '../../data/courseDefaults'
+import { deviceDetector, DETECTOR_IDS } from '../../lib/inspection/detectors'
+import { DEFAULT_FAULT_RAMP_S, FAULT_TRIGGERS, gaugeFault, gaugeInstrument, INSTRUMENT_IDS, INSTRUMENTS } from '../../lib/inspection/instruments'
 import { slugify as toSlug } from '../../lib/slug'
 import { Button } from '../ui/button'
 import { PanelNote } from '../ui/panel'
@@ -15,6 +17,112 @@ const PHASE_LABELS = {
   'engine-off': 'Engine-off inspection',
   'engine-on': 'Engine-on inspection',
   'defect-test': 'Defect recognition',
+}
+
+// The cab's instruments (lib/inspection/instruments.js) and device tests
+// (lib/inspection/detectors.js), as the admin picks them.
+const INSTRUMENT_LABELS = {
+  lamps: 'Warning lamp row (judged on the bulb check)',
+  'lamp.charge': 'Charge lamp',
+  'lamp.oil': 'Oil pressure lamp',
+  'lamp.seatbelt': 'Seatbelt lamp',
+  'lamp.parkingBrake': 'Parking brake lamp',
+  'gauge.fuel': 'Fuel gauge',
+  'gauge.temp': 'Coolant temperature gauge',
+  hours: 'Hour meter',
+}
+
+const DETECTOR_LABELS = {
+  marker: 'Click its 3D marker',
+  'lit-marker': 'Lights on, then click its 3D marker',
+  horn: 'Sound the horn',
+  lights: 'Switch the lights on',
+  beacon: 'Switch the beacon on',
+  'turn-signals': 'Signal left and right',
+  'backup-alarm': 'Engine running, lever in R (backup alarm)',
+  'steer-lock': 'Full steering lock both ways',
+  'brake-test': 'Creep past 2 km/h, then brake to a stop within 2 m',
+  'lift-tilt': 'Raise and lower the forks, tilt fully back and forward',
+  travel: 'Drive 0.5 m forward and 0.5 m in reverse',
+}
+
+// A select over `ids` whose first option, "Default", stands for the field
+// left out, which falls back to the stock map.
+function DefaultSelect({ value, ids, labels, defaultLabel, onChange }) {
+  return (
+    <Select value={value ?? ''} onChange={(event) => onChange(event.target.value || undefined)}>
+      <option value="">{defaultLabel}</option>
+      {ids.map((id) => (
+        <option key={id} value={id}>{labels[id] || id}</option>
+      ))}
+    </Select>
+  )
+}
+
+const FAULT_KIND_LABELS = {
+  none: 'None: reads true',
+  'stays-lit': 'Lamp stays lit',
+  dead: 'Lamp never lights (dead bulb)',
+  needle: 'Needle moves to a reading',
+}
+
+// What a gauge's instrument shows in the cab. Left out, a stock gauge whose
+// answer is Abnormal reads its stock fault (gaugeFault()); null reads true.
+function FaultFields({ gauge, patch }) {
+  const instrument = gaugeInstrument(gauge)
+  if (!instrument) return null
+  const isGauge = INSTRUMENTS[instrument].kind === 'gauge'
+  const fault = gauge.fault
+  const kind = fault === undefined ? 'default' : fault === null ? 'none' : isGauge ? 'needle' : fault.lamp
+  const kinds = ['none', ...(isGauge ? ['needle'] : ['stays-lit', 'dead'])]
+  const stock = gaugeFault({ ...gauge, fault: undefined })
+  const setKind = (next) => {
+    if (next === 'default') patch({ fault: undefined })
+    else if (next === 'none') patch({ fault: null })
+    else if (next === 'needle') patch({ fault: { value: 0.95, after: 'start', rampS: DEFAULT_FAULT_RAMP_S } })
+    else patch({ fault: { lamp: next } })
+  }
+
+  return (
+    <>
+      <Field label="What the instrument shows">
+        <Select value={kind} onChange={(event) => setKind(event.target.value)}>
+          <option value="default">{`Default (${stock ? 'the stock fault' : 'reads true'})`}</option>
+          {kinds.map((id) => (
+            <option key={id} value={id}>{FAULT_KIND_LABELS[id]}</option>
+          ))}
+        </Select>
+      </Field>
+      {kind === 'needle' && (
+        <>
+          <Field label="Reading it moves to, % (0 empty or cold, 100 full or hot)">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={Math.round((fault.value ?? 0) * 100)}
+              onChange={(event) => patch({ fault: { ...fault, value: Math.min(Math.max(Number(event.target.value) / 100, 0), 1) } })}
+            />
+          </Field>
+          <Field label="Starting from">
+            <Select value={fault.after || 'start'} onChange={(event) => patch({ fault: { ...fault, after: event.target.value } })}>
+              {FAULT_TRIGGERS.map((trigger) => (
+                <option key={trigger} value={trigger}>{trigger === 'start' ? 'Engine start' : 'Key ON'}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Over (seconds)">
+            <Input
+              type="number"
+              min={0}
+              value={fault.rampS ?? DEFAULT_FAULT_RAMP_S}
+              onChange={(event) => patch({ fault: { ...fault, rampS: Math.max(Number(event.target.value), 0) } })}
+            />
+          </Field>
+        </>
+      )}
+    </>
+  )
 }
 
 // These ids are derived client-side (no server round trip to dedupe them
@@ -73,9 +181,9 @@ function WalkAroundContentFields({ data, onChange }) {
       </Field>
       <PanelNote className="mt-2">
         Each phase is its own step, so a module can have any of them in any order. The learner completes an
-        engine-off step by clicking every check (and starting the engine, if required), an engine-on step by
-        reading every gauge correctly and testing every device, and a defect step by answering every scenario
-        correctly.
+        engine-off step by clicking every check (and starting the engine, if required), an engine-on step in the
+        forklift&apos;s cab by starting it (if required), judging every gauge correctly and doing every device test,
+        and a defect step by answering every scenario correctly.
       </PanelNote>
       <PanelNote className="mt-2">
         This panel decides what must be done to pass the step and the text shown for each item. A check/device&apos;s
@@ -132,9 +240,16 @@ function WalkAroundContentFields({ data, onChange }) {
 
       {phase === 'engine-on' && (
         <>
+          <Checkbox
+            className="mt-3"
+            label="Require the engine to be started in the cab during this step"
+            checked={data?.requireEngineStart === true}
+            onChange={(event) => setData({ requireEngineStart: event.target.checked })}
+          />
+
           <ListEditor
             title="Dashboard gauges"
-            note="The learner judges each reading. Only a correct call counts toward completing the step."
+            note="The learner judges each reading, and only a correct call counts. A gauge on a dashboard instrument is judged by clicking that instrument in the cab; one with no instrument is a card in the task panel, showing its reading and dial angle."
             items={data?.gauges || []}
             onChange={(gauges) => setData({ gauges })}
             emptyItem={() => ({ id: '', label: 'New gauge', reading: '', dialAngle: 0, answer: 'Normal', image: '', correctFeedback: '', incorrectFeedback: '' })}
@@ -161,6 +276,20 @@ function WalkAroundContentFields({ data, onChange }) {
                     <option value="Abnormal">Abnormal</option>
                   </Select>
                 </Field>
+                <Field label="Dashboard instrument">
+                  <DefaultSelect
+                    value={item.instrument}
+                    ids={INSTRUMENT_IDS}
+                    labels={INSTRUMENT_LABELS}
+                    defaultLabel={`Default (${INSTRUMENT_LABELS[gaugeInstrument({ id: item.id })] || 'a card in the task panel'})`}
+                    onChange={(instrument) => patch({ instrument, fault: undefined })}
+                  />
+                </Field>
+                <FaultFields gauge={item} patch={patch} />
+                <PanelNote className="col-span-full">
+                  An Abnormal answer needs a fault the learner can see on the instrument: a lamp that stays lit or
+                  never lights, or a needle that moves out of its normal band.
+                </PanelNote>
                 <Field label="Feedback when right" className="col-span-full">
                   <Textarea rows={2} value={item.correctFeedback || ''} onChange={(event) => patch({ correctFeedback: event.target.value })} />
                 </Field>
@@ -173,7 +302,7 @@ function WalkAroundContentFields({ data, onChange }) {
 
           <ListEditor
             title="Device and control tests"
-            note="Clicking the button - or the matching 3D marker - counts the test. Safety devices and operational controls are shown as two groups."
+            note="Each test ticks itself when the learner is seen doing it in the cab. Safety devices and operational controls are shown as two groups."
             items={data?.devices || []}
             onChange={(devices) => setData({ devices })}
             emptyItem={() => ({ id: '', label: 'New test', feedback: '', group: 'safety' })}
@@ -193,6 +322,15 @@ function WalkAroundContentFields({ data, onChange }) {
                     <option value="safety">Safety devices</option>
                     <option value="controls">Operational controls</option>
                   </Select>
+                </Field>
+                <Field label="How it is tested">
+                  <DefaultSelect
+                    value={item.detect}
+                    ids={DETECTOR_IDS}
+                    labels={DETECTOR_LABELS}
+                    defaultLabel={`Default (${DETECTOR_LABELS[deviceDetector({ id: item.id })]})`}
+                    onChange={(detect) => patch({ detect })}
+                  />
                 </Field>
               </>
             )}

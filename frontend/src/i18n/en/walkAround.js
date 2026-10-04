@@ -22,12 +22,44 @@ export default {
   'walkAround.gauges.heading': 'Dashboard indicators',
   // The gauge choices. The *label* is translated; the value saved to progress
   // and compared against the admin's answer key stays English - see
-  // GAUGE_CHOICES in components/WalkAroundStep.jsx.
+  // GAUGE_CHOICES in lib/walkAroundStep.js.
   'walkAround.gauges.normal': 'Normal',
   'walkAround.gauges.abnormal': 'Abnormal',
   'walkAround.gauges.correct': 'Correct',
   'walkAround.gauges.reread': 'Re-read this gauge',
   'walkAround.gauges.score': 'Gauge readings correct: {correct}/{total}',
+
+  // The engine-on step in the cab (components/inspection/): its checklist in
+  // four groups, the judge popover over the dashboard, and how each device
+  // test is done (one line per detector, lib/inspection/detectors.js).
+  'walkAround.cab.startup': 'Start-up',
+  'walkAround.cab.startup.seatbelt': 'Fasten the seatbelt (B)',
+  'walkAround.cab.startup.parkingBrake': 'Set the parking brake (Space)',
+  'walkAround.cab.startup.neutral': 'Direction lever in N',
+  'walkAround.cab.startup.keyOn': 'Key to ON and watch every warning lamp light for two seconds',
+  'walkAround.cab.startup.start': 'Key to START (E)',
+  'walkAround.cab.startup.started': 'Engine started. Keep it running for the checks below.',
+  'walkAround.cab.instruments': 'Instruments',
+  'walkAround.cab.instruments.hint': 'Click each ringed instrument on the dashboard and judge its reading.',
+  'walkAround.cab.instruments.waitKey': 'Turn the key to ON to check the warning lamps.',
+  'walkAround.cab.instruments.waitStart': 'Start the engine to read the other instruments.',
+  'walkAround.cab.instruments.cards': 'Other readings',
+  'walkAround.cab.status.pending': 'Not judged yet',
+  'walkAround.cab.status.done': 'done',
+  'walkAround.cab.status.notDone': 'not done yet',
+  'walkAround.cab.judge.question': 'Is this reading normal?',
+  'walkAround.cab.judge.close': 'Close',
+  'walkAround.cab.detect.marker': 'Click its marker on the truck.',
+  'walkAround.cab.detect.lit-marker': 'Switch the lights on (L), then click its marker on the truck in Chase view.',
+  'walkAround.cab.detect.horn': "Press H or the dashboard's Horn.",
+  'walkAround.cab.detect.lights': 'Switch the lights on (L).',
+  'walkAround.cab.detect.beacon': 'Switch the beacon on (O).',
+  'walkAround.cab.detect.turn-signals': 'Signal left and right ([ and ]).',
+  'walkAround.cab.detect.backup-alarm': 'With the engine running, put the lever in R and listen for the beeper.',
+  'walkAround.cab.detect.steer-lock': 'Turn the wheel to full lock each way.',
+  'walkAround.cab.detect.brake-test': 'Release the parking brake, creep forward past 2 km/h, then brake to a stop.',
+  'walkAround.cab.detect.lift-tilt': 'Raise the forks above 0.5 m and lower them, then tilt the mast fully back and forward.',
+  'walkAround.cab.detect.travel': 'Drive half a metre forward, then half a metre in reverse.',
 
   'walkAround.defects.empty': 'This step has no defect scenarios yet.',
   'walkAround.defects.pickerLabel': 'Defect recognition scenarios',

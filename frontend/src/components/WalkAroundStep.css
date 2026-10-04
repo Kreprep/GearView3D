@@ -158,8 +158,6 @@
   color: #0f172a;
   font-size: var(--fs-sm);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .inspection-card,
@@ -460,4 +458,66 @@
     left: 35%;
     width: 130px;
   }
+}
+
+/* The engine-on step's checklist (EngineOnTask): start-up, instruments,
+   devices and controls, each item ticked when the cab sees it done. */
+.cab-checklist {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Positioned, so its screen-reader-only status (absolute) stays inside the
+   task body's scroll instead of stretching the page. */
+.cab-check {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  font-size: var(--fs-xs);
+}
+
+.cab-check.done {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.cab-check-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cab-check.done .cab-check-mark {
+  border-color: #22c55e;
+}
+
+.cab-check-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cab-check-body > span {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cab-check-body small {
+  color: #475569;
+  line-height: 1.35;
 }

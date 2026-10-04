@@ -10,6 +10,7 @@ import {
   WALK_AROUND_PHASES,
 } from '../../../frontend/src/data/courseDefaults.js'
 import { COURSE_GOAL_TYPES, validateCourse } from '../../../frontend/src/lib/courseGoals.js'
+import { engineOnProblems } from '../../../frontend/src/lib/walkAroundStep.js'
 
 export { COURSE_KINDS, emptyCourseContent, emptyCourseGeometry, emptyWalkAroundData }
 
@@ -86,8 +87,11 @@ export function validateCoursePayload(kind, payload) {
     if (data.phase === 'engine-off' && !(data.checks || []).length) {
       problems.push('An engine-off step needs at least one inspection check.')
     }
-    if (data.phase === 'engine-on' && !(data.gauges || []).length && !(data.devices || []).length) {
-      problems.push('An engine-on step needs at least one gauge or device test.')
+    if (data.phase === 'engine-on') {
+      if (!(data.gauges || []).length && !(data.devices || []).length) {
+        problems.push('An engine-on step needs at least one gauge or device test.')
+      }
+      problems.push(...engineOnProblems(data))
     }
     if (data.phase === 'defect-test' && !(data.scenarios || []).length) {
       problems.push('A defect test step needs at least one scenario.')

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { publishedCourse, validateCoursePayload } from '../src/lib/courses.js'
+import { defaultCourseFor, publishedCourse, validateCoursePayload } from '../src/lib/courses.js'
 
 test('publishedCourse never leaks draft, even when the row has one', () => {
   const row = {
@@ -59,6 +59,26 @@ test('validateCoursePayload: walk-around engine-on needs a gauge or device', () 
     data: { phase: 'engine-on', gauges: [], devices: [] },
   })
   assert.ok(problems.some((p) => p.includes('gauge or device')))
+})
+
+test('validateCoursePayload: engine-on cab fields must name what the cab has', () => {
+  const payload = (data) => ({ title: 'Engine On', data: { phase: 'engine-on', ...data } })
+  // The stock row, and a row from before the cab fields, are fine.
+  assert.deepEqual(validateCoursePayload('walk-around', defaultCourseFor('engine-on-inspection')), [])
+  assert.deepEqual(validateCoursePayload('walk-around', payload({ gauges: [{ id: 'hour-meter', answer: 'Normal' }], devices: [{ id: 'horn' }] })), [])
+
+  const problems = validateCoursePayload('walk-around', payload({
+    gauges: [
+      { id: 'a', label: 'Mystery', instrument: 'gauge.oilTemp' },
+      { id: 'b', label: 'Fuel', instrument: 'gauge.fuel', fault: { lamp: 'stays-lit' } },
+      { id: 'c', label: 'Charge', instrument: 'lamp.charge', fault: { lamp: 'stays-lit' } },
+    ],
+    devices: [{ id: 'horn', label: 'Horn', detect: 'honk' }, { id: 'brakes', detect: 'brake-test' }],
+  }))
+  assert.equal(problems.length, 3)
+  assert.ok(problems.some((p) => p.includes('unknown instrument')))
+  assert.ok(problems.some((p) => p.startsWith('Gauge "Fuel"')))
+  assert.ok(problems.some((p) => p.includes('unknown test "honk"')))
 })
 
 test('validateCoursePayload: walk-around defect-test needs a scenario', () => {

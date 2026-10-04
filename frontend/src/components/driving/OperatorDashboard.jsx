@@ -9,6 +9,7 @@ import {
   Droplet,
   Fuel,
   Lightbulb,
+  ListChecks,
   Megaphone,
   PackageX,
   Siren,
@@ -141,21 +142,14 @@ const WARNING_LAMP_ROW = [
   { field: 'lampLoadInsecure', tone: 'caution', icon: PackageX, labelKey: 'driving.dash.lamp.loadInsecure' },
 ]
 
-// The warning lamps as a list, or as one button when the inspection asks
-// about the whole row (judged during the bulb check).
+// The warning lamps as a list; in inspect mode a lamp the step asks about is
+// a button. When the step asks about the whole row (judged on the bulb
+// check), the row is ringed and judged from a button of its own at its
+// start, so a single lamp in it can still be asked about too.
 function WarningLamps({ snapshot, inspect }) {
   const t = useT()
   const label = t('driving.dash.lamps')
-  if (inspect?.targets?.lamps) {
-    return (
-      <Inspectable inspect={inspect} instrument="lamps" label={label} className="operator-lamps">
-        {WARNING_LAMP_ROW.map(({ field, tone, icon, labelKey }) => (
-          <Lamp key={field} as="span" lit={snapshot[field]} tone={tone} icon={icon} label={t(labelKey)} />
-        ))}
-      </Inspectable>
-    )
-  }
-  return (
+  const list = (
     <ul className="operator-lamps" aria-label={label}>
       {WARNING_LAMP_ROW.map(({ instrument, field, tone, icon, labelKey }) =>
         inspect?.targets?.[instrument] ? (
@@ -169,6 +163,16 @@ function WarningLamps({ snapshot, inspect }) {
         ),
       )}
     </ul>
+  )
+  const rowStatus = inspect?.targets?.lamps
+  if (!rowStatus) return list
+  return (
+    <div className={`operator-inspect-group is-${rowStatus} ${inspect.selected === 'lamps' ? 'is-selected' : ''}`}>
+      <Inspectable inspect={inspect} instrument="lamps" label={label} className="operator-inspect-row">
+        <ListChecks width={15} height={15} aria-hidden="true" />
+      </Inspectable>
+      {list}
+    </div>
   )
 }
 

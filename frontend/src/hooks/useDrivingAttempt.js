@@ -37,8 +37,9 @@ function publishCockpit(telemetry, core, course, { controls, switches, gauges, c
   )
 }
 
-// One driving attempt, whatever it is composed into (a course, or later the
-// cab inspection): the simulation core, the input sources (keyboard,
+// One driving attempt, whatever it is composed into (a course, or the cab
+// inspection, components/inspection/CabInspectionViewer.jsx): the simulation
+// core, the input sources (keyboard,
 // dashboard, wheel), the cockpit telemetry, the safety watch, the sound and
 // the fixed-step loop. No scene and no camera: components/driving/
 // DrivingStage.jsx draws the attempt and calls frame() once per rendered
@@ -48,8 +49,11 @@ function publishCockpit(telemetry, core, course, { controls, switches, gauges, c
 // `onEvent` receives the viewer's event vocabulary (hooks/
 // useDrivingController.jsx), which is unchanged. `instrumentFaults`
 // ({ [instrumentId]: fault }, lib/inspection/instruments.js) script what the
-// dashboard reads; they never reach the simulation.
-export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults = null }) {
+// dashboard reads; they never reach the simulation. `observe`, if given, is
+// called once per frame after the steps with { state, switches, horn } (horn:
+// whether it sounded this frame), for a watcher that reads the attempt, like
+// the inspection monitor; it must not write the state.
+export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults = null, observe = null }) {
   const [core] = useState(() => createSimCore(course, profile))
   const [safety] = useState(() => createSafetyMonitor(course))
   // What SafetySigns draws: the alert queue's `shown` list.
@@ -161,9 +165,11 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
   }, [core, sim, dashboard])
 
   const onEventRef = useRef(onEvent)
+  const observeRef = useRef(observe)
   useEffect(() => {
     onEventRef.current = onEvent
-  }, [onEvent])
+    observeRef.current = observe
+  }, [onEvent, observe])
 
   // The core's events, turned into the viewer's own event vocabulary
   // (hooks/useDrivingController.jsx), which is unchanged. They are raised
@@ -217,9 +223,14 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
     for (const command of [...keyboard.drainCommands(), ...wheel.drainCommands()]) {
       if (!applyCabCommand(dashboard, command, core.state.truck.engineOn)) onViewCommand(VIEW_COMMAND_ALIASES[command] || command)
     }
+    let horn = false
     for (const command of dashboard.drainCommands()) {
-      if (command === 'horn') audioRef.current?.horn()
-      else core.command(command)
+      if (command === 'horn') {
+        horn = true
+        audioRef.current?.horn()
+      } else {
+        core.command(command)
+      }
     }
     const { alpha } = sim.loop.advance(rawDelta)
     const { engineOn } = core.state.truck
@@ -241,6 +252,7 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
 
     const events = core.drainEvents()
     events.forEach(handleSimEvent)
+    observeRef.current?.({ state: core.state, switches: dashboard.switches, horn })
     // Sound follows the state the steps just left (lib/driving/drivingAudio.js).
     audioRef.current?.update(core.state, dashboard.switches)
     sim.freshKeys().forEach((key) => emit({ type: 'key-active', key }))

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import DrivingSimulationViewer from './components/DrivingSimulationViewer'
+import CabInspectionViewer from './components/inspection/CabInspectionViewer'
 import ModuleLoadingState from './components/ModuleLoadingState'
 import ModuleSimulationShell from './components/ModuleSimulationShell'
 import { ModuleHeaderContent } from './components/ModuleStepper'
@@ -33,8 +34,9 @@ import { can } from './data/permissions.js'
 import './GenericModulePage.css'
 
 const NEXT_MODULE_DELAY_MS = 1400
-// Pulled in close to the operator station so the cockpit hotspots are readable.
-const ENGINE_ON_CAMERA = { position: [1.05, 0.82, 0.95], fov: 46, minDistance: 0.4, maxDistance: 2.8 }
+
+// The engine-on walk-around phase runs in the cab, on the driving simulation.
+const isCabStep = (step) => step?.kind === 'walk-around' && step.walkAround?.phase === 'engine-on'
 
 // The one module page for every equipment's course-backed modules, Forklift
 // included - it renders whatever typed step rows the module has (briefing,
@@ -43,7 +45,8 @@ const ENGINE_ON_CAMERA = { position: [1.05, 0.82, 0.95], fov: 46, minDistance: 0
 //
 // `driving`-kind steps render through DrivingSimulationViewer with the
 // forklift's vehicle profile (footprint, seat, HUD copy, fail messages - see
-// lib/vehicleProfile.js).
+// lib/vehicleProfile.js), and so does the engine-on walk-around phase,
+// through CabInspectionViewer.
 //
 // Per-step-kind behaviour lives in three controller hooks rather than here:
 // useWalkAroundController (inspection markers, checks/gauges/scenarios),
@@ -79,8 +82,9 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
   // module skips the request entirely.
   const hasWalkAround = steps.some((step) => step.kind === 'walk-around')
 
-  // Driving steps need the equipment row for its vehicle profile overrides.
-  const hasDriving = steps.some((step) => step.kind === 'driving')
+  // Driving steps and the cab need the equipment row for its vehicle profile
+  // overrides.
+  const hasDriving = steps.some((step) => step.kind === 'driving' || isCabStep(step))
 
   useEffect(() => {
     if (!hasDriving) return undefined
@@ -163,7 +167,8 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
     setSelectedDetail,
     focusedHotspotId,
     handleCheck,
-    handleDevice,
+    handleGauge,
+    handleCabEvent,
     handleWalkAroundHotspot,
     walkAroundHandlers,
     scenarioIdFor,
@@ -229,6 +234,26 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
   const renderScene = ({ currentStep }) => {
     const step = stepById[currentStep.id]
 
+    if (isCabStep(step)) {
+      return (
+        <div className="load-scene-wrap">
+          <CabInspectionViewer
+            key={step.id}
+            profile={vehicleProfile}
+            data={step.walkAround}
+            hotspots={hotspots}
+            phaseState={phaseStateFor(simulation, step.id)}
+            isAdmin={showAuthoringTools}
+            selectedHotspotId={focusedHotspotId}
+            onEvent={handleCabEvent(step)}
+            onCabStatus={walkAroundController.setCabStatus}
+            onJudge={(gauge, choice) => handleGauge(step, gauge, choice)}
+            onHotspotSelect={(hotspot) => handleWalkAroundHotspot(step, hotspot)}
+          />
+        </div>
+      )
+    }
+
     if (step?.kind === 'walk-around') {
       return (
         <WalkAroundScene
@@ -240,7 +265,6 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
           selectedHotspotId={focusedHotspotId}
           deviceEffect={walkAroundController.activeDeviceEffect}
           defectOverlays={walkAroundDefectOverlays}
-          cameraPreset={step.walkAround?.phase === 'engine-on' ? ENGINE_ON_CAMERA : undefined}
           isAdmin={showAuthoringTools}
           onHotspotSelect={(hotspot) => handleWalkAroundHotspot(step, hotspot)}
           onResetView={() => walkAroundController.setFocusedHotspotId(null)}
@@ -321,6 +345,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
           content={step.content}
           state={phaseStateFor(simulation, step.id)}
           engineStarted={simulation.engineStarted}
+          cab={walkAroundController.cabStatus}
           activeScenarioId={scenarioIdFor(step)}
           handlers={walkAroundHandlers(step)}
         />
@@ -386,13 +411,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
             renderTask={renderTask}
             selectedDetail={selectedDetail}
             onClearDetail={() => { setSelectedDetail(null); walkAroundController.setFocusedHotspotId(null) }}
-            onNextDetail={
-              !nextDetail
-                ? null
-                : nextDetail.kind === 'check'
-                  ? () => handleCheck(currentStepRow, nextDetail.item)
-                  : () => handleDevice(currentStepRow, nextDetail.item, hotspots.find((entry) => entry.id === nextDetail.item.id))
-            }
+            onNextDetail={nextDetail ? () => handleCheck(currentStepRow, nextDetail.item) : null}
             completionSummary={
               <ModuleSummary
                 content={summaryStep?.content}

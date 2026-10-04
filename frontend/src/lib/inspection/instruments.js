@@ -42,6 +42,11 @@ export function gaugeInstrument(gauge) {
   return STOCK_GAUGE_INSTRUMENTS[gauge?.id] ?? null
 }
 
+// When an instrument can be judged: the lamp row on its bulb check, from key
+// ON; everything else once the engine runs, since before that the charge and
+// oil lamps are lit on any truck and the temperature needle is cold.
+export const instrumentReadyAt = (instrument) => (INSTRUMENTS[instrument]?.kind === 'lamps' ? 'key' : 'start')
+
 // Lamp faults: lit whenever the cab is powered, or never lit (a dead bulb,
 // which the bulb check gives away).
 export const LAMP_FAULTS = ['stays-lit', 'dead']
@@ -50,6 +55,50 @@ export const LAMP_FAULTS = ['stays-lit', 'dead']
 // so a fault can develop while the learner watches.
 export const FAULT_TRIGGERS = ['start', 'key']
 export const DEFAULT_FAULT_RAMP_S = 20
+
+// The faults the stock abnormal gauges read, for rows saved before gauges
+// had a `fault`: the charge lamp stays lit after the start, and the coolant
+// temperature climbs into the red.
+export const STOCK_GAUGE_FAULTS = {
+  'battery-charge-indicator': { lamp: 'stays-lit' },
+  'engine-temperature-gauge': { value: 0.97, after: 'start', rampS: 15 },
+}
+
+// Why a fault cannot apply to `instrument`, or null when it can (or when
+// there is no fault). Lamp faults go on lamps, needle faults on gauges.
+export function faultProblem(fault, instrument) {
+  if (fault === null || fault === undefined) return null
+  const target = INSTRUMENTS[instrument]
+  if (!target) return 'A fault needs an instrument on the dashboard.'
+  if (typeof fault !== 'object' || Array.isArray(fault)) return 'A fault must be an object.'
+  if (target.kind === 'gauge') {
+    if (typeof fault.value !== 'number' || fault.value < 0 || fault.value > 1) return 'A gauge fault needs a value from 0 to 1.'
+    if (fault.after !== undefined && !FAULT_TRIGGERS.includes(fault.after)) return `A gauge fault starts after ${FAULT_TRIGGERS.join(' or ')}.`
+    if (fault.rampS !== undefined && !(typeof fault.rampS === 'number' && fault.rampS >= 0)) return 'A gauge fault ramp must be zero or more seconds.'
+    return null
+  }
+  return LAMP_FAULTS.includes(fault.lamp) ? null : `A lamp fault is one of ${LAMP_FAULTS.join(', ')}.`
+}
+
+// The fault a gauge row reads: its own `fault` (null for none), else the
+// stock one for its id when the row's answer is Abnormal. A stock gauge an
+// admin turned Normal reads true.
+export function gaugeFault(gauge) {
+  if (gauge?.fault !== undefined) return gauge.fault
+  return gauge?.answer === 'Abnormal' ? (STOCK_GAUGE_FAULTS[gauge.id] ?? null) : null
+}
+
+// The instrument faults ({ [instrumentId]: fault }) a step's gauge rows
+// script, for the dashboard. The first row on an instrument wins.
+export function gaugeInstrumentFaults(gauges = []) {
+  const faults = {}
+  for (const gauge of gauges) {
+    const instrument = gaugeInstrument(gauge)
+    const fault = gaugeFault(gauge)
+    if (instrument && fault && !(instrument in faults) && !faultProblem(fault, instrument)) faults[instrument] = fault
+  }
+  return faults
+}
 
 // What a faulty gauge reads `normal` would have read, given the cluster
 // clock's { sinceKeyOn, sinceStart } (lib/driving/clusterClock.js).
