@@ -27,10 +27,10 @@ export const moduleScenarioSteps = {
     {
       id: 'defect-recognition',
       title: 'Defect Recognition Test',
-      objective: 'Decide if the forklift is usable based on visible scenario conditions.',
+      objective: 'Spot defects on the forklift and decide what to do about them.',
       instructions:
-        'Review each visual state and choose whether the forklift may be used for operation.',
-      hint: 'If a visible condition affects stability, steering, lifting, or fluid safety, choose No.',
+        'Each forklift may have a defect, or none. Look it over from every side, or check it from the seat when asked, then answer its question: whether it may be used, what is wrong, where the defect is, or what you do.',
+      hint: "A defect that affects braking, steering, lifting, stability, fluids or the operator's protection means the forklift must not be used: report it and tag it out.",
     },
     {
       id: 'summary',

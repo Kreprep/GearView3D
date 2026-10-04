@@ -31,6 +31,10 @@ start (or cut on a whole period) so they repeat without a gap.
 | `pallet-drop.mp3` | A pallet struck, set down hard or dropped | [Wooden Planks Dropping on Concrete, Breaking Wood](https://freesound.org/people/TheLittleCrow/sounds/589866/) | TheLittleCrow | CC0 1.0 |
 | `cone-knock.mp3` | A traffic cone knocked | [Water Bucket Hit FF206.aif](https://freesound.org/people/martinimeniscus/sounds/199453/) | martinimeniscus | CC0 1.0 |
 | `metal-impact.mp3` | The forks, or a load on them, meeting racking or a wall | [Metallic clang](https://freesound.org/people/tomwilkinson/sounds/568786/) | tomwilkinson | CC0 1.0 |
+| `lpg-hiss.flac` | LPG leak at the tank fitting (loop), defect test | [hiss small pipe ext like propane gas.flac](https://freesound.org/people/kyles/sounds/453443/) | kyles | CC0 1.0 |
+| `engine-knock.flac` | Knocking engine (loop), defect test | [S41-23 Car bearing knocking; bad auto engine; loop](https://freesound.org/people/craigsmith/sounds/675725/) | craigsmith | CC0 1.0 |
+| `brake-grind.flac` | Worn brakes grinding while braking (loop), defect test | [Metal Rubbing Grinding Together](https://freesound.org/people/deleted_user_7146007/sounds/383808/) | deleted_user_7146007 | CC0 1.0 |
+| `horn-click.mp3` | A horn button with no horn, defect test | [Small Button / Switch Click](https://freesound.org/people/mm4wood/sounds/760624/) | mm4wood | CC0 1.0 |
 
 To rebuild a file, download its source recording into
 `frontend/audio-src/raw/` (keeping Freesound's file name) and run
