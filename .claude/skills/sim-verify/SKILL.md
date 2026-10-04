@@ -40,7 +40,9 @@ a module. The call returns a JSON report. The tool echoes the runner's source
 after the result; ignore that part.
 
 Scenarios don't depend on each other, so run whichever ones the change
-touches, one after another. The runner reuses the browser's session for the
+touches, one after another. To run all of them in one call, `bash .claude/skills/sim-verify/scripts/make-batch.sh`
+writes `.playwright-mcp/sim-verify-batch.js`, which returns one compact line per
+scenario; the `interlock` scenario's timeout is expected. The runner reuses the browser's session for the
 account it needs, because the login endpoint allows only 10 sign-ins per 15
 minutes. If you still get a 429, restart the backend: touching any file under
 `backend/src` makes `node --watch` restart it, which clears the in-memory
