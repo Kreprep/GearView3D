@@ -22,6 +22,7 @@ import {
   emptyCourseContent,
   emptyCourseGeometry,
   emptyWalkAroundData,
+  locateHotspotIds,
   validateCoursePayload,
 } from '../lib/courses.js'
 import {
@@ -713,6 +714,12 @@ router.post('/courses', canEditContent, async (req, res) => {
   res.json({ course: adminCourse(course) })
 })
 
+// What a step's validation needs from the database: a walk-around step's
+// defect test checks its locate answers against the walk-around parts.
+async function validationContext(kind) {
+  return kind === 'walk-around' ? { hotspotIds: await locateHotspotIds(prisma) } : {}
+}
+
 // Saves an edit as a draft. Invalid drafts are allowed - work in progress is
 // only blocked at publish time.
 router.put('/courses/:id', canEditContent, async (req, res) => {
@@ -727,7 +734,7 @@ router.put('/courses/:id', canEditContent, async (req, res) => {
       ...(typeof req.body?.sortOrder === 'number' ? { sortOrder: req.body.sortOrder } : {}),
     },
   })
-  res.json({ course: adminCourse(course), problems: validateCoursePayload(row.kind, draft) })
+  res.json({ course: adminCourse(course), problems: validateCoursePayload(row.kind, draft, await validationContext(row.kind)) })
 })
 
 router.post('/courses/:id/publish', canEditContent, async (req, res) => {
@@ -735,7 +742,7 @@ router.post('/courses/:id/publish', canEditContent, async (req, res) => {
   if (!row) return res.status(404).json({ error: 'Course not found' })
 
   const payload = editableCourse(row)
-  const problems = validateCoursePayload(row.kind, payload)
+  const problems = validateCoursePayload(row.kind, payload, await validationContext(row.kind))
   if (problems.length) {
     return res.status(400).json({ error: 'Course cannot be published', problems })
   }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getAudioEngine } from '../lib/audio/audioEngine'
+import { defectSoundNames } from '../data/defectLibrary'
 import { DRIVING_SOUNDS } from '../data/soundBank'
 import { createCabGauges, stepCabGauges } from '../lib/driving/cabGauges'
 import { createClusterClock, stepClusterClock } from '../lib/driving/clusterClock'
@@ -7,6 +8,7 @@ import { cockpitSnapshot } from '../lib/driving/cockpitTelemetry'
 import { createKeyActiveTracker, mergeControls, neutralControls } from '../lib/driving/controls'
 import { applyCabCommand, cabPowered, createDashboardSource } from '../lib/driving/dashboardSource'
 import { createDrivingAudio } from '../lib/driving/drivingAudio'
+import { createFaultAlarm } from '../lib/inspection/instruments'
 import { loadControllerConfig, subscribeToControllerConfig } from '../lib/driving/controllerStore'
 import { snapshotGamepads } from '../lib/driving/gamepadBrowser'
 import { createWheelSource } from '../lib/driving/wheelSource'
@@ -53,12 +55,25 @@ function publishCockpit(telemetry, core, course, { controls, switches, gauges, c
 // called once per frame after the steps with { state, switches, horn } (horn:
 // whether it sounded this frame), for a watcher that reads the attempt, like
 // the inspection monitor; it must not write the state.
-export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults = null, observe = null }) {
-  const [core] = useState(() => createSimCore(course, profile))
+//
+// A defect-test cab scenario (data/defectLibrary.js, cabEffects()) also
+// passes `controlFaults` (lib/driving/controlFaults.js, set on the core:
+// these change what the truck does), `switchFaults` (the dashboard's) and
+// `defectSounds` (lib/driving/drivingAudio.js). A healthy truck has none.
+// They are read once, when the attempt is built.
+export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults = null, observe = null, controlFaults = null, switchFaults = null, defectSounds = null }) {
+  const [core] = useState(() => {
+    const created = createSimCore(course, profile)
+    if (controlFaults) created.setFaults(controlFaults)
+    return created
+  })
   const [safety] = useState(() => createSafetyMonitor(course))
   // What SafetySigns draws: the alert queue's `shown` list.
   const [signs] = useState(() => createTelemetryStore({ signs: [] }))
-  const [dashboard] = useState(createDashboardSource)
+  const [dashboard] = useState(() => createDashboardSource({ switchFaults: switchFaults || {} }))
+  // The warning chime of a faulty gauge that passes its alarm level.
+  const [faultAlarm] = useState(() => createFaultAlarm(instrumentFaults))
+  const [attemptSounds] = useState(() => defectSounds || [])
   const [wheel] = useState(() => createWheelSource(loadControllerConfig()))
   const [telemetry] = useState(() => {
     const store = createTelemetryStore(null)
@@ -113,14 +128,14 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
   const audioRef = useRef(null)
   useEffect(() => {
     const engine = getAudioEngine()
-    engine.preload(DRIVING_SOUNDS)
-    const audio = createDrivingAudio(engine, { capacityKg: course.capacityKg })
+    engine.preload([...DRIVING_SOUNDS, ...defectSoundNames(attemptSounds)])
+    const audio = createDrivingAudio(engine, { capacityKg: course.capacityKg, defectSounds: attemptSounds })
     audioRef.current = audio
     return () => {
       audioRef.current = null
       audio.dispose()
     }
-  }, [course.capacityKg])
+  }, [course.capacityKg, attemptSounds])
 
   useEffect(() => {
     core.setProfile(profile)
@@ -232,6 +247,8 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
         core.command(command)
       }
     }
+    // A switch that springs back (a defect) lets go.
+    dashboard.tick(rawDelta)
     const { alpha } = sim.loop.advance(rawDelta)
     const { engineOn } = core.state.truck
     stepCabGauges(sim.gauges, { engineOn, throttle: sim.controls().throttle }, rawDelta)
@@ -281,6 +298,7 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
         wheel: wheel.status(),
       })
     }
+    if (faultAlarm.update(telemetry.getSnapshot(), rawDelta)) audioRef.current?.faultAlarm()
     return alpha
   }
 

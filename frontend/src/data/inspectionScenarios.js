@@ -278,38 +278,3 @@ export const defectRecognitionScenarios = [
       "A mast that stays tilted forward instead of returning to vertical points to a loose or faulty tilt cylinder connection. This shifts the load's centre of gravity away from the forklift and increases tip-over risk, so the forklift must be reported and removed from operation.",
   },
 ]
-
-export const walkAroundDefects = [
-  {
-    id: 'fluid-leak',
-    title: 'Random Defect: Fluid leak',
-    visualState: 'oil-leak',
-    label: 'Fluid leak',
-    choices: ['Fluid leak', 'Unsafe tire', 'Mast crack', 'Loose or missing bolt'],
-    feedback: 'Visible fluid leaks may indicate engine oil, hydraulic oil, coolant, or battery electrolyte problems. The forklift must be reported before operation.',
-  },
-  {
-    id: 'unsafe-tire',
-    title: 'Random Defect: Flat or worn tire',
-    visualState: 'flat-tire',
-    label: 'Unsafe tire',
-    choices: ['Fluid leak', 'Unsafe tire', 'Mast crack', 'Loose or missing bolt'],
-    feedback: 'Unsafe tire condition affects steering and stability. Report it before operation.',
-  },
-  {
-    id: 'mast-crack',
-    title: 'Random Defect: Mast crack',
-    visualState: 'mast-crack',
-    label: 'Mast crack',
-    choices: ['Fluid leak', 'Unsafe tire', 'Mast crack', 'Loose or missing bolt'],
-    feedback: 'Mast assembly cracks can make lifting unsafe. Report the defect immediately.',
-  },
-  {
-    id: 'loose-bolt',
-    title: 'Random Defect: Loose or missing bolt',
-    visualState: 'loose-bolt',
-    label: 'Loose or missing bolt',
-    choices: ['Fluid leak', 'Unsafe tire', 'Mast crack', 'Loose or missing bolt'],
-    feedback: 'Loose or missing structural bolts must be reported before operation.',
-  },
-]

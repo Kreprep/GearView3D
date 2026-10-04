@@ -212,8 +212,35 @@ export function alertSounds(edges) {
 
 // One attempt's sound. `engine` is an audio engine: createLoop(name) ->
 // { setGain, setRate, stop }, playOneShot(name) and now() (seconds).
-export function createDrivingAudio(engine, { capacityKg } = {}) {
+// A defect scenario's sound rules (data/defectLibrary.js, `sounds`) in the
+// cab: how loud each of its loops should be now. A loop plays while 'shown'
+// (always), while the 'engine' runs, or while 'braking' (the service brake on
+// with the truck moving). Pure.
+const BRAKING_MIN_SPEED = kmh(0.5)
+const BRAKING_MIN_PEDAL = 0.1
+
+export function defectLoopTargets(rules, state) {
+  const controls = state.frame.controls || NO_CONTROLS
+  const braking = Math.abs(state.truck.speed) > BRAKING_MIN_SPEED && Math.max(controls.brake, controls.inching || 0) > BRAKING_MIN_PEDAL
+  const targets = {}
+  for (const rule of rules || []) {
+    if (!rule.loop) continue
+    const on = rule.while === 'engine' ? state.truck.engineOn : rule.while === 'braking' ? braking : true
+    targets[rule.loop] = Math.max(targets[rule.loop] || 0, on ? 1 : 0)
+  }
+  return targets
+}
+
+// What a sample is replaced by under a defect's `{ replace, with }` rules (a
+// dead horn clicks), or the sample itself.
+export const replacedSound = (rules, name) => (rules || []).find((rule) => rule.replace === name)?.with || name
+
+// `defectSounds` are a defect scenario's sound rules; a healthy truck has
+// none.
+export function createDrivingAudio(engine, { capacityKg, defectSounds = [] } = {}) {
   const loops = Object.fromEntries(LOOP_NAMES.map((name) => [name, engine.createLoop(name)]))
+  const defectLoopNames = [...new Set(defectSounds.filter((rule) => rule.loop).map((rule) => rule.loop))]
+  const defectLoops = Object.fromEntries(defectLoopNames.map((name) => [name, engine.createLoop(name)]))
   let lastSwitches = null
   // While the start recording cranks, the engine loops wait for it to fire.
   let engineCatchAt = 0
@@ -241,6 +268,8 @@ export function createDrivingAudio(engine, { capacityKg } = {}) {
         loops[name].setGain(targets[name].gain, timeConstant)
         loops[name].setRate(targets[name].rate, timeConstant)
       }
+      const defectTargets = defectLoopTargets(defectSounds, state)
+      for (const name of defectLoopNames) defectLoops[name].setGain(defectTargets[name] || 0, ENGINE_TIME_CONSTANT)
 
       const current = { key: switches.key, seatbelt: switches.seatbelt, parkingBrake: switches.parkingBrake }
       switchSounds(lastSwitches, current).forEach((name) => engine.playOneShot(name))
@@ -260,11 +289,18 @@ export function createDrivingAudio(engine, { capacityKg } = {}) {
     },
 
     horn() {
-      engine.playOneShot('horn')
+      engine.playOneShot(replacedSound(defectSounds, 'horn'))
+    },
+
+    // A faulty gauge passing its alarm level (createFaultAlarm in
+    // lib/inspection/instruments.js).
+    faultAlarm() {
+      engine.playOneShot('cautionChime')
     },
 
     dispose() {
       LOOP_NAMES.forEach((name) => loops[name].stop())
+      defectLoopNames.forEach((name) => defectLoops[name].stop())
     },
   }
 }

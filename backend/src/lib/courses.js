@@ -10,7 +10,7 @@ import {
   WALK_AROUND_PHASES,
 } from '../../../frontend/src/data/courseDefaults.js'
 import { COURSE_GOAL_TYPES, validateCourse } from '../../../frontend/src/lib/courseGoals.js'
-import { engineOnProblems } from '../../../frontend/src/lib/walkAroundStep.js'
+import { defectScenarioProblems, engineOnProblems, locateCandidates } from '../../../frontend/src/lib/walkAroundStep.js'
 
 export { COURSE_KINDS, emptyCourseContent, emptyCourseGeometry, emptyWalkAroundData }
 
@@ -71,9 +71,18 @@ export function editableCourse(row) {
   }
 }
 
+// The hotspot ids a defect test's locate question may name: the
+// walk-around's exterior parts. `prisma` is the client to read them with.
+export async function locateHotspotIds(prisma) {
+  const rows = await prisma.hotspot.findMany({ where: { inWalkAround: true }, select: { id: true, position: true, state: true } })
+  return locateCandidates(rows).map((row) => row.id)
+}
+
 // Returns an array of problem strings; empty means the payload can be
 // published. Only driving steps carry geometry, so only they are goal-checked.
-export function validateCoursePayload(kind, payload) {
+// `hotspotIds` (locateHotspotIds) lets a defect test's locate answers be
+// checked against the parts that exist.
+export function validateCoursePayload(kind, payload, { hotspotIds } = {}) {
   const problems = []
 
   if (!payload.title?.trim()) problems.push('Step needs a title.')
@@ -93,8 +102,9 @@ export function validateCoursePayload(kind, payload) {
       }
       problems.push(...engineOnProblems(data))
     }
-    if (data.phase === 'defect-test' && !(data.scenarios || []).length) {
-      problems.push('A defect test step needs at least one scenario.')
+    if (data.phase === 'defect-test') {
+      if (!(data.scenarios || []).length) problems.push('A defect test step needs at least one scenario.')
+      problems.push(...defectScenarioProblems(data, { hotspotIds }))
     }
     return problems
   }

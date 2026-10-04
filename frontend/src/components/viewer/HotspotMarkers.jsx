@@ -20,8 +20,10 @@ function scenarioResult(hotspot, scenario) {
 }
 
 // One marker: a 24 px button around a 16 px dot, labelled on hover. Its
-// group registers in `hotspotRefs` (by id) so a camera can focus it.
-export function HotspotMarker({ hotspot, selected, scenario, onSelect, hotspotRefs, adminEditMode, onMarkerPointerDown }) {
+// group registers in `hotspotRefs` (by id) so a camera can focus it. With
+// `label`, the marker is named that instead of the hotspot's label and shows
+// no tooltip: a defect test's locate question must not name the parts.
+export function HotspotMarker({ hotspot, selected, scenario, onSelect, hotspotRefs, adminEditMode, onMarkerPointerDown, label }) {
   const result = scenarioResult(hotspot, scenario)
 
   return (
@@ -43,9 +45,9 @@ export function HotspotMarker({ hotspot, selected, scenario, onSelect, hotspotRe
             }}
             onPointerDown={adminEditMode ? (event) => onMarkerPointerDown?.(hotspot.id, event) : undefined}
             className={`hotspot-marker ${result.result === 'unsafe' ? 'unsafe' : ''} ${selected ? 'selected' : ''} ${adminEditMode ? 'admin-editable' : ''}`}
-            aria-label={hotspot.label}
+            aria-label={label ?? hotspot.label}
           />
-          <span className="hotspot-marker-tooltip">{hotspot.label}</span>
+          {label === undefined && <span className="hotspot-marker-tooltip">{hotspot.label}</span>}
         </div>
       </Html>
     </group>
@@ -53,9 +55,10 @@ export function HotspotMarker({ hotspot, selected, scenario, onSelect, hotspotRe
 }
 
 // Every marker in `hotspots`. `onSelect` receives the hotspot with its
-// scenario result.
-export function HotspotMarkers({ hotspots, selectedHotspotId, scenario, onSelect, hotspotRefs, adminEditMode = false, onMarkerPointerDown }) {
-  return hotspots.map((hotspot) => (
+// scenario result. `labelFor(hotspot, index)`, when given, names each marker
+// in place of its label (HotspotMarker's `label`).
+export function HotspotMarkers({ hotspots, selectedHotspotId, scenario, onSelect, hotspotRefs, adminEditMode = false, onMarkerPointerDown, labelFor }) {
+  return hotspots.map((hotspot, index) => (
     <HotspotMarker
       key={hotspot.id}
       hotspot={hotspot}
@@ -65,6 +68,7 @@ export function HotspotMarkers({ hotspots, selectedHotspotId, scenario, onSelect
       hotspotRefs={hotspotRefs}
       adminEditMode={adminEditMode}
       onMarkerPointerDown={onMarkerPointerDown}
+      label={labelFor?.(hotspot, index)}
     />
   ))
 }

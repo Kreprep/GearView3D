@@ -25,7 +25,11 @@ function standInModel() {
   part(DEFAULT_RIG.wheels.RL, [0.1, 0.0603, -0.188], [0.05, 0.121, 0.121])
   part(DEFAULT_RIG.wheels.RR, [-0.1, 0.0603, -0.188], [0.05, 0.121, 0.121])
   part(DEFAULT_RIG.mast, [0, 0.35, 0.27], [0.2, 0.6, 0.04])
-  part(DEFAULT_RIG.carriage, [0, 0.05, 0.42], [0.2, 0.1, 0.44])
+  // The carriage plate, and the tines split out of it (scripts/
+  // split-parts.mjs), which reach further forward.
+  part(DEFAULT_RIG.carriage, [0, 0.07, 0.3], [0.24, 0.12, 0.04])
+  part(DEFAULT_RIG.forks.L.node, [0.068, 0.04, 0.46], [0.03, 0.06, 0.3])
+  part(DEFAULT_RIG.forks.R.node, [-0.068, 0.04, 0.46], [0.03, 0.06, 0.3])
   part(DEFAULT_RIG.steeringWheel.node, DEFAULT_RIG.steeringWheel.centre, [0.06, 0.01, 0.06])
   part(DEFAULT_RIG.levers.lift.node, [-0.049, 0.30, 0.1302], [0.01, 0.06, 0.01])
   part(DEFAULT_RIG.levers.tilt.node, [-0.0639, 0.30, 0.1302], [0.01, 0.06, 0.01])
@@ -54,7 +58,8 @@ function pivots(rig) {
     tilt: [rig.tiltPivot.position, null],
     lift: [rig.levers.lift.pivot.position, rig.levers.lift.axis],
     tiltLever: [rig.levers.tilt.pivot.position, rig.levers.tilt.axis],
-    ...Object.fromEntries(Object.entries(rig.wheels).map(([key, wheel]) => [`wheel ${key}`, [(wheel.steer || wheel.spin).position, null]])),
+    ...Object.fromEntries(Object.entries(rig.wheels).map(([key, wheel]) => [`wheel ${key}`, [wheel.mount.position, null]])),
+    ...Object.fromEntries(Object.entries(rig.forks).map(([side, fork]) => [`fork ${side}`, [fork.pivot.position, null]])),
   }
 }
 
@@ -107,4 +112,31 @@ test('meshes stay where they were when the rig is built', () => {
   root.traverse((object) => {
     if (object.isMesh) near(object.getWorldPosition(new Vector3()), before.get(object.name), object.name)
   })
+})
+
+test('the split tines lift with the carriage, droop about their heels, and count in the fork reach', () => {
+  const { root, rig } = rigAt([2, 0, -3], 0.6)
+  const inModel = (object) => root.worldToLocal(object.getWorldPosition(new Vector3()))
+  assert.deepEqual(Object.keys(rig.forks).sort(), ['L', 'R'])
+  for (const side of ['L', 'R']) near(inModel(rig.forks[side].pivot), new Vector3(...DEFAULT_RIG.forks[side].heel), `fork ${side} heel`)
+  // The tip, not the carriage plate, is the fork tip.
+  assert.ok(Math.abs(rig.forkTipOffset - 0.61) < 1e-6, `forkTipOffset ${rig.forkTipOffset}`)
+
+  const tine = rig.forks.L.pivot.children[0]
+  const before = inModel(tine)
+  rig.carriageLift.position.y = 0.1
+  root.updateMatrixWorld(true)
+  near(inModel(tine), before.clone().add(new Vector3(0, 0.1, 0)), 'tine lifted with the carriage')
+
+  rig.forks.L.pivot.rotation.x = 0.1
+  root.updateMatrixWorld(true)
+  assert.ok(inModel(tine).y < before.y + 0.1, 'a tine turned about its heel droops')
+})
+
+test('each wheel hangs in a mount that does not roll', () => {
+  const { rig } = rigAt([0, 0, 0], 0)
+  for (const [key, wheel] of Object.entries(rig.wheels)) {
+    assert.equal(wheel.spin.parent, wheel.mount, `wheel ${key}`)
+    if (wheel.steer) assert.equal(wheel.steer, wheel.mount)
+  }
 })

@@ -48,6 +48,14 @@ export const SOUND_BANK = {
   coneKnock: { file: 'cone-knock.mp3', bus: 'machine', gain: 0.7 },
   metalImpact: { file: 'metal-impact.mp3', bus: 'machine', gain: 0.6 },
 
+  // The defect test's faults (data/defectLibrary.js, `sounds`): an LPG leak
+  // hissing at the fitting, a knocking engine, worn brakes grinding while
+  // they are on, and a dead horn's button clicking.
+  lpgHiss: { file: 'lpg-hiss.flac', bus: 'machine', loop: true, gain: 0.5 },
+  engineKnock: { file: 'engine-knock.flac', bus: 'engine', loop: true, gain: 0.55 },
+  brakeGrind: { file: 'brake-grind.flac', bus: 'machine', loop: true, gain: 0.5 },
+  hornClick: { file: 'horn-click.mp3', bus: 'ui', gain: 0.7 },
+
   keyClick: { file: 'key-click.mp3', bus: 'ui', gain: 0.7 },
   seatbelt: { file: 'seatbelt.mp3', bus: 'ui', gain: 0.7 },
   parkingBrake: { file: 'parking-brake.mp3', bus: 'ui', gain: 0.7 },

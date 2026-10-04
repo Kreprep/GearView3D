@@ -114,10 +114,13 @@ export function syncView(view, state, prev, alpha, world, dt = 0) {
     // A physical steering wheel shows its own rotation. Otherwise full
     // rear-wheel lock (steer is negative for a left turn) turns the wheel
     // STEERING_WHEEL_LOCK anticlockwise, as the operator sees it. Before the
-    // first step there are no controls yet.
+    // first step there are no controls yet. With play in the steering (a
+    // defect, lib/driving/controlFaults.js) the wheel follows the operator's
+    // input, not the rear wheels, so the play shows.
     const controls = state.frame.controls
     if (rig.steeringWheel) {
-      const wheelAngle = controls?.steeringWheelAngle ?? (-steer / MAX_STEER_ANGLE) * STEERING_WHEEL_LOCK
+      const turn = state.faults.steeringPlay > 0 ? (state.frame.turnInput ?? 0) : -steer / MAX_STEER_ANGLE
+      const wheelAngle = controls?.steeringWheelAngle ?? turn * STEERING_WHEEL_LOCK
       rig.steeringWheel.pivot.quaternion.setFromAxisAngle(rig.steeringWheel.axis, wheelAngle)
     }
     // The levers follow the operator's hands, not the hydraulics, so they

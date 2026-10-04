@@ -7,7 +7,6 @@ import {
   GizmoHelper,
   GizmoViewport,
   Grid,
-  Html,
   Loader,
   OrbitControls,
   PerspectiveCamera,
@@ -16,9 +15,12 @@ import {
 } from '@react-three/drei'
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Compass, Eye, Maximize, RotateCcw } from 'lucide-react'
+import { CHAIN_NODES } from '../data/defectLibrary'
 import { EQUIPMENT_MODEL_URL } from '../data/equipment'
+import { defectPose, NO_DEFECT_POSE } from '../lib/defectPose'
 import { buildVehicleRig, REAR_WHEEL_KEYS } from '../lib/vehicleRig'
 import { CameraFocus, ViewerErrorBoundary, ViewerLoadingPanel } from './viewer/ViewerShared'
+import { DefectEffects } from './viewer/DefectEffects'
 import { DeviceLamps } from './viewer/DeviceLamps'
 import { HotspotMarkers } from './viewer/HotspotMarkers'
 import './HotspotViewer.css'
@@ -93,22 +95,25 @@ const TRAVEL_DISTANCE = 0.3
 const BRAKE_RUN_SPEED = 0.45
 const BRAKE_STOP_TIME = 0.9
 const BRAKE_DIP = 0.09
-// Forward tilt is unsafe (shifts load centre of gravity away from the
-// forklift - the loose-mast defect scenario), so this holds noticeably past
-// the lift-tilt demo's own swing rather than springing back to vertical.
-const MAST_STUCK_TILT = TILT_SWING * 1.8
+// A flat tyre bulges sideways and along as it squashes.
+const SQUASH_BULGE = 0.35
 
 function smoothstep(x) {
   const clamped = Math.min(Math.max(x, 0), 1)
   return clamped * clamped * (3 - 2 * clamped)
 }
 
-function EquipmentModel({ scenario, deviceEffect, adminEditMode, onSurfaceDown, onSurfaceMove, onSurfaceUp }) {
+// The model, its device demos and a defect scenario's changes to it. `defects`
+// is the scenario's exterior effects (exteriorEffects() in data/
+// defectLibrary.js): the rig-driven recipes are posed here each frame
+// (lib/defectPose.js), the rest are DefectEffects.
+function EquipmentModel({ defects, deviceEffect, adminEditMode, onSurfaceDown, onSurfaceMove, onSurfaceUp }) {
   const { scene } = useGLTF(EQUIPMENT_MODEL_URL)
   const forklift = useMemo(() => cloneSkeleton(scene), [scene])
   const rigRef = useRef(null)
   const moveGroupRef = useRef(null)
   const animStateRef = useRef({ start: null, lastZ: 0 })
+  const pose = useMemo(() => (defects?.visual?.length ? defectPose(defects.visual) : NO_DEFECT_POSE), [defects])
 
   // De-skin + pivot rig must run before the material pass so the replacement
   // meshes get the shadow/material treatment too. A layout effect, not a
@@ -186,12 +191,23 @@ function EquipmentModel({ scenario, deviceEffect, adminEditMode, onSurfaceDown, 
       }
     }
 
-    // The loose-mast defect scenario holds the mast tilted instead of
-    // playing a demo - it stays this way for as long as the scenario is on
-    // screen, not just for one animation pass.
-    if (scenario === 'mast-tilt') tiltTarget = MAST_STUCK_TILT
+    // A defect holding the mast tilted (mast-stuck-tilted) holds it there
+    // for as long as the scenario is on screen, demo or not.
+    if (pose.mastTilt !== null) tiltTarget = pose.mastTilt
 
     const damp = Math.min(ANIM_DAMP * delta, 1)
+    const ease = (object, key, target) => {
+      object[key] += (target - object[key]) * damp
+    }
+
+    Object.entries(rig.wheels).forEach(([key, wheel]) => {
+      const squash = pose.wheelSquash[key] || 0
+      ease(wheel.mount.scale, 'y', 1 - squash)
+      ease(wheel.mount.scale, 'x', 1 + squash * SQUASH_BULGE)
+      ease(wheel.mount.scale, 'z', 1 + squash * SQUASH_BULGE)
+    })
+    if (rig.carriageLift) ease(rig.carriageLift.rotation, 'z', pose.carriageRoll)
+    Object.entries(rig.forks).forEach(([side, fork]) => ease(fork.pivot.rotation, 'x', pose.forkBend[side] || 0))
 
     REAR_WHEEL_KEYS.forEach((key) => {
       const wheel = rig.wheels[key]
@@ -201,7 +217,9 @@ function EquipmentModel({ scenario, deviceEffect, adminEditMode, onSurfaceDown, 
     if (rig.mastLift) rig.mastLift.position.y += (liftTarget * MAST_LIFT_RATIO - rig.mastLift.position.y) * damp
     if (rig.tiltPivot) rig.tiltPivot.rotation.x += (tiltTarget - rig.tiltPivot.rotation.x) * damp
     move.position.z += (travelTarget - move.position.z) * damp
-    move.rotation.x += (pitchTarget - move.rotation.x) * damp
+    move.position.y += (pose.bodyLift - move.position.y) * damp
+    move.rotation.x += (pitchTarget + pose.bodyPitch - move.rotation.x) * damp
+    move.rotation.z += (pose.bodyRoll - move.rotation.z) * damp
 
     // Roll all four wheels to match the distance actually travelled.
     const dz = move.position.z - animStateRef.current.lastZ
@@ -221,65 +239,15 @@ function EquipmentModel({ scenario, deviceEffect, adminEditMode, onSurfaceDown, 
         onPointerMove={adminEditMode ? onSurfaceMove : undefined}
         onPointerUp={adminEditMode ? onSurfaceUp : undefined}
       />
+      {defects && <DefectEffects model={forklift} visual={defects.visual} sounds={defects.sounds} chainNodes={CHAIN_NODES} />}
     </group>
-  )
-}
-
-function PuddleOverlay({ id, position, rotation, radius, label, feedback, onScenarioAction }) {
-  const [hovered, setHovered] = useState(false)
-  const emit = () => onScenarioAction?.({ id, type: 'defect', feedback })
-
-  return (
-    <group>
-      <mesh
-        position={position}
-        rotation={rotation}
-        onClick={(event) => { event.stopPropagation(); emit() }}
-        onPointerOver={(event) => { event.stopPropagation(); setHovered(true) }}
-        onPointerOut={() => setHovered(false)}
-      >
-        <circleGeometry args={[radius, 48]} />
-        <meshBasicMaterial color="#111111" transparent opacity={0.72} />
-      </mesh>
-      {/* Hover-only: the label previously covered the puddle at all times,
-          which read as a spoiler ("Fluid leak detected") before the learner
-          had judged the scene. Revealing it on hover keeps it as a hint. */}
-      <Html center position={[position[0], position[1] + 0.056, position[2]]} distanceFactor={2.4}>
-        <button
-          type="button"
-          className="viewer-warning-label"
-          style={{ opacity: hovered ? 1 : 0 }}
-          onClick={emit}
-          onMouseOver={() => setHovered(true)}
-          onMouseOut={() => setHovered(false)}
-        >
-          {label}
-        </button>
-      </Html>
-    </group>
-  )
-}
-
-function MarkerOverlay({ id, position, label, feedback, onScenarioAction }) {
-  const emit = () => onScenarioAction?.({ id, type: 'defect', feedback })
-
-  // The "!" badge stays visible as the obvious, non-spoiling cue; the label
-  // text only reveals on hover (a real DOM button, so plain CSS :hover
-  // covers it - no hover state needed here the way the puddle label needs).
-  return (
-    <Html center position={position} distanceFactor={2.4}>
-      <button type="button" className="viewer-tire-warning" onClick={emit}>
-        <strong>!</strong>
-        <span className="viewer-tire-warning-text">{label}</span>
-      </button>
-    </Html>
   )
 }
 
 function InteractiveScene({
-  scenario,
+  defects,
+  locate,
   hotspots,
-  defectOverlays,
   selectedHotspotId,
   resetToken,
   showHotspots,
@@ -287,7 +255,6 @@ function InteractiveScene({
   deviceEffect,
   freeCam,
   onHotspotSelect,
-  onScenarioAction,
   adminEditMode,
   placingActive,
   onPlaceHotspot,
@@ -350,7 +317,7 @@ function InteractiveScene({
         <Center top cacheKey={EQUIPMENT_MODEL_URL}>
           <group ref={rigGroupRef} rotation={[0, -0.18, 0]}>
             <EquipmentModel
-              scenario={scenario}
+              defects={defects}
               deviceEffect={deviceEffect}
               adminEditMode={adminEditMode}
               onSurfaceDown={handleSurfacePointerDown}
@@ -358,19 +325,18 @@ function InteractiveScene({
               onSurfaceUp={stopDragging}
             />
             <DeviceLamps lamps={deviceEffect?.lamps} color={deviceEffect?.color} radius={deviceEffect?.radius} mode={deviceEffect?.mode} />
-            {defectOverlays
-              .filter((overlay) => overlay.scenario === scenario)
-              .map((overlay) =>
-                overlay.type === 'puddle' ? (
-                  <PuddleOverlay key={overlay.id} {...overlay} onScenarioAction={onScenarioAction} />
-                ) : (
-                  <MarkerOverlay key={overlay.id} {...overlay} onScenarioAction={onScenarioAction} />
-                ),
-              )}
-            {showHotspots && (
+            {/* A locate question's markers: the walk-around parts, unlabelled. */}
+            {locate && showHotspots && (
+              <HotspotMarkers
+                hotspots={locate.hotspots}
+                selectedHotspotId={locate.selectedId}
+                onSelect={locate.onPick}
+                labelFor={locate.labelFor}
+              />
+            )}
+            {!locate && showHotspots && (
               <HotspotMarkers
                 hotspots={hotspots}
-                scenario={scenario}
                 selectedHotspotId={selectedHotspotId}
                 onSelect={onHotspotSelect}
                 hotspotRefs={hotspotRefs}
@@ -454,14 +420,17 @@ function filterHotspots(hotspots, activeHotspots) {
   return hotspots.filter((hotspot) => active.has(hotspot.id))
 }
 
+// `defects`: a defect scenario's exterior effects (exteriorEffects() in
+// data/defectLibrary.js), drawn on the model. `locate`: a locate question's
+// markers ({ hotspots, labelFor(hotspot, index), selectedId, onPick }), drawn
+// unlabelled in place of the hotspot markers.
 export default function HotspotViewer({
-  scenario = 'good-forklift',
+  defects = null,
+  locate = null,
   activeHotspots,
   hotspots: configuredHotspots = [],
-  defectOverlays = [],
   cameraPreset: configuredCameraPreset,
   onHotspotSelect,
-  onScenarioAction,
   onResetView,
   selectedHotspotId: controlledHotspotId,
   deviceEffect,
@@ -539,9 +508,9 @@ export default function HotspotViewer({
           <Canvas shadows="percentage" dpr={[1, 1.35]} camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}>
             <Suspense fallback={<ViewerLoadingPanel label="Loading training view" />}>
               <InteractiveScene
-                scenario={scenario}
+                defects={defects}
+                locate={locate}
                 hotspots={hotspots}
-                defectOverlays={defectOverlays}
                 selectedHotspotId={activeSelectedHotspotId}
                 resetToken={resetToken}
                 showHotspots={showHotspots}
@@ -549,7 +518,6 @@ export default function HotspotViewer({
                 deviceEffect={deviceEffect}
                 freeCam={freeCam}
                 onHotspotSelect={handleHotspotSelect}
-                onScenarioAction={onScenarioAction}
                 adminEditMode={adminEditMode}
                 placingActive={placingActive}
                 onPlaceHotspot={onPlaceHotspot}

@@ -13,10 +13,10 @@ import { ReportingActivity, ShutdownSequenceActivity } from './components/Module
 import { ACTIVITY_IDS } from './lib/activitySteps'
 import { ChecklistScene, ModuleRowsTask, QuizScene } from './components/ModuleChecklistStep'
 import { WalkAroundScene, WalkAroundTask } from './components/WalkAroundStep'
-import { walkAroundDefectOverlays } from './data/viewerHotspots'
+import { cabEffects } from './data/defectLibrary'
 import { getEquipment } from './lib/api'
 import { useLanguage, useT } from './i18n'
-import { PHASE_TITLE_KEYS, phaseStateFor } from './lib/walkAroundStep'
+import { defectScenarios, PHASE_TITLE_KEYS, phaseStateFor } from './lib/walkAroundStep'
 import { resolveVehicleProfile } from './lib/vehicleProfile'
 import { useActivityController } from './hooks/useActivityController'
 import { useDrivingController } from './hooks/useDrivingController'
@@ -37,6 +37,9 @@ const NEXT_MODULE_DELAY_MS = 1400
 
 // The engine-on walk-around phase runs in the cab, on the driving simulation.
 const isCabStep = (step) => step?.kind === 'walk-around' && step.walkAround?.phase === 'engine-on'
+// A defect test with a scenario checked from the seat also needs the cab.
+const hasCabScenario = (step) =>
+  step?.kind === 'walk-around' && step.walkAround?.phase === 'defect-test' && defectScenarios(step.walkAround).some((scenario) => scenario.view === 'cab')
 
 // The one module page for every equipment's course-backed modules, Forklift
 // included - it renders whatever typed step rows the module has (briefing,
@@ -84,7 +87,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
 
   // Driving steps and the cab need the equipment row for its vehicle profile
   // overrides.
-  const hasDriving = steps.some((step) => step.kind === 'driving' || isCabStep(step))
+  const hasDriving = steps.some((step) => step.kind === 'driving' || isCabStep(step) || hasCabScenario(step))
 
   useEffect(() => {
     if (!hasDriving) return undefined
@@ -158,6 +161,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
     simulation,
     updateSimulation,
     changeStep,
+    learnerId: user?.id,
   })
   const {
     hotspots,
@@ -171,7 +175,10 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
     handleCabEvent,
     handleWalkAroundHotspot,
     walkAroundHandlers,
+    scenariosFor,
     scenarioIdFor,
+    activeScenarioFor,
+    handleLocate,
     nextWalkAroundItem,
   } = walkAroundController
 
@@ -254,6 +261,26 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
       )
     }
 
+    const scenario = step?.walkAround?.phase === 'defect-test' ? activeScenarioFor(step) : null
+
+    // A defect scenario checked from the seat: the cab, with the scenario's
+    // faults, a fresh attempt per scenario, and nothing it does recorded.
+    if (scenario?.view === 'cab') {
+      return (
+        <div className="load-scene-wrap">
+          <CabInspectionViewer
+            key={`${step.id}:${scenario.id}`}
+            profile={vehicleProfile}
+            data={step.walkAround}
+            hotspots={hotspots}
+            phaseState={phaseStateFor(simulation, step.id)}
+            defects={cabEffects(scenario.defects)}
+            isAdmin={showAuthoringTools}
+          />
+        </div>
+      )
+    }
+
     if (step?.kind === 'walk-around') {
       return (
         <WalkAroundScene
@@ -261,12 +288,12 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
           hotspots={hotspots}
           state={phaseStateFor(simulation, step.id)}
           engineStarted={simulation.engineStarted}
-          activeScenarioId={scenarioIdFor(step)}
+          scenario={scenario}
           selectedHotspotId={focusedHotspotId}
           deviceEffect={walkAroundController.activeDeviceEffect}
-          defectOverlays={walkAroundDefectOverlays}
           isAdmin={showAuthoringTools}
           onHotspotSelect={(hotspot) => handleWalkAroundHotspot(step, hotspot)}
+          onLocate={(hotspot) => handleLocate(step, hotspot)}
           onResetView={() => walkAroundController.setFocusedHotspotId(null)}
         />
       )
@@ -346,6 +373,7 @@ function GenericModulePage({ moduleSlug, user, onBack, onNavigate }) {
           state={phaseStateFor(simulation, step.id)}
           engineStarted={simulation.engineStarted}
           cab={walkAroundController.cabStatus}
+          scenarios={step.walkAround?.phase === 'defect-test' ? scenariosFor(step) : []}
           activeScenarioId={scenarioIdFor(step)}
           handlers={walkAroundHandlers(step)}
         />

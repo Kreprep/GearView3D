@@ -1,18 +1,25 @@
+import { useMemo } from 'react'
 import HotspotViewer from './HotspotViewer'
 import MarkdownContent from './MarkdownContent'
 import { AudioControl } from './AudioControl'
 import { useT } from '../i18n'
+import { exteriorEffects } from '../data/defectLibrary'
 import { deviceDetector } from '../lib/inspection/detectors'
 import { instrumentReadyAt } from '../lib/inspection/instruments'
 import {
   engineOnGauges,
+  firstAnswerScore,
   GAUGE_CHOICES,
   gaugeScore,
   gaugeStatus,
   isPhaseComplete,
+  isScenarioCorrect,
+  locateCandidates,
   NO_CAB_STATUS,
   PHASE_TITLE_KEYS,
+  QUESTION_PROMPT_KEYS,
   scenarioScore,
+  USABLE_CHOICES,
   visibleHotspotIds,
 } from '../lib/walkAroundStep'
 import './WalkAroundStep.css'
@@ -24,41 +31,49 @@ import './WalkAroundStep.css'
 // Presentational only - GenericModulePage owns the saved state and passes the
 // handlers, the same split the other step kinds use.
 
+// The exterior walk-around scene. Engine-off shows the hotspots its state
+// allows. A defect test's exterior scenario (`scenario`, normalized: lib/
+// walkAroundStep.js) puts its defects on the model and shows no markers,
+// except a locate question's unlabelled ones; `onLocate(hotspot)` takes the
+// click. (The engine-on phase and cab scenarios are the cab's,
+// components/inspection/CabInspectionViewer.jsx.)
 export function WalkAroundScene({
   data,
   hotspots,
   state,
   engineStarted,
-  activeScenarioId,
+  scenario,
   selectedHotspotId,
   deviceEffect,
-  defectOverlays,
   cameraPreset,
   isAdmin,
   onHotspotSelect,
+  onLocate,
   onResetView,
 }) {
-  const phase = data?.phase
-  const isDefectStep = phase === 'defect-test'
-  const activeScenario = (data?.scenarios || []).find((entry) => entry.id === activeScenarioId)
-
-  // The defect phase swaps the whole model into a visual state instead of
-  // showing markers; engine-off shows the hotspots its state allows. (The
-  // engine-on phase is the cab's, components/inspection/CabInspectionViewer.jsx.)
-  const scenario = isDefectStep
-    ? (activeScenario?.visualState === 'normal' ? 'good-forklift' : activeScenario?.visualState || 'good-forklift')
-    : 'engine-off'
+  const t = useT()
+  const isDefectStep = data?.phase === 'defect-test'
+  const defects = useMemo(() => (isDefectStep && scenario ? exteriorEffects(scenario.defects) : null), [isDefectStep, scenario])
+  const locate = isDefectStep && scenario?.question.type === 'locate'
+    ? {
+        hotspots: locateCandidates(hotspots),
+        labelFor: (_, index) => t('walkAround.defects.locate.marker', { n: index + 1 }),
+        selectedId: state.scenarios?.[scenario.id] ?? null,
+        onPick: onLocate,
+      }
+    : null
 
   const engineOffComplete = isPhaseComplete({ ...data, requireEngineStart: false }, state, engineStarted)
 
   return (
     <div className="walkaround-scene-wrap">
       <HotspotViewer
-        mode={isDefectStep ? 'defect-test' : 'inspection'}
-        scenario={scenario}
+        // A new scenario is a new forklift: the view starts over.
+        key={isDefectStep ? scenario?.id : 'inspection'}
+        defects={defects}
+        locate={locate}
         activeHotspots={visibleHotspotIds(data, hotspots, { engineOffComplete, engineStarted })}
         hotspots={hotspots}
-        defectOverlays={defectOverlays}
         cameraPreset={cameraPreset}
         onHotspotSelect={onHotspotSelect}
         onResetView={onResetView}
@@ -235,19 +250,52 @@ function EngineOnTask({ data, state, cab, onGauge }) {
   )
 }
 
-function DefectTask({ data, state, activeScenarioId, onSelectScenario, onAnswerScenario, onPlayDemo }) {
+// The answer controls for one scenario's question. Usable is Yes / No with
+// translated labels over English values; identify and action are the admin's
+// own choices; locate is answered on the model.
+function ScenarioAnswers({ scenario, answer, onAnswer }) {
   const t = useT()
-  const scenarios = data.scenarios || []
-  const active = scenarios.find((entry) => entry.id === activeScenarioId) || scenarios[0]
+  const { type, choices } = scenario.question
+  if (type === 'locate') return <p className="task-note">{t('walkAround.defects.locate.hint')}</p>
+
+  const options = type === 'usable'
+    ? USABLE_CHOICES.map(({ value, labelKey }) => ({ value, label: t(labelKey) }))
+    : choices.map((choice) => ({ value: choice, label: choice }))
+  return (
+    <div className={type === 'usable' ? 'scenario-choice-row' : 'scenario-choice-list'}>
+      {options.map(({ value, label }) => (
+        <button key={value} type="button" className={answer === value ? 'selected' : ''} aria-pressed={answer === value} onClick={() => onAnswer(scenario, value)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// The defect test (docs/modules/module-improvements-plan.md, 3.4).
+// `scenarios` are normalized and in the learner's order; titles are
+// generated ("Forklift 3 of 10") so a title cannot give an answer away.
+function DefectTask({ data, scenarios, state, activeScenarioId, onSelectScenario, onAnswerScenario, onPlayDemo }) {
+  const t = useT()
+  const activeIndex = Math.max(scenarios.findIndex((entry) => entry.id === activeScenarioId), 0)
+  const active = scenarios[activeIndex]
   if (!active) return <p className="task-note">{t('walkAround.defects.empty')}</p>
 
   const savedAnswer = state.scenarios[active.id]
-  const activeIndex = scenarios.findIndex((entry) => entry.id === active.id)
+  const answered = savedAnswer !== undefined
+  const correct = isScenarioCorrect(active, savedAnswer)
   // Prefer the next unanswered scenario so re-checking a wrong answer doesn't
   // just loop back to the same one; fall back to the next in order once every
   // scenario has an answer.
   const nextScenario =
-    scenarios.slice(activeIndex + 1).find((entry) => !state.scenarios[entry.id]) || scenarios[activeIndex + 1]
+    scenarios.slice(activeIndex + 1).find((entry) => state.scenarios[entry.id] === undefined) || scenarios[activeIndex + 1]
+  const first = firstAnswerScore(data, state)
+  const total = scenarios.length
+  const statusKey = (scenario) => {
+    const answer = state.scenarios[scenario.id]
+    if (answer === undefined) return 'walkAround.cab.status.notDone'
+    return isScenarioCorrect(scenario, answer) ? 'walkAround.cab.status.done' : 'walkAround.defects.status.wrong'
+  }
 
   return (
     <>
@@ -258,48 +306,46 @@ function DefectTask({ data, state, activeScenarioId, onSelectScenario, onAnswerS
             <button
               key={scenario.id}
               type="button"
+              role="tab"
+              aria-selected={scenario.id === active.id}
               className={scenario.id === active.id ? 'active' : ''}
-              aria-label={scenario.title}
+              aria-label={`${t('walkAround.defects.title', { n: index + 1, total })} (${t(statusKey(scenario))})`}
               onClick={() => onSelectScenario(scenario.id)}
             >
-              {answer ? (answer === scenario.answer ? '✓' : '✕') : index + 1}
+              {answer === undefined ? index + 1 : isScenarioCorrect(scenario, answer) ? '✓' : '✕'}
             </button>
           )
         })}
       </div>
-      <h4>{active.title}</h4>
-      <p>{active.question}</p>
-      {active.deviceEffectId && (
+      <h4>{t('walkAround.defects.title', { n: activeIndex + 1, total })}</h4>
+      {active.view === 'cab' && <p className="task-note">{t('walkAround.defects.cab')}</p>}
+      <p>{active.question.prompt || t(QUESTION_PROMPT_KEYS[active.question.type])}</p>
+      {active.demo && (
         <button type="button" className="scenario-demo-button" onClick={() => onPlayDemo(active)}>
-          {active.demoLabel || t('walkAround.defects.playDemo')}
+          {t('walkAround.defects.playDemo')}
         </button>
       )}
-      <div className="scenario-choice-row">
-        {(active.choices || []).map((choice) => (
-          <button
-            key={choice}
-            type="button"
-            className={savedAnswer === choice ? 'selected' : ''}
-            onClick={() => onAnswerScenario(active, choice)}
-          >
-            {choice}
-          </button>
-        ))}
-      </div>
-      {savedAnswer && <p className="task-note">{active.feedback}</p>}
-      {savedAnswer && nextScenario && (
+      <ScenarioAnswers scenario={active} answer={savedAnswer} onAnswer={onAnswerScenario} />
+      {answered && (
+        <p className={correct ? 'gauge-verdict correct' : 'gauge-verdict incorrect'} role="status">
+          {t(correct ? 'walkAround.defects.correct' : 'walkAround.defects.incorrect')}
+        </p>
+      )}
+      {answered && active.feedback && <p className="task-note">{active.feedback}</p>}
+      {answered && nextScenario && (
         <button type="button" className="scenario-next-button" onClick={() => onSelectScenario(nextScenario.id)}>
           {t('walkAround.defects.next')}
         </button>
       )}
-      <p className="task-note">
-        {t('walkAround.defects.score', { correct: scenarioScore(data, state), total: scenarios.length })}
-      </p>
+      <p className="task-note">{t('walkAround.defects.score', { correct: scenarioScore(data, state), total })}</p>
+      {first.answered > 0 && (
+        <p className="task-note">{t('walkAround.defects.firstScore', { correct: first.correct, total: first.answered })}</p>
+      )}
     </>
   )
 }
 
-export function WalkAroundTask({ data, content, state, engineStarted, cab = NO_CAB_STATUS, activeScenarioId, handlers }) {
+export function WalkAroundTask({ data, content, state, engineStarted, cab = NO_CAB_STATUS, scenarios = [], activeScenarioId, handlers }) {
   const t = useT()
   const phase = data?.phase
 
@@ -329,6 +375,7 @@ export function WalkAroundTask({ data, content, state, engineStarted, cab = NO_C
       {phase === 'defect-test' && (
         <DefectTask
           data={data}
+          scenarios={scenarios}
           state={state}
           activeScenarioId={activeScenarioId}
           onSelectScenario={handlers.onSelectScenario}

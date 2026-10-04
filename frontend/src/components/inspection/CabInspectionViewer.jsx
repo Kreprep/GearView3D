@@ -5,7 +5,7 @@ import { getAudioEngine } from '../../lib/audio/audioEngine'
 import { cabLampMounts } from '../../lib/driving/cabLamps'
 import { createInspectionMonitor } from '../../lib/inspection/inspectionMonitor'
 import { gaugeInstrumentFaults } from '../../lib/inspection/instruments'
-import { engineOnGauges, GAUGE_CHOICES, instrumentTargets, visibleHotspotIds } from '../../lib/walkAroundStep'
+import { engineOnGauges, GAUGE_CHOICES, instrumentTargets, PHASE_TITLE_KEYS, visibleHotspotIds } from '../../lib/walkAroundStep'
 import { INSPECTION_PAD } from '../../data/inspectionPad'
 import { useDrivingAttempt } from '../../hooks/useDrivingAttempt'
 import { useDrivingView } from '../../hooks/useDrivingView'
@@ -86,10 +86,18 @@ function JudgePopover({ gauge, answer, anchor, onJudge, onClose }) {
 // `devices-tested` { ids } when tests tick. `onCabStatus` gets the start-up
 // items' state when one changes; `onJudge(gauge, value)` an answer;
 // `onHotspotSelect(hotspot)` a marker click, for its detail card.
-function CabInspectionInner({ profile, data, hotspots, phaseState, isAdmin, selectedHotspotId, onEvent, onCabStatus, onJudge, onHotspotSelect, onRequestReset, className }) {
+//
+// The defect test's cab scenarios use the same cab: `defects` is the
+// scenario's cab effects (cabEffects() in data/defectLibrary.js: instrument,
+// control and switch faults and sounds), and a defect-test row has no gauges
+// to judge or devices to test, so only the faults are left.
+function CabInspectionInner({ profile, data, hotspots, phaseState, defects, isAdmin, selectedHotspotId, onEvent, onCabStatus, onJudge, onHotspotSelect, onRequestReset, className }) {
   const t = useT()
   const [monitor] = useState(() => createInspectionMonitor(data.devices || []))
-  const instrumentFaults = useMemo(() => gaugeInstrumentFaults(data.gauges), [data.gauges])
+  const instrumentFaults = useMemo(
+    () => ({ ...gaugeInstrumentFaults(data.gauges), ...defects?.instrumentFaults }),
+    [data.gauges, defects],
+  )
   const onEventRef = useRef(onEvent)
   useEffect(() => {
     onEventRef.current = onEvent
@@ -104,7 +112,16 @@ function CabInspectionInner({ profile, data, hotspots, phaseState, isAdmin, sele
     },
     [monitor],
   )
-  const attempt = useDrivingAttempt({ course: INSPECTION_PAD, profile, onEvent, instrumentFaults, observe })
+  const attempt = useDrivingAttempt({
+    course: INSPECTION_PAD,
+    profile,
+    onEvent,
+    instrumentFaults,
+    observe,
+    controlFaults: defects?.controlFaults,
+    switchFaults: defects?.switchFaults,
+    defectSounds: defects?.sounds,
+  })
   const view = useDrivingView()
   const { telemetry, dashboard, signs, pressed } = attempt
   const [showColliders, setShowColliders] = useState(false)
@@ -176,7 +193,7 @@ function CabInspectionInner({ profile, data, hotspots, phaseState, isAdmin, sele
     <section className={`driving-simulation cab-inspection ${className}`}>
       <div className="driving-hud-top">
         <div className="driving-hud-status">
-          <span className="driving-checkpoint-badge">{t('walkAround.phase.engineOn')}</span>
+          <span className="driving-checkpoint-badge">{t(PHASE_TITLE_KEYS[data.phase] || 'walkAround.phase.engineOn')}</span>
         </div>
         <DrivingHudActions
           view={view}

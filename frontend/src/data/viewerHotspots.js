@@ -353,67 +353,6 @@ export function resolveEffectLamps(effect, hotspot) {
   return [[x, y, z]]
 }
 
-export const walkAroundDefectOverlays = [
-  {
-    id: 'oil-leak',
-    scenario: 'oil-leak',
-    type: 'puddle',
-    position: [0, 0.004, -0.1],
-    rotation: [-Math.PI / 2, 0, 0.18],
-    radius: 0.19,
-    label: 'Fluid leak detected',
-    feedback: 'Fluid leak detected. Forklift is unsafe for operation.',
-  },
-  {
-    id: 'flat-tire',
-    scenario: 'flat-tire',
-    type: 'marker',
-    position: [0.16, 0.16, 0.2],
-    label: 'Unsafe tire condition',
-    feedback: 'Unsafe tire condition affects steering and stability.',
-  },
-  {
-    id: 'mast-crack',
-    scenario: 'mast-crack',
-    type: 'marker',
-    position: [0, 0.56, 0.2],
-    label: 'Mast crack warning',
-    feedback: 'Mast assembly crack detected. Forklift must be reported and removed from operation.',
-  },
-  {
-    id: 'loose-bolt',
-    scenario: 'loose-bolt',
-    type: 'marker',
-    position: [0.05, 0.72, -0.02],
-    label: 'Loose bolt warning',
-    feedback: 'Loose or missing structural bolt detected. Report before operation.',
-  },
-  {
-    id: 'warning-light-blink',
-    scenario: 'warning-light-blink',
-    type: 'marker',
-    position: [0, 0.3, 0.12],
-    label: 'Warning light blinking',
-    feedback: 'A blinking dashboard warning light points to an active fault. Report before operation.',
-  },
-  {
-    id: 'red-light-beep',
-    scenario: 'red-light-beep',
-    type: 'marker',
-    position: [0, 0.26, 0.12],
-    label: 'Red warning light beeping',
-    feedback: 'An audible alarm with a red warning light signals a critical fault. Report before operation.',
-  },
-  {
-    id: 'mast-tilt',
-    scenario: 'mast-tilt',
-    type: 'marker',
-    position: [0, 0.6, 0.22],
-    label: 'Mast stuck tilted',
-    feedback: 'Mast stays tilted instead of returning to vertical - loose or faulty tilt cylinder. Report before operation.',
-  },
-]
-
 export const loadHandlingViewerHotspots = [
   {
     id: 'forks',

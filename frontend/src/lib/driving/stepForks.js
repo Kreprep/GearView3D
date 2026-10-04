@@ -22,8 +22,12 @@ const approach = (value, target, step) => (value < target ? Math.min(value + ste
 // and the mast will not tilt forward, past the point where the tines touch
 // it. And they stop against racking and walls (state.limits, which
 // stepPhysics read off the contacts of the step before).
+//
+// A leaking lift cylinder (the liftDrift control fault, controlFaults.js)
+// lets raised forks sink while the lift lever is released, engine running or
+// not, down to where the tines meet the floor or something under them.
 export function stepForks(state, world, dt) {
-  const { truck, forks, frame, limits } = state
+  const { truck, forks, frame, limits, faults } = state
   const { controls, controlsLocked } = frame
   const { geometry } = world
 
@@ -44,6 +48,11 @@ export function stepForks(state, world, dt) {
     // mast tilted back; their tips, tilted forward).
     if (forks.liftRate > 0 || tineClearance(height, forks.tilt, geometry) >= 0) forks.height = height
     if (forks.height !== height || height === 0 || height === FORK_MAX_HEIGHT) forks.liftRate = 0
+  }
+
+  if (faults.liftDrift > 0 && lift === 0 && forks.liftRate === 0 && forks.height > 0 && !limits.lower) {
+    const height = Math.max(forks.height - faults.liftDrift * dt, 0)
+    if (tineClearance(height, forks.tilt, geometry) >= 0) forks.height = height
   }
 
   if (tilt < 0) {
