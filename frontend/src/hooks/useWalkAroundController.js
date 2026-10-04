@@ -4,7 +4,7 @@ import { SOUND_BANK } from '../data/soundBank'
 import { getAudioEngine } from '../lib/audio/audioEngine'
 import { getHotspotDetails } from '../lib/api'
 import { preloadImages } from '../lib/imagePreload'
-import { isPhaseComplete, NO_CAB_STATUS, phaseStateFor, withPhaseState } from '../lib/walkAroundStep'
+import { defectScenarios, isPhaseComplete, NO_CAB_STATUS, phaseStateFor, SCENARIO_DEMOS, scenarioOrder, withPhaseState } from '../lib/walkAroundStep'
 import { useInspectionHotspots } from './useInspectionHotspots'
 import { getStoredProgress } from '../lib/progressService'
 import { buildSimulationState, withStepComplete } from '../lib/simulationProgress'
@@ -28,7 +28,11 @@ function unique(items) {
 // CabInspectionViewer.jsx): its device tests tick when the inspection
 // monitor sees them done, not on a click, and the start there is recorded
 // for the step (`started`) as well as module-wide (`engineStarted`).
-export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, gradedStepIds, simulation, updateSimulation, changeStep }) {
+//
+// A defect test's scenarios are met in an order shuffled per learner
+// (`learnerId`) and step (decision D-1, scenarioOrder() in
+// lib/walkAroundStep.js), and the first answer to each is kept as the score.
+export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, gradedStepIds, simulation, updateSimulation, changeStep, learnerId }) {
   const { hotspots, loading: hotspotsLoading, error: hotspotsError } = useInspectionHotspots(hasWalkAround)
   const [partDetails, setPartDetails] = useState({})
   const [selectedDetail, setSelectedDetail] = useState(null)
@@ -201,8 +205,13 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
     })
   }
 
-  const handleScenario = (step, scenario, choice) => {
-    savePhase(step, (current) => ({ scenarios: { ...current.scenarios, [scenario.id]: choice } }))
+  // `scenario` is normalized; `answer` is a choice's value, or for a locate
+  // question the clicked part's hotspot id.
+  const handleScenario = (step, scenario, answer) => {
+    savePhase(step, (current) => ({
+      scenarios: { ...current.scenarios, [scenario.id]: answer },
+      firstAnswers: scenario.id in (current.firstAnswers || {}) ? current.firstAnswers : { ...current.firstAnswers, [scenario.id]: answer },
+    }))
   }
 
   // Clicking a marker runs the engine-off check it belongs to; anything else
@@ -262,14 +271,28 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
     onStartEngine: () => startEngine(step),
     onGauge: (gauge, choice) => handleGauge(step, gauge, choice),
     onSelectScenario: setActiveScenarioId,
-    onAnswerScenario: (scenario, choice) => handleScenario(step, scenario, choice),
-    onPlayDemo: (scenario) => triggerDeviceEffect(scenario.deviceEffectId),
+    onAnswerScenario: (scenario, answer) => handleScenario(step, scenario, answer),
+    onPlayDemo: (scenario) => triggerDeviceEffect(SCENARIO_DEMOS[scenario.demo]),
   })
 
-  const scenarioIdFor = (step) =>
-    activeScenarioId && (step.walkAround?.scenarios || []).some((entry) => entry.id === activeScenarioId)
-      ? activeScenarioId
-      : step.walkAround?.scenarios?.[0]?.id || null
+  // A defect test's scenarios, normalized, in this learner's order.
+  const scenariosFor = (step) => scenarioOrder(defectScenarios(step.walkAround), `${learnerId ?? 'guest'}:${step.id}`)
+
+  const scenarioIdFor = (step) => {
+    const scenarios = scenariosFor(step)
+    return scenarios.some((entry) => entry.id === activeScenarioId) ? activeScenarioId : scenarios[0]?.id || null
+  }
+
+  const activeScenarioFor = (step) => {
+    const id = scenarioIdFor(step)
+    return scenariosFor(step).find((entry) => entry.id === id) || null
+  }
+
+  // A locate question answered by clicking a part on the model.
+  const handleLocate = (step, hotspot) => {
+    const scenario = activeScenarioFor(step)
+    if (scenario?.question.type === 'locate') handleScenario(step, scenario, hotspot.id)
+  }
 
   return {
     hotspots,
@@ -288,7 +311,10 @@ export function useWalkAroundController({ hasWalkAround, moduleSlug, steps, grad
     setCabStatus,
     handleWalkAroundHotspot,
     walkAroundHandlers,
+    scenariosFor,
     scenarioIdFor,
+    activeScenarioFor,
+    handleLocate,
     nextWalkAroundItem,
   }
 }

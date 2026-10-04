@@ -10,6 +10,7 @@ import {
   STEER_DAMP,
   STEER_SIGN,
 } from './constants.js'
+import { linkageSteerAngle, steeringPlayInput, takeUpPlay } from './controlFaults.js'
 import { wheelbase } from './rigGeometry.js'
 
 // Move `speed` toward `target` by at most `step`.
@@ -28,13 +29,17 @@ const approach = (speed, target, step) => (speed < target ? Math.min(speed + ste
 // - The inching pedal takes the drive away over its first travel and brakes
 //   over the rest, so the forks can be worked at full revs while creeping.
 // - The parking brake holds the truck: no drive, full braking.
+// - `brakeFade` (a control fault, controlFaults.js) takes that fraction off
+//   the service brake, inching brake included; the parking brake keeps its
+//   hold.
 // Returns the speed after one step.
-export function driveSpeed(speed, controls, { engineOn, locked }, dt) {
+export function driveSpeed(speed, controls, { engineOn, locked, brakeFade = 0 }, dt) {
   if (locked) return approach(speed, 0, BRAKE_DECEL * dt)
 
   const inching = clamp(controls.inching || 0, 0, 1)
   const inchingBrake = inching > INCHING_BRAKE_START ? (inching - INCHING_BRAKE_START) / (1 - INCHING_BRAKE_START) : 0
-  const brake = controls.parkingBrake ? 1 : Math.max(controls.brake, inchingBrake)
+  const serviceBrake = Math.max(controls.brake, inchingBrake)
+  const brake = controls.parkingBrake ? 1 : brakeFade > 0 ? serviceBrake * (1 - brakeFade) : serviceBrake
   const drive = engineOn && !controls.parkingBrake ? controls.throttle * (1 - Math.min(inching / INCHING_BRAKE_START, 1)) : 0
 
   let next = speed
@@ -90,11 +95,19 @@ export function stepDrive(state, world, controls, dt) {
   }
 
   // The rear wheels follow the steering (hydraulic, so only with the engine
-  // running) with a short lag.
-  const steerTarget = truck.engineOn && !controlsLocked ? turnInput * MAX_STEER_ANGLE * STEER_SIGN : 0
+  // running) with a short lag. Worn steering (the steeringPlay fault) lets
+  // the wheel turn some way before the linkage takes it up.
+  const live = truck.engineOn && !controlsLocked
+  const play = steeringPlayInput(state.faults)
+  let steerAngle = turnInput * MAX_STEER_ANGLE
+  if (play > 0 && live) {
+    truck.linkage = takeUpPlay(truck.linkage, turnInput, play)
+    steerAngle = linkageSteerAngle(truck.linkage, play)
+  }
+  const steerTarget = live ? steerAngle * STEER_SIGN : 0
   truck.steer += (steerTarget - truck.steer) * Math.min(STEER_DAMP * dt, 1)
 
-  truck.speed = driveSpeed(truck.speed, controls, { engineOn: truck.engineOn, locked: controlsLocked }, dt)
+  truck.speed = driveSpeed(truck.speed, controls, { engineOn: truck.engineOn, locked: controlsLocked, brakeFade: state.faults.brakeFade }, dt)
 
   // Positive yaw turns left (toward +X going forward); the rear wheels point
   // the other way (STEER_SIGN), hence the sign flip.

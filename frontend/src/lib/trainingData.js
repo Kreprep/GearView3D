@@ -13,7 +13,6 @@ export {
   engineOnControlChecks,
   engineOnGaugeChecks,
   safetyDeviceTests,
-  walkAroundDefects,
 } from '../data/inspectionScenarios.js'
 export { moduleScenarioSteps } from '../data/moduleScenarios.js'
 export {

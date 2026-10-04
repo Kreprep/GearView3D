@@ -164,6 +164,7 @@
 .gauge-card,
 .device-test,
 .scenario-choice-row button,
+.scenario-choice-list button,
 .scenario-picker button {
   border: 1px solid #cbd5e1;
   border-radius: var(--radius-lg);
@@ -332,6 +333,12 @@
   gap: 10px;
 }
 
+/* An identify or action question's choices are sentences: one per row. */
+.scenario-choice-list {
+  display: grid;
+  gap: 8px;
+}
+
 .scenario-picker button {
   display: inline-flex;
   width: 34px;
@@ -344,7 +351,8 @@
 }
 
 .scenario-picker button.active,
-.scenario-choice-row button.selected {
+.scenario-choice-row button.selected,
+.scenario-choice-list button.selected {
   border-color: #06b6d4;
   background: #0891b2;
   color: #ffffff;

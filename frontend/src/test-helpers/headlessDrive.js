@@ -32,9 +32,11 @@ const KEY_BY_HELD = {
 // cab)` runs after each step, for a test that watches the simulation as it
 // goes (the safety monitor's, the inspection monitor's): `cab` is
 // { switches, horn }, the dashboard's switches and whether the horn sounded
-// this frame.
-export function createHeadlessDrive(course, { afterStep } = {}) {
+// this frame. `faults` are control faults for the core (lib/driving/
+// controlFaults.js), off when left out.
+export function createHeadlessDrive(course, { afterStep, faults } = {}) {
   const core = createSimCore(course, profile)
+  if (faults) core.setFaults(faults)
   const keyboard = createKeyboardSource()
   const dashboard = createDashboardSource()
   const loop = createSimLoop((dt) => {

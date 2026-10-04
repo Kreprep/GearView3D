@@ -1,6 +1,7 @@
 import { clamp } from '../math.js'
 import { loadedRapier } from '../physics/rapier.js'
 import { FORK_MAX_HEIGHT, TILT_BACK_MAX, TILT_FORWARD_MAX } from './constants.js'
+import { normalizeControlFaults } from './controlFaults.js'
 import { startInterlockMissing } from './interlock.js'
 import { createSimState, createSimWorld } from './simState.js'
 import { stepDrive } from './stepDrive.js'
@@ -22,6 +23,7 @@ import { stepCheckpoints, stepParking } from './stepGoals.js'
 //   core.command('engineStart')      // or 'engineStop'
 //   core.step(SIM_DT, controls)      // controls: lib/driving/controls.js
 //   core.drainEvents()               // what happened, in order
+//   core.setFaults({ brakeFade })    // a defect scenario's control faults
 //   core.dispose()                   // frees the physics world
 //
 // The truck is driven by the steps' own model. Pallets and cones are bodies
@@ -87,6 +89,12 @@ export function createSimCore(course, profile, { geometry, rapier } = {}) {
     // physics world keeps the body it was built with until the next attempt.
     setProfile(nextProfile) {
       world = createSimWorld(course, nextProfile, geometry)
+    },
+
+    // Faults in the truck's controls (controlFaults.js) for the defect
+    // test's cab scenarios; replaces the whole set. Off unless called.
+    setFaults(faults) {
+      state.faults = normalizeControlFaults(faults)
     },
 
     // The physics world, for the collider debug view: null until the first

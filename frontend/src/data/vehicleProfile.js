@@ -52,6 +52,14 @@ export const DEFAULT_RIG = {
   wheels: { FL: 'Wheel_FL', FR: 'Wheel_FR', RL: 'Wheel_RL', RR: 'Wheel_RR' },
   mast: 'Mast',
   carriage: 'Lift_Carriage',
+  // The tines, split out of Lift_Carriage by scripts/split-parts.mjs so one
+  // can droop for the bent-fork defect. They lift with the carriage. `heel`
+  // is where the blade meets the shank, which a bent tine turns about
+  // (measured in Blender on 2026-10-05). Left is the operator's, +X.
+  forks: {
+    L: { node: 'Fork_L', heel: [0.068, 0.012, 0.3085] },
+    R: { node: 'Fork_R', heel: [-0.068, 0.012, 0.3085] },
+  },
   mastFoot: [0, 0.024, 0.246],
   // The steering wheel, split out of Forklift_Body by
   // scripts/split-steering-wheel.mjs. It turns about the ring's normal (the
@@ -146,7 +154,7 @@ export function defaultFailMessages(lang) {
 export function defaultVehicleProfile(lang) {
   return {
     footprint: { ...DEFAULT_FOOTPRINT },
-    rig: { ...DEFAULT_RIG, wheels: { ...DEFAULT_RIG.wheels } },
+    rig: { ...DEFAULT_RIG, wheels: { ...DEFAULT_RIG.wheels }, forks: { ...DEFAULT_RIG.forks } },
     keyLegend: defaultKeyLegend(lang),
     failMessages: defaultFailMessages(lang),
   }

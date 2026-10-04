@@ -100,23 +100,19 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
     const localCenter = pointIn(parent, center.toArray())
 
     // Spin pivot sits at the wheel centre so rotation.x rolls the wheel about
-    // its own axle; rear wheels get an extra yaw pivot for steering.
+    // its own axle. It hangs in a `mount` at the same point, which does not
+    // roll: the rear wheels' mount is their steering pivot (rotation.y), and
+    // any mount can be scaled to squash a flat tyre.
     const spin = new Group()
-    if (REAR_WHEEL_KEYS.includes(key)) {
-      const steer = new Group()
-      steer.position.copy(localCenter)
-      parent.add(steer)
-      steer.add(spin)
-      steer.updateMatrixWorld(true)
-      spin.attach(mesh)
-      wheels[key] = { spin, steer, radius, centreZ: center.z }
-    } else {
-      spin.position.copy(localCenter)
-      parent.add(spin)
-      spin.updateMatrixWorld(true)
-      spin.attach(mesh)
-      wheels[key] = { spin, radius, centreZ: center.z }
-    }
+    const mount = new Group()
+    mount.position.copy(localCenter)
+    parent.add(mount)
+    mount.add(spin)
+    mount.updateMatrixWorld(true)
+    spin.attach(mesh)
+    wheels[key] = REAR_WHEEL_KEYS.includes(key)
+      ? { spin, steer: mount, mount, radius, centreZ: center.z }
+      : { spin, mount, radius, centreZ: center.z }
   })
 
   // Tilt pivot at the mast foot, holding both lift groups, so rotation.x tilts
@@ -144,6 +140,23 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
   const mastLift = wrapInLiftGroup(mastMesh)
   const carriageLift = wrapInLiftGroup(carriageMesh)
 
+  // The tines ride with the carriage, each on a pivot at its heel so a
+  // bent-fork defect can droop one (rotation.x, tip down). A model whose
+  // tines are still part of the carriage mesh has none.
+  const forks = {}
+  Object.entries(rigConfig?.forks || DEFAULT_RIG.forks || {}).forEach(([side, { node, heel }]) => {
+    const mesh = root.getObjectByName(node)
+    if (!mesh) return
+    const box = boxInModel(mesh)
+    const container = carriageLift || mesh.parent
+    const pivot = new Group()
+    pivot.position.copy(pointIn(container, heel))
+    container.add(pivot)
+    pivot.updateMatrixWorld(true)
+    pivot.attach(mesh)
+    forks[side] = { pivot, box }
+  })
+
   // Where the tines end, and how much of their length a load can sit on.
   // Measured off the carriage mesh: max.z is the tine tip, min.z the plate
   // behind them, so the difference is the usable reach.
@@ -154,10 +167,12 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
   // now measured against the pallet's own faces, and there that shortfall made
   // a pallet seated squarely against the carriage read as two-thirds engaged:
   // the only way to reach a full grip was to drive the body into the load.
+  // The tines, once split out of the carriage, are measured with it.
   let forkTipOffset = 0.6
   let forkReach = 0.36
   if (carriageMesh) {
     const carriageBox = boxInModel(carriageMesh)
+    Object.values(forks).forEach(({ box }) => carriageBox.union(box))
     if (Number.isFinite(carriageBox.max.z) && Number.isFinite(carriageBox.min.z)) {
       forkTipOffset = clamp(carriageBox.max.z, 0.3, 1.2)
       forkReach = clamp(carriageBox.max.z - carriageBox.min.z, 0.1, 1.2)
@@ -188,7 +203,7 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
     if (mesh) levers[input] = pivotAt(mesh, base, [1, 0, 0])
   })
 
-  const rig = { wheels, mastLift, carriageLift, tiltPivot, steeringWheel, levers, forkTipOffset, forkReach }
+  const rig = { wheels, mastLift, carriageLift, tiltPivot, forks, steeringWheel, levers, forkTipOffset, forkReach }
   root.userData.__vehicleRig = rig
   if (import.meta.env?.DEV && typeof window !== 'undefined') window.__vehicleRig = rig
   return rig

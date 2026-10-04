@@ -11,7 +11,6 @@ import {
   adminRevertHotspot,
   adminSaveHotspotDraft,
 } from '../../lib/api'
-import { walkAroundDefectOverlays } from '../../data/viewerHotspots'
 import { Button } from '../ui/button'
 import { Panel, PanelHeader, PanelNote } from '../ui/panel'
 import { Field } from '../ui/field'
@@ -119,13 +118,6 @@ function HotspotAdmin({ categories = [], surface = null, onMessage }) {
   const setField = (patch) => {
     setDraft((current) => ({ ...current, ...patch }))
     setDirty(true)
-  }
-
-  const toggleScenario = (scenarioId) => {
-    const current = new Set(draft.unsafeScenarios)
-    if (current.has(scenarioId)) current.delete(scenarioId)
-    else current.add(scenarioId)
-    setField({ unsafeScenarios: [...current] })
   }
 
   const replace = (hotspot) => {
@@ -461,21 +453,10 @@ function HotspotAdmin({ categories = [], surface = null, onMessage }) {
                     </Field>
                     <Field
                       label="Unsafe feedback"
-                      note="Safe/unsafe feedback only fire from the defect-recognition step below, when this marker's visual state matches one of the checked scenarios."
+                      note="Not shown to learners at present: defect scenarios now change the model itself (the Defect Recognition step's own panel picks the defects)."
                     >
                       <Textarea rows={2} value={draft.unsafeFeedback} onChange={(event) => setField({ unsafeFeedback: event.target.value })} />
                     </Field>
-                    <fieldset className="m-0 grid gap-1.5 rounded-lg border border-border p-2.5">
-                      <legend className="px-1 text-xs font-bold text-body">Defect scenarios that make this hotspot unsafe</legend>
-                      {walkAroundDefectOverlays.map((overlay) => (
-                        <Checkbox
-                          key={overlay.id}
-                          label={overlay.label}
-                          checked={draft.unsafeScenarios.includes(overlay.scenario)}
-                          onChange={() => toggleScenario(overlay.scenario)}
-                        />
-                      ))}
-                    </fieldset>
                   </>
                 )}
               </Panel>

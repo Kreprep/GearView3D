@@ -5,6 +5,7 @@ import { decorationType } from '../courseEdit.js'
 import { resolveCapacityKg, resolveCourseBounds, resolveFailConditions } from '../courseGoals.js'
 import { initialPalletState } from '../physics/palletState.js'
 import { stabilityModel } from '../physics/stability.js'
+import { NO_CONTROL_FAULTS } from './controlFaults.js'
 import { FORKLIFT_RIG_GEOMETRY } from './rigGeometry.js'
 
 // The driving simulation's state, as plain data (docs/revisions/
@@ -99,7 +100,13 @@ export function createSimState(course) {
       engineOn: false,
       // Distance rolled, so the view can spin each wheel by its own radius.
       wheelTravel: 0,
+      // Where the steering linkage sits (an input, -1..1). It is the
+      // steering input itself unless the steering has play (controlFaults.js).
+      linkage: 0,
     },
+    // Faults in the controls (controlFaults.js), set by simCore.setFaults():
+    // all off unless a defect-test scenario scripts one.
+    faults: NO_CONTROL_FAULTS,
     // `liftRate` is how fast the carriage is moving (scene units per second):
     // a hydraulic valve opens and closes over a moment, not at once.
     forks: { height: 0, tilt: 0, liftRate: 0 },

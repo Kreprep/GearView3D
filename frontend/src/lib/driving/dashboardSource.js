@@ -22,6 +22,12 @@ export const CAB_SWITCHES = ['seatbelt', 'parkingBrake', 'lights', 'beacon']
 // The turn-signal stalk: off, or flashing one side.
 export const TURN_SIGNALS = ['off', 'left', 'right']
 
+// Switch faults a defect-test scenario can script (data/defectLibrary.js):
+// 'springs-back' is a switch that goes on and then lets go, as a seat belt
+// whose buckle will not latch does. SPRING_BACK_SECONDS is how long it stays.
+export const SWITCH_FAULTS = ['springs-back']
+export const SPRING_BACK_SECONDS = 0.6
+
 // The cab's commands, by the names the keyboard and the wheel raise
 // (keyboardSource's VIEW_COMMAND_BY_KEY and E, gamepad.js's COMMAND_ACTIONS),
 // applied to a dashboard source. `engineOn` is the simulation's engine.
@@ -52,7 +58,10 @@ export function applyCabCommand(dashboard, command, engineOn) {
 // running). Lamps and the turn signals only work then, as on a real truck.
 export const cabPowered = (switches, engineOn) => engineOn || switches.key !== 'off'
 
-export function createDashboardSource() {
+// `switchFaults` ({ [cabSwitch]: 'springs-back' }) is for the defect test's
+// cab scenarios; a healthy cab has none. A switch that springs back is let
+// go by tick(), which the viewer calls once per frame.
+export function createDashboardSource({ switchFaults = {} } = {}) {
   const switches = {
     // START is momentary: it cranks the engine and springs back to ON.
     key: 'off',
@@ -70,6 +79,11 @@ export function createDashboardSource() {
   let changed = false
   const mark = () => {
     changed = true
+  }
+  // Seconds until each springing switch lets go.
+  const releasing = {}
+  const switchedOn = (name) => {
+    if (switches[name] && switchFaults[name] === 'springs-back') releasing[name] = SPRING_BACK_SECONDS
   }
 
   return {
@@ -118,13 +132,26 @@ export function createDashboardSource() {
     toggle(name) {
       if (!CAB_SWITCHES.includes(name)) return
       switches[name] = !switches[name]
+      switchedOn(name)
       mark()
     },
 
     set(name, value) {
       if (!CAB_SWITCHES.includes(name) || switches[name] === Boolean(value)) return
       switches[name] = Boolean(value)
+      switchedOn(name)
       mark()
+    },
+
+    // Let go of any switch that springs back once its time is up.
+    tick(dt) {
+      for (const name of Object.keys(releasing)) {
+        releasing[name] -= dt
+        if (releasing[name] > 0) continue
+        delete releasing[name]
+        switches[name] = false
+        mark()
+      }
     },
 
     // Push the stalk to one side; pushing it to the side already flashing
