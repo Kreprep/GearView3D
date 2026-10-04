@@ -18,7 +18,7 @@ export function Pallet({ pallet, palletRef, overweight = false }) {
         </group>
       )}
       {typeof pallet.weightKg === 'number' && (
-        <Html center position={[0, 0.85, 0]} distanceFactor={5}>
+        <Html center zIndexRange={[100, 0]} position={[0, 0.85, 0]} distanceFactor={5}>
           <div className={`pallet-weight-label ${overweight ? 'overweight' : ''}`}>{pallet.weightKg} kg</div>
         </Html>
       )}

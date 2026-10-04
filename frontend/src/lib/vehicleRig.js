@@ -1,4 +1,4 @@
-import { Box3, Group, Matrix4, Mesh, Vector3 } from 'three'
+import { Group, Matrix4, Mesh, Vector3 } from 'three'
 import { clamp } from './math.js'
 import { DEFAULT_RIG } from '../data/vehicleProfile.js'
 
@@ -18,13 +18,20 @@ export const WHEEL_RADIUS_FALLBACK = 0.07
 // the same geometry/material and its true on-screen pose baked in (bind pose
 // equals rest pose, so output is identical), then wrap the moving parts in
 // pivot groups that can be driven from a frame loop.
+//
+// Everything is worked out in the model root's own frame: DEFAULT_RIG's points
+// and axes were measured there, and the bounding boxes are taken there. The
+// truck may already stand at a course's start, turned, when this runs (the
+// driving scene builds the rig in an effect, after a frame may have placed
+// it), and a pivot placed from the world pose then sat metres off: the
+// steering wheel orbited a point outside the cab.
 export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
   if (root.userData.__vehicleRig) return root.userData.__vehicleRig
 
   const wheelNames = rigConfig?.wheels || DEFAULT_RIG.wheels
   const mastName = rigConfig?.mast || DEFAULT_RIG.mast
   const carriageName = rigConfig?.carriage || DEFAULT_RIG.carriage
-  const mastFootWorld = rigConfig?.mastFoot || DEFAULT_RIG.mastFoot
+  const mastFoot = rigConfig?.mastFoot || DEFAULT_RIG.mastFoot
 
   root.updateMatrixWorld(true)
 
@@ -67,18 +74,30 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
   })
   root.updateMatrixWorld(true)
 
+  // Model-frame points and axes into a parent's frame, and boxes measured in
+  // the model frame.
+  const rootInverse = new Matrix4().copy(root.matrixWorld).invert()
+  const pointIn = (parent, point) => parent.worldToLocal(root.localToWorld(new Vector3(...point)))
+  const axisIn = (parent, axis) => new Vector3(...axis)
+    .transformDirection(root.matrixWorld)
+    .transformDirection(new Matrix4().copy(parent.matrixWorld).invert())
+  const boxInModel = (mesh) => {
+    if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox()
+    return mesh.geometry.boundingBox.clone().applyMatrix4(new Matrix4().multiplyMatrices(rootInverse, mesh.matrixWorld))
+  }
+
   const wheels = {}
   Object.entries(wheelNames).forEach(([key, name]) => {
     const mesh = root.getObjectByName(name)
     if (!mesh) return
 
-    const box = new Box3().setFromObject(mesh)
+    const box = boxInModel(mesh)
     const center = box.getCenter(new Vector3())
     const radius = Number.isFinite(box.max.y)
       ? Math.max((box.max.y - box.min.y) / 2, 0.01)
       : WHEEL_RADIUS_FALLBACK
     const parent = mesh.parent
-    const localCenter = parent.worldToLocal(center.clone())
+    const localCenter = pointIn(parent, center.toArray())
 
     // Spin pivot sits at the wheel centre so rotation.x rolls the wheel about
     // its own axle; rear wheels get an extra yaw pivot for steering.
@@ -109,7 +128,7 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
   let tiltPivot = null
   if (mastMesh) {
     tiltPivot = new Group()
-    tiltPivot.position.copy(mastMesh.parent.worldToLocal(new Vector3(...mastFootWorld)))
+    tiltPivot.position.copy(pointIn(mastMesh.parent, mastFoot))
     mastMesh.parent.add(tiltPivot)
     tiltPivot.updateMatrixWorld(true)
   }
@@ -138,7 +157,7 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
   let forkTipOffset = 0.6
   let forkReach = 0.36
   if (carriageMesh) {
-    const carriageBox = new Box3().setFromObject(carriageMesh)
+    const carriageBox = boxInModel(carriageMesh)
     if (Number.isFinite(carriageBox.max.z) && Number.isFinite(carriageBox.min.z)) {
       forkTipOffset = clamp(carriageBox.max.z, 0.3, 1.2)
       forkReach = clamp(carriageBox.max.z - carriageBox.min.z, 0.1, 1.2)
@@ -147,17 +166,17 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
 
   // Cab controls: the steering wheel turns about its column, and the lift and
   // tilt levers rock about their bases. Each gets a pivot group at its
-  // measured point, with the turning axis expressed in the pivot's parent
-  // frame, so the frame loop only sets an angle. A model without the node
-  // simply has no pivot.
-  const pivotAt = (mesh, pointWorld, axisWorld) => {
+  // measured point (model frame), with the turning axis expressed in the
+  // pivot's parent frame, so the frame loop only sets an angle. A model
+  // without the node simply has no pivot.
+  const pivotAt = (mesh, point, axisInModel) => {
     const parent = mesh.parent
     const pivot = new Group()
-    pivot.position.copy(parent.worldToLocal(new Vector3(...pointWorld)))
+    pivot.position.copy(pointIn(parent, point))
     parent.add(pivot)
     pivot.updateMatrixWorld(true)
     pivot.attach(mesh)
-    const axis = new Vector3(...axisWorld).transformDirection(new Matrix4().copy(parent.matrixWorld).invert())
+    const axis = axisIn(parent, axisInModel)
     return { pivot, axis, angle: 0 }
   }
   const steeringConfig = rigConfig?.steeringWheel || DEFAULT_RIG.steeringWheel
@@ -171,6 +190,6 @@ export function buildVehicleRig(root, rigConfig = DEFAULT_RIG) {
 
   const rig = { wheels, mastLift, carriageLift, tiltPivot, steeringWheel, levers, forkTipOffset, forkReach }
   root.userData.__vehicleRig = rig
-  if (import.meta.env.DEV && typeof window !== 'undefined') window.__vehicleRig = rig
+  if (import.meta.env?.DEV && typeof window !== 'undefined') window.__vehicleRig = rig
   return rig
 }

@@ -23,7 +23,7 @@ export function ParkingBayMarker({ bay, parked }) {
         <meshBasicMaterial color={lineColor} />
       </mesh>
       {!parked && (
-        <Html center position={[0, 1.1, 0]} distanceFactor={8}>
+        <Html center zIndexRange={[100, 0]} position={[0, 1.1, 0]} distanceFactor={8}>
           <div className="driving-checkpoint-label active">{bay.label || 'Parking Bay'}</div>
         </Html>
       )}

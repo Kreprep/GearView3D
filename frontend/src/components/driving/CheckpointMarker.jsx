@@ -31,7 +31,7 @@ function RingCheckpointMarker({ checkpoint, status }) {
         <meshBasicMaterial color={color} side={DoubleSide} />
       </mesh>
       {status !== 'done' && (
-        <Html center position={[0, 1.5, 0]} distanceFactor={8}>
+        <Html center zIndexRange={[100, 0]} position={[0, 1.5, 0]} distanceFactor={8}>
           <div className={`driving-checkpoint-label ${status}`}>
             {checkpoint.type === 'stop' ? 'STOP - ' : ''}
             {checkpoint.label}
@@ -68,7 +68,7 @@ function FinishLineMarker({ checkpoint, status }) {
         </mesh>
       ))}
       {status !== 'done' && (
-        <Html center position={[0, 2.1, 0]} distanceFactor={9}>
+        <Html center zIndexRange={[100, 0]} position={[0, 2.1, 0]} distanceFactor={9}>
           <div className={`driving-checkpoint-label ${status}`}>{checkpoint.label}</div>
         </Html>
       )}

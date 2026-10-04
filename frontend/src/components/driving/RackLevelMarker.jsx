@@ -30,7 +30,7 @@ export function RackLevelMarker({ rack, level, delivered }) {
         />
       </mesh>
       {!delivered && (
-        <Html center position={[0, 0.32, 0]} distanceFactor={4}>
+        <Html center zIndexRange={[100, 0]} position={[0, 0.32, 0]} distanceFactor={4}>
           <div className="driving-checkpoint-label active">{RACK_LEVEL_LABELS[level] || level}</div>
         </Html>
       )}

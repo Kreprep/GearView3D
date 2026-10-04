@@ -25,7 +25,7 @@ export function DropZoneMarker({ zone, delivered }) {
         />
       </mesh>
       {!delivered && (
-        <Html center position={[0, 1.1, 0]} distanceFactor={8}>
+        <Html center zIndexRange={[100, 0]} position={[0, 1.1, 0]} distanceFactor={8}>
           <div className="driving-checkpoint-label active">{zone.label || 'Drop Zone'}</div>
         </Html>
       )}
