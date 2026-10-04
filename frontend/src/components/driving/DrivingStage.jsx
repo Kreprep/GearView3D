@@ -21,8 +21,9 @@ import { InsetRenderer, ProximityRings } from './ProximityInset'
 // physically based light units).
 const HEADLIGHT_INTENSITY = 6
 
-// Where the cab switches' lamps sit on the truck (lib/driving/cabLamps.js).
-const CAB_LAMPS = cabLampMounts()
+// Where the cab switches' lamps sit on the truck (lib/driving/cabLamps.js),
+// from the stock hotspots, unless the composition passes its own.
+const STOCK_CAB_LAMPS = cabLampMounts()
 
 // The physics world's colliders as Rapier draws them itself (the admin
 // preview's "Show colliders"): what is on screen is exactly what the physics
@@ -44,7 +45,7 @@ function ColliderWireframe({ core }) {
   )
 }
 
-function StageScene({ attempt, view, profile, course, showColliders, children }) {
+function StageScene({ attempt, view, profile, course, showColliders, cabLamps, onTruck, children }) {
   const { core, dashboard } = attempt
   const { cameraState, refs, camAdjustedRef, insetFrameRef, insetEnabled } = view
   const { scene } = useGLTF(EQUIPMENT_MODEL_URL)
@@ -247,7 +248,7 @@ function StageScene({ attempt, view, profile, course, showColliders, children })
             switches each frame (no React render). Seen from outside only:
             in first-person they would sit in the operator's view, and the
             cluster's indicators show them there. */}
-        {CAB_LAMPS.map((group) => (
+        {cabLamps.map((group) => (
           <DeviceLamps
             key={group.id}
             lamps={group.lamps}
@@ -258,6 +259,7 @@ function StageScene({ attempt, view, profile, course, showColliders, children })
           />
         ))}
         <ProximityRings world={core.world} />
+        {onTruck}
       </group>
 
       {showColliders && <ColliderWireframe core={core} />}
@@ -288,8 +290,10 @@ function StageScene({ attempt, view, profile, course, showColliders, children })
 // It runs the attempt (hooks/useDrivingAttempt.js) once per frame and copies
 // the state onto the scene with syncView. What stands on the floor is the
 // composition's: pass it as children, using the view's palletObjectsRef and
-// coneObjectsRef for anything syncView moves.
-export function DrivingStage({ attempt, view, profile, course, showColliders = false, children }) {
+// coneObjectsRef for anything syncView moves. What rides on the truck, in
+// the model's own frame (hotspot markers), goes in `onTruck`; `cabLamps`
+// (cabLampMounts()) places the switches' lamps, the stock places by default.
+export function DrivingStage({ attempt, view, profile, course, showColliders = false, cabLamps = STOCK_CAB_LAMPS, onTruck = null, children }) {
   return (
     // PCF shadows: R3F's default soft shadows are deprecated in three 0.184,
     // which renders them as PCF anyway and warns every frame.
@@ -303,7 +307,15 @@ export function DrivingStage({ attempt, view, profile, course, showColliders = f
       style={{ isolation: 'isolate' }}
     >
       <Suspense fallback={<DrivingLoadingPanel />}>
-        <StageScene attempt={attempt} view={view} profile={profile} course={course} showColliders={showColliders}>
+        <StageScene
+          attempt={attempt}
+          view={view}
+          profile={profile}
+          course={course}
+          showColliders={showColliders}
+          cabLamps={cabLamps}
+          onTruck={onTruck}
+        >
           {children}
         </StageScene>
       </Suspense>

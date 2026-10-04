@@ -252,6 +252,37 @@
   outline-offset: 2px;
 }
 
+/* The whole warning row asked about: the ring goes round the row, and its
+   judge button at the start of it is plain. */
+.operator-inspect-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 2px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 2px var(--surface-deep-accent);
+}
+
+.operator-inspect-group.is-pending {
+  animation: operator-inspect-pulse 1s ease-in-out infinite alternate;
+}
+
+.operator-inspect-group.is-correct {
+  box-shadow: 0 0 0 2px #22c55e;
+}
+
+.operator-inspect-group.is-wrong {
+  box-shadow: 0 0 0 2px #f87171;
+}
+
+.operator-inspect.operator-inspect-row {
+  box-shadow: none;
+  animation: none;
+  min-width: 24px;
+  min-height: 24px;
+  justify-content: center;
+}
+
 @keyframes operator-inspect-pulse {
   from {
     box-shadow: 0 0 0 1px var(--surface-deep-accent);
@@ -263,7 +294,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .operator-lamp.is-blinking,
-  .operator-inspect.is-pending {
+  .operator-inspect.is-pending,
+  .operator-inspect-group.is-pending {
     animation: none;
   }
 }

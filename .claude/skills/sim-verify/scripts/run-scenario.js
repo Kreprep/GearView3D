@@ -323,6 +323,48 @@ async (page) => {
       ],
       expect: ["d.palletStates[0] === 'released'", "!d.signs.some((sign) => sign.id === 'release-load')", "d.violations['release-load'] === undefined", 'l.maxSigns >= 1', '!l.overlap', '!d.failed'],
     },
+    // --- The engine-on inspection in the cab (module improvements Phase 3) --
+    'inspection-engine-on': {
+      module: 'walk-around-check', step: 'Engine-On Inspection',
+      // The step from scratch: progress is seeded in the browser with the
+      // steps before it done and this one empty, and PUT /api/progress is
+      // answered in the browser, so nothing reaches the database (see
+      // `prepare` below). Then the stock step end to end: start-up, every
+      // instrument judged on the dashboard, every device test done.
+      prepare: { stepId: 'engine-on-inspection', before: ['walk-around-check-briefing', 'engine-off-inspection'] },
+      actions: [
+        { press: 'b' }, { press: 'Space' }, { press: 'e' }, { wait: 600 },
+        { judge: ['Warning lamps', 'Normal'] },
+        { judge: ['Charging', 'Abnormal'] },
+        { judge: ['Fuel', 'Normal'] },
+        { judge: ['Hour meter', 'Normal'] },
+        { judge: ['Coolant temperature', 'Abnormal'] },
+        { press: 'h' }, { press: 'l' }, { mark: 'tail-lights' }, { press: '[' }, { press: ']' }, { press: 'o' },
+        // Full lock one way, then the other: the first check of the second
+        // hold notes which side the first lock was on (95% of 80 degrees is
+        // 1.33 rad), then back to the middle.
+        { hold: 'a', until: 'Math.abs(d.steer) >= 1.33', timeout: 6000 },
+        { hold: 'd', until: '(window.__lockSide ??= Math.sign(d.steer)) && Math.abs(d.steer) >= 1.33 && Math.sign(d.steer) !== window.__lockSide', timeout: 8000 },
+        { hold: 'a', until: 'Math.abs(d.steer) < 0.05', timeout: 6000 },
+        { hold: 'r', until: 'd.forkHeight >= 0.13', timeout: 8000 },
+        { hold: 't', until: 'd.tilt <= -0.16', timeout: 5000 },
+        { hold: 'g', until: 'd.tilt >= 0.09', timeout: 5000 },
+        { hold: 'f', until: 'd.forkHeight <= 0.03', timeout: 8000 },
+        { hold: 't', until: 'd.tilt <= 0', timeout: 5000 },
+        { press: 'Space' },
+        { hold: 's', until: 'd.z <= -0.14', timeout: 8000 },
+        { hold: 'w', until: 'd.z >= 0.2', timeout: 8000 },
+        { hold: 's', until: 'Math.abs(d.speed) < 0.04', timeout: 5000 },
+        { wait: 800 },
+      ],
+      expect: [
+        'i.tested.length === 10',
+        "Object.values(i.targets).length === 5 && Object.values(i.targets).every((status) => status === 'correct')",
+        'w.started === true',
+        'w.complete === true',
+        '!d.failed',
+      ],
+    },
     'sign-record': {
       module: 'load-handling', step: 'Accelerate Course',
       // Completing a step saves what the signs logged with the learner's
@@ -346,7 +388,12 @@ async (page) => {
   // any machine; the flag is read by an init script on every page load.
   if (!page.__simVerifyGamepadStub) {
     await page.addInitScript(() => {
-      if (sessionStorage.getItem('sim-verify-hide-gamepads') === '1') navigator.getGamepads = () => []
+      // about:blank (where a prepared scenario ends) has no sessionStorage.
+      try {
+        if (sessionStorage.getItem('sim-verify-hide-gamepads') === '1') navigator.getGamepads = () => []
+      } catch {
+        // Nothing to hide on a page without storage.
+      }
     })
     page.__simVerifyGamepadStub = true
   }
@@ -392,6 +439,32 @@ async (page) => {
   // Learner route first.
   let mode = 'trainee'
   await signIn('trainee@mail.com', 'trainee123')
+
+  // `prepare` ({ stepId, before }) runs a walk-around step from scratch, as
+  // layout-verify reaches locked steps: the steps `before` it are marked done
+  // and its own state is cleared in the browser's progress copy, and PUT
+  // /api/progress is answered in the browser, so nothing reaches the
+  // database. The learner's own copy is put back at the end.
+  let originalProgress
+  if (scenario.prepare) {
+    await page.route('**/api/progress', async (route) => {
+      if (route.request().method() === 'PUT') await route.fulfill({ json: { ok: true } })
+      else await route.fallback()
+    })
+    originalProgress = await page.evaluate(([module, { stepId, before }]) => {
+      const saved = localStorage.getItem('gearview_progress_v1')
+      const progress = JSON.parse(saved || '{}')
+      const simulation = { ...(progress.simulations?.[module] || {}) }
+      simulation.stepsComplete = { ...(simulation.stepsComplete || {}), ...Object.fromEntries(before.map((id) => [id, true])) }
+      delete simulation.stepsComplete[stepId]
+      simulation.walkAround = { ...(simulation.walkAround || {}) }
+      delete simulation.walkAround[stepId]
+      progress.simulations = { ...(progress.simulations || {}), [module]: simulation }
+      localStorage.setItem('gearview_progress_v1', JSON.stringify(progress))
+      return saved
+    }, [scenario.module, scenario.prepare])
+  }
+
   await page.goto(`${BASE}/training/modules/${scenario.module}`)
   const scope = page.getByRole('button', { name: 'Continue' })
   if (await scope.isVisible({ timeout: 5000 }).catch(() => false)) await scope.click()
@@ -454,6 +527,21 @@ async (page) => {
       await page.waitForTimeout(action.wait)
     } else if (action.set) {
       await setState(action.set)
+    } else if (action.judge) {
+      // The cab's judge popover: the ringed instrument named on the
+      // dashboard, then the answer.
+      const [instrument, answer] = action.judge
+      await page.locator(`.operator-inspect[aria-label="Check the reading: ${instrument}"]`).click()
+      await page.locator('.cab-judge').getByRole('button', { name: answer, exact: true }).click()
+      await page.waitForTimeout(150)
+    } else if (action.mark) {
+      // A hotspot marker on the truck, by its hotspot id (wherever the camera
+      // has it, so clicked through the DOM).
+      await page.evaluate((id) => {
+        const label = window.__inspectionDebug?.().markers?.[id]
+        document.querySelector(`.hotspot-marker[aria-label="${label}"]`)?.click()
+      }, action.mark)
+      await page.waitForTimeout(150)
     } else if (action.hold) {
       const keys = [].concat(action.hold)
       for (const key of keys) await page.keyboard.down(key)
@@ -493,16 +581,35 @@ async (page) => {
         return stats[stepId] ?? null
       }, [scenario.module, scenario.step])
     : null
+  const hud = await page.locator('.driving-hud-status').first().innerText().catch(() => null)
+  // The cab inspection's watch (`i`: tested devices, instrument targets) and
+  // the walk-around step's saved state (`w`, with `complete`).
+  const inspection = await page.evaluate(() => window.__inspectionDebug?.() ?? null)
+  const walkAround = scenario.prepare
+    ? await page.evaluate(([module, stepId]) => {
+        const simulation = JSON.parse(localStorage.getItem('gearview_progress_v1') || '{}').simulations?.[module] || {}
+        return { ...(simulation.walkAround?.[stepId] || {}), complete: simulation.stepsComplete?.[stepId] === true }
+      }, [scenario.module, scenario.prepare.stepId])
+    : null
+  if (scenario.prepare) {
+    await page.evaluate((saved) => {
+      if (saved === null) localStorage.removeItem('gearview_progress_v1')
+      else localStorage.setItem('gearview_progress_v1', saved)
+    }, originalProgress)
+    // Leave the page while PUT is still answered here, so a debounced push of
+    // the seeded copy cannot reach the database after the unroute.
+    await page.goto('about:blank')
+    await page.unroute('**/api/progress')
+  }
   const checks = scenario.expect.map((expression) => {
     let passed = false
     try {
-      passed = Boolean(new Function('d', 'a', 'l', 'p', `return (${expression})`)(final, audio, layout, record))
+      passed = Boolean(new Function('d', 'a', 'l', 'p', 'i', 'w', `return (${expression})`)(final, audio, layout, record, inspection, walkAround))
     } catch {
       // An expression over `a` with no audio engine on the page.
     }
     return { expression, passed }
   })
-  const hud = await page.locator('.driving-hud-status').first().innerText().catch(() => null)
 
   return JSON.stringify(
     {
@@ -515,6 +622,8 @@ async (page) => {
       debug: final,
       layout,
       record,
+      inspection,
+      walkAround,
       audio,
       consoleErrors,
     },

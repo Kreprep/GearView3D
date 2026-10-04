@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { runScenario } from '../../test-helpers/drivingScenarios.js'
 import { createHeadlessDrive } from '../../test-helpers/headlessDrive.js'
+import { INSPECTION_PAD } from '../../data/inspectionPad.js'
 import { MAX_STEER_ANGLE, TILT_BACK_MAX, TILT_FORWARD_MAX } from '../driving/constants.js'
 import { m } from '../driving/units.js'
 import { BRAKE_TEST_SPEED, deviceDetector, DETECTOR_IDS, LIFT_TEST_HEIGHT, LIFT_TEST_LOWERED, STEER_LOCK_SHARE, STOCK_DEVICE_DETECTORS } from './detectors.js'
@@ -14,9 +15,9 @@ import { createInspectionMonitor } from './inspectionMonitor.js'
 // detector has a headless test driven through test-helpers/headlessDrive.js").
 // The monitor watches every step, as the cab viewer's will every frame.
 
-// An open pad like the inspection's: nothing to hit, no goal.
-const PAD = { id: 'pad', start: { position: [0, 0, 0], heading: 0 }, checkpoints: [] }
-const ALL_DEVICES = DETECTOR_IDS.filter((id) => id !== 'marker').map((id) => ({ id, detect: id }))
+// The inspection's own pad (data/inspectionPad.js): nothing to hit, no goal.
+const PAD = INSPECTION_PAD
+const ALL_DEVICES = DETECTOR_IDS.filter((id) => id !== 'marker' && id !== 'lit-marker').map((id) => ({ id, detect: id }))
 
 const NO_KEYS = {}
 const hold = (keys) => () => keys
@@ -132,17 +133,32 @@ test('travel: half a metre forward and half a metre in reverse', () => {
 })
 
 test('a device with no detector of its own is tested by clicking its marker', () => {
-  const devices = [{ id: 'tail-lights' }, { id: 'admin-made-device' }]
+  const devices = [{ id: 'old-tail-lights', detect: 'marker' }, { id: 'admin-made-device' }]
   let frame = 0
   const { tested } = inspect([...startEngine, idle(10)], {
     devices,
     beforeStep(monitor) {
       frame += 1
       if (frame === 5) monitor.mark('admin-made-device')
-      if (frame === 8) monitor.mark('tail-lights')
+      if (frame === 8) monitor.mark('old-tail-lights')
     },
   })
-  assert.deepEqual(tested, ['admin-made-device', 'tail-lights'])
+  assert.deepEqual(tested, ['admin-made-device', 'old-tail-lights'])
+})
+
+test('tail lights: their marker clicked with the lights on', () => {
+  const devices = [{ id: 'tail-lights' }]
+  let frame = 0
+  const clickAt = (frames) => (monitor) => {
+    frame += 1
+    if (frames.includes(frame)) monitor.mark('tail-lights')
+  }
+  // Clicked with the lights off: not tested.
+  assert.deepEqual(inspect([...startEngine, idle(10)], { devices, beforeStep: clickAt([5]) }).tested, [])
+  frame = 0
+  // Lights on (the third frame), then clicked.
+  const { tested } = inspect([...startEngine, tap('l'), idle(10)], { devices, beforeStep: clickAt([6]) })
+  assert.deepEqual(tested, ['tail-lights'])
 })
 
 test('the monitor reads the simulation and never changes it', () => {

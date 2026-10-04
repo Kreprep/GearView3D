@@ -73,6 +73,7 @@ limiter.
 | `sign-reverse` | Load Handling, Accelerate Course | reversing in first-person raises look-direction; looking behind (arrow down) clears it |
 | `sign-release` | Pallet Testing, Precision Carry | a load lowered into the drop zone with the mast still back raises the release-load hint, which is not counted and clears once the mast is level and the load is set down |
 | `sign-record` | Load Handling, Accelerate Course | completing the step saves attemptStats with the learner's progress and shows the summary (trainee mode only) |
+| `inspection-engine-on` | Walk-Around Check, Engine-On | the cab step end to end: interlock and start, the five instruments judged in the popover, every device test detected (horn, lights, beacon, signals, steering, brakes, lift and tilt, travel, the tail-light marker), `started` and completion saved. `prepare` seeds the step's progress in localStorage and stubs `PUT /api/progress`, so nothing reaches the database |
 
 Since Phase 4 the engine only starts through the pre-start interlock
 (seatbelt, parking brake, direction lever in N), and the parking brake holds

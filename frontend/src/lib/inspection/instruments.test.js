@@ -5,7 +5,19 @@ import { cockpitSnapshot } from '../driving/cockpitTelemetry.js'
 import { neutralControls } from '../driving/controls.js'
 import { createDashboardSource } from '../driving/dashboardSource.js'
 import { createSimState } from '../driving/simState.js'
-import { applyInstrumentFaults, faultyReading, gaugeInstrument, INSTRUMENT_IDS, STOCK_GAUGE_INSTRUMENTS, WARNING_LAMPS } from './instruments.js'
+import {
+  applyInstrumentFaults,
+  faultProblem,
+  faultyReading,
+  gaugeFault,
+  gaugeInstrument,
+  gaugeInstrumentFaults,
+  INSTRUMENT_IDS,
+  instrumentReadyAt,
+  STOCK_GAUGE_FAULTS,
+  STOCK_GAUGE_INSTRUMENTS,
+  WARNING_LAMPS,
+} from './instruments.js'
 
 // The dashboard's instruments as the engine-on inspection names them, and
 // scripted faults over their readings (docs/modules/module-improvements-
@@ -63,4 +75,41 @@ test('the cockpit snapshot shows a fault, and the simulation state is untouched'
   assert.equal(snapshot.lampCharge, true, 'charge lamp lit with the engine running')
   assert.equal(snapshot.lampOil, false)
   assert.equal(JSON.stringify(state), before)
+})
+
+test('the stock abnormal gauges read their fault; a row turned Normal or given its own reads that', () => {
+  for (const [id, fault] of Object.entries(STOCK_GAUGE_FAULTS)) {
+    assert.equal(faultProblem(fault, STOCK_GAUGE_INSTRUMENTS[id]), null, id)
+    assert.deepEqual(gaugeFault({ id, answer: 'Abnormal' }), fault)
+    assert.equal(gaugeFault({ id, answer: 'Normal' }), null)
+  }
+  assert.equal(gaugeFault({ id: 'battery-charge-indicator', answer: 'Abnormal', fault: null }), null)
+  assert.deepEqual(gaugeFault({ id: 'lpg-level-gauge', answer: 'Abnormal', fault: { value: 0.03, after: 'key' } }), { value: 0.03, after: 'key' })
+  assert.equal(gaugeFault({ id: 'admin-made-gauge', answer: 'Abnormal' }), null)
+})
+
+test("a step's gauges script one fault per instrument, and skip one that cannot apply", () => {
+  const faults = gaugeInstrumentFaults([
+    { id: 'battery-charge-indicator', answer: 'Abnormal' },
+    { id: 'engine-temperature-gauge', answer: 'Normal' },
+    { id: 'charge-again', instrument: 'lamp.charge', fault: { lamp: 'dead' } },
+    { id: 'fuel', instrument: 'gauge.fuel', fault: { lamp: 'stays-lit' } },
+  ])
+  assert.deepEqual(faults, { 'lamp.charge': { lamp: 'stays-lit' } })
+})
+
+test('fault shapes: lamp faults on lamps, needle faults on gauges', () => {
+  assert.equal(faultProblem(null, 'gauge.temp'), null)
+  assert.equal(faultProblem({ lamp: 'dead' }, 'lamps'), null)
+  assert.equal(faultProblem({ value: 0.5 }, 'hours'), null)
+  assert.ok(faultProblem({ lamp: 'dead' }, 'gauge.temp'))
+  assert.ok(faultProblem({ value: 2 }, 'gauge.temp'))
+  assert.ok(faultProblem({ value: 0.5, after: 'later' }, 'gauge.temp'))
+  assert.ok(faultProblem({ lamp: 'flicker' }, 'lamp.oil'))
+  assert.ok(faultProblem({ lamp: 'dead' }, 'nowhere'))
+})
+
+test('the lamp row is judged from key ON, every other instrument once the engine runs', () => {
+  assert.equal(instrumentReadyAt('lamps'), 'key')
+  for (const instrument of INSTRUMENT_IDS.filter((id) => id !== 'lamps')) assert.equal(instrumentReadyAt(instrument), 'start')
 })

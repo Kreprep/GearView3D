@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createCabGauges } from './cabGauges.js'
-import { cabLampLit, cabLampMounts } from './cabLamps.js'
+import { cabLampLit, cabLampMounts, TURN_SIGNAL_MOUNTS } from './cabLamps.js'
 import { BULB_CHECK_SECONDS, createClusterClock, stepClusterClock } from './clusterClock.js'
 import { cockpitSnapshot } from './cockpitTelemetry.js'
 import { neutralControls } from './controls.js'
@@ -81,6 +81,14 @@ test('the truck has lamps for every cab switch, the turn signals on their own si
   assert.ok(mounts.turnLeft.lamps.every(([x]) => x > 0))
   assert.ok(mounts.turnRight.lamps.every(([x]) => x < 0))
   assert.equal(mounts.turnLeft.mode, 'blink')
+  // The turn signals keep their own mounts, front and rear, out of the cab,
+  // wherever the stalk's hotspot is (D-6); the other lamps follow theirs.
+  const moved = cabLampMounts([{ id: 'turn-signals', position: [0.5, 0.5, 0.5] }, { id: 'headlights', position: [0.2, 0.3, 0.4] }])
+  const byId = Object.fromEntries(moved.map((group) => [group.id, group]))
+  assert.deepEqual([...byId.turnLeft.lamps, ...byId.turnRight.lamps].sort(), [...TURN_SIGNAL_MOUNTS].sort())
+  assert.ok(TURN_SIGNAL_MOUNTS.some(([, , z]) => z > 0) && TURN_SIGNAL_MOUNTS.some(([, , z]) => z < 0))
+  assert.deepEqual(byId.headlights.lamps, [[0.2, 0.3, 0.4]])
+  assert.deepEqual(byId.beacon.lamps, [])
 
   const switches = { ...createDashboardSource().switches, turnSignal: 'left', beacon: true }
   assert.equal(cabLampLit(mounts.turnLeft, switches, false), false, 'key off: nothing lights')
