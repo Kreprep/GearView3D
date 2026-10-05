@@ -74,7 +74,10 @@ async (page) => {
     const result = []
     for (const module of chosen) {
       const steps = await (await fetch(`/api/content/courses/${module.slug}`, { headers })).json()
-      result.push({ slug: module.slug, steps: steps.map((step) => ({ id: step.id, title: step.title, kind: step.kind })) })
+      result.push({
+        slug: module.slug,
+        steps: steps.map((step) => ({ id: step.id, title: step.title, kind: step.kind, mission: step.course?.goalType === 'mission' })),
+      })
     }
     return result
   }, OPTIONS.modules || null)
@@ -83,20 +86,50 @@ async (page) => {
     if (route.request().method() === 'PUT') await route.fulfill({ json: { ok: true } })
     else await route.fallback()
   })
-  const original = await page.evaluate((catalogue) => {
+  // A mission step (the Final Driving Test) also gets a scorecard, so its
+  // task column is checked at its fullest: a failing last run with four
+  // signs and every kind of reason, after an earlier pass.
+  const SAMPLE_MISSION = {
+    lastRun: {
+      finishedAt: '2026-10-05T08:00:00.000Z',
+      elapsedS: 412.6,
+      violations: { 'obstacle-ahead': 1, 'tail-swing': 1, 'look-direction': 1, overspeed: 3 },
+      dangers: { 'obstacle-ahead': 1 },
+      passed: false,
+      score: 50,
+      cautionCount: 5,
+      dangerCount: 1,
+      rules: [
+        { id: 'obstacle-ahead', cautions: 0, dangers: 1, mustBeClean: false, penalty: 20 },
+        { id: 'tail-swing', cautions: 1, dangers: 0, mustBeClean: false, penalty: 5 },
+        { id: 'look-direction', cautions: 1, dangers: 0, mustBeClean: true, penalty: 10 },
+        { id: 'overspeed', cautions: 3, dangers: 0, mustBeClean: false, penalty: 15 },
+      ],
+      reasons: [{ type: 'dangers', count: 1 }, { type: 'cautions', count: 5, max: 3 }, { type: 'clean-rule', ruleId: 'look-direction' }],
+    },
+    runs: 3,
+    bestScore: 90,
+    passedAt: '2026-10-04T08:00:00.000Z',
+  }
+  const original = await page.evaluate(([catalogue, sampleMission]) => {
     const saved = localStorage.getItem('gearview_progress_v1')
     const progress = JSON.parse(saved || '{}')
     progress.simulations = { ...(progress.simulations || {}) }
     for (const module of catalogue) {
       const simulation = progress.simulations[module.slug] || {}
+      const missions = module.steps.filter((step) => step.mission)
       progress.simulations[module.slug] = {
         ...simulation,
         stepsComplete: Object.fromEntries(module.steps.map((step) => [step.id, true])),
+        attemptStats: {
+          ...(simulation.attemptStats || {}),
+          ...Object.fromEntries(missions.map((step) => [step.id, { completedAt: sampleMission.passedAt, violations: {}, dangers: {}, fails: 1, mission: sampleMission }])),
+        },
       }
     }
     localStorage.setItem('gearview_progress_v1', JSON.stringify(progress))
     return { progress: saved, language: localStorage.getItem('gearview_language') }
-  }, catalogue)
+  }, [catalogue, SAMPLE_MISSION])
 
   // The viewport in CSS pixels, whatever zoom the browser runs at (the MCP's
   // Chrome may start at 110%, which would make a 1920 viewport 1745 CSS px).
