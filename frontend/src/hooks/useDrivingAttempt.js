@@ -111,12 +111,14 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
       // The keysUsed adapter: the old keyboard letters, reported once per
       // press, for free-practice completion code.
       freshKeys: () => keyTracker.update(lastControls, keyboard.drainLetters()),
-      // The seatbelt and parking brake when either changed since the last
-      // call, else null.
+      // The seatbelt, the parking brake and the direction lever (the
+      // dashboard's or a shifter's; null when W and S choose the direction)
+      // when any changed since the last call, else null.
       cabChange: () => {
         const { seatbelt, parkingBrake } = lastControls
-        if (lastCab && lastCab.seatbelt === seatbelt && lastCab.parkingBrake === parkingBrake) return null
-        lastCab = { seatbelt, parkingBrake }
+        const lever = lastControls.explicitDirection ? lastControls.direction : null
+        if (lastCab && lastCab.seatbelt === seatbelt && lastCab.parkingBrake === parkingBrake && lastCab.lever === lever) return null
+        lastCab = { seatbelt, parkingBrake, lever }
         return lastCab
       },
     }
@@ -249,6 +251,8 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
       if (command === 'horn') {
         horn = true
         audioRef.current?.horn()
+        // For free-practice completion code (context.horn).
+        emit({ type: 'horn' })
         // The core notes it too, for a checkpoint that wants the horn.
         core.command('horn')
       } else {
@@ -281,9 +285,10 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
     // Sound follows the state the steps just left (lib/driving/drivingAudio.js).
     audioRef.current?.update(core.state, dashboard.switches)
     sim.freshKeys().forEach((key) => emit({ type: 'key-active', key }))
-    // For free-practice completion code (context.seatbelt / parkingBrake).
+    // For free-practice completion code (context.seatbelt / parkingBrake /
+    // leversUsed).
     const cab = sim.cabChange()
-    if (cab) emit({ type: 'cab-switch', seatbelt: cab.seatbelt, parkingBrake: cab.parkingBrake })
+    if (cab) emit({ type: 'cab-switch', seatbelt: cab.seatbelt, parkingBrake: cab.parkingBrake, lever: cab.lever })
 
     if (import.meta.env.DEV) {
       const { lights, beacon, turnSignal } = dashboard.switches

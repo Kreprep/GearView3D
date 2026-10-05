@@ -73,6 +73,11 @@ limiter.
 | `sign-reverse` | Load Handling, Accelerate Course | reversing in first-person raises look-direction; looking behind (arrow down) clears it |
 | `sign-release` | Pallet Testing, Precision Carry | a load lowered into the drop zone with the mast still back raises the release-load hint, which is not counted and clears once the mast is level and the load is set down |
 | `sign-record` | Load Handling, Accelerate Course | completing the step saves attemptStats with the learner's progress and shows the summary (trainee mode only) |
+| `reverse-travel` | Load Handling, Reversing and Looking Behind | S reverses down the aisle with look-direction raised, then (warped round the bend) the last stop clears: checkpoints 3 of 3 |
+| `speed-zones` | Load Handling, Speed Zones and Crossings | stop line, then the blind crossing holds until H (sound-horn raised), then W past the 5 km/h limit (overspeed) to the end |
+| `load-centre` | Pallet Testing, Reading the Load Chart | the far 800 kg load reads a 0.9 m load centre, derated under 700 kg: lifting fails as an overload |
+| `stability-turns` | Pallet Testing, Turning with a Load | the 900 kg load picked up, crept forward, set down in the drop zone: delivered, lateral margin positive |
+| `rack-retrieval` | Pallet Testing, Retrieving from the Top Shelf | the pallet on the top shelf is lifted off it, lowered to travel height and delivered to the dock |
 | `inspection-engine-on` | Walk-Around Check, Engine-On | the cab step end to end: interlock and start, the five instruments judged in the popover, every device test detected (horn, lights, beacon, signals, steering, brakes, lift and tilt, travel, the tail-light marker), `started` and completion saved. `prepare` seeds the step's progress in localStorage and stubs `PUT /api/progress`, so nothing reaches the database |
 
 Since Phase 4 the engine only starts through the pre-start interlock

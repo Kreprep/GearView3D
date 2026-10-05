@@ -16,7 +16,14 @@ import { moduleQuizQuestions } from '../../frontend/src/data/moduleQuizzes.js'
 import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
 import { withMissingAlertDefaults } from '../../frontend/src/lib/courseAlerts.js'
 import { withMissingCompletionCode } from '../../frontend/src/lib/courseGoals.js'
-import { canonicalJson, COURSE_STOCK_FIELDS, MODULE_STOCK_FIELDS, staleStockUpgrades } from '../src/lib/stockHistory.js'
+import {
+  canonicalJson,
+  COURSE_STOCK_FIELDS,
+  MODULE_STOCK_FIELDS,
+  SKILL_STOCK_FIELDS,
+  staleStockUpgrades,
+} from '../src/lib/stockHistory.js'
+import { placeNewStep } from '../src/lib/stepOrder.js'
 import { STOCK_HISTORY } from './stockHistory.js'
 import { EQUIPMENT_DEFAULTS } from '../../frontend/src/data/equipment.js'
 import { buildDefaultHotspots } from '../../frontend/src/data/hotspotDefaults.js'
@@ -219,11 +226,22 @@ async function seedQuizQuestions() {
 }
 
 async function seedCourses() {
-  for (const course of buildDefaultCourses()) {
+  const defaults = buildDefaultCourses()
+  const stockIds = (moduleSlug) => defaults.filter((course) => course.moduleSlug === moduleSlug).map((course) => course.id)
+
+  for (const course of defaults) {
     const existing = await prisma.course.findUnique({ where: { id: course.id } })
 
     if (!existing) {
-      await prisma.course.create({ data: { ...course, builtIn: true, published: true } })
+      // A step new in this release lands after its stock predecessor, not on
+      // its stock sortOrder, which an older database already uses
+      // (src/lib/stepOrder.js). In an empty module that is the stock order.
+      const stored = await prisma.course.findMany({ where: { moduleSlug: course.moduleSlug }, select: { id: true, sortOrder: true } })
+      const { sortOrder, shifted } = placeNewStep(stockIds(course.moduleSlug), stored, course.id)
+      await prisma.$transaction([
+        ...shifted.map((row) => prisma.course.update({ where: { id: row.id }, data: { sortOrder: row.sortOrder } })),
+        prisma.course.create({ data: { ...course, sortOrder, builtIn: true, published: true } }),
+      ])
       continue
     }
 
@@ -276,12 +294,21 @@ async function seedCourses() {
 // The draft TR-mapped skill catalogue (data/skillDefaults.js), create-if-missing.
 // A skill's module links are created with it and only then, so a link an admin
 // removed stays removed; links to a module that does not exist are skipped.
+// A built-in skill's wording or evidence still holding an earlier release's
+// stock moves to today's (src/lib/stockHistory.js), which is how evidence for
+// a new step reaches a deployed database; an edited field is left alone.
 async function seedSkills() {
   const modules = await prisma.module.findMany({ select: { id: true, slug: true } })
   const moduleIds = Object.fromEntries(modules.map((module) => [module.slug, module.id]))
 
   for (const [index, skill] of SKILL_DEFAULTS.entries()) {
-    if (await prisma.skill.findUnique({ where: { id: skill.id } })) continue
+    const existing = await prisma.skill.findUnique({ where: { id: skill.id } })
+    if (existing) {
+      if (!existing.builtIn) continue
+      const upgrades = staleStockUpgrades(existing, skillRowDefaults(skill, index), STOCK_HISTORY.Skill?.[skill.id], SKILL_STOCK_FIELDS)
+      if (Object.keys(upgrades).length) await prisma.skill.update({ where: { id: skill.id }, data: upgrades })
+      continue
+    }
 
     const links = skill.modules
       .filter((link) => moduleIds[link.module])

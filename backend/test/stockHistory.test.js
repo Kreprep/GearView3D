@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { buildDefaultCourses } from '../../frontend/src/data/courseDefaults.js'
 import { canonicalJson, STOCK_FIELDS, staleStockUpgrades, stockFingerprint, stockRows } from '../src/lib/stockHistory.js'
 import { trainingModules } from '../../frontend/src/data/trainingModules.js'
+import { SKILL_DEFAULTS, skillRowDefaults } from '../../frontend/src/data/skillDefaults.js'
 import { STOCK_HISTORY, STOCK_RELEASES } from '../prisma/stockHistory.js'
 
 const current = { instructions: 'Fasten the seatbelt, then press E.', hint: 'New hint', data: { speedLimitKmh: 18, checkpoints: [] } }
@@ -31,7 +32,7 @@ test('nothing happens without history, a stored row, or a difference', () => {
 })
 
 test('the recorded history names built-in rows and their stock fields only', () => {
-  const rows = stockRows({ buildDefaultCourses, trainingModules })
+  const rows = stockRows({ buildDefaultCourses, trainingModules, SKILL_DEFAULTS, skillRowDefaults })
   assert.deepEqual(STOCK_RELEASES.slice(0, 2), ['7b5763c', 'c94072f'])
   for (const [table, entries] of Object.entries(STOCK_HISTORY)) {
     assert.ok(STOCK_FIELDS[table], table)
@@ -46,7 +47,7 @@ test('the recorded history names built-in rows and their stock fields only', () 
 })
 
 test("no recorded fingerprint is today's stock, so a current row is never rewritten", () => {
-  const rows = stockRows({ buildDefaultCourses, trainingModules })
+  const rows = stockRows({ buildDefaultCourses, trainingModules, SKILL_DEFAULTS, skillRowDefaults })
   for (const [table, entries] of Object.entries(STOCK_HISTORY)) {
     for (const [key, fields] of Object.entries(entries)) {
       for (const [field, prints] of Object.entries(fields)) {
@@ -54,4 +55,16 @@ test("no recorded fingerprint is today's stock, so a current row is never rewrit
       }
     }
   }
+})
+
+test("a skill's wording and evidence are stock fields; its order is not", () => {
+  const rows = stockRows({ buildDefaultCourses, trainingModules, SKILL_DEFAULTS, skillRowDefaults })
+  assert.deepEqual(Object.keys(rows.Skill), SKILL_DEFAULTS.map((skill) => skill.id))
+  assert.ok(STOCK_FIELDS.Skill.includes('evidence'))
+  assert.ok(!STOCK_FIELDS.Skill.includes('sortOrder'))
+  const old = { ...rows.Skill['load-chart'], evidence: [{ type: 'step-complete', module: 'pallet-testing', stepId: 'load-limits' }] }
+  const skillHistory = { evidence: [stockFingerprint(old.evidence)] }
+  assert.deepEqual(staleStockUpgrades(old, rows.Skill['load-chart'], skillHistory, STOCK_FIELDS.Skill), {
+    evidence: rows.Skill['load-chart'].evidence,
+  })
 })

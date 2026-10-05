@@ -8,7 +8,8 @@
 //
 // This closes the gap without that risk. backend/prisma/stockHistory.js
 // (written by scripts/recordStockHistory.js) records, per table (built-in
-// Course rows by id, Module rows by slug) and field, a fingerprint of the
+// Course rows by id, Module rows by slug, built-in Skill rows by id) and
+// field, a fingerprint of the
 // stock value each earlier release shipped. A field whose stored value matches
 // one of them is still exactly what a release put there, never edited, so the
 // seed moves it to the current stock value. A field an admin changed, even by
@@ -34,19 +35,25 @@ export function stockFingerprint(value) {
 // The fields a release's stock sets, per table.
 export const COURSE_STOCK_FIELDS = ['title', 'objective', 'instructions', 'hint', 'goalType', 'data', 'content']
 export const MODULE_STOCK_FIELDS = ['title', 'fullTitle', 'subtitle', 'description', 'imageUrl']
+// A skill's wording and evidence. Its place in the list and its module links
+// are the admin's, so neither is upgraded.
+export const SKILL_STOCK_FIELDS = ['title', 'description', 'category', 'tesdaRef', 'evidence']
 
 // Each table's stock rows, keyed the way STOCK_HISTORY keys them, from a
-// checkout's data modules (the current one, or an earlier release's).
-export function stockRows({ buildDefaultCourses, trainingModules }) {
+// checkout's data modules (the current one, or an earlier release's). A
+// release from before the Skills Checklist has no skill defaults, so no
+// Skill rows.
+export function stockRows({ buildDefaultCourses, trainingModules, SKILL_DEFAULTS = [], skillRowDefaults }) {
   return {
     Course: Object.fromEntries(buildDefaultCourses().map((course) => [course.id, course])),
     Module: Object.fromEntries(
       trainingModules.map((module) => [module.slug, { ...module, fullTitle: module.fullTitle || module.title }]),
     ),
+    Skill: Object.fromEntries(SKILL_DEFAULTS.map((skill, index) => [skill.id, skillRowDefaults(skill, index)])),
   }
 }
 
-export const STOCK_FIELDS = { Course: COURSE_STOCK_FIELDS, Module: MODULE_STOCK_FIELDS }
+export const STOCK_FIELDS = { Course: COURSE_STOCK_FIELDS, Module: MODULE_STOCK_FIELDS, Skill: SKILL_STOCK_FIELDS }
 
 // The fields of `stored` (a row, or a draft payload) still holding an earlier
 // release's stock value, moved to `current`'s. Returns the changed fields

@@ -29,9 +29,12 @@ function unique(items) {
 // lib/customCompletion.js). Tracked per step id, so more than one
 // free-practice step can exist in a module.
 //
-// The rule's context is { keysUsed, engineStarted, seatbelt, parkingBrake }.
-// The last two are the cab switches' positions right now (the viewer's
-// cab-switch event), not a history, so they are not saved with progress.
+// The rule's context is { keysUsed, engineStarted, seatbelt, parkingBrake,
+// horn, leversUsed }. seatbelt and parkingBrake are the cab switches'
+// positions right now (the viewer's cab-switch event); horn (it has sounded)
+// and leversUsed (the positions the direction lever has been put in, 'F' |
+// 'N' | 'R') are since the step was opened. None of the four is saved with
+// progress.
 //
 // Completing a step also records what the safety signs logged on that attempt
 // (simulation.attemptStats[stepId], lib/simulationProgress.js). The viewer
@@ -41,6 +44,8 @@ function unique(items) {
 export function useDrivingController({ moduleSlug, courseById, simulation, gradedStepIds, saveSimulation, markStepComplete, updateSimulation }) {
   const [lastFail, setLastFail] = useState(null)
   const cabRef = useRef({ seatbelt: false, parkingBrake: false })
+  // The horn and the lever positions on this visit to a step.
+  const usedRef = useRef({ stepId: null, horn: false, leversUsed: [] })
   const tallyRef = useRef({ stepId: null, tally: emptyAttemptTally() })
   const t = useT()
 
@@ -52,13 +57,20 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
 
   const keysUsedFor = (stepId) => simulation.keysUsedByStep?.[stepId] || []
 
+  const usedOn = (stepId) => {
+    if (usedRef.current.stepId !== stepId) usedRef.current = { stepId, horn: false, leversUsed: [] }
+    return usedRef.current
+  }
+
   // The completion write reads the *stored* snapshot rather than the
   // `simulation` this render closed over: several key events (each awaiting
   // the Worker) can be in flight before React re-renders, and each must
   // build on the previous one.
   const evaluateFreePractice = (stepId, merged) => {
     const keysUsed = merged.keysUsedByStep?.[stepId] || []
-    evaluateFreeCompletion(courseById[stepId], { keysUsed, engineStarted: merged.engineStarted, ...cabRef.current }).then((done) => {
+    const { horn, leversUsed } = usedOn(stepId)
+    const context = { keysUsed, engineStarted: merged.engineStarted, ...cabRef.current, horn, leversUsed }
+    evaluateFreeCompletion(courseById[stepId], context).then((done) => {
       if (!done) return
       const live = buildSimulationState(getStoredProgress().simulations[moduleSlug] || {}, gradedStepIds)
       // The rule is evaluated again on every key after it first holds; only
@@ -95,7 +107,18 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
 
     if (event.type === 'cab-switch') {
       cabRef.current = { seatbelt: event.seatbelt, parkingBrake: event.parkingBrake }
+      const used = usedOn(currentStep.id)
+      if (event.lever) used.leversUsed = unique([...used.leversUsed, event.lever])
       if (isFreePractice) evaluateFreePractice(currentStep.id, simulation)
+      return
+    }
+
+    if (event.type === 'horn') {
+      const used = usedOn(currentStep.id)
+      if (isFreePractice && !used.horn) {
+        used.horn = true
+        evaluateFreePractice(currentStep.id, simulation)
+      }
       return
     }
 

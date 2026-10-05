@@ -43,7 +43,16 @@ async (page) => {
   // use real keys from there. FORKS_IN is that place for each course's
   // pallet: its near face, less the fork heel's 0.308 and a centimetre.
   // A load on the forks goes with a warp.
-  const FORKS_IN = { precisionCarry: 4.5395, loadLimitsHeavy: 6.5645, palletPickup: 9.5395, rackStorage: 5.5395 }
+  const FORKS_IN = {
+    precisionCarry: 4.5395,
+    loadLimitsHeavy: 6.5645,
+    palletPickup: 9.5395,
+    rackStorage: 5.5395,
+    // Module improvements Phase 6: the medium (800 / 900 kg) pallets are as
+    // deep as the light ones.
+    loadCentre: 6.5395,
+    stabilityTurns: 3.5395,
+  }
   // Up to travel height (the valve coasts the carriage on to about 0.05) and
   // the mast back.
   const PICK_UP = [
@@ -194,6 +203,102 @@ async (page) => {
         { wait: 2000 },
       ],
       expect: ["d.failReason === 'tip-over'", "d.tipAxis === 'right'", 'Math.abs(d.tipAngle - Math.PI / 2) < 0.15', "d.dangers['tip-risk'] >= 1", '!d.palletOnForks[0]', "a.played.includes('metalImpact')"],
+    },
+    // --- New steps (module improvements Phase 6) ----------------------------
+    'reverse-travel': {
+      module: 'load-handling', step: 'Reversing and Looking Behind',
+      // Straight back down the aisle on S, looking ahead (first-person), so
+      // the look-direction sign comes up; then warps round the bend and to
+      // the stop, where S again clears the last checkpoint.
+      actions: [
+        ...START,
+        { hold: 's', until: 'd.checkpointIndex >= 1 || d.failed', timeout: 25000 },
+        { set: { x: 0.9, z: 4.5, heading: -0.25, speed: 0 } },
+        { wait: 400 },
+        { set: { x: 1.8, z: 2.0, heading: -0.25, speed: 0 } },
+        { wait: 300 },
+        { hold: 's', until: 'd.checkpointIndex >= 3 || d.failed', timeout: 8000 },
+        { wait: 800 },
+      ],
+      expect: ['d.checkpointIndex === 3', '!d.failed', "d.violations['look-direction'] >= 1"],
+    },
+    'speed-zones': {
+      module: 'load-handling', step: 'Speed Zones and Crossings',
+      // Stopped on the stop line, then stopped in the blind crossing without
+      // the horn (the sound-horn sign comes up and the crossing holds), then
+      // H, then W out of the zone, past its 5 km/h limit.
+      actions: [
+        ...START,
+        { set: { x: 0, z: 6, speed: 0 } },
+        { wait: 600 },
+        { set: { x: 0, z: 13, speed: 0 } },
+        { wait: 1500 },
+        { press: 'h' },
+        { wait: 400 },
+        { hold: 'w', until: 'd.checkpointIndex >= 3 || d.failed', timeout: 20000 },
+        { hold: 's', until: 'd.speed < 0.06', timeout: 5000 },
+      ],
+      expect: ['d.checkpointIndex === 3', '!d.failed', "d.violations['sound-horn'] >= 1", "d.violations['overspeed'] >= 1"],
+    },
+    'load-centre': {
+      module: 'pallet-testing', step: 'Reading the Load Chart',
+      // The far load: 800 kg at a 0.9 m load centre, over the plate derated
+      // for it, so lifting fails as an overload.
+      setup: { x: -1.4, z: FORKS_IN.loadCentre, heading: 0 },
+      actions: [...START, { hold: 'r', until: 'd.failed', timeout: 5000 }, { wait: 500 }],
+      expect: ["d.failReason === 'overload'", 'Math.abs(d.load.centre - 0.9) < 0.05', 'd.load.deratedKg < 700', 'd.load.overCapacity'],
+    },
+    'stability-turns': {
+      module: 'pallet-testing', step: 'Turning with a Load',
+      // The 900 kg load picked up, eased into the first stretch, then warped
+      // to the drop zone and set down.
+      setup: { x: 0, z: FORKS_IN.stabilityTurns, heading: 0 },
+      actions: [
+        ...START,
+        ...PICK_UP,
+        // A tap of W: held, it reaches top speed in two metres, and the hard
+        // stop after that tips the truck forward with this load, as it should.
+        { hold: 'w', until: 'd.speed >= 0.2 || d.failed', timeout: 10000 },
+        { hold: 's', until: 'd.speed < 0.02', timeout: 5000 },
+        { set: { x: 0, z: 26.9, heading: 0, speed: 0 } },
+        { wait: 300 },
+        { hold: 'g', until: 'd.tilt >= -0.002', timeout: 5000 },
+        { hold: 'f', until: 'd.forkHeight <= 0', timeout: 5000 },
+        { hold: 's', until: 'd.deliveredCount >= 1 || d.z < 25.9', timeout: 10000 },
+      ],
+      expect: ['d.deliveredCount === 1', "d.palletStates[0] === 'delivered'", 'd.stability.lateral > 0', '!d.failed'],
+    },
+    'rack-retrieval': {
+      module: 'pallet-testing', step: 'Retrieving from the Top Shelf',
+      // The pallet starts on the top shelf. Forks up to its pockets, in to
+      // the rack's face (z 11.369 for the rack at z 12), lift it clear, warp
+      // back out, lower to travel height, warp to the dock and set it down.
+      setup: { x: 0, z: 10.4, heading: 0 },
+      actions: [
+        ...START,
+        { hold: 'r', until: 'd.forkHeight >= 0.656', timeout: 15000 },
+        { wait: 400 },
+        // The carriage coasts on about 7 mm once F is let go: it settles
+        // near 0.646, the tines free in the pallet's pockets.
+        { hold: 'f', until: 'd.forkHeight <= 0.653', timeout: 5000 },
+        { wait: 400 },
+        { set: { x: 0, z: 11.369, speed: 0 } },
+        { wait: 300 },
+        { hold: 'r', until: 'd.forkHeight >= 0.675', timeout: 5000 },
+        { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
+        { wait: 300 },
+        { set: { x: 0, z: 10.4, speed: 0 } },
+        { wait: 300 },
+        { hold: 'f', until: 'd.forkHeight <= 0.05', timeout: 15000 },
+        // The load rides about 0.6 ahead of the truck: z 2.6 puts it over
+        // the dock (z 3).
+        { set: { x: 0, z: 2.6, speed: 0 } },
+        { wait: 300 },
+        { hold: 'g', until: 'd.tilt >= -0.002', timeout: 5000 },
+        { hold: 'f', until: 'd.forkHeight <= 0', timeout: 5000 },
+        { hold: 's', until: 'd.deliveredCount >= 1 || d.z < 1.6', timeout: 10000 },
+      ],
+      expect: ['d.deliveredCount === 1', "d.palletStates[0] === 'delivered'", '!d.failed'],
     },
     interlock: {
       module: 'load-handling', step: 'Accelerate Course',
@@ -566,7 +671,7 @@ async (page) => {
     }
     await sampleLayout()
     const d = await debug()
-    log.push(`${JSON.stringify(action)} -> t=${d.time?.toFixed(2)} x=${d.x.toFixed(3)} z=${d.z.toFixed(3)} v=${d.speed.toFixed(3)} fork=${d.forkHeight.toFixed(3)} tilt=${d.tilt.toFixed(3)}${d.failed ? ` FAILED(${d.failReason})` : ''}${d.signs?.length ? ` signs=${d.signs.map((sign) => sign.id).join('+')}` : ''}`)
+    log.push(`${JSON.stringify(action)} -> t=${d.time?.toFixed(2)} x=${d.x.toFixed(3)} z=${d.z.toFixed(3)} v=${d.speed.toFixed(3)} fork=${d.forkHeight.toFixed(3)} tilt=${d.tilt.toFixed(3)}${d.palletStates?.length ? ` pallets=${d.palletStates.join('+')}` : ''}${d.failed ? ` FAILED(${d.failReason})` : ''}${d.signs?.length ? ` signs=${d.signs.map((sign) => sign.id).join('+')}` : ''}`)
   }
 
   await page.waitForTimeout(300)
