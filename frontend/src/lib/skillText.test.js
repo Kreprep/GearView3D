@@ -26,6 +26,9 @@ test('every rule type reads as a sentence, naming the titles it was given', () =
   assert.match(describeEvidence({ type: 'quiz-score', module: 'x', moduleTitle: 'Pallets', min: 80 }, en, { staff: true }), /Pallets quiz \(the trainee's latest try\)/)
   assert.match(describeEvidence({ type: 'parts-viewed' }, fil), /bawat parte/)
   assert.match(describeEvidence({ type: 'caution-recovered' }, en), /warning sign/)
+  const pass = { type: 'mission-pass', module: 'final-driving-test', stepId: 'final-test', moduleTitle: 'Final Driving Test', stepTitle: 'The Final Test' }
+  assert.equal(describeEvidence(pass, en), 'Pass "The Final Test" (Final Driving Test) on its scorecard')
+  assert.match(describeEvidence(pass, fil), /Pumasa sa "The Final Test"/)
 })
 
 test('a deleted step or module falls back to its id', () => {

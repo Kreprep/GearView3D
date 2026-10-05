@@ -339,6 +339,79 @@ async (page) => {
       ],
     },
     // --- Safety signs (Phase 6), one per rule family -----------------------
+    mission: {
+      module: 'final-driving-test', step: 'The Final Test',
+      // The whole Final Driving Test, warped from task to task with real keys
+      // for each job: out of the bay, the horn at the crossing, the pallet
+      // within the plate onto the middle shelf, the top-shelf pallet to the
+      // dock, parked and secured. Warps are not travel, so no sign comes up
+      // and the run passes; the scorecard is saved and shown. `prepare`
+      // keeps it off the database.
+      prepare: { stepId: 'final-test', before: [] },
+      actions: [
+        ...START,
+        { set: { x: 0.3, z: -0.2, heading: 0, speed: 0 } },
+        { hold: [], until: 'd.missionIndex >= 2', timeout: 4000 },
+        { set: { x: 0, z: 3, heading: 0, speed: 0 } },
+        { press: 'h' },
+        { wait: 300 },
+        { set: { x: 0, z: 5, heading: 0, speed: 0 } },
+        { hold: [], until: 'd.missionIndex >= 3', timeout: 4000 },
+        // Forks in the pallet within the plate (x -1.2, z 12.5).
+        { set: { x: -1.2, z: 12.0395, heading: 0, speed: 0 } },
+        { wait: 300 },
+        ...PICK_UP,
+        // In front of the rack (z 20), the load raised above the middle
+        // shelf, then in to the rack's face.
+        { set: { x: -1.2, z: 18.75, heading: 0, speed: 0 } },
+        { hold: 'r', until: 'd.forkHeight >= 0.4152', timeout: 10000 },
+        { wait: 300 },
+        { set: { x: -1.2, z: 19.369, heading: 0, speed: 0 } },
+        { wait: 300 },
+        { hold: 'g', until: 'd.tilt >= -0.002', timeout: 5000 },
+        { hold: 'f', until: 'd.forkHeight <= 0.3712', timeout: 5000 },
+        { wait: 300 },
+        { set: { x: -1.2, z: 18.75, heading: 0, speed: 0 } },
+        { hold: [], until: 'd.missionIndex >= 4', timeout: 4000 },
+        // The top-shelf pallet, as rack-retrieval takes it.
+        { hold: 'r', until: 'd.forkHeight >= 0.656', timeout: 15000 },
+        { wait: 400 },
+        { hold: 'f', until: 'd.forkHeight <= 0.653', timeout: 5000 },
+        { wait: 400 },
+        { set: { x: -1.2, z: 19.369, heading: 0, speed: 0 } },
+        { wait: 300 },
+        { hold: 'r', until: 'd.forkHeight >= 0.675', timeout: 5000 },
+        { hold: 't', until: 'd.tilt <= -0.1', timeout: 5000 },
+        { wait: 300 },
+        { set: { x: -1.2, z: 18.75, heading: 0, speed: 0 } },
+        { wait: 300 },
+        { hold: 'f', until: 'd.forkHeight <= 0.05', timeout: 15000 },
+        // Over the dock (z 15.5): the load rides about 0.4 ahead.
+        { set: { x: -1.2, z: 15.1, heading: 0, speed: 0 } },
+        { wait: 300 },
+        { hold: 'g', until: 'd.tilt >= -0.002', timeout: 5000 },
+        { hold: 'f', until: 'd.forkHeight <= 0', timeout: 5000 },
+        { wait: 300 },
+        { set: { x: -1.2, z: 14.3, heading: 0, speed: 0 } },
+        { hold: [], until: 'd.missionIndex >= 5', timeout: 4000 },
+        // Into the bay and secured: parking brake, then the key off.
+        { set: { x: -1.2, z: 9.5, heading: 0, speed: 0 } },
+        { wait: 500 },
+        { press: 'Space' },
+        { wait: 300 },
+        { press: 'e' },
+        { hold: [], until: 'd.missionIndex >= 6', timeout: 5000 },
+        { wait: 1000 },
+      ],
+      expect: [
+        'd.missionIndex === 6',
+        '!d.failed',
+        "d.palletStates.join() === 'delivered,ground,delivered'",
+        'p && p.mission && p.mission.lastRun.passed === true',
+        'p && typeof p.mission.passedAt === "string" && typeof p.completedAt === "string"',
+        "l.scorecard !== null && l.scorecard.includes('Passed')",
+      ],
+    },
     'sign-interlock': {
       module: 'load-handling', step: 'Accelerate Course',
       actions: [
@@ -605,7 +678,7 @@ async (page) => {
 
   // Where the safety signs sit against the dashboard and the proximity inset,
   // sampled through the run: they must never cover either.
-  const layout = { maxSigns: 0, overlap: false, summary: null }
+  const layout = { maxSigns: 0, overlap: false, summary: null, scorecard: null }
   const sampleLayout = async () => {
     const sample = await page.evaluate(() => {
       const box = (element) => element.getBoundingClientRect()
@@ -616,11 +689,14 @@ async (page) => {
         signs: signs.length,
         overlap: signs.some((sign) => blocked.some((other) => overlaps(sign, other))),
         summary: document.querySelector('[data-attempt-violations]')?.textContent ?? null,
+        // The Final Driving Test's scorecard in the task panel.
+        scorecard: document.querySelector('.mission-scorecard')?.textContent ?? null,
       }
     })
     layout.maxSigns = Math.max(layout.maxSigns, sample.signs)
     layout.overlap = layout.overlap || sample.overlap
     layout.summary = sample.summary
+    layout.scorecard = sample.scorecard
   }
 
   const log = []
@@ -678,13 +754,13 @@ async (page) => {
   const final = await debug()
   const audio = await page.evaluate(() => window.__audioDebug?.() ?? null)
   await sampleLayout()
-  // The step's saved safety record. The admin preview saves no progress.
+  // The step's saved safety record. The admin preview saves no progress. The
+  // step's id is its title slugged, unless the scenario names it (`stepId`).
   const record = mode === 'trainee'
-    ? await page.evaluate(([module, stepTitle]) => {
+    ? await page.evaluate(([module, stepTitle, stepId]) => {
         const stats = JSON.parse(localStorage.getItem('gearview_progress_v1') || '{}').simulations?.[module]?.attemptStats || {}
-        const stepId = stepTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-        return stats[stepId] ?? null
-      }, [scenario.module, scenario.step])
+        return stats[stepId || stepTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')] ?? null
+      }, [scenario.module, scenario.step, scenario.stepId || scenario.prepare?.stepId || null])
     : null
   const hud = await page.locator('.driving-hud-status').first().innerText().catch(() => null)
   // The cab inspection's watch (`i`: tested devices, instrument targets) and

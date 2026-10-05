@@ -28,6 +28,7 @@
 import { drivingCourses } from '../data/drivingCourse.js'
 import { palletPhysics, TINE_HEEL_Z } from '../data/physicsProfile.js'
 import { RACK_LEVEL_HEIGHTS } from '../data/rackProfile.js'
+import { hornReach } from '../lib/driving/stepGoals.js'
 import { featureCourses } from './featureCourses.js'
 
 export const SCENARIO_DT = 1 / 60
@@ -103,11 +104,11 @@ const settle = (frames = 30) => ({ name: 'settle', keys: hold(NO_KEYS), frames }
 
 // Creep forward until the truck is stopped by what is in front of it: the
 // rack's face, where its body is held.
-const creepUntilBlocked = (speed = 0.25) => ({
+const creepUntilBlocked = (speed = 0.25, frames = 1500) => ({
   name: 'creep until blocked',
   keys: (obs) => speedKeys(obs, speed),
   until: (obs, phaseFrame) => phaseFrame > 20 && obs.speed === 0,
-  frames: 1500,
+  frames,
 })
 
 // Where the truck stands, on a course driven up the +Z axis, with its forks
@@ -176,11 +177,11 @@ const tiltBackTo = (angle) => ({
 // Setting a load down: level the mast, lower until the surface has the load
 // and the tines hang free in the pockets, then back straight out.
 const levelMast = { name: 'level the mast', keys: hold({ tiltForward: true }), until: (obs) => obs.tilt >= -0.002, frames: 300 }
-const backOut = (distance) => {
+const backOut = (distance, speed = -0.25) => {
   let from = 0
   return {
     name: 'back out',
-    keys: (obs) => speedKeys(obs, -0.25),
+    keys: (obs) => speedKeys(obs, speed),
     until: (obs, phaseFrame) => {
       if (phaseFrame === 0) from = obs.z
       return from - obs.z >= distance
@@ -685,6 +686,7 @@ export const drivingScenarios = [
   },
   ...phase5Scenarios(),
   ...phase6Scenarios(),
+  ...phase7Scenarios(),
 ]
 
 // The module improvements' Phase 5 features, on the fixture courses in
@@ -899,6 +901,144 @@ function phase6Scenarios() {
         backOut(0.8),
         brakeToStop,
         settle(),
+      ],
+    },
+  ]
+}
+
+// Reverse through `points` in turn, the tail toward each, moving on within
+// `reach` of each and stopping at the last.
+function reverseRoute(points, { speed = 0.25, reach = 0.3 } = {}) {
+  let index = 0
+  return {
+    name: 'reverse along the route',
+    keys: (obs, phaseFrame) => {
+      if (phaseFrame === 0) index = 0
+      while (index < points.length - 1 && distanceTo(obs, points[index]) < reach) index += 1
+      const point = points[index]
+      const last = index === points.length - 1
+      const distance = distanceTo(obs, point)
+      const target = last ? (distance < 0.05 ? 0 : -Math.min(speed, Math.max(0.1, distance * 0.6))) : -speed
+      return { ...reverseSteerKeys(obs, point), ...speedKeys(obs, target) }
+    },
+    until: (obs, phaseFrame) => obs.failed || (phaseFrame > 20 && stopped(obs) && distanceTo(obs, points.at(-1)) < 0.12),
+    frames: 4000,
+  }
+}
+
+// Drive up the line x = `x` and stop with the truck at `z`, steering for a
+// point beyond it, so the truck is square when it stops (steering for the
+// stop point itself swings it about as it arrives).
+function driveStraightTo(x, z, speed = 0.25) {
+  return {
+  name: `drive straight to ${z}`,
+  keys: (obs) => {
+    const remaining = z - obs.z
+    const steer = obs.speed > 0.02 ? steerKeys(obs, [x, 0, z + 3], 0.004) : {}
+    return { ...steer, ...speedKeys(obs, remaining <= 0.012 ? 0 : Math.min(speed, Math.max(0.08, remaining * 0.6))) }
+  },
+  until: (obs, phaseFrame) => obs.failed || (phaseFrame > 20 && stopped(obs) && obs.z >= z - 0.05),
+  frames: 5000,
+  }
+}
+
+// The Final Driving Test (module improvements Phase 7): the whole mission, as
+// a learner who passes drives it, and the same drive with one mistake, the
+// forks put into the pallet that is over the derated capacity and backed out
+// of again: a danger sign, nothing lifted, the mission still finished.
+function phase7Scenarios() {
+  const test = course('final-test')
+  const [storePallet] = test.pallets
+  const rack = test.racks[0]
+  const dock = test.dropZones[0]
+  const bay = test.parkingBay
+  const crossing = test.checkpoints[1]
+  // The horn is sounded once the crossing is in reach: before that it would
+  // not count, after it the sound-horn sign would come up.
+  const hornAt = crossing.position[2] - hornReach(crossing) + 0.03
+  // Under the aisle's 5 km/h (0.347 units a second), with the keys' overshoot.
+  const speed = 0.2
+  // With the forks raised, the truck goes no faster than a creep (1 km/h)
+  // until their tips are in the rack's slot, or forks-high-travel comes up.
+  const inch = 0.06
+  const inchIn = () => creepUntilBlocked(inch, 5000)
+
+  const toTheCrossing = [
+    ...startEngine,
+    reverseRoute([[1.3, 0, 1], [0.6, 0, 0.4], test.checkpoints[0].position], { speed }),
+    followPoints([[0.15, 0, 1.4], [0, 0, 2.6]], { speed, reach: 0.3 }),
+    { name: 'approach the crossing', keys: driveTo(crossing.position, { speed }), until: (obs) => obs.failed || obs.z >= hornAt, frames: 900 },
+    honk,
+    {
+      name: 'stop in the crossing',
+      keys: driveTo(crossing.position, { speed, stop: true, stopRadius: 0.3 }),
+      until: (obs, phaseFrame) => obs.failed || (phaseFrame > 20 && stopped(obs) && distanceTo(obs, crossing.position) < 0.4),
+      frames: 1200,
+    },
+  ]
+  const lineUpWith = (pallet, from) =>
+    followPoints([...from, [pallet.position[0], 0, pallet.position[2] - 1.9], [pallet.position[0], 0, pallet.position[2] - 1.3]], { speed, reach: 0.25 })
+  const atTheRack = rack.position[2] - 1.25
+  const storeAndRetrieve = ({ beforeRetrieve = [] } = {}) => [
+    lineUpWith(storePallet, [[0, 0, 8], [-0.6, 0, 9.4]]),
+    forksIntoSteered(storePallet),
+    raiseTo(TRAVEL_HEIGHT),
+    tiltBackTo(-0.1),
+    driveStraightTo(rack.position[0], atTheRack, speed),
+    raiseTo(aboveShelf('middle')),
+    inchIn(),
+    levelMast,
+    lowerTo(freeOnShelf('middle')),
+    backOut(0.6, -inch),
+    brakeToStop,
+    ...beforeRetrieve,
+    raiseTo(freeOnShelf('top') + 0.01),
+    lowerTo(freeOnShelf('top') + 0.004),
+    inchIn(),
+    raiseTo(aboveShelf('top', 0.02)),
+    tiltBackTo(-0.1),
+    backOut(0.8, -inch),
+    brakeToStop,
+    lowerTo(TRAVEL_HEIGHT),
+    reverseTo(dock.position[2] - 0.4, -speed),
+    levelMast,
+    lowerTo(0),
+    backOut(0.8, -speed),
+    brakeToStop,
+  ]
+  const park = [
+    reverseRoute([[bay.position[0], 0, bay.position[2] + 1.2], bay.position], { speed, reach: 0.25 }),
+    brakeToStop,
+    ...shutDown,
+    settle(30),
+  ]
+
+  return [
+    { id: 'final-test-pass', course: test, phases: [...toTheCrossing, ...storeAndRetrieve(), ...park] },
+    {
+      // The same drive with one mistake: between storing the one pallet and
+      // fetching the other, forks down, back off and up to the rack again
+      // too fast, braking only just short of it. obstacle-ahead rises to
+      // danger, nothing is touched, and the mission is still finished.
+      id: 'final-test-danger',
+      course: test,
+      phases: [
+        ...toTheCrossing,
+        ...storeAndRetrieve({
+          beforeRetrieve: [
+            lowerTo(TRAVEL_HEIGHT),
+            reverseTo(rack.position[2] - 2.8, -speed),
+            {
+              name: 'rush at the rack',
+              keys: (obs) => speedKeys(obs, 0.3),
+              until: (obs) => obs.failed || obs.z >= rack.position[2] - 0.78,
+              frames: 1200,
+            },
+            brakeToStop,
+            reverseTo(atTheRack + 0.02, -inch),
+          ],
+        }),
+        ...park,
       ],
     },
   ]

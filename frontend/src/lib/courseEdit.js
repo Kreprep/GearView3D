@@ -1,10 +1,13 @@
 // Pure helpers behind the admin course editor. The stored course geometry is a
-// handful of separate lists (checkpoints, decorations, pallets) plus three
-// singletons (start, dropZone, parkingBay); the canvas needs one flat list of
-// selectable items, so items are addressed by a `key` of the form
-// "<list>:<index>" or the singleton's own name.
+// handful of separate lists (checkpoints, decorations, pallets, racks,
+// dropZones) plus three singletons (start, the older single dropZone,
+// parkingBay); the canvas needs one flat list of selectable items, so items
+// are addressed by a `key` of the form "<list>:<index>" or the singleton's own
+// name. A mission's task list (`tasks`) has its own helpers at the end.
 
 import { DECOR_RACK_KINDS, DECOR_RACK_LABELS } from '../data/rackProfile.js'
+import { DEFAULT_DROP_ZONE_ID } from './coursePallets.js'
+import { MISSION_TASK_LABELS } from './missionTasks.js'
 
 const SINGLETON_KEYS = ['start', 'dropZone', 'parkingBay']
 
@@ -21,8 +24,8 @@ export const OBJECT_LABELS = {
   ...DECOR_RACK_LABELS,
 }
 
-// Kinds an admin can drop onto the canvas. Singletons are filtered out of the
-// palette once the course already has one.
+// Kinds an admin can drop onto the canvas. The parking bay is filtered out of
+// the palette once the course already has one; drop zones are a list.
 export const PLACEABLE_KINDS = [
   'cone',
   'wall',
@@ -75,6 +78,10 @@ export function listCourseItems(data) {
     items.push({ key: `racks:${index}`, kind: 'rack', entry, ...positionOf(entry) })
   }
 
+  for (const [index, entry] of (data.dropZones || []).entries()) {
+    items.push({ key: `dropZones:${index}`, kind: 'dropZone', entry, ...positionOf(entry) })
+  }
+
   if (data.dropZone) {
     items.push({ key: 'dropZone', kind: 'dropZone', entry: data.dropZone, ...positionOf(data.dropZone) })
   }
@@ -109,61 +116,63 @@ export function moveItem(data, key, x, z) {
   return updateItem(data, key, { position: [x, item.entry.position?.[1] ?? 0, z] })
 }
 
-// A pallet's targetRack/targetLevel point at a rack by id, not by list index
-// (ids survive reordering, indices don't), so deleting a rack has to clear
-// any pallet still pointing at it or the reference would silently dangle.
-function clearPalletsTargeting(data, removedIds) {
-  if (!removedIds.size || !data.pallets?.length) return data
+// A pallet's target (and the older targetRack/targetLevel) and its start
+// shelf point at a rack or a drop zone by id, not by list index (ids survive
+// reordering, indices don't), so deleting one has to clear every pallet still
+// pointing at it or the reference would silently dangle. A pallet whose target
+// goes is delivered to any drop zone, as one with no target always was.
+function clearPalletTargets(data, { racks, zones }) {
+  if ((!racks.size && !zones.size) || !data.pallets?.length) return data
   return {
     ...data,
-    pallets: data.pallets.map((pallet) =>
-      pallet.targetRack && removedIds.has(pallet.targetRack)
-        ? { ...pallet, targetRack: undefined, targetLevel: undefined }
-        : pallet,
-    ),
+    pallets: data.pallets.map((pallet) => {
+      let next = pallet
+      if (racks.has(pallet.targetRack)) next = { ...next, targetRack: undefined, targetLevel: undefined }
+      if (racks.has(pallet.target?.rack) || zones.has(pallet.target?.zone)) next = { ...next, target: undefined }
+      if (racks.has(pallet.startShelf?.rack)) next = { ...next, startShelf: undefined }
+      return next
+    }),
   }
 }
 
-export function removeItem(data, key) {
-  const { list, name, index } = parseKey(key)
-
-  // The start marker is where the forklift spawns - a course without one has
-  // nowhere to begin, so it can be moved but not deleted.
-  if (name === 'start') return data
-  if (name) return { ...data, [name]: null }
-
-  if (list === 'racks') {
-    const removedId = data.racks[index]?.id
-    const next = { ...data, racks: data.racks.filter((_, i) => i !== index) }
-    return removedId ? clearPalletsTargeting(next, new Set([removedId])) : next
+// The rack and drop zone ids the items at `keys` take with them.
+function removedIds(data, keys) {
+  const racks = new Set()
+  const zones = new Set()
+  for (const key of keys) {
+    const { list, name, index } = parseKey(key)
+    if (list === 'racks' && data.racks?.[index]?.id) racks.add(data.racks[index].id)
+    if (list === 'dropZones' && data.dropZones?.[index]?.id) zones.add(data.dropZones[index].id)
+    if (name === 'dropZone' && data.dropZone) zones.add(data.dropZone.id ?? DEFAULT_DROP_ZONE_ID)
   }
+  return { racks, zones }
+}
 
-  return { ...data, [list]: data[list].filter((_, i) => i !== index) }
+export function removeItem(data, key) {
+  return removeItems(data, [key])
 }
 
 // Removes several items at once. Indices are resolved against the original
 // lists first so earlier deletions cannot shift later ones.
 export function removeItems(data, keys) {
-  const byList = { checkpoints: new Set(), decorations: new Set(), pallets: new Set(), racks: new Set() }
+  const byList = { checkpoints: new Set(), decorations: new Set(), pallets: new Set(), racks: new Set(), dropZones: new Set() }
   let next = data
 
   for (const key of keys) {
     const { list, name, index } = parseKey(key)
+    // The start marker is where the forklift spawns - a course without one
+    // has nowhere to begin, so it can be moved but not deleted.
     if (name === 'start') continue
     if (name) next = { ...next, [name]: null }
     else byList[list]?.add(index)
   }
-
-  const removedRackIds = new Set(
-    [...byList.racks].map((index) => data.racks[index]?.id).filter(Boolean),
-  )
 
   for (const [list, indices] of Object.entries(byList)) {
     if (!indices.size) continue
     next = { ...next, [list]: next[list].filter((_, i) => !indices.has(i)) }
   }
 
-  return clearPalletsTargeting(next, removedRackIds)
+  return clearPalletTargets(next, removedIds(data, keys))
 }
 
 function nextId(entries, prefix) {
@@ -206,8 +215,14 @@ export function addItem(data, kind, x, z) {
     case 'rack-loaded':
     case 'rack-spare':
       return { ...data, decorations: [...data.decorations, { type: kind, position, rotation: 0 }] }
-    case 'dropZone':
-      return { ...data, dropZone: { position, radius: 0.9, label: 'Drop Zone' } }
+    case 'dropZone': {
+      // A zone a pallet's target can name. The older single `dropZone` is
+      // counted, so the first new zone beside it is not a second "Drop Zone 1".
+      const zones = data.dropZones || []
+      const taken = data.dropZone ? [...zones, { id: data.dropZone.id ?? DEFAULT_DROP_ZONE_ID }] : zones
+      const id = nextId(taken, 'zone')
+      return { ...data, dropZones: [...zones, { id, position, radius: 0.9, label: `Drop Zone ${taken.length + 1}` }] }
+    }
     case 'parkingBay':
       return { ...data, parkingBay: { position, width: 0.45, depth: 1, heading: 0, label: 'Parking Bay' } }
     default:
@@ -255,4 +270,49 @@ export function courseBounds(data, padding = 3, driveBounds = null) {
 export function snapTo(value, step) {
   if (!step) return Math.round(value * 1000) / 1000
   return Math.round(value / step) * step
+}
+
+// --- A mission's tasks -------------------------------------------------------
+//
+// `data.tasks` (lib/missionTasks.js): what the Course Editor's Tasks panel
+// does to the list. Each returns new course data; an index out of range
+// leaves it as it was.
+
+const TASKS_WITHOUT_REF = ['start', 'park']
+
+export function addTask(data, type) {
+  const tasks = data.tasks || []
+  const task = { id: nextId(tasks, type), type, ...(TASKS_WITHOUT_REF.includes(type) ? {} : { ref: '' }), label: MISSION_TASK_LABELS[type] || '' }
+  return { ...data, tasks: [...tasks, task] }
+}
+
+export function updateTask(data, index, patch) {
+  const tasks = data.tasks || []
+  if (!tasks[index]) return data
+  return { ...data, tasks: tasks.map((task, i) => (i === index ? { ...task, ...patch } : task)) }
+}
+
+export function moveTask(data, index, delta) {
+  const tasks = [...(data.tasks || [])]
+  const target = index + delta
+  if (!tasks[index] || target < 0 || target >= tasks.length) return data
+  const [task] = tasks.splice(index, 1)
+  tasks.splice(target, 0, task)
+  return { ...data, tasks }
+}
+
+export function removeTask(data, index) {
+  const tasks = data.tasks || []
+  if (!tasks[index]) return data
+  return { ...data, tasks: tasks.filter((_, i) => i !== index) }
+}
+
+// The map key of the object a task names, to select it on the canvas, or
+// null (a start task, or a ref that no longer resolves).
+export function taskItemKey(data, task) {
+  if (task?.type === 'park') return data.parkingBay ? 'parkingBay' : null
+  const list = task?.type === 'checkpoint' ? 'checkpoints' : task?.type === 'deliver' ? 'pallets' : null
+  if (!list) return null
+  const index = (data[list] || []).findIndex((entry) => entry.id === task.ref)
+  return index === -1 ? null : `${list}:${index}`
 }

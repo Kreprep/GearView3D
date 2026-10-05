@@ -250,4 +250,28 @@ export const moduleScenarioSteps = {
       hint: 'Completion means the learner can park precisely in tight spaces, then secure and hand over a forklift safely.',
     },
   ],
+  'final-driving-test': [
+    {
+      id: 'briefing',
+      title: 'Scenario Briefing',
+      objective: 'Know the route, the scoring and what it takes to pass before starting the test.',
+      instructions: 'Read the route and the pass rules. The test is one run: every task in order, scored on the safety signs that come up.',
+      hint: 'Everything in this test was taught in the earlier modules. Take it slowly - there is no time limit.',
+    },
+    {
+      id: 'final-test',
+      title: 'The Final Test',
+      objective: 'Complete every task in order and pass the scorecard.',
+      instructions:
+        'Follow the task shown at the top of the screen: reverse out of the bay, stop and sound the horn at the crossing, store the pallet the forklift may lift on the middle shelf, take the top-shelf pallet to the dock, then park in the bay and secure the truck. Look behind you whenever you reverse, and keep the forks low while travelling.',
+      hint: 'Read both pallet labels before lifting: the same weight further out along the forks may be over the capacity plate. At the rack, raise the load only when stopped, and inch in and out with the forks up.',
+    },
+    {
+      id: 'summary',
+      title: 'Completion Summary',
+      objective: 'Review the scorecard.',
+      instructions: 'Check your result. A pass completes the module; otherwise the scorecard shows which signs to work on.',
+      hint: "Passing shows you can put the whole operating cycle together safely in this simulation - the instructor's sign-off in hands-on training is still the record.",
+    },
+  ],
 }

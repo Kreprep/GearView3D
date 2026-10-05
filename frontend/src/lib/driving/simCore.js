@@ -213,6 +213,8 @@ export function createSimCore(course, profile, { geometry, rapier } = {}) {
         tipAxis: state.tip.axis,
         parkingStatus: state.parking.status,
         parked: state.parking.parked,
+        // A mission course's next task (lib/driving/stepMission.js), or null.
+        missionIndex: state.mission?.index ?? null,
         time: state.time,
       }
     },

@@ -26,6 +26,7 @@ import { emptySyllabus, NEXT_ROUTE_TARGETS, SUMMARY_COUNTER_LABELS } from '../..
 import { MODULE_ROUTE_PREFIX } from '../../lib/moduleContent'
 import { ALERT_RULES, resolveAlerts, withAlertSwitch } from '../../lib/courseAlerts'
 import { COURSE_GOAL_TYPES, DEFAULT_COURSE_BOUNDS, resolveCourseBounds, resolveFailConditions, validateCourse } from '../../lib/courseGoals'
+import { courseDropZones } from '../../lib/coursePallets'
 import { DEFAULT_SPEED_LIMIT_KMH } from '../../data/safetyThresholds'
 import { STABILITY_DEFAULTS } from '../../data/vehicleProfile'
 import { ReportingActivityFields, ShutdownActivityFields } from './ActivityContentFields'
@@ -33,6 +34,7 @@ import WalkAroundContentFields from './WalkAroundContentFields'
 import CourseCanvas from './CourseCanvas'
 import CourseGeneratorTools from './CourseGeneratorTools'
 import CourseInspector from './CourseInspector'
+import { MissionPassRulesPanel, MissionTasksPanel } from './MissionFields'
 import { Button } from '../ui/button'
 import { Panel, PanelHeader, PanelNote } from '../ui/panel'
 import { Field } from '../ui/field'
@@ -62,7 +64,7 @@ const GOAL_HINTS = {
   parking: 'Completes when the vehicle is inside the bay, aligned, stopped, any forks lowered and the engine off.',
   pallet: 'Completes when a pallet is lifted and set down inside the drop zone.',
   racking: 'Completes when a pallet is raised to its assigned shelf height and set down inside its target rack.',
-  mission: 'Completes when every task in the task list is done, in order. Checkpoints count only while they are the current task.',
+  mission: 'Finished when every task in the task list is done, in order; checkpoints count only while they are the current task. The run is then scored against the pass rules below, and only a pass completes the step.',
   free: 'No built-in goal - completes when this course\'s own completion code returns true. Required below.',
 }
 
@@ -556,7 +558,7 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
         <section className="grid min-w-0 gap-2.5">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[13px] font-semibold text-muted">Place</span>
-            {PLACEABLE_KINDS.filter((kind) => !(kind === 'dropZone' && data.dropZone) && !(kind === 'parkingBay' && data.parkingBay)).map((kind) => (
+            {PLACEABLE_KINDS.filter((kind) => !(kind === 'parkingBay' && data.parkingBay)).map((kind) => (
               <Button
                 key={kind}
                 type="button"
@@ -716,6 +718,13 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
           </Panel>
           )}
 
+          {isDriving && draft.goalType === 'mission' && (
+            <>
+              <MissionTasksPanel data={data} onChange={commitData} onSelectItem={(key) => setSelectedKeys([key])} />
+              <MissionPassRulesPanel data={data} onChange={commitData} />
+            </>
+          )}
+
           {isDriving && (
           <Panel>
             <PanelHeader>Safety signs</PanelHeader>
@@ -803,6 +812,7 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
               <CourseInspector
                 item={selectedItem}
                 racks={data?.racks || []}
+                zones={courseDropZones(data || {})}
                 onChange={(patch) => commitData(updateItem(data, selectedItem.key, patch))}
                 onMove={(x, z) => commitData(moveItem(data, selectedItem.key, x, z))}
                 onDelete={deleteSelected}

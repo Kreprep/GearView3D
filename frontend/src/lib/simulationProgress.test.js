@@ -5,10 +5,13 @@ import {
   buildSimulationState,
   emptyAttemptTally,
   isStepComplete,
+  missionRecordFor,
+  missionResults,
   tallyAlert,
   violationTotal,
   withAttemptComplete,
   withAttemptFail,
+  withMissionRun,
   withStepComplete,
 } from './simulationProgress.js'
 
@@ -123,4 +126,64 @@ test('attempt stats are per step and leave the other steps alone', () => {
   assert.equal(attemptStatsFor(simulation, 'b').failsSinceCompletion, 1)
   assert.equal(attemptStatsFor(simulation, 'c'), null)
   assert.deepEqual(simulation.stepsComplete, { a: true })
+})
+
+// --- Mission runs (the Final Driving Test) -----------------------------------
+
+const missionRun = (passed, score, finishedAt, extra = {}) => ({
+  finishedAt,
+  elapsedS: 300,
+  violations: passed ? { overspeed: 1 } : { overload: 1 },
+  dangers: passed ? {} : { overload: 1 },
+  passed,
+  score,
+  cautionCount: passed ? 1 : 0,
+  dangerCount: passed ? 0 : 1,
+  rules: [],
+  reasons: passed ? [] : [{ type: 'dangers', count: 1 }],
+  ...extra,
+})
+
+test('a failing mission run counts as a failed attempt and keeps its scorecard', () => {
+  const partial = withMissionRun({}, 'final-test', missionRun(false, 80, 'T1'))
+  const entry = partial.attemptStats['final-test']
+  assert.equal(entry.failsSinceCompletion, 1)
+  assert.equal(entry.completedAt, undefined)
+  assert.deepEqual(entry.mission, { lastRun: missionRun(false, 80, 'T1'), runs: 1, bestScore: null, passedAt: null })
+})
+
+test('a passing run is a completion, carrying the fails before it', () => {
+  const failed = withMissionRun({}, 'final-test', missionRun(false, 80, 'T1'))
+  const passed = withMissionRun(failed, 'final-test', missionRun(true, 95, 'T2'))
+  const entry = passed.attemptStats['final-test']
+  assert.equal(entry.completedAt, 'T2')
+  assert.equal(entry.fails, 1)
+  assert.deepEqual(entry.violations, { overspeed: 1 })
+  assert.equal(entry.mission.passedAt, 'T2')
+  assert.equal(entry.mission.bestScore, 95)
+  assert.equal(entry.mission.runs, 2)
+  assert.deepEqual(missionRecordFor(passed, 'final-test'), entry.mission)
+})
+
+test('a later failing retry shows as the last run but keeps the pass and the best score', () => {
+  let simulation = withMissionRun({}, 'final-test', missionRun(true, 90, 'T1'))
+  simulation = withMissionRun(simulation, 'final-test', missionRun(true, 85, 'T2'))
+  simulation = withMissionRun(simulation, 'final-test', missionRun(false, 80, 'T3'))
+  const record = missionRecordFor(simulation, 'final-test')
+  assert.equal(record.lastRun.finishedAt, 'T3')
+  assert.equal(record.passedAt, 'T1')
+  assert.equal(record.bestScore, 90)
+  assert.equal(record.runs, 3)
+})
+
+test('missionResults lists every step with a scorecard, and only those', () => {
+  const finalTest = withMissionRun({}, 'final-test', missionRun(true, 90, 'T1'))
+  const progress = {
+    simulations: {
+      'load-handling': { attemptStats: { 'driving-course': { completedAt: 'T0', violations: {}, dangers: {} } } },
+      'final-driving-test': finalTest,
+    },
+  }
+  assert.deepEqual(missionResults(progress), [{ module: 'final-driving-test', stepId: 'final-test', ...finalTest.attemptStats['final-test'].mission }])
+  assert.deepEqual(missionResults(null), [])
 })

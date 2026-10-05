@@ -75,6 +75,8 @@ const CARRYING = { carrying: true, mastTilt: TILT_SECURE_ANGLE - 0.05, forkHeigh
 
 test('the rule table and the course switches list the same rules, in the same order', () => {
   assert.deepEqual(SAFETY_RULES.map((rule) => rule.id), ALERT_RULES.map((rule) => rule.id))
+  // ...and agree on which are hints, the ones the tally never counts.
+  assert.deepEqual(SAFETY_RULES.map((rule) => Boolean(rule.hint)), ALERT_RULES.map((rule) => Boolean(rule.hint)))
 })
 
 test('every rule is well formed and names a sound the bank has', () => {

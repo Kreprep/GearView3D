@@ -1,4 +1,4 @@
-// Default rows for the `Course` table - every step of Modules 2-4, not just the
+// Default rows for the `Course` table - every step of Modules 2-5, not just the
 // driving ones. Composed from the two files that used to own module content:
 // `moduleScenarios.js` (step order + title/objective/instructions/hint) and
 // `drivingCourse.js` (geometry), plus the lesson text in `trainingModules.js`.
@@ -25,7 +25,7 @@ import {
 } from './postOperationScenarios.js'
 import { equipmentUsageModules } from './trainingModules.js'
 
-export const courseModuleSlugs = ['walk-around-check', 'load-handling', 'post-operation', 'pallet-testing']
+export const courseModuleSlugs = ['walk-around-check', 'load-handling', 'post-operation', 'pallet-testing', 'final-driving-test']
 
 export const COURSE_KINDS = ['briefing', 'driving', 'walk-around', 'activity', 'checklist', 'quiz', 'summary']
 
@@ -108,6 +108,10 @@ export function normalizeCourseGeometry(course = {}) {
     // mission's tasks (lib/missionTasks.js), only where the course has them.
     ...(course.dropZones ? { dropZones: course.dropZones } : {}),
     ...(course.tasks ? { tasks: course.tasks } : {}),
+    // A mission's own pass rules (lib/missionScore.js), only where the course
+    // changes them: the stock test has none, so a change to the stock rules
+    // reaches it.
+    ...(course.passRules ? { passRules: course.passRules } : {}),
     parkingBay: course.parkingBay || null,
     capacityKg: typeof course.capacityKg === 'number' ? course.capacityKg : null,
     failConditions: course.failConditions || null,
@@ -237,6 +241,27 @@ const BRIEFING_SCENE = {
       'Rated capacity in this assessment: **1,000 kg at a 0.6 m load centre**. After a fail, use **Reset Attempt** and try again - failed attempts are counted but never block completion.',
     ].join('\n'),
   },
+  'final-driving-test': {
+    image: '',
+    sceneBody: [
+      '### The Route',
+      '',
+      '1. **Start** the truck: seatbelt, parking brake, lever in N, then the key.',
+      '2. **Reverse out** of the bay, looking behind you.',
+      '3. **Stop at the blind crossing** and sound the horn.',
+      "4. **Store** the pallet the forklift may lift on the rack's middle shelf.",
+      '5. **Retrieve** the pallet on the top shelf and take it to the dock.',
+      '6. **Park** in the bay and secure the truck.',
+      '',
+      '### To Pass',
+      '',
+      '- No danger-level safety sign.',
+      '- No more than 3 caution signs.',
+      '- No sign for reversing without looking behind or travelling with the forks raised.',
+      '',
+      'Rated capacity: **1,000 kg at a 0.6 m load centre**. Speed limit: **5 km/h**.',
+    ].join('\n'),
+  },
 }
 
 // Extra stat rows the summary shows under the per-step grid. The keys are read
@@ -245,16 +270,18 @@ const SUMMARY_COUNTERS = {
   'load-handling': [],
   'post-operation': ['failedAttempts', 'shutdownMistakes'],
   'pallet-testing': ['failedAttempts'],
+  'final-driving-test': ['failedAttempts'],
 }
 
-// The module page navigates here after Submit. `pallet-testing` is the last
-// module, so it returns to the module list.
+// The module page navigates here after Submit. The Final Driving Test is the
+// last module, so it goes on to the final assessment review.
 // Keys of the scheme in lib/moduleContent.js, not paths - `module:<slug>` for
 // a specific module, `modules` for the module list.
 const SUMMARY_NEXT_ROUTE = {
   'load-handling': 'module:post-operation',
   'post-operation': 'module:pallet-testing',
-  'pallet-testing': 'modules',
+  'pallet-testing': 'module:final-driving-test',
+  'final-driving-test': 'assessment',
 }
 
 export function emptySyllabus() {
@@ -265,6 +292,7 @@ const SUMMARY_INCOMPLETE = {
   'load-handling': 'Complete all guided driving tasks to finish this module.',
   'post-operation': 'Complete every parking drive, the shutdown ordering, and the reporting decisions to finish this module.',
   'pallet-testing': 'Complete every assessment exercise to finish this module.',
+  'final-driving-test': 'Pass the Final Driving Test to finish this module.',
 }
 
 function lessonModule(moduleSlug) {

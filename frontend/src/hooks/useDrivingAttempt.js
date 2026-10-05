@@ -214,10 +214,11 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
       emit(event.event)
     } else if (event.type === 'task') {
       // A mission's task (lib/driving/stepMission.js); the last one
-      // completes the course.
+      // completes the course, with how long the attempt took (simulated
+      // seconds, for the scorecard; information only).
       const { task, index, isLast } = event
       emit({ type: 'mission-task', id: task.id, index, label: task.label })
-      if (isLast) emit({ type: 'course-complete', id: task.id, label: task.label })
+      if (isLast) emit({ type: 'course-complete', id: task.id, label: task.label, elapsedS: core.state.time })
     } else if (event.type === 'parking' && event.isParked) {
       emit({ type: 'parking-complete' })
     }

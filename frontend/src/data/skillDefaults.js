@@ -27,6 +27,7 @@ const WALK_AROUND = 'walk-around-check'
 const LOAD_HANDLING = 'load-handling'
 const POST_OPERATION = 'post-operation'
 const PALLET_HANDLING = 'pallet-testing'
+const FINAL_TEST = 'final-driving-test'
 
 const teaches = (...slugs) => slugs.map((module) => ({ module, relation: 'teaches' }))
 const requires = (...slugs) => slugs.map((module) => ({ module, relation: 'requires' }))
@@ -84,7 +85,7 @@ export const SKILL_DEFAULTS = [
       { type: 'step-complete', module: POST_OPERATION, stepId: 'shutdown-sequence' },
       { type: 'clean-run', module: POST_OPERATION, stepId: 'secure-parking', rules: ['start-interlock'], severity: 'any' },
     ],
-    modules: [...teaches(POST_OPERATION), ...requires(LOAD_HANDLING)],
+    modules: [...teaches(POST_OPERATION, FINAL_TEST), ...requires(LOAD_HANDLING)],
   },
   {
     id: 'secure-parking',
@@ -95,7 +96,7 @@ export const SKILL_DEFAULTS = [
     evidence: [
       { type: 'clean-run', module: POST_OPERATION, stepId: 'secure-parking', rules: ['forks-raised-parked'], severity: 'any' },
     ],
-    modules: [...teaches(POST_OPERATION)],
+    modules: [...teaches(POST_OPERATION, FINAL_TEST)],
   },
   {
     id: 'travel-safely',
@@ -107,8 +108,9 @@ export const SKILL_DEFAULTS = [
       { type: 'clean-run', module: LOAD_HANDLING, stepId: 'driving-course', rules: [], severity: 'danger' },
       { type: 'clean-run', module: LOAD_HANDLING, stepId: 'reverse-travel', rules: ['look-direction'], severity: 'any' },
       { type: 'clean-run', module: LOAD_HANDLING, stepId: 'speed-zones', rules: ['overspeed', 'sound-horn'], severity: 'any' },
+      { type: 'mission-pass', module: FINAL_TEST, stepId: 'final-test' },
     ],
-    modules: [...teaches(LOAD_HANDLING), ...requires(POST_OPERATION, PALLET_HANDLING)],
+    modules: [...teaches(LOAD_HANDLING), ...requires(POST_OPERATION, PALLET_HANDLING, FINAL_TEST)],
   },
   {
     id: 'spatial-awareness',
@@ -126,7 +128,7 @@ export const SKILL_DEFAULTS = [
       },
       { type: 'clean-run', module: LOAD_HANDLING, stepId: 'reverse-travel', rules: ['obstacle-behind'], severity: 'danger' },
     ],
-    modules: [...teaches(LOAD_HANDLING, POST_OPERATION)],
+    modules: [...teaches(LOAD_HANDLING, POST_OPERATION), ...requires(FINAL_TEST)],
   },
   {
     id: 'load-chart',
@@ -139,7 +141,7 @@ export const SKILL_DEFAULTS = [
       { type: 'step-complete', module: PALLET_HANDLING, stepId: 'load-centre' },
       { type: 'quiz-score', module: PALLET_HANDLING, min: 80 },
     ],
-    modules: [...teaches(PALLET_HANDLING)],
+    modules: [...teaches(PALLET_HANDLING), ...requires(FINAL_TEST)],
   },
   {
     id: 'engage-lift-load',
@@ -150,7 +152,7 @@ export const SKILL_DEFAULTS = [
     evidence: [
       { type: 'clean-run', module: LOAD_HANDLING, stepId: 'pallet-pickup', rules: ['forks-not-inserted'], severity: 'any' },
     ],
-    modules: [...teaches(LOAD_HANDLING), ...requires(PALLET_HANDLING)],
+    modules: [...teaches(LOAD_HANDLING), ...requires(PALLET_HANDLING, FINAL_TEST)],
   },
   {
     id: 'carry-stack-load',
@@ -180,8 +182,9 @@ export const SKILL_DEFAULTS = [
         rules: ['tilt-forward-elevated', 'lifting-while-moving', 'forks-high-travel'],
         severity: 'any',
       },
+      { type: 'mission-pass', module: FINAL_TEST, stepId: 'final-test' },
     ],
-    modules: [...teaches(PALLET_HANDLING)],
+    modules: [...teaches(PALLET_HANDLING), ...requires(FINAL_TEST)],
   },
   {
     id: 'respond-unexpected',
@@ -190,7 +193,7 @@ export const SKILL_DEFAULTS = [
     category: 'safety',
     tesdaRef: 'CON834218 el. 1.4, 4.6',
     evidence: [{ type: 'caution-recovered' }],
-    modules: [...teaches(LOAD_HANDLING, PALLET_HANDLING)],
+    modules: [...teaches(LOAD_HANDLING, PALLET_HANDLING, FINAL_TEST)],
   },
 ]
 

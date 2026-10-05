@@ -97,3 +97,54 @@ export function withAttemptComplete(simulation, stepId, { tally = emptyAttemptTa
     failsSinceCompletion: 0,
   })
 }
+
+// --- A mission's scorecard ---------------------------------------------------
+//
+// A mission step (the Final Driving Test, docs/modules/module-improvements-
+// plan.md, 3.6) completes only on a passing run (decided 2026-10-05). Every
+// finished run is scored (lib/missionScore.js) and kept on the step's entry as
+// `attemptStats[stepId].mission`:
+//
+//   lastRun   the latest finished run, pass or fail: { finishedAt, elapsedS,
+//             violations, dangers } plus scoreMission()'s result
+//   runs      finished runs so far
+//   bestScore the best score of a passing run, or null
+//   passedAt  ISO time of the first passing run, or null; once set it stays,
+//             so a later failing retry does not take the pass away
+//
+// A passing run is also an ordinary completion (withAttemptComplete), so a
+// clean-run rule can read it; a failing one counts as a failed attempt.
+
+export function missionRecordFor(simulation, stepId) {
+  return attemptStatsFor(simulation, stepId)?.mission || null
+}
+
+// Partial update for a finished mission run, `run` as described above.
+export function withMissionRun(simulation, stepId, run) {
+  const base = run.passed
+    ? withAttemptComplete(simulation, stepId, { tally: run, completedAt: run.finishedAt })
+    : withAttemptFail(simulation, stepId)
+  const previous = missionRecordFor(simulation, stepId) || {}
+  const bestScore = run.passed
+    ? Math.max(run.score, previous.bestScore ?? run.score)
+    : (previous.bestScore ?? null)
+  const mission = {
+    lastRun: run,
+    runs: (previous.runs || 0) + 1,
+    bestScore,
+    passedAt: previous.passedAt || (run.passed ? run.finishedAt : null),
+  }
+  return withAttemptEntry(simulation, stepId, { ...base.attemptStats[stepId], mission })
+}
+
+// Every mission step a progress document has a scorecard for, as
+// { module, stepId, ...record }, in the document's order: what the Assessment
+// page and the instructor's Reports read.
+export function missionResults(progress) {
+  const simulations = progress?.simulations && typeof progress.simulations === 'object' ? progress.simulations : {}
+  return Object.entries(simulations).flatMap(([module, simulation]) =>
+    Object.entries(simulation?.attemptStats || {})
+      .filter(([, stats]) => stats?.mission?.lastRun)
+      .map(([stepId, stats]) => ({ module, stepId, ...stats.mission })),
+  )
+}

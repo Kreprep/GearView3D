@@ -24,7 +24,7 @@
 
 import { ALERT_RULE_IDS } from './courseAlerts.js'
 import { migrateParts } from './migrateParts.js'
-import { violationTotal } from './simulationProgress.js'
+import { missionRecordFor, violationTotal } from './simulationProgress.js'
 
 export const SKILL_CATEGORIES = ['knowledge', 'perceptual', 'motor', 'safety', 'procedural']
 export const SKILL_RELATIONS = ['teaches', 'requires']
@@ -44,7 +44,10 @@ export const SIGNOFF_ACTIONS = ['signoff', 'revoke']
 //   caution-recovered  {}  some driving step was completed on a run that
 //                      raised a sign without any reaching danger: warned,
 //                      corrected, finished (decided 2026-10-01)
-export const EVIDENCE_TYPES = ['step-complete', 'clean-run', 'quiz-score', 'parts-viewed', 'caution-recovered']
+//   mission-pass       { module, stepId }  a mission step (the Final Driving
+//                      Test) has been passed, on any run so far: a later
+//                      failing retry does not undo it (decided 2026-10-05)
+export const EVIDENCE_TYPES = ['step-complete', 'clean-run', 'quiz-score', 'parts-viewed', 'caution-recovered', 'mission-pass']
 export const CLEAN_RUN_SEVERITIES = ['any', 'danger']
 
 const isText = (value) => typeof value === 'string' && value.trim() !== ''
@@ -59,6 +62,7 @@ function normalizeRule(rule, index) {
 
   switch (rule.type) {
     case 'step-complete':
+    case 'mission-pass':
       if (!isText(rule.module) || !isText(rule.stepId)) return { problem: `${where} needs a module and a step` }
       return { rule: { type: rule.type, module: rule.module.trim(), stepId: rule.stepId.trim() } }
 
@@ -170,6 +174,9 @@ export function isEvidenceMet(rule, progress, context = {}) {
       return everyCompletedRun(progress).some(
         (run) => violationTotal(run.violations) > 0 && countFor(run.dangers, []) === 0,
       )
+
+    case 'mission-pass':
+      return Boolean(missionRecordFor(simulationOf(progress, rule.module), rule.stepId)?.passedAt)
 
     default:
       return false

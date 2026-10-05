@@ -51,6 +51,8 @@ export function describeEvidence(rule, t, { staff = false } = {}) {
       return t('skills.evidence.partsViewed')
     case 'caution-recovered':
       return t('skills.evidence.cautionRecovered')
+    case 'mission-pass':
+      return t('skills.evidence.missionPass', { step, module })
     default:
       return rule.type
   }
