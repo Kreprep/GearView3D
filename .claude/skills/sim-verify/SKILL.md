@@ -78,6 +78,7 @@ limiter.
 | `load-centre` | Pallet Testing, Reading the Load Chart | the far 800 kg load reads a 0.9 m load centre, derated under 700 kg: lifting fails as an overload |
 | `stability-turns` | Pallet Testing, Turning with a Load | the 900 kg load picked up, crept forward, set down in the drop zone: delivered, lateral margin positive |
 | `rack-retrieval` | Pallet Testing, Retrieving from the Top Shelf | the pallet on the top shelf is lifted off it, lowered to travel height and delivered to the dock |
+| `mission` | Final Driving Test, The Final Test | the whole mission, warped from task to task with real keys for each job (bay exit, horn at the crossing, the pallet within the plate to the middle shelf, the top-shelf pallet to the dock, park and secure): six of six tasks, a passing scorecard saved (`p.mission`) and shown in the task panel (`l.scorecard`). `prepare` keeps it off the database |
 | `inspection-engine-on` | Walk-Around Check, Engine-On | the cab step end to end: interlock and start, the five instruments judged in the popover, every device test detected (horn, lights, beacon, signals, steering, brakes, lift and tilt, travel, the tail-light marker), `started` and completion saved. `prepare` seeds the step's progress in localStorage and stubs `PUT /api/progress`, so nothing reaches the database |
 
 Since Phase 4 the engine only starts through the pre-start interlock
@@ -131,7 +132,7 @@ run (`maxSigns`, `overlap` with the dashboard or the proximity inset, which
 must stay false, and the task panel's `summary` text), and `p`, the step's
 saved `attemptStats` entry from the learner's progress (null in the admin
 preview, which saves none). The report includes them as `layout` and
-`record`. The `sign-*` scenarios cover one rule family each; the rest of the
+`record`, and `l.scorecard` is the Final Driving Test's scorecard text, if one is shown. A scenario whose step id is not its title slugged names it (`stepId`, or `prepare.stepId`). The `sign-*` scenarios cover one rule family each; the rest of the
 rules (tail swing, turn speed, obstacle behind, seatbelt, forks raised when
 parked, lifting on the move, tilting a raised load forward, shuttling the
 lever) fire in the headless drives of

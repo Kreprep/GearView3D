@@ -24,6 +24,15 @@ function userLabel(user) {
   return user?.fullName || user?.email || 'Unknown user'
 }
 
+// A mission step's result (the Final Driving Test), from a progress row's
+// `missions` (backend/src/lib/progressSummary.js): the pass, or the last run.
+function missionLine({ passedAt, bestScore, runs, lastRun }) {
+  const tries = `${runs} ${runs === 1 ? 'run' : 'runs'}`
+  return passedAt
+    ? `Passed on ${new Date(passedAt).toLocaleDateString()}, best score ${bestScore}/100 (${tries})`
+    : `Not passed yet, last run scored ${lastRun.score}/100 (${tries})`
+}
+
 // Per-user, per-module completion plus a timeline of recent quiz activity. `progress` already carries one entry per module for every
 // user who has ever saved a snapshot (see buildAdminProgressReport on the
 // backend) - a user with no snapshot at all gets synthesized zero rows here
@@ -77,6 +86,7 @@ function ReportsPanel({ viewer, modules, users, progress, activityLogs, onMessag
       moduleSlug: module.slug,
       progress: 0,
       updatedAt: null,
+      missions: [],
     })
   }
 
@@ -99,11 +109,12 @@ function ReportsPanel({ viewer, modules, users, progress, activityLogs, onMessag
         moduleTitleBySlug[row.moduleSlug] || row.moduleSlug,
         row.progress,
         row.updatedAt || '',
+        (row.missions || []).map(missionLine).join('; '),
       ]),
     )
 
     downloadCsv('gearview3d-progress-report.csv', [
-      ['Learner', 'Module', 'Progress', 'Last Activity'],
+      ['Learner', 'Module', 'Progress', 'Last Activity', 'Final Test'],
       ...rows,
     ])
   }
@@ -156,6 +167,11 @@ function ReportsPanel({ viewer, modules, users, progress, activityLogs, onMessag
                                 ? <time dateTime={row.updatedAt} title={new Date(row.updatedAt).toLocaleString()}>{formatRelativeTime(row.updatedAt)}</time>
                                 : <span className="italic">No activity yet</span>}
                             </span>
+                            {(row.missions || []).map((mission) => (
+                              <span key={mission.stepId} className="col-span-full text-xs font-semibold text-muted">
+                                Scorecard: {missionLine(mission)}
+                              </span>
+                            ))}
                           </div>
                         ))}
                       </div>

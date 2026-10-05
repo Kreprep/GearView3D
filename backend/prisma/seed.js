@@ -24,6 +24,7 @@ import {
   staleStockUpgrades,
 } from '../src/lib/stockHistory.js'
 import { placeNewStep } from '../src/lib/stepOrder.js'
+import { newModuleRow, stockSkillLinks } from '../src/lib/stockModules.js'
 import { STOCK_HISTORY } from './stockHistory.js'
 import { EQUIPMENT_DEFAULTS } from '../../frontend/src/data/equipment.js'
 import { buildDefaultHotspots } from '../../frontend/src/data/hotspotDefaults.js'
@@ -91,23 +92,31 @@ const SUPERSEDED_MODULE_IMAGE_URLS = new Set([
   '/images/modules/pallet-testing.png',
 ])
 
+// Found by slug, and created with its stock id only when that is free
+// (src/lib/stockModules.js). Returns the slugs of the modules this run
+// created, which seedSkills() links the existing skills to.
 async function seedModules() {
-  for (const [index, module] of trainingModules.entries()) {
-    const existing = await prisma.module.findUnique({ where: { id: module.id } })
+  const created = new Set()
+
+  for (const module of trainingModules) {
+    const existing = await prisma.module.findUnique({ where: { slug: module.slug } })
 
     if (!existing) {
+      const stored = await prisma.module.findMany({ select: { id: true, sortOrder: true } })
+      const { id, sortOrder } = newModuleRow(module.id, stored)
       await prisma.module.create({
         data: {
-          id: module.id,
+          id,
           slug: module.slug,
           title: module.title,
           fullTitle: module.fullTitle || module.title,
           subtitle: module.subtitle || '',
           description: module.description || '',
           imageUrl: module.imageUrl || '',
-          sortOrder: index + 1,
+          sortOrder,
         },
       })
+      created.add(module.slug)
       continue
     }
 
@@ -117,7 +126,7 @@ async function seedModules() {
     const stock = { ...module, fullTitle: module.fullTitle || module.title }
     const upgrades = staleStockUpgrades(existing, stock, STOCK_HISTORY.Module?.[module.slug], MODULE_STOCK_FIELDS)
     if (Object.keys(upgrades).length) {
-      await prisma.module.update({ where: { id: module.id }, data: upgrades })
+      await prisma.module.update({ where: { id: existing.id }, data: upgrades })
       Object.assign(existing, upgrades)
     }
 
@@ -126,7 +135,7 @@ async function seedModules() {
     // because only an empty value is replaced.
     if (!existing.fullTitle) {
       await prisma.module.update({
-        where: { id: module.id },
+        where: { id: existing.id },
         data: { fullTitle: module.fullTitle || module.title },
       })
     }
@@ -142,11 +151,20 @@ async function seedModules() {
     // to it; a row an admin has since edited does not match, so it is untouched.
     if (SUPERSEDED_MODULE_IMAGE_URLS.has(existing.imageUrl) && module.imageUrl) {
       await prisma.module.update({
-        where: { id: module.id },
+        where: { id: existing.id },
         data: { imageUrl: module.imageUrl },
       })
     }
   }
+
+  return created
+}
+
+// Module ids by slug, as the database has them: a stock module's id is not
+// always its stock one (seedModules).
+async function moduleIdsBySlug() {
+  const modules = await prisma.module.findMany({ select: { id: true, slug: true } })
+  return Object.fromEntries(modules.map((module) => [module.slug, module.id]))
 }
 
 // The stock markers - the parts, the inspection hotspots, and the detail
@@ -183,9 +201,9 @@ async function seedPartsQuizQuestions() {
 }
 
 async function seedChecklists() {
+  const moduleIds = await moduleIdsBySlug()
   for (const [moduleSlug, items] of Object.entries(moduleChecklists)) {
-    const module = trainingModules.find((entry) => entry.slug === moduleSlug)
-    if (!module) continue
+    if (moduleIds[moduleSlug] === undefined) continue
 
     for (const [index, text] of items.entries()) {
       await prisma.checklistItem.upsert({
@@ -193,7 +211,7 @@ async function seedChecklists() {
         update: {},
         create: {
           id: `${moduleSlug}-check-${index + 1}`,
-          moduleId: module.id,
+          moduleId: moduleIds[moduleSlug],
           text,
           sortOrder: index + 1,
         },
@@ -203,9 +221,9 @@ async function seedChecklists() {
 }
 
 async function seedQuizQuestions() {
+  const moduleIds = await moduleIdsBySlug()
   for (const [moduleSlug, questions] of Object.entries(moduleQuizQuestions)) {
-    const module = trainingModules.find((entry) => entry.slug === moduleSlug)
-    if (!module) continue
+    if (moduleIds[moduleSlug] === undefined) continue
 
     for (const [index, question] of questions.entries()) {
       await prisma.quizQuestion.upsert({
@@ -214,7 +232,7 @@ async function seedQuizQuestions() {
         create: {
           id: question.id,
           context: 'module',
-          moduleId: module.id,
+          moduleId: moduleIds[moduleSlug],
           prompt: question.prompt,
           answer: question.answer,
           sortOrder: index + 1,
@@ -292,14 +310,16 @@ async function seedCourses() {
 }
 
 // The draft TR-mapped skill catalogue (data/skillDefaults.js), create-if-missing.
-// A skill's module links are created with it and only then, so a link an admin
-// removed stays removed; links to a module that does not exist are skipped.
+// A skill's module links are created with it, so a link an admin removed
+// stays removed; links to a module that does not exist are skipped. The one
+// exception is a module this run created (`createdModules`, seedModules()):
+// an existing built-in skill gets its stock links to that one, which is how
+// the Final Driving Test's links reach a deployed database.
 // A built-in skill's wording or evidence still holding an earlier release's
 // stock moves to today's (src/lib/stockHistory.js), which is how evidence for
 // a new step reaches a deployed database; an edited field is left alone.
-async function seedSkills() {
-  const modules = await prisma.module.findMany({ select: { id: true, slug: true } })
-  const moduleIds = Object.fromEntries(modules.map((module) => [module.slug, module.id]))
+async function seedSkills(createdModules) {
+  const moduleIds = await moduleIdsBySlug()
 
   for (const [index, skill] of SKILL_DEFAULTS.entries()) {
     const existing = await prisma.skill.findUnique({ where: { id: skill.id } })
@@ -307,12 +327,14 @@ async function seedSkills() {
       if (!existing.builtIn) continue
       const upgrades = staleStockUpgrades(existing, skillRowDefaults(skill, index), STOCK_HISTORY.Skill?.[skill.id], SKILL_STOCK_FIELDS)
       if (Object.keys(upgrades).length) await prisma.skill.update({ where: { id: skill.id }, data: upgrades })
+      const newLinks = stockSkillLinks(skill, moduleIds, createdModules)
+      if (newLinks.length) {
+        await prisma.moduleSkill.createMany({ data: newLinks.map((link) => ({ ...link, skillId: skill.id })), skipDuplicates: true })
+      }
       continue
     }
 
-    const links = skill.modules
-      .filter((link) => moduleIds[link.module])
-      .map((link) => ({ moduleId: moduleIds[link.module], relation: link.relation }))
+    const links = stockSkillLinks(skill, moduleIds)
     await prisma.skill.create({
       data: { ...skillRowDefaults(skill, index), builtIn: true, modules: { create: links } },
     })
@@ -322,14 +344,14 @@ async function seedSkills() {
 async function main() {
   await seedUsers()
   await seedEquipment()
-  await seedModules()
+  const createdModules = await seedModules()
   await seedHotspots()
   await seedHotspotCategories()
   await seedPartsQuizQuestions()
   await seedChecklists()
   await seedQuizQuestions()
   await seedCourses()
-  await seedSkills()
+  await seedSkills(createdModules)
 
   const counts = {
     users: await prisma.user.count(),

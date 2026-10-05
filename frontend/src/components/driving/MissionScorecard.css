@@ -1,0 +1,90 @@
+/* The Final Driving Test's pass rules and scorecard, in the task column and
+   on the summary step. Sentence case, like the rest of the shell. */
+
+.mission-rules,
+.mission-scorecard {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: #f8fafc;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.mission-scorecard.passed {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.mission-scorecard.failed {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.mission-heading {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.mission-rules ul,
+.mission-reasons,
+.mission-signs {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.mission-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.mission-scorecard.passed .mission-result strong {
+  color: #166534;
+}
+
+.mission-scorecard.failed .mission-result strong {
+  color: #991b1b;
+}
+
+.mission-reasons {
+  color: #7f1d1d;
+}
+
+.mission-signs {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  padding-left: 0;
+}
+
+.mission-signs li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.mission-counts {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.mission-penalty {
+  font-weight: 700;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.mission-note {
+  margin: 0;
+  color: var(--muted);
+}

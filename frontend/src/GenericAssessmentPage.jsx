@@ -13,10 +13,12 @@ import {
   getPartsQuizAttempts,
 } from './lib/progressService'
 import { routes } from './lib/router'
+import { missionResults } from './lib/simulationProgress'
 import './AssessmentPage.css'
 
 // The final-assessment review: module progress, the parts markers and the
-// parts quiz, all read from the database rows.
+// parts quiz, all read from the database rows, and the Final Driving Test's
+// result (any mission step's scorecard in the learner's progress).
 function GenericAssessmentPage({ user, onLogout, onBack, onNavigate }) {
   const t = useT()
   const { summary } = useProgress()
@@ -70,6 +72,7 @@ function GenericAssessmentPage({ user, onLogout, onBack, onNavigate }) {
     .flatMap(([moduleSlug, attempts]) => attempts.map((attempt) => ({ ...attempt, moduleSlug })))
   const viewedPartSet = new Set(summary.viewedParts)
   const latestPartsQuiz = getPartsQuizAttempts(summary.raw)[0]
+  const missions = missionResults(summary.raw).filter((result) => moduleSlugs.includes(result.module))
 
   const requiredComplete = moduleProgress === 100 && (!hasPartsSection || partsProgress === 100)
   const recommendedAction = requiredComplete
@@ -200,6 +203,24 @@ function GenericAssessmentPage({ user, onLogout, onBack, onNavigate }) {
               <p>{t('assessment.scores.empty')}</p>
             )}
           </article>
+
+          {missions.length > 0 && (
+            <article>
+              <h3>{t('mission.assessment.heading')}</h3>
+              <ul>
+                {missions.map((result) => {
+                  const module = moduleLabels[result.module] || result.module
+                  return (
+                    <li key={`${result.module}-${result.stepId}`}>
+                      {result.passedAt
+                        ? t('mission.assessment.passed', { module, score: result.bestScore })
+                        : t('mission.assessment.notPassed', { module, score: result.lastRun.score })}
+                    </li>
+                  )
+                })}
+              </ul>
+            </article>
+          )}
 
           <article>
             <h3>{t('assessment.next.heading')}</h3>

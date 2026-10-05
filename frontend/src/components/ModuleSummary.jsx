@@ -1,16 +1,19 @@
 import MarkdownContent from './MarkdownContent'
 import { useT } from '../i18n'
 import { SUMMARY_COUNTER_LABELS } from '../data/courseDefaults'
-import { isStepComplete } from '../lib/simulationProgress'
+import { attemptStatsFor, isStepComplete } from '../lib/simulationProgress'
+import { MissionScorecard } from './driving/MissionScorecard'
 
 // A summary step is data, not code. The per-step grid is built from the
 // module's current graded steps, so a step an admin adds shows up here without
 // a code change; `content` supplies the editable copy
-// ({ body, completeMessage, incompleteMessage, counters }).
+// ({ body, completeMessage, incompleteMessage, counters }). A mission step (the
+// Final Driving Test) adds its scorecard under the grid.
 
 function ModuleSummary({ content, steps, gradedStepIds, simulation }) {
   const t = useT()
   const counters = (content?.counters || []).filter((key) => SUMMARY_COUNTER_LABELS[key])
+  const missionSteps = steps.filter((step) => step.course?.goalType === 'mission' && gradedStepIds.includes(step.id))
 
   return (
     <div className="load-task-stack">
@@ -33,6 +36,10 @@ function ModuleSummary({ content, steps, gradedStepIds, simulation }) {
           </div>
         ))}
       </div>
+
+      {missionSteps.map((step) => (
+        <MissionScorecard key={step.id} stats={attemptStatsFor(simulation, step.id)} />
+      ))}
 
       <p className={simulation.complete ? 'completion-ready' : 'completion-warning'}>
         {simulation.complete

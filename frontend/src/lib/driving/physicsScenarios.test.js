@@ -168,6 +168,7 @@ test('every built-in driving course validates and is completable headless', () =
     'load-centre': 'load-centre-delivery',
     'stability-turns': 'stability-turns',
     'rack-retrieval': 'rack-retrieval',
+    'final-test': 'final-test-pass',
   }
   for (const id of Object.keys(drivingCourses)) {
     assert.deepEqual(validateCourse(buildDefaultCourse(id).data), [], id)
@@ -178,10 +179,10 @@ test('every built-in driving course validates and is completable headless', () =
   for (const [courseId, scenarioId] of Object.entries(completes)) {
     const { view, events } = drive(scenarioId)
     assert.equal(failOf(events), null, courseId)
-    const done =
-      view.deliveredCount >= 1 ||
-      view.parked ||
-      (drivingCourses[courseId].checkpoints.length > 0 && view.checkpointIndex === drivingCourses[courseId].checkpoints.length)
+    const { checkpoints, tasks } = drivingCourses[courseId]
+    const done = tasks
+      ? view.missionIndex === tasks.length
+      : view.deliveredCount >= 1 || view.parked || (checkpoints.length > 0 && view.checkpointIndex === checkpoints.length)
     assert.ok(done, `${courseId} completes`)
   }
 })

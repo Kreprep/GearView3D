@@ -10,6 +10,7 @@ import { PALLET_FALLBACK_FOOTPRINT } from '../data/palletProfile.js'
 import { STABILITY_DEFAULTS } from '../data/vehicleProfile.js'
 import { alertProblems } from './courseAlerts.js'
 import { courseDropZones, coursePallets, palletStartShelf, palletTarget } from './coursePallets.js'
+import { passRulesProblems } from './missionScore.js'
 import { missionProblems } from './missionTasks.js'
 import { orientedRectsOverlap } from './simCollision.js'
 
@@ -241,7 +242,7 @@ export function validateCourse(course) {
       problems.push('Every pallet needs a target rack and shelf level.')
     }
   }
-  if (goal === 'mission') problems.push(...missionProblems(course, resolveCapacityKg(course)))
+  if (goal === 'mission') problems.push(...missionProblems(course, resolveCapacityKg(course)), ...passRulesProblems(course))
 
   problems.push(...palletProblems(course))
 

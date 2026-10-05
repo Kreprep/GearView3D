@@ -172,6 +172,10 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   // Stored courses always use `pallets`; the singular `pallet` is the older
   // hand-written shape kept working here.
   const hasPallet = Boolean(course.pallets?.length || course.pallet)
+  // On a mission the pallet and parking chips are the current task's: the
+  // bay's "drive into the bay" means nothing while the task is the start.
+  const missionTask = missionIndex === null ? null : tasks[missionIndex]?.type ?? 'done'
+  const showsChip = (taskType) => missionTask === null || missionTask === taskType || missionTask === 'done'
 
   return (
     <section className={`driving-simulation ${className}`}>
@@ -196,10 +200,10 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
                   })}
             </span>
           )}
-          {hasPallet && (
+          {hasPallet && showsChip('deliver') && (
             <span className="driving-checkpoint-badge">{t(PALLET_STATE_LABEL_KEYS[palletState])}</span>
           )}
-          {course.parkingBay && parkingStatus && (
+          {course.parkingBay && parkingStatus && showsChip('park') && (
             <span className={`driving-parking-badge ${parked ? 'done' : ''}`}>{t(parkingStatus)}</span>
           )}
         </div>

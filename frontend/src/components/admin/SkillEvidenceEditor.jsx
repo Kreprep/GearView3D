@@ -1,5 +1,5 @@
 import { translate } from '../../i18n/translate.js'
-import { ALERT_RULES } from '../../lib/courseAlerts'
+import { COUNTED_ALERT_RULES } from '../../lib/courseAlerts'
 import { EVIDENCE_TYPES } from '../../lib/skillProgress'
 import { describeEvidence } from '../../lib/skillText'
 import { Button } from '../ui/button'
@@ -9,22 +9,20 @@ import { PanelNote } from '../ui/panel'
 
 const en = (key, values) => translate('en', key, values)
 
-// The rules a run's tally counts. release-load is a hint, shown but never
-// counted (lib/driving/safetyMonitor.js), so a clean run cannot be judged on it.
-const COUNTED_RULES = ALERT_RULES.filter((alert) => alert.id !== 'release-load')
-
 const TYPE_LABELS = {
   'step-complete': 'A step is complete',
   'clean-run': 'A driving step was completed without certain signs',
   'quiz-score': 'A quiz score',
   'parts-viewed': 'Every part viewed on the parts page',
   'caution-recovered': 'Recovered from a warning sign on a driving step',
+  'mission-pass': 'A mission (final test) was passed',
 }
 
 // What a fresh rule of each type starts as.
 function emptyRule(type, firstModule) {
   switch (type) {
     case 'step-complete':
+    case 'mission-pass':
       return { type, module: firstModule, stepId: '' }
     case 'clean-run':
       return { type, module: firstModule, stepId: '', rules: [], severity: 'any' }
@@ -36,13 +34,16 @@ function emptyRule(type, firstModule) {
 }
 
 // The steps a rule can name: completion is recorded for driving, walk-around
-// and built-in activity steps; a clean run only for driving steps.
-function stepsFor(courses, moduleSlug, drivingOnly) {
-  return courses.filter(
-    (course) =>
-      course.moduleSlug === moduleSlug &&
-      (drivingOnly ? course.kind === 'driving' : ['driving', 'walk-around', 'activity'].includes(course.kind)),
-  )
+// and built-in activity steps; a clean run only for driving steps; a pass only
+// for mission steps.
+const STEP_FILTERS = {
+  completed: (course) => ['driving', 'walk-around', 'activity'].includes(course.kind),
+  driving: (course) => course.kind === 'driving',
+  mission: (course) => course.kind === 'driving' && course.goalType === 'mission',
+}
+
+function stepsFor(courses, moduleSlug, filter) {
+  return courses.filter((course) => course.moduleSlug === moduleSlug && STEP_FILTERS[filter](course))
 }
 
 function RuleFields({ rule, onChange, modules, courses }) {
@@ -56,11 +57,11 @@ function RuleFields({ rule, onChange, modules, courses }) {
     </Field>
   )
 
-  const stepSelect = (drivingOnly) => (
+  const stepSelect = (filter) => (
     <Field label="Step">
       <Select value={rule.stepId || ''} onChange={(event) => set({ stepId: event.target.value })}>
         <option value="">Choose a step</option>
-        {stepsFor(courses, rule.module, drivingOnly).map((course) => (
+        {stepsFor(courses, rule.module, filter).map((course) => (
           <option key={course.id} value={course.id}>{course.title}</option>
         ))}
       </Select>
@@ -68,7 +69,11 @@ function RuleFields({ rule, onChange, modules, courses }) {
   )
 
   if (rule.type === 'step-complete') {
-    return <div className="grid gap-3 md:grid-cols-2">{moduleSelect}{stepSelect(false)}</div>
+    return <div className="grid gap-3 md:grid-cols-2">{moduleSelect}{stepSelect('completed')}</div>
+  }
+
+  if (rule.type === 'mission-pass') {
+    return <div className="grid gap-3 md:grid-cols-2">{moduleSelect}{stepSelect('mission')}</div>
   }
 
   if (rule.type === 'clean-run') {
@@ -78,7 +83,7 @@ function RuleFields({ rule, onChange, modules, courses }) {
       <div className="grid gap-3">
         <div className="grid gap-3 md:grid-cols-3">
           {moduleSelect}
-          {stepSelect(true)}
+          {stepSelect('driving')}
           <Field label="Counts">
             <Select value={rule.severity || 'any'} onChange={(event) => set({ severity: event.target.value })}>
               <option value="any">Any sign for these rules</option>
@@ -88,7 +93,7 @@ function RuleFields({ rule, onChange, modules, courses }) {
         </div>
         <fieldset className="m-0 grid gap-1.5 border-0 p-0 md:grid-cols-2">
           <legend className="mb-1.5 text-[13.5px] font-bold text-body">Safety rules (none ticked means every rule)</legend>
-          {COUNTED_RULES.map((alert) => (
+          {COUNTED_ALERT_RULES.map((alert) => (
             <Checkbox
               key={alert.id}
               label={alert.label}

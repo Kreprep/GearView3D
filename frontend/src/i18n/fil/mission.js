@@ -1,0 +1,38 @@
+export default {
+  'mission.rules.heading': 'Para pumasa',
+  'mission.rules.noDanger': 'Walang babalang pang-panganib.',
+  'mission.rules.maxCautions.one': 'Hindi hihigit sa {count} babala.',
+  'mission.rules.maxCautions.other': 'Hindi hihigit sa {count} babala.',
+  'mission.rules.noCautions': 'Walang anumang babala.',
+  'mission.rules.clean': 'Ni minsan: {list}.',
+
+  'mission.result.heading': 'Ang huli mong takbo',
+  'mission.result.passed': 'Pumasa',
+  'mission.result.failed': 'Hindi pumasa',
+  'mission.result.score': 'Iskor {score} / 100',
+  'mission.result.time': 'Oras sa kurso: {minutes} min {seconds} s',
+  'mission.result.best': 'Pinakamataas na iskor na pumasa: {score} / 100',
+  'mission.result.passedEarlier': 'Pumasa ka na sa pagsusulit na ito noong {date}.',
+  'mission.result.fails.one': '{count} bigong subok bago pumasa.',
+  'mission.result.fails.other': '{count} bigong subok bago pumasa.',
+  'mission.result.retry': 'Pindutin ang Reset attempt para umulit.',
+
+  'mission.reason.dangers.one': 'May {count} babalang pang-panganib na lumabas.',
+  'mission.reason.dangers.other': 'May {count} babalang pang-panganib na lumabas.',
+  'mission.reason.cautions.one': 'May {count} babalang lumabas; hanggang {max} lang ang puwede.',
+  'mission.reason.cautions.other': 'May {count} babalang lumabas; hanggang {max} lang ang puwede.',
+  'mission.reason.cleanRule': 'Bawal kahit minsan: {rule}.',
+
+  'mission.signs.heading': 'Mga babala sa takbong ito',
+  'mission.signs.none': 'Walang babala sa takbong ito.',
+  'mission.signs.cautions.one': '{count} babala',
+  'mission.signs.cautions.other': '{count} babala',
+  'mission.signs.dangers.one': '{count} panganib',
+  'mission.signs.dangers.other': '{count} panganib',
+  'mission.signs.penalty': '−{points}',
+  'mission.signs.penaltyLabel': 'bawas na {points} puntos',
+
+  'mission.assessment.heading': 'Final driving test',
+  'mission.assessment.passed': '{module}: pumasa, pinakamataas na iskor {score} / 100.',
+  'mission.assessment.notPassed': '{module}: hindi pa pumapasa. Ang huling takbo ay may iskor na {score} / 100.',
+}

@@ -3,7 +3,7 @@
 // scripts/recordStockHistory.js; read by prisma/seed.js through
 // src/lib/stockHistory.js, which moves a field still holding one of them to
 // the current stock. Do not edit by hand.
-export const STOCK_RELEASES = ["7b5763c","c94072f","134b86d","feb6e3b","3fbe0f9"]
+export const STOCK_RELEASES = ["7b5763c","c94072f","134b86d","feb6e3b","3fbe0f9","1bcbea8"]
 
 export const STOCK_HISTORY = {
   "Course": {
@@ -131,6 +131,9 @@ export const STOCK_HISTORY = {
       ],
       "hint": [
         "4956237f604e220c5267ceb98ba4456c"
+      ],
+      "content": [
+        "65f67883a5afe6b0a6ca1b45b0352884"
       ]
     },
     "parallel-parking": {
@@ -195,7 +198,8 @@ export const STOCK_HISTORY = {
         "3c8f2929a53eda901666d8c73bd94148"
       ],
       "evidence": [
-        "f3f156dda1513dfa8e5fc74584dfdfd1"
+        "f3f156dda1513dfa8e5fc74584dfdfd1",
+        "6552e739a02259c1d1f5ead71b7d6bc2"
       ]
     },
     "load-chart": {
@@ -210,7 +214,8 @@ export const STOCK_HISTORY = {
     },
     "travel-safely": {
       "evidence": [
-        "1427fcf68363f75e1e588c7a9c2224f6"
+        "1427fcf68363f75e1e588c7a9c2224f6",
+        "8c32708452c1e140c3a14f7f033a7b1f"
       ]
     }
   }

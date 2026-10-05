@@ -3,6 +3,7 @@
 // simulation-reported percentage wins, otherwise checklist completion is
 // averaged with the latest quiz score.
 import { migrateParts } from '../../../frontend/src/lib/migrateParts.js'
+import { missionResults } from '../../../frontend/src/lib/simulationProgress.js'
 
 export function moduleProgressFromSnapshot(snapshot, slug, checklistTotals) {
   const simulationProgress = snapshot?.simulations?.[slug]?.percentage
@@ -37,6 +38,21 @@ function moduleUpdatedAtFromSnapshot(snapshot, slug) {
   return candidates.reduce((latest, current) => (new Date(current) > new Date(latest) ? current : latest))
 }
 
+// A module's mission steps (the Final Driving Test) for the Reports row: the
+// pass the learner has, if any, and their last finished run. Client-reported,
+// like the rest of the snapshot.
+function moduleMissions(snapshot, slug) {
+  return missionResults(snapshot)
+    .filter((result) => result.module === slug)
+    .map(({ stepId, passedAt, bestScore, runs, lastRun }) => ({
+      stepId,
+      passedAt,
+      bestScore,
+      runs,
+      lastRun: { finishedAt: lastRun.finishedAt, passed: lastRun.passed, score: lastRun.score },
+    }))
+}
+
 // Builds the admin dashboard's progress rows and activity log entries from
 // every user's stored progress snapshot.
 export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
@@ -53,6 +69,7 @@ export function buildAdminProgressReport(snapshots, modules, checklistTotals) {
         moduleSlug: module.slug,
         progress: moduleProgressFromSnapshot(data, module.slug, checklistTotals),
         updatedAt: moduleUpdatedAtFromSnapshot(data, module.slug),
+        missions: moduleMissions(data, module.slug),
         user,
       })
     }

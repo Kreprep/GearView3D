@@ -38,6 +38,7 @@ export default {
   'skills.evidence.partsViewed': 'Tingnan ang bawat parte sa pahina ng mga parte',
   'skills.evidence.cautionRecovered':
     'Tapusin ang isang driving step matapos lumabas ang babala, nang hindi ito naging babalang pang-panganib',
+  'skills.evidence.missionPass': 'Pumasa sa "{step}" ({module}) ayon sa scorecard nito',
 
   'skills.stamp': 'Pinirmahan ni {name} noong {date}',
   'skills.stampFormer': 'Pinirmahan ni {name} (dating staff) noong {date}',

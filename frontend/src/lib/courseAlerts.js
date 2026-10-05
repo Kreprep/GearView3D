@@ -17,7 +17,9 @@
 import { DEFAULT_SPEED_LIMIT_KMH } from '../data/safetyThresholds.js'
 
 // In the order the Course Editor lists them. sound-horn only ever holds on a
-// course with a `requireHorn` checkpoint.
+// course with a `requireHorn` checkpoint. A `hint` rule is shown like any
+// other but never counted (lib/driving/safetyMonitor.js leaves it out of the
+// tally), so nothing can be judged on it: a clean run, a mission's pass rules.
 export const ALERT_RULES = [
   { id: 'obstacle-ahead', essential: true, label: 'Obstacle ahead' },
   { id: 'obstacle-behind', essential: true, label: 'Obstacle behind' },
@@ -39,10 +41,14 @@ export const ALERT_RULES = [
   { id: 'parking-brake-on', essential: false, label: 'Driving against the parking brake' },
   { id: 'seatbelt-off', essential: false, label: 'Seatbelt unfastened with the engine running' },
   { id: 'forks-raised-parked', essential: false, label: 'Forks left raised when parked' },
-  { id: 'release-load', essential: false, label: 'Hint: tilt the mast forward to set a load down (not counted)' },
+  { id: 'release-load', essential: false, hint: true, label: 'Hint: tilt the mast forward to set a load down (not counted)' },
 ]
 
 export const ALERT_RULE_IDS = ALERT_RULES.map((rule) => rule.id)
+
+// The rules an attempt's tally counts: every rule but the hints.
+export const COUNTED_ALERT_RULES = ALERT_RULES.filter((rule) => !rule.hint)
+export const COUNTED_ALERT_RULE_IDS = COUNTED_ALERT_RULES.map((rule) => rule.id)
 
 // Every rule's switch for a course: { [ruleId]: boolean }. On unless the
 // course stored `false` for a rule that may be switched off.

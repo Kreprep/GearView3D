@@ -123,6 +123,22 @@ describe('caution-recovered', () => {
   })
 })
 
+describe('mission-pass', () => {
+  const rule = { type: 'mission-pass', module: MODULE, stepId: 'final-test' }
+  const withMission = (mission) =>
+    progress({ simulations: { [MODULE]: { attemptStats: { 'final-test': { failsSinceCompletion: 1, mission } } } } })
+
+  test('met once the mission has been passed, whatever the latest run did', () => {
+    assert.equal(isEvidenceMet(rule, withMission({ passedAt: 'T1', lastRun: { passed: false } })), true)
+  })
+
+  test('not met by finished runs that never passed, or with no runs at all', () => {
+    assert.equal(isEvidenceMet(rule, withMission({ passedAt: null, lastRun: { passed: false } })), false)
+    assert.equal(isEvidenceMet(rule, progress()), false)
+    assert.equal(isEvidenceMet({ ...rule, stepId: 'other' }, withMission({ passedAt: 'T1' })), false)
+  })
+})
+
 test('an unknown rule type is never met', () => {
   assert.equal(isEvidenceMet({ type: 'self-assessed' }, progress()), false)
 })
@@ -205,6 +221,7 @@ describe('normalizeEvidence', () => {
       { type: 'clean-run', module: 'm', stepId: 's', rules: ['overspeed', 'overspeed'] },
       { type: 'quiz-score', context: 'parts', module: 'ignored', min: '80' },
       { type: 'parts-viewed', module: 'ignored' },
+      { type: 'mission-pass', module: 'm', stepId: ' s ', rules: ['ignored'] },
     ])
     assert.deepEqual(problems, [])
     assert.deepEqual(evidence, [
@@ -212,6 +229,7 @@ describe('normalizeEvidence', () => {
       { type: 'clean-run', module: 'm', stepId: 's', rules: ['overspeed'], severity: 'any' },
       { type: 'quiz-score', context: 'parts', min: 80 },
       { type: 'parts-viewed' },
+      { type: 'mission-pass', module: 'm', stepId: 's' },
     ])
   })
 
@@ -223,9 +241,10 @@ describe('normalizeEvidence', () => {
       { type: 'clean-run', module: 'm', stepId: 's', severity: 'caution' },
       { type: 'quiz-score', module: 'm', min: 120 },
       { type: 'quiz-score', min: 50 },
+      { type: 'mission-pass', module: 'm' },
       'text',
     ])
-    assert.equal(problems.length, 7)
+    assert.equal(problems.length, 8)
     assert.deepEqual(normalizeEvidence('not a list').problems, ['Evidence must be a list'])
   })
 

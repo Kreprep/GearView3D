@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react'
 import { AttemptSummary } from '../components/driving/AttemptSummary'
+import { MissionPassRules, MissionScorecard } from '../components/driving/MissionScorecard'
 import { useT } from '../i18n'
 import { courseTaskKey } from '../lib/courseGoals'
 import { evaluateFreeCompletion } from '../lib/customCompletion'
+import { resolvePassRules, scoreMission } from '../lib/missionScore'
 import { getStoredProgress } from '../lib/progressService'
 import {
   attemptStatsFor,
@@ -11,6 +13,7 @@ import {
   isStepComplete,
   withAttemptComplete,
   withAttemptFail,
+  withMissionRun,
   withStepComplete,
 } from '../lib/simulationProgress'
 
@@ -41,6 +44,11 @@ function unique(items) {
 // reports the running tally with `safety-tally` events, starting from an
 // empty one each attempt; a failed attempt counts toward the next
 // completion's `fails`.
+//
+// A mission (the Final Driving Test) completes only on a passing run: its
+// `course-complete` is scored against the course's pass rules
+// (lib/missionScore.js), every finished run's scorecard is kept, and one that
+// does not pass counts as a failed attempt (decided 2026-10-05).
 export function useDrivingController({ moduleSlug, courseById, simulation, gradedStepIds, saveSimulation, markStepComplete, updateSimulation }) {
   const [lastFail, setLastFail] = useState(null)
   const cabRef = useRef({ seatbelt: false, parkingBrake: false })
@@ -50,10 +58,23 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
   const t = useT()
 
   // The current attempt's tally, if it is this step's.
-  const completedAttempt = (stepId) => ({
-    tally: tallyRef.current.stepId === stepId ? tallyRef.current.tally : emptyAttemptTally(),
-    completedAt: new Date().toISOString(),
-  })
+  const tallyFor = (stepId) => (tallyRef.current.stepId === stepId ? tallyRef.current.tally : emptyAttemptTally())
+  const completedAttempt = (stepId) => ({ tally: tallyFor(stepId), completedAt: new Date().toISOString() })
+
+  // A finished mission run, scored and saved; the step completes on a pass.
+  const finishMission = (stepId, { elapsedS }) => {
+    const tally = tallyFor(stepId)
+    const run = {
+      finishedAt: new Date().toISOString(),
+      elapsedS: typeof elapsedS === 'number' ? elapsedS : null,
+      ...tally,
+      ...scoreMission(tally, resolvePassRules(courseById[stepId])),
+    }
+    const partial = withMissionRun(simulation, stepId, run)
+    setLastFail(null)
+    if (run.passed) markStepComplete(stepId, partial)
+    else saveSimulation({ failedAttempts: simulation.failedAttempts + 1, ...partial })
+  }
 
   const keysUsedFor = (stepId) => simulation.keysUsedByStep?.[stepId] || []
 
@@ -135,9 +156,13 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
 
     // Whichever goal the course defines, reaching it completes that step. A
     // mission delivers pallets and parks along the way: only its last task
-    // (course-complete) completes it.
+    // (course-complete) finishes it, and only a passing run completes it.
     const isMission = courseById[currentStep.id]?.goalType === 'mission'
-    const completes = event.type === 'course-complete' || (!isMission && (event.type === 'pallet-delivered' || event.type === 'parking-complete'))
+    if (isMission) {
+      if (event.type === 'course-complete' && gradedStepIds.includes(currentStep.id)) finishMission(currentStep.id, event)
+      return
+    }
+    const completes = event.type === 'course-complete' || event.type === 'pallet-delivered' || event.type === 'parking-complete'
     if (completes) {
       if (gradedStepIds.includes(currentStep.id)) {
         setLastFail(null)
@@ -166,6 +191,8 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
     }
 
     const task = courseTaskKey(course)
+    const isMission = course.goalType === 'mission'
+    const stats = attemptStatsFor(simulation, currentStep.id)
 
     return (
       <div className="load-task-stack">
@@ -177,7 +204,14 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
         <p className={done ? 'completion-ready' : 'task-note'}>
           {done ? t('driving.task.done') : t(task.key, task.values)}
         </p>
-        {summary}
+        {isMission ? (
+          <>
+            <MissionScorecard stats={stats} />
+            {!done && <MissionPassRules rules={resolvePassRules(course)} />}
+          </>
+        ) : (
+          summary
+        )}
       </div>
     )
   }

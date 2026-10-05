@@ -484,4 +484,79 @@ export const drivingCourses = {
     dropZones: [{ id: 'dock', position: [0, 0, 3], radius: 0.9, label: 'Dock' }],
     decorations: [...coneLine(-1.6, 1, 10, 2.4), ...coneLine(1.6, 1, 10, 2.4)],
   },
+  // Module 5, the Final Driving Test: one mission (docs/modules/module-
+  // improvements-plan.md, 3.6). The truck starts nose-in to a dead-end bay
+  // off the aisle; the learner backs out of it, stops and sounds the horn at
+  // the blind crossing, picks the pallet the truck may lift (both weigh
+  // 700 kg, but one load sits 0.3 m toward the far end: 0.9 m from the fork
+  // face, over the plate derated for that) and stores it on the rack's middle
+  // shelf, takes the pallet off the top shelf of the same rack to the dock,
+  // then backs into the parking bay and secures the truck. A 5 km/h aisle.
+  // Pass rules: lib/missionScore.js's stock ones (D-3).
+  'final-test': {
+    id: 'final-test',
+    goalType: 'mission',
+    start: { position: [2, 0, 1], heading: Math.PI / 2 },
+    speedLimitKmh: 5,
+    capacityKg: 1000,
+    failConditions: { loadDrop: true, overload: true, highTravel: true },
+    checkpoints: [
+      {
+        id: 'bay-exit',
+        type: 'stop',
+        position: [0.3, 0, -0.2],
+        radius: 0.6,
+        maxSpeed: 0.25,
+        label: 'Clear of the Bay',
+        completeMessage: 'Out of the bay. Drive up the aisle to the crossing.',
+      },
+      {
+        id: 'crossing',
+        type: 'stop',
+        requireHorn: true,
+        position: [0, 0, 5],
+        radius: 0.7,
+        maxSpeed: 0.25,
+        label: 'Blind Crossing',
+        completeMessage: 'Stopped and sounded the horn. Cross when it is clear.',
+      },
+    ],
+    pallets: [
+      { id: 'store-pallet', position: [-1.2, 0, 12.5], rotation: 0, weightKg: 700, target: { rack: 'aisle-rack', level: 'middle' } },
+      { id: 'far-load-pallet', position: [1.2, 0, 12.5], rotation: 0, weightKg: 700, loadOffsetM: 0.3 },
+      {
+        id: 'top-shelf-pallet',
+        position: [-1.2, 0, 20],
+        rotation: 0,
+        weightKg: 450,
+        startShelf: { rack: 'aisle-rack', level: 'top' },
+        target: { zone: 'dock' },
+      },
+    ],
+    racks: [{ id: 'aisle-rack', position: [-1.2, 0, 20], rotation: 0 }],
+    dropZones: [{ id: 'dock', position: [-1.2, 0, 15.5], radius: 0.9, label: 'Dock' }],
+    parkingBay: { position: [-1.2, 0, 9.5], width: 0.45, depth: 1, heading: 0, label: 'Parking Bay' },
+    tasks: [
+      { id: 'start', type: 'start', label: 'Start the truck' },
+      { id: 'reverse-out', type: 'checkpoint', ref: 'bay-exit', label: 'Reverse out of the bay, looking behind' },
+      { id: 'crossing', type: 'checkpoint', ref: 'crossing', label: 'Stop at the crossing and sound the horn' },
+      { id: 'store', type: 'deliver', ref: 'store-pallet', label: 'Store the pallet you may lift on the middle shelf' },
+      { id: 'retrieve', type: 'deliver', ref: 'top-shelf-pallet', label: 'Take the pallet off the top shelf to the dock' },
+      { id: 'park', type: 'park', label: 'Park in the bay and secure the truck' },
+    ],
+    decorations: [
+      // The bay the truck starts in: a wall at its nose and either side.
+      { type: 'wall', position: [2.85, 0, 1], length: 1.2, rotation: 0 },
+      { type: 'wall', position: [2.25, 0, 0.5], length: 1.2, rotation: Math.PI / 2 },
+      { type: 'wall', position: [2.25, 0, 1.5], length: 1.2, rotation: Math.PI / 2 },
+      // The walls that hide the cross aisle until the truck is in it.
+      { type: 'wall', position: [-1.7, 0, 3.2], length: 1.6, rotation: 0 },
+      { type: 'wall', position: [1.7, 0, 3.2], length: 1.6, rotation: 0 },
+      { type: 'wall', position: [-1.7, 0, 6.8], length: 1.6, rotation: 0 },
+      { type: 'wall', position: [1.7, 0, 6.8], length: 1.6, rotation: 0 },
+      ...coneLine(-2.6, 11, 22.5, 2.3),
+      ...coneLine(2.6, 11, 22.5, 2.3),
+      { type: 'rack-loaded', position: [1.4, 0, 20], rotation: 0 },
+    ],
+  },
 }

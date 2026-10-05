@@ -45,6 +45,7 @@ export default {
   'skills.evidence.partsViewed': 'Look at every part on the parts page',
   'skills.evidence.cautionRecovered':
     'Finish a driving step after a warning sign came up, without it becoming a danger sign',
+  'skills.evidence.missionPass': 'Pass "{step}" ({module}) on its scorecard',
 
   'skills.stamp': 'Signed off by {name} on {date}',
   'skills.stampFormer': 'Signed off by {name} (former staff) on {date}',

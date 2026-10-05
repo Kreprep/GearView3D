@@ -227,6 +227,37 @@ export const equipmentUsageModules = [
       completion: 'palletTesting.complete',
     },
   },
+  {
+    id: 5,
+    slug: 'final-driving-test',
+    title: 'Final Driving Test',
+    fullTitle: 'Final Driving Test (Combined Operation)',
+    subtitle: 'Combined Operation',
+    imageUrl: '',
+    description:
+      'Put every module together in one scored run: back out of a bay, stop and sound the horn at a blind crossing, choose the load the forklift may lift and store it, take another down from the top shelf, then park and secure the truck. Passing the scorecard completes the module.',
+    syllabusLocation: 'Section 2',
+    unitCode: '505833315',
+    unitTitle: 'Perform productive operation for forklift',
+    element: 'Elements 1-4: Plan, travel, handle loads and secure the forklift',
+    pageReferences: 'pp. 38, 41-42, 55, 57-58',
+    learningObjectives: [
+      'Carry out a complete operating cycle in order, from the pre-start checks to a secured park.',
+      'Travel safely: keep to the speed limit, look in the direction of travel and warn at blind crossings.',
+      'Choose a load by its weight and load centre against the capacity plate.',
+      'Store and retrieve loads at height without tilting a raised load forward or travelling with it raised.',
+      'Finish the run without a danger-level safety sign.',
+    ],
+    lessonContent: [
+      'This is the final test of the driving modules. It is one long run that puts together what the other modules taught, and it is scored: every safety sign that comes up on the way is counted.',
+      "The route, in order: start the truck through the pre-start checks, then reverse out of the bay it is parked in, looking behind you. Drive up the aisle - the speed limit is 5 km/h - and stop at the blind crossing and sound the horn before crossing. Two pallets of the same weight wait beyond it; read their labels, because one load sits too far out to lift. Store the one the forklift may lift on the rack's middle shelf, take the pallet off the top shelf of the same rack to the dock, then park in the bay and secure the truck: lever in N, forks down, parking brake set, engine off.",
+      'To pass, finish every task with **no danger-level sign**, **no more than 3 caution signs**, and **no sign at all for reversing without looking behind or travelling with the forks raised**. You also get a score out of 100: 5 points off for each caution, 10 for a caution on one of those two, 20 for each danger. The score is shown with the result, but passing is decided by the rules, not the score.',
+      'The fails of the earlier modules still end the attempt at once: a collision, a tip-over, a load lost or over the capacity, travelling fast with a raised load. Use Reset attempt and start again. A finished run that does not pass is counted as a failed attempt; the scorecard shows which signs came up, so you know what to change.',
+    ],
+    interactiveActivities: ['One scored mission combining start-up, reversing, a blind crossing, load choice, rack storage and retrieval, and secure parking'],
+    checklist: [],
+    completionRequirements: ['Pass the Final Driving Test scorecard.'],
+  },
 ]
 
 export const trainingModules = equipmentUsageModules.map((module) => ({

@@ -40,13 +40,38 @@ function AngleField({ label, value, onChange }) {
   )
 }
 
-function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
+// Where a pallet is delivered to, as stored: `target`, or the older
+// targetRack/targetLevel. Read raw rather than through palletTarget(), which
+// treats a rack with no level as no target at all.
+function storedTarget(entry) {
+  if (entry.target) return entry.target
+  return entry.targetRack ? { rack: entry.targetRack, level: entry.targetLevel } : null
+}
+
+function targetValue(target) {
+  if (target?.zone) return `zone:${target.zone}`
+  if (target?.rack) return `rack:${target.rack}`
+  return ''
+}
+
+// The picker's choice as a pallet patch. Always written as `target`, so a
+// pallet saved with the older targetRack/targetLevel is tidied on its next edit.
+function targetPatch(value, current) {
+  const [kind, id] = value.split(':')
+  const target = kind === 'zone' ? { zone: id } : kind === 'rack' ? { rack: id, level: current?.level || 'middle' } : undefined
+  return { target, targetRack: undefined, targetLevel: undefined }
+}
+
+// `racks` and `zones` (lib/coursePallets.js, courseDropZones) are what a
+// pallet can be delivered to or start on.
+function CourseInspector({ item, racks = [], zones = [], onChange, onMove, onDelete }) {
   if (!item) {
     return <PanelNote>Select an object on the map, or pick a tool and click to place one.</PanelNote>
   }
 
   const { kind, entry } = item
   const set = (patch) => onChange(patch)
+  const target = kind === 'pallet' ? storedTarget(entry) : null
 
   return (
     <div className="grid gap-2">
@@ -118,33 +143,30 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
           {entry.startShelf && (
             <PanelNote>The pallet starts in that rack&apos;s centre bay on this shelf; its own position is not used.</PanelNote>
           )}
-          <Field label="Target rack">
-            <Select
-              value={entry.targetRack || ''}
-              onChange={(event) =>
-                set({ targetRack: event.target.value || undefined, targetLevel: event.target.value ? entry.targetLevel : undefined })
-              }
-            >
-              <option value="">None - deliver to a drop zone instead</option>
+          <Field label="Delivered to">
+            <Select value={targetValue(target)} onChange={(event) => set(targetPatch(event.target.value, target))}>
+              <option value="">Any drop zone</option>
+              {zones.map((zone) => (
+                <option key={zone.id} value={`zone:${zone.id}`}>Drop zone {zone.label || zone.id}</option>
+              ))}
               {racks.map((rack) => (
-                <option key={rack.id} value={rack.id}>{rack.id}</option>
+                <option key={rack.id} value={`rack:${rack.id}`}>Rack {rack.id}</option>
               ))}
             </Select>
           </Field>
-          {entry.targetRack && (
+          {target?.rack && (
             <Field label="Target shelf level">
-              <Select value={entry.targetLevel || ''} onChange={(event) => set({ targetLevel: event.target.value || undefined })}>
-                <option value="">Choose a level</option>
+              <Select value={target.level || 'middle'} onChange={(event) => set({ target: { rack: target.rack, level: event.target.value } })}>
                 {RACK_LEVELS.map((level) => (
                   <option key={level} value={level}>{RACK_LEVEL_LABELS[level]}</option>
                 ))}
               </Select>
             </Field>
           )}
-          {entry.targetRack && (
+          {target?.rack && (
             <PanelNote>
               Raise this pallet to the target level&apos;s height, drive it into that rack, and hold steady to set it down.
-              Set the goal type to Rack storage below so the step reads this instead of a drop zone.
+              On a single-goal course, set the goal type to Rack storage below so the step reads this instead of a drop zone.
             </PanelNote>
           )}
         </>
@@ -230,6 +252,7 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
 
       {kind === 'dropZone' && (
         <>
+          {item.key !== 'dropZone' && <TextField label="Id" value={entry.id} onChange={(id) => set({ id })} />}
           <TextField label="Label" value={entry.label} onChange={(label) => set({ label })} />
           <NumberField label="Radius" value={entry.radius ?? 0.9} onChange={(radius) => set({ radius })} />
         </>
