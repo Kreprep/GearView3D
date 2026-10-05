@@ -7,7 +7,7 @@
 // Scene units throughout (1 unit is about 4 m, lib/driving/units.js). Every
 // box is { center: [x, y, z], half: [x, y, z] } in its owner's frame, glTF
 // axes (+Y up, +Z forward).
-import { G, kmh, m } from '../lib/driving/units.js'
+import { G, kmh, m, toMetres } from '../lib/driving/units.js'
 
 // --- World ---------------------------------------------------------------
 // Chosen in the Phase 2 spike (lib/physics/world.test.js pins them).
@@ -201,18 +201,38 @@ export function palletKindForWeight(weightKg) {
 export const DEFAULT_LOAD_KG = 250
 
 // A course pallet as the physics builds it: its colliders, its load's box
-// and weight, and its footprint (half-extents over every collider, which the
-// fork-engagement maths and the 2D proximity read).
+// and weight, its footprint (half-extents over every collider, which the
+// fork-engagement maths and the 2D proximity read) and `loadOffset`, how far
+// the load's centre of gravity sits from the pallet's middle along its own Z
+// (scene units).
+//
+// A course pallet's `loadOffsetM` (metres, + toward the pallet's far side as
+// a truck facing the same way as the pallet meets it) is a load heavier at
+// one end: the load keeps its box, and its centre of gravity moves. It is
+// held inside the pallet's footprint. Without one the load is centred, as it
+// always was.
 export function palletPhysics(palletDef) {
   const kind = palletKindForWeight(palletDef.weightKg)
   const pallet = PALLETS[kind]
   const extent = (axis) => Math.max(...pallet.colliders.map(({ center, half }) => Math.abs(center[axis]) + half[axis]))
+  const halfDepth = extent(2)
+  const offset = typeof palletDef.loadOffsetM === 'number' && Number.isFinite(palletDef.loadOffsetM) ? m(palletDef.loadOffsetM) : 0
   return {
     kind,
     pallet,
     loadKg: typeof palletDef.weightKg === 'number' ? palletDef.weightKg : DEFAULT_LOAD_KG,
-    footprint: { halfWidth: extent(0), halfDepth: extent(2) },
+    footprint: { halfWidth: extent(0), halfDepth },
+    loadOffset: Math.max(-halfDepth, Math.min(halfDepth, offset)),
   }
+}
+
+// Where a pallet's load centre is, in metres from the fork face, with the
+// forks all the way in from the pallet's near side: half the pallet's depth,
+// plus the load's offset. What the course's label and the load chart read
+// for a seated load.
+export function seatedLoadCentreM(palletDef) {
+  const { footprint, loadOffset } = palletPhysics(palletDef)
+  return toMetres(footprint.halfDepth + loadOffset)
 }
 
 // --- Cone -------------------------------------------------------------------

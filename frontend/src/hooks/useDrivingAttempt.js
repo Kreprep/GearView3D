@@ -210,6 +210,12 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
       })
     } else if (event.type === 'pallet') {
       emit(event.event)
+    } else if (event.type === 'task') {
+      // A mission's task (lib/driving/stepMission.js); the last one
+      // completes the course.
+      const { task, index, isLast } = event
+      emit({ type: 'mission-task', id: task.id, index, label: task.label })
+      if (isLast) emit({ type: 'course-complete', id: task.id, label: task.label })
     } else if (event.type === 'parking' && event.isParked) {
       emit({ type: 'parking-complete' })
     }
@@ -243,6 +249,8 @@ export function useDrivingAttempt({ course, profile, onEvent, instrumentFaults =
       if (command === 'horn') {
         horn = true
         audioRef.current?.horn()
+        // The core notes it too, for a checkpoint that wants the horn.
+        core.command('horn')
       } else {
         core.command(command)
       }

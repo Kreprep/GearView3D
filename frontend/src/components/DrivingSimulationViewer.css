@@ -296,6 +296,11 @@
   border: 2px solid rgba(148, 163, 184, 0.7);
 }
 
+.pallet-load-centre {
+  display: block;
+  font-weight: 500;
+}
+
 .pallet-weight-label.overweight {
   background: rgba(153, 27, 27, 0.82);
   border-color: rgba(252, 165, 165, 0.8);

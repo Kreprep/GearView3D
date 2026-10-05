@@ -4,6 +4,8 @@ export default {
   'driving.task.racking': 'Ipasok nang buo ang nakababang forks sa pallet, itaas nang kaunti gamit ang R at ihilig paatras gamit ang T para dalhin, huminto nang tuwid sa harap ng bay, itaas ang karga lampas sa target na shelf, umabante hanggang pigilan ng rack ang trak, ituwid ang mast gamit ang G, ibaba gamit ang F hanggang dumapo ang karga sa shelf at maluwag na ang forks, tapos umatras nang tuwid.',
   'driving.task.checkpoints.one': 'Dumaan sa {count} checkpoint ayon sa pagkakasunod-sunod para matapos ang hakbang na ito.',
   'driving.task.checkpoints.other': 'Dumaan sa {count} checkpoint ayon sa pagkakasunod-sunod para matapos ang hakbang na ito.',
+  'driving.task.mission.one': 'Tapusin ang {count} gawaing nakikita sa itaas ng screen para matapos ang hakbang na ito.',
+  'driving.task.mission.other': 'Tapusin ang {count} gawaing nakikita sa itaas ng screen, ayon sa pagkakasunod-sunod, para matapos ang hakbang na ito.',
   'driving.task.free': 'Paandarin ang makina para matapos ang hakbang na ito: ikabit ang seatbelt (B), i-set ang parking brake (Space), tapos pindutin ang E.',
   'driving.task.done': 'Tapos na ang hakbang. Pindutin ang Next para magpatuloy.',
 
@@ -42,6 +44,9 @@ export default {
 
   'driving.hud.courseComplete': 'Tapos ang course',
   'driving.hud.checkpoint': 'Checkpoint {index} / {total}',
+  'driving.hud.task': 'Gawain {index} / {total}: {label}',
+  'driving.hud.missionComplete': 'Tapos ang misyon',
+  'driving.pallet.loadCentre': 'Load centre {metres} m',
   'driving.hud.pallet.ground': 'Pallet: nasa lupa',
   'driving.hud.pallet.carried': 'Pallet: dala',
   'driving.hud.pallet.released': 'Pallet: nailapag',

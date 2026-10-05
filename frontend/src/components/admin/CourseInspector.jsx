@@ -3,7 +3,7 @@ import { RACK_LEVEL_LABELS, RACK_LEVELS } from '../../data/rackProfile'
 import { Button } from '../ui/button'
 import { PanelNote } from '../ui/panel'
 import { Field } from '../ui/field'
-import { Input, Textarea, Select } from '../ui/input'
+import { Checkbox, Input, Textarea, Select } from '../ui/input'
 
 const RAD_PER_DEG = Math.PI / 180
 
@@ -83,6 +83,41 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
           <PanelNote>
             Weight is shown on the pallet and checked against the course capacity. Over capacity tips the vehicle.
           </PanelNote>
+          <NumberField
+            label="Load offset (m)"
+            step={0.05}
+            value={entry.loadOffsetM}
+            onChange={(loadOffsetM) => set({ loadOffsetM: loadOffsetM || undefined })}
+          />
+          <PanelNote>
+            How far the load&apos;s centre of gravity sits from the pallet&apos;s middle, + toward its far side. A load
+            further out is derated by the load chart, so the same weight can be over capacity.
+          </PanelNote>
+          <Field label="Starts on">
+            <Select
+              value={entry.startShelf?.rack || ''}
+              onChange={(event) =>
+                set({ startShelf: event.target.value ? { rack: event.target.value, level: entry.startShelf?.level || 'top' } : undefined })
+              }
+            >
+              <option value="">The floor, where it is placed</option>
+              {racks.map((rack) => (
+                <option key={rack.id} value={rack.id}>Rack {rack.id}</option>
+              ))}
+            </Select>
+          </Field>
+          {entry.startShelf && (
+            <Field label="Start shelf level">
+              <Select value={entry.startShelf.level} onChange={(event) => set({ startShelf: { ...entry.startShelf, level: event.target.value } })}>
+                {RACK_LEVELS.map((level) => (
+                  <option key={level} value={level}>{RACK_LEVEL_LABELS[level]}</option>
+                ))}
+              </Select>
+            </Field>
+          )}
+          {entry.startShelf && (
+            <PanelNote>The pallet starts in that rack&apos;s centre bay on this shelf; its own position is not used.</PanelNote>
+          )}
           <Field label="Target rack">
             <Select
               value={entry.targetRack || ''}
@@ -169,6 +204,11 @@ function CourseInspector({ item, racks = [], onChange, onMove, onDelete }) {
           ) : (
             <NumberField label="Radius" value={entry.radius ?? 0.9} onChange={(radius) => set({ radius })} />
           )}
+          <Checkbox
+            label="Blind crossing: sound the horn on the way in"
+            checked={Boolean(entry.requireHorn)}
+            onChange={(event) => set({ requireHorn: event.target.checked || undefined })}
+          />
           {entry.type === 'stop' && (
             <NumberField
               label="Max speed to count"

@@ -329,3 +329,11 @@ test('watching a drive does not change it', () => {
   const strip = (state) => JSON.stringify({ ...state, frame: undefined })
   assert.equal(strip(watched), strip(unwatched.core.state))
 })
+
+test('sound-horn: reaching a blind crossing without the horn raises the sign; sounding it on the approach does not', () => {
+  const silent = watch(scenarioById('horn-crossing'))
+  assert.deepEqual(silent.edges.filter((edge) => edge.id === 'sound-horn').map((edge) => edge.severity), ['caution'])
+  // The mission sounds it before it gets there.
+  const warned = watch(scenarioById('mission-run'))
+  assert.equal(warned.edges.some((edge) => edge.id === 'sound-horn'), false)
+})

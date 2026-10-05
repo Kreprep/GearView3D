@@ -110,8 +110,12 @@ export function useDrivingController({ moduleSlug, courseById, simulation, grade
       return
     }
 
-    // Whichever goal the course defines, reaching it completes that step.
-    if (event.type === 'course-complete' || event.type === 'pallet-delivered' || event.type === 'parking-complete') {
+    // Whichever goal the course defines, reaching it completes that step. A
+    // mission delivers pallets and parks along the way: only its last task
+    // (course-complete) completes it.
+    const isMission = courseById[currentStep.id]?.goalType === 'mission'
+    const completes = event.type === 'course-complete' || (!isMission && (event.type === 'pallet-delivered' || event.type === 'parking-complete'))
+    if (completes) {
       if (gradedStepIds.includes(currentStep.id)) {
         setLastFail(null)
         markStepComplete(currentStep.id, withAttemptComplete(simulation, currentStep.id, completedAttempt(currentStep.id)))

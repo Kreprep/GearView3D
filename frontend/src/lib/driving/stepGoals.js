@@ -1,29 +1,66 @@
+import { HORN_APPROACH_DISTANCE } from '../../data/safetyThresholds.js'
 import { PARKING_ALIGN_TOLERANCE, PARKING_FORK_MAX, PARKING_MARGIN_X, PARKING_MARGIN_Z, PARKING_SPEED_EPSILON } from './constants.js'
 
+// Whether the truck is in a checkpoint's marked area: across its line, or
+// inside its circle.
+export function inCheckpointArea(truck, checkpoint) {
+  if (checkpoint.shape === 'line') {
+    const lineDz = truck.z - checkpoint.position[2]
+    const lineDx = Math.abs(truck.x - checkpoint.position[0])
+    return lineDz >= -0.3 && lineDz <= (checkpoint.lineDepth ?? 1.2) && lineDx <= (checkpoint.halfWidth ?? 3)
+  }
+  return Math.hypot(truck.x - checkpoint.position[0], truck.z - checkpoint.position[2]) <= checkpoint.radius
+}
+
+// How far from a `requireHorn` checkpoint the horn counts for it: its own
+// `hornDistance`, or its radius plus the approach distance.
+export function hornReach(checkpoint) {
+  return typeof checkpoint.hornDistance === 'number' ? checkpoint.hornDistance : (checkpoint.radius ?? 0) + HORN_APPROACH_DISTANCE
+}
+
+// Whether the horn sounded for a checkpoint: since it became the one to
+// reach (`since`, state.time), and within its reach.
+export function hornSoundedFor(state, checkpoint, since) {
+  const { horn } = state
+  if (horn.at === null || horn.at < since) return false
+  return Math.hypot(horn.x - checkpoint.position[0], horn.z - checkpoint.position[2]) <= hornReach(checkpoint)
+}
+
+// Whether the truck has reached a checkpoint, with everything it asks for:
+// at a crawl for a stop, the horn for a blind crossing (`requireHorn`).
+export function checkpointReached(state, checkpoint, since) {
+  const { truck } = state
+  if (!inCheckpointArea(truck, checkpoint)) return false
+  if (checkpoint.shape !== 'line' && checkpoint.type === 'stop' && Math.abs(truck.speed) > (checkpoint.maxSpeed ?? 0.25)) return false
+  return !checkpoint.requireHorn || hornSoundedFor(state, checkpoint, since)
+}
+
+// The checkpoint the truck is driving to now and since when, or null: the
+// next in order, or in a mission (stepMission.js) the active task's.
+export function activeCheckpoint(state, world) {
+  if (state.mission) {
+    const task = world.mission[state.mission.index]
+    if (task?.type !== 'checkpoint') return null
+    const checkpoint = world.checkpoints.find((entry) => entry.id === task.ref)
+    return checkpoint ? { checkpoint, since: state.mission.since } : null
+  }
+  const checkpoint = world.checkpoints[state.checkpointIndex]
+  return checkpoint ? { checkpoint, since: state.checkpointSince } : null
+}
+
+// The checkpoints in order. A mission course runs its checkpoints as tasks
+// instead (stepMission.js).
 export function stepCheckpoints(state, world) {
   const { truck, frame } = state
   const { checkpoints } = world
 
   const idx = state.checkpointIndex
-  if (!(truck.engineOn && !frame.controlsLocked && idx < checkpoints.length)) return
+  if (state.mission || !(truck.engineOn && !frame.controlsLocked && idx < checkpoints.length)) return
 
   const checkpoint = checkpoints[idx]
-  let satisfied
-
-  if (checkpoint.shape === 'line') {
-    const lineDz = truck.z - checkpoint.position[2]
-    const lineDx = Math.abs(truck.x - checkpoint.position[0])
-    satisfied = lineDz >= -0.3 && lineDz <= (checkpoint.lineDepth ?? 1.2) && lineDx <= (checkpoint.halfWidth ?? 3)
-  } else {
-    const dx = truck.x - checkpoint.position[0]
-    const dz = truck.z - checkpoint.position[2]
-    const withinRadius = Math.hypot(dx, dz) <= checkpoint.radius
-    const speedOk = checkpoint.type === 'stop' ? Math.abs(truck.speed) <= (checkpoint.maxSpeed ?? 0.25) : true
-    satisfied = withinRadius && speedOk
-  }
-
-  if (satisfied) {
+  if (checkpointReached(state, checkpoint, state.checkpointSince)) {
     state.checkpointIndex = idx + 1
+    state.checkpointSince = state.time
     state.events.push({ type: 'checkpoint', index: idx, checkpoint, isLast: idx + 1 === checkpoints.length })
   }
 }

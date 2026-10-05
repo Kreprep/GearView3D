@@ -4,6 +4,7 @@ import { neutralControls } from './controls.js'
 import { startInterlockMissing } from './interlock.js'
 import { pathClearance, proximityReadout } from './proximity.js'
 import { inRackSlot } from './rackSlot.js'
+import { activeCheckpoint, hornSoundedFor, inCheckpointArea } from './stepGoals.js'
 import { atDestination } from './stepPallet.js'
 import { kmh } from './units.js'
 
@@ -60,6 +61,14 @@ function forksAtStack(state, world) {
   return world.racks.some((rack) => inRackSlot(tipX, tipZ, rack, world))
 }
 
+// Whether the truck is at a blind crossing (the checkpoint it is driving to,
+// with `requireHorn`) and has not sounded the horn for it.
+function hornDue(state, world) {
+  const active = activeCheckpoint(state, world)
+  if (!active?.checkpoint.requireHorn) return false
+  return inCheckpointArea(state.truck, active.checkpoint) && !hornSoundedFor(state, active.checkpoint, active.since)
+}
+
 export function buildSafetySnapshot(state, world, { view, speedLimitKmh, previous = null }) {
   const { truck, forks } = state
   const controls = state.frame.controls || NO_CONTROLS
@@ -95,6 +104,7 @@ export function buildSafetySnapshot(state, world, { view, speedLimitKmh, previou
     // The smaller of the truck's two stability margins (lib/physics/
     // stability.js): 1 with nothing acting, 0 at the point of tipping.
     stabilityMargin: Math.min(state.stability.longitudinalMargin, state.stability.lateralMargin),
+    hornDue: hornDue(state, world),
     // What a refused start still wants, until the engine starts.
     interlockMissing: state.interlock.at !== null && !truck.engineOn ? startInterlockMissing(controls) : [],
     // Clearances, or null when there is nothing there.

@@ -53,6 +53,7 @@ const GOAL_LABELS = {
   parking: 'Park in bay',
   pallet: 'Pallet delivery',
   racking: 'Rack storage',
+  mission: 'Mission (tasks in order)',
   free: 'Free practice',
 }
 
@@ -61,6 +62,7 @@ const GOAL_HINTS = {
   parking: 'Completes when the vehicle is inside the bay, aligned, stopped, any forks lowered and the engine off.',
   pallet: 'Completes when a pallet is lifted and set down inside the drop zone.',
   racking: 'Completes when a pallet is raised to its assigned shelf height and set down inside its target rack.',
+  mission: 'Completes when every task in the task list is done, in order. Checkpoints count only while they are the current task.',
   free: 'No built-in goal - completes when this course\'s own completion code returns true. Required below.',
 }
 

@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { drivingCourses } from '../data/drivingCourse.js'
-import { courseGoalType, resolveCapacityKg, resolveFailConditions, validateCourse } from './courseGoals.js'
+import { courseGoalType, courseTaskKey, resolveCapacityKg, resolveFailConditions, validateCourse } from './courseGoals.js'
+import { featureCourses } from '../test-helpers/featureCourses.js'
 
 const START = { position: [0, 0, 0], heading: 0 }
 
@@ -164,4 +165,81 @@ test('a built-in free course seeded before completion code gets the stock code, 
   }
   assert.equal(withMissingCompletionCode(stored, { completionCode: null }), stored)
   assert.equal(withMissingCompletionCode(null, stock), null)
+})
+
+// --- Missions, targets, shelves and zones (module improvements Phase 5) -----
+
+const MISSION = featureCourses.mission
+const withTasks = (tasks) => ({ ...MISSION, tasks })
+const has = (problems, text) => problems.some((problem) => problem.includes(text))
+
+test('a mission is recognised by its tasks, before its bay or pallets', () => {
+  const unstored = { ...MISSION, goalType: undefined }
+  assert.equal(courseGoalType(unstored), 'mission')
+  assert.deepEqual(courseTaskKey(MISSION), { key: 'driving.task.mission', values: { count: 4 } })
+  assert.deepEqual(validateCourse(MISSION), [])
+})
+
+test('a mission needs tasks, each with an id, a label and a known type', () => {
+  assert.ok(has(validateCourse(withTasks([])), 'at least one task'))
+  assert.ok(has(validateCourse({ ...MISSION, tasks: undefined, goalType: 'mission' }), 'at least one task'))
+  assert.ok(has(validateCourse(withTasks([{ id: 'a', type: 'fly', label: 'Fly' }])), 'unknown type'))
+  assert.ok(has(validateCourse(withTasks([{ type: 'start', label: 'Go' }])), 'needs an id'))
+  assert.ok(has(validateCourse(withTasks([{ id: 'a', type: 'start', label: ' ' }])), 'needs a label'))
+  const twice = [{ id: 'a', type: 'start', label: 'Go' }, { id: 'a', type: 'checkpoint', ref: 'crossing', label: 'Cross' }]
+  assert.ok(has(validateCourse(withTasks(twice)), 'share the id'))
+})
+
+test("every mission task's ref has to resolve", () => {
+  const problems = validateCourse(withTasks([
+    { id: 'c', type: 'checkpoint', ref: 'nowhere', label: 'Cross' },
+    { id: 'd', type: 'deliver', ref: 'no-pallet', label: 'Deliver' },
+  ]))
+  assert.ok(has(problems, 'checkpoint that does not exist'))
+  assert.ok(has(problems, 'pallet that does not exist'))
+  const noBay = { ...withTasks([{ id: 'p', type: 'park', label: 'Park' }]), parkingBay: null }
+  assert.ok(has(validateCourse(noBay), 'needs a parking bay'))
+})
+
+test('a mission starts first and parks last, and delivers each pallet once', () => {
+  const [start, cross, deliver, park] = MISSION.tasks
+  assert.ok(has(validateCourse(withTasks([cross, start])), 'only be the first task'))
+  assert.ok(has(validateCourse(withTasks([park, deliver])), 'only be the last task'))
+  assert.ok(has(validateCourse(withTasks([deliver, { ...deliver, id: 'again' }])), 'delivered by two tasks'))
+})
+
+test('a mission cannot ask for a pallet over the capacity for its load centre, or with nowhere to go', () => {
+  const heavy = { ...MISSION, capacityKg: 1000, pallets: [{ ...MISSION.pallets[0], weightKg: 700, loadOffsetM: 0.3 }] }
+  assert.ok(has(validateCourse(heavy), 'over the capacity for its load centre'))
+  const centred = { ...heavy, pallets: [{ ...heavy.pallets[0], loadOffsetM: undefined }] }
+  assert.ok(!has(validateCourse(centred), 'over the capacity'))
+  const nowhere = { ...MISSION, dropZones: [], pallets: [{ ...MISSION.pallets[0], target: undefined }] }
+  assert.ok(has(validateCourse(nowhere), 'nowhere to be delivered'))
+})
+
+test('what pallets point at has to exist: zones, racks and shelves', () => {
+  const base = { start: START, goalType: 'pallet', dropZones: [{ id: 'dock', position: [0, 0, 8], radius: 0.9 }] }
+  const pallet = { id: 'p', position: [0, 0, 4], weightKg: 400 }
+  assert.deepEqual(validateCourse({ ...base, pallets: [{ ...pallet, target: { zone: 'dock' } }] }), [])
+  assert.ok(has(validateCourse({ ...base, pallets: [{ ...pallet, target: { zone: 'gone' } }] }), 'drop zone that no longer exists'))
+  assert.ok(has(validateCourse({ ...base, pallets: [{ ...pallet, startShelf: { rack: 'gone', level: 'top' } }] }), 'starts on a rack that no longer exists'))
+  assert.ok(has(validateCourse({ ...base, pallets: [{ ...pallet, loadOffsetM: Number.NaN }] }), 'load offset'))
+
+  const rack = { id: 'r1', position: [0, 0, 12], rotation: 0 }
+  const onShelf = (id, level) => ({ ...pallet, id, startShelf: { rack: 'r1', level } })
+  const shelved = { ...base, racks: [rack], pallets: [onShelf('a', 'top'), onShelf('b', 'bottom')] }
+  // Inside the rack, where a shelf pallet belongs: not a solid overlap.
+  assert.deepEqual(validateCourse(shelved), [])
+  assert.ok(has(validateCourse({ ...shelved, pallets: [onShelf('a', 'top'), onShelf('b', 'top')] }), 'same shelf'))
+  const goingHome = { ...onShelf('a', 'top'), target: { rack: 'r1', level: 'top' } }
+  assert.ok(has(validateCourse({ ...shelved, pallets: [goingHome] }), 'shelf it is meant to be delivered to'))
+})
+
+test('drop zones need their own ids and a radius', () => {
+  const zone = { id: 'dock', position: [0, 0, 8], radius: 0.9 }
+  const course = { start: START, goalType: 'pallet', pallets: [{ id: 'p', position: [0, 0, 4] }] }
+  assert.ok(has(validateCourse({ ...course, dropZones: [zone, zone] }), 'its own id'))
+  assert.ok(has(validateCourse({ ...course, dropZones: [{ ...zone, radius: 0 }] }), 'radius above zero'))
+  // A pallet course is satisfied by a listed zone as well as the older one.
+  assert.equal(courseGoalType({ pallets: course.pallets, dropZones: [zone] }), 'pallet')
 })

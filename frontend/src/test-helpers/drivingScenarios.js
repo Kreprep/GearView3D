@@ -28,6 +28,7 @@
 import { drivingCourses } from '../data/drivingCourse.js'
 import { palletPhysics, TINE_HEEL_Z } from '../data/physicsProfile.js'
 import { RACK_LEVEL_HEIGHTS } from '../data/rackProfile.js'
+import { featureCourses } from './featureCourses.js'
 
 export const SCENARIO_DT = 1 / 60
 
@@ -601,7 +602,111 @@ export const drivingScenarios = [
       brakeToStop,
     ],
   },
+  ...phase5Scenarios(),
 ]
+
+// The module improvements' Phase 5 features, on the fixture courses in
+// featureCourses.js (recorded with them, 2026-10-05).
+function phase5Scenarios() {
+  const feature = (id) => featureCourses[id]
+  const featurePallet = (id, index = 0) => feature(id).pallets[index]
+  // Reverse straight back until the truck is at `z`.
+  const reverseTo = (z, speed = -0.25) => ({
+    name: `reverse to ${z}`,
+    keys: (obs) => speedKeys(obs, obs.z > z ? speed : 0),
+    until: (obs, phaseFrame) => obs.failed || (phaseFrame > 2 && obs.z <= z + 0.02 && stopped(obs)),
+    frames: 2400,
+  })
+  const honk = { name: 'sound the horn', press: ['h'], keys: hold(NO_KEYS), frames: 1 }
+  const stopAt = (point) => ({
+    name: `stop at ${point[2]}`,
+    keys: driveTo(point, { speed: 0.4, stop: true, stopRadius: 0.05 }),
+    until: (obs, phaseFrame) => obs.failed || (phaseFrame > 20 && stopped(obs)),
+    frames: 1200,
+  })
+
+  return [
+    {
+      // The load 0.3 m toward the far end: 0.9 m from the fork face once
+      // seated, over the plate derated for that.
+      id: 'load-centre-overload',
+      course: feature('load-centre'),
+      setup: { x: -1.5, z: 0, heading: 0 },
+      phases: [
+        ...startEngine,
+        forksInto(featurePallet('load-centre', 0)),
+        { name: 'try to lift', keys: hold({ raise: true }), until: (obs) => obs.failed, frames: 300 },
+        settle(60),
+      ],
+    },
+    {
+      // The same weight, centred: within the plate, so it lifts.
+      id: 'load-centre-lift',
+      course: feature('load-centre'),
+      setup: { x: 1.5, z: 0, heading: 0 },
+      phases: [...startEngine, ...pickUp(featurePallet('load-centre', 1)), settle(60)],
+    },
+    {
+      // Off the top shelf: forks to the pockets, in until the rack stops the
+      // truck, lift it clear, back out, down to travel height, back to the
+      // dock and set it down.
+      id: 'shelf-retrieval',
+      course: feature('shelf-retrieval'),
+      phases: [
+        ...startEngine,
+        stopAt([0, 0, 13.4]),
+        raiseTo(freeOnShelf('top') + 0.01),
+        lowerTo(freeOnShelf('top') + 0.004),
+        creepUntilBlocked(0.15),
+        raiseTo(aboveShelf('top', 0.02)),
+        tiltBackTo(-0.1),
+        backOut(0.8),
+        brakeToStop,
+        lowerTo(TRAVEL_HEIGHT),
+        reverseTo(5.6),
+        levelMast,
+        lowerTo(0),
+        backOut(0.8),
+        brakeToStop,
+        settle(),
+      ],
+    },
+    {
+      // A blind crossing reached without the horn does not clear; sounding
+      // it there does, and the drive goes on.
+      id: 'horn-crossing',
+      course: feature('horn-crossing'),
+      phases: [
+        ...startEngine,
+        stopAt([0, 0, 6]),
+        settle(60),
+        honk,
+        settle(10),
+        { name: 'on to the finish', keys: driveTo([0, 0, 11], { speed: 0.4 }), until: (obs) => obs.failed || obs.checkpointIndex >= 2, frames: 1200 },
+        brakeToStop,
+      ],
+    },
+    {
+      // A whole mission: start, horn at the crossing, the pallet to the
+      // dock, then reverse into the bay and secure the truck.
+      id: 'mission-run',
+      course: feature('mission'),
+      phases: [
+        ...startEngine,
+        { name: 'approach the crossing', keys: driveTo([0, 0, 4], { speed: 0.4 }), until: (obs) => obs.z >= 2.6, frames: 900 },
+        honk,
+        stopAt([0, 0, 4]),
+        ...pickUp(featurePallet('mission')),
+        stopAt([0, 0, 15.4]),
+        ...setDownOnFloor,
+        reverseTo(7),
+        brakeToStop,
+        ...shutDown,
+        settle(30),
+      ],
+    },
+  ]
+}
 
 // Run one scenario against a simulation adapter:
 //   adapter.observe() -> the observation the phases read

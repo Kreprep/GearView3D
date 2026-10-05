@@ -105,6 +105,13 @@ const PICTOGRAMS = {
       <path d="M17.5 5v14M14.5 8l3-3 3 3M14.5 16l3 3 3-3" />
     </>
   ),
+  // A horn and its sound.
+  horn: (
+    <>
+      <path d="M3.5 9.5h4l7-4.5v14l-7-4.5h-4z" />
+      <path d="M17.5 9a4 4 0 0 1 0 6M19.5 6.5a7.5 7.5 0 0 1 0 11" />
+    </>
+  ),
   // Tines only part of the way into a pallet.
   'forks-insert': (
     <>

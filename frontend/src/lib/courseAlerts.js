@@ -16,8 +16,8 @@
 
 import { DEFAULT_SPEED_LIMIT_KMH } from '../data/safetyThresholds.js'
 
-// In the order the Course Editor lists them. sound-horn is a stretch goal
-// that needs a course object of its own.
+// In the order the Course Editor lists them. sound-horn only ever holds on a
+// course with a `requireHorn` checkpoint.
 export const ALERT_RULES = [
   { id: 'obstacle-ahead', essential: true, label: 'Obstacle ahead' },
   { id: 'obstacle-behind', essential: true, label: 'Obstacle behind' },
@@ -28,6 +28,7 @@ export const ALERT_RULES = [
   { id: 'start-interlock', essential: true, label: 'Start without seatbelt, parking brake or neutral' },
   { id: 'look-direction', essential: false, label: 'Reversing without looking behind (first-person)' },
   { id: 'overspeed', essential: false, label: 'Over the speed limit' },
+  { id: 'sound-horn', essential: false, label: 'At a blind crossing without sounding the horn' },
   { id: 'turn-speed', essential: false, label: 'Turning too fast' },
   { id: 'direction-change-moving', essential: false, label: 'Changing direction while moving' },
   { id: 'forks-high-travel', essential: false, label: 'Travelling with the forks raised' },

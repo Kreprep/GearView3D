@@ -8,6 +8,7 @@ import { drivingScenarios, runScenario, scenarioCourse } from '../../test-helper
 import { createHeadlessDrive } from '../../test-helpers/headlessDrive.js'
 import { validateCourse } from '../courseGoals.js'
 import { buildDefaultCourse } from '../../data/courseDefaults.js'
+import { featureCourses } from '../../test-helpers/featureCourses.js'
 
 // The physics, driven the way a learner drives it: the headless core through
 // the keyboard and dashboard sources, on the built-in courses (docs/revisions/
@@ -174,5 +175,88 @@ test('every built-in driving course validates and is completable headless', () =
       view.parked ||
       (drivingCourses[courseId].checkpoints.length > 0 && view.checkpointIndex === drivingCourses[courseId].checkpoints.length)
     assert.ok(done, `${courseId} completes`)
+  }
+})
+
+// --- The module improvements' Phase 5 features ------------------------------
+// On the fixture courses in test-helpers/featureCourses.js.
+
+test('a load heavier at the far end is over the plate derated for its load centre; the same weight centred lifts', () => {
+  const far = drive('load-centre-overload')
+  assert.equal(failOf(far.events), 'overload')
+  assert.ok(Math.abs(far.state.load.centre - 0.9) < 0.05, `load centre ${far.state.load.centre} m`)
+  assert.ok(far.state.load.deratedKg < 700, `derated to ${far.state.load.deratedKg} kg`)
+
+  const centred = drive('load-centre-lift')
+  assert.equal(failOf(centred.events), null)
+  assert.equal(centred.view.pallets[1].state, 'carried')
+  assert.ok(centred.state.load.centre < 0.61, `load centre ${centred.state.load.centre} m`)
+  assert.equal(centred.state.load.overCapacity, false)
+})
+
+test('a pallet that starts on the top shelf rests there, is taken off it and delivered to the zone it names', () => {
+  const scenario = scenarioById('shelf-retrieval')
+  const sim = createHeadlessDrive(scenarioCourse(scenario))
+  sim.frame({}, {})
+  const [pallet] = sim.core.state.pallets
+  // Resting on the decking, at the front of the bay, after the first step.
+  assert.ok(Math.abs(pallet.position.y - RACK_LEVEL_HEIGHTS.top) < 0.002, `resting at ${pallet.position.y}`)
+  assert.deepEqual([pallet.state, pallet.touch.rackId, pallet.touch.rackLevel], ['ground', 'pick-rack', 'top'])
+  sim.dispose()
+
+  const { view, events } = drive('shelf-retrieval')
+  assert.equal(failOf(events), null)
+  assert.deepEqual(types(events).filter((type) => type.startsWith('pallet-')), ['pallet-lifted', 'pallet-dropped', 'pallet-delivered'])
+  // In the dock, not the spare zone beside it.
+  assert.ok(Math.hypot(view.pallets[0].position.x, view.pallets[0].position.z - 6) < 0.9)
+})
+
+test('a pallet set down in a zone it does not name is not delivered', () => {
+  const scenario = scenarioById('shelf-retrieval')
+  const course = scenarioCourse(scenario)
+  const sim = createHeadlessDrive({ ...course, pallets: [{ ...course.pallets[0], target: { zone: 'spare' } }] })
+  runScenario(scenario, { observe: sim.observe, frame: sim.frame })
+  assert.equal(sim.view().deliveredCount, 0)
+  assert.equal(sim.view().pallets[0].state, 'released')
+  sim.dispose()
+})
+
+test('a blind crossing clears only once the horn has sounded for it', () => {
+  const { events, watched } = drive('horn-crossing', (v) => v.checkpointIndex)
+  const cleared = events.find((event) => event.type === 'checkpoint' && event.id === 'crossing')
+  // Stopped in the crossing for a second without the horn: still the active
+  // checkpoint until H.
+  const stoppedFor = watched.filter((index) => index === 0).length
+  assert.ok(stoppedFor > 1200, `waited ${stoppedFor} frames`)
+  assert.ok(cleared)
+  assert.equal(types(events).at(-1), 'course-complete')
+})
+
+test('the horn sounded far from the crossing does not count for it', () => {
+  const course = scenarioCourse(scenarioById('horn-crossing'))
+  const sim = createHeadlessDrive(course)
+  const honkAtStart = { name: 'horn at the start', press: ['h'], keys: () => ({}), frames: 1 }
+  const [first, second] = scenarioById('horn-crossing').phases
+  runScenario({ phases: [first, second, honkAtStart, ...scenarioById('horn-crossing').phases.slice(2, 4)] }, { observe: sim.observe, frame: sim.frame })
+  assert.equal(sim.view().checkpointIndex, 0)
+  sim.dispose()
+})
+
+test('a mission runs its tasks in order and completes only with the last', () => {
+  const { view, events } = drive('mission-run')
+  assert.equal(failOf(events), null)
+  const tasks = events.filter((event) => event.type === 'mission-task')
+  assert.deepEqual(tasks.map((event) => event.id), ['start', 'cross', 'deliver', 'park'])
+  assert.deepEqual(tasks.map((event) => event.isLast), [false, false, false, true])
+  // The pallet's delivery is one task, not the end: the last task is after it.
+  const delivered = events.find((event) => event.type === 'pallet-delivered')
+  assert.ok(delivered.f < tasks.at(-1).f)
+  assert.equal(view.missionIndex, 4)
+  assert.equal(view.parked, true)
+})
+
+test('the Phase 5 fixture courses validate', () => {
+  for (const id of ['load-centre', 'shelf-retrieval', 'horn-crossing', 'mission']) {
+    assert.deepEqual(validateCourse(featureCourses[id]), [], id)
   }
 })

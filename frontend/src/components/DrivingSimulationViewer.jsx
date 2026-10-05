@@ -15,6 +15,9 @@ import {
   PALLET_MODEL_MEDIUM_URL,
 } from '../lib/driving/models'
 import { PALLET_STATE_LABEL_KEYS } from '../lib/driving/constants'
+import { palletTarget } from '../lib/coursePallets'
+import { deratedCapacityKg } from '../lib/physics/loadChart'
+import { seatedLoadCentreM } from '../data/physicsProfile'
 import { useDrivingAttempt } from '../hooks/useDrivingAttempt'
 import { useDrivingView } from '../hooks/useDrivingView'
 import { useAudioSuspended } from '../hooks/useAudio'
@@ -46,13 +49,33 @@ const DEFAULT_PROFILE = resolveVehicleProfile(null)
 // checkpoints, decorations, cones, racks, pallets and goal markers. Drawn
 // inside the stage (components/driving/DrivingStage.jsx); the cones and
 // pallets register with the view's refs so syncView moves them.
+// A checkpoint's marker state: in order, or in a mission by its task.
+function checkpointStatus(checkpoint, index, { checkpointIndex, missionIndex, tasks }) {
+  if (missionIndex === null) return index < checkpointIndex ? 'done' : index === checkpointIndex ? 'active' : 'pending'
+  const taskIndex = tasks.findIndex((task) => task.type === 'checkpoint' && task.ref === checkpoint.id)
+  if (taskIndex === -1) return 'pending'
+  return taskIndex < missionIndex ? 'done' : taskIndex === missionIndex ? 'active' : 'pending'
+}
+
 function CourseObjects({ course, core, telemetry, refs }) {
   const checkpoints = course.checkpoints || []
-  const { pallets, racks, liveCones } = core.world
+  const { pallets, racks, liveCones, dropZones } = core.world
   const { palletObjectsRef, coneObjectsRef } = refs
   const checkpointIndex = useTelemetry(telemetry, (snapshot) => snapshot.checkpointIndex)
-  const palletState = useTelemetry(telemetry, (snapshot) => snapshot.palletState)
+  const missionIndex = useTelemetry(telemetry, (snapshot) => snapshot.missionIndex)
+  const delivered = useTelemetry(telemetry, (snapshot) => snapshot.deliveredPallets)
   const parked = useTelemetry(telemetry, (snapshot) => snapshot.parked)
+  const deliveredIds = new Set(delivered ? delivered.split(',') : [])
+  const progress = { checkpointIndex, missionIndex, tasks: core.world.mission || [] }
+  // A zone shows delivered once a pallet bound for it is: one that names
+  // it, or with a single zone, one that names none.
+  const zoneDelivered = (zone) =>
+    pallets.some((palletDef) => {
+      const target = palletTarget(palletDef)
+      const boundHere = target?.zone ? target.zone === zone.id : !target && dropZones.length === 1
+      return boundHere && deliveredIds.has(palletDef.id)
+    })
+  const singleTarget = pallets.length === 1 ? palletTarget(pallets[0]) : null
 
   return (
     <>
@@ -67,16 +90,16 @@ function CourseObjects({ course, core, telemetry, refs }) {
         <PathBreadcrumbs points={[course.start?.position || [0, 0, 0], ...checkpoints.map((c) => c.position)]} />
       )}
 
-      {checkpoints.length === 0 && pallets.length === 1 && course.dropZone && (
-        <PathBreadcrumbs points={[course.start?.position || [0, 0, 0], pallets[0].position, course.dropZone.position]} />
+      {checkpoints.length === 0 && pallets.length === 1 && !singleTarget?.rack && dropZones.length === 1 && (
+        <PathBreadcrumbs points={[course.start?.position || [0, 0, 0], pallets[0].position, dropZones[0].position]} />
       )}
 
-      {checkpoints.length === 0 && !course.dropZone && pallets.length === 1 && pallets[0].targetRack && (
+      {checkpoints.length === 0 && singleTarget?.rack && (
         <PathBreadcrumbs
           points={[
             course.start?.position || [0, 0, 0],
             pallets[0].position,
-            racks.find((rack) => rack.id === pallets[0].targetRack)?.position,
+            racks.find((rack) => rack.id === singleTarget.rack)?.position,
           ].filter(Boolean)}
         />
       )}
@@ -86,11 +109,7 @@ function CourseObjects({ course, core, telemetry, refs }) {
       )}
 
       {checkpoints.map((checkpoint, index) => (
-        <CheckpointMarker
-          key={checkpoint.id}
-          checkpoint={checkpoint}
-          status={index < checkpointIndex ? 'done' : index === checkpointIndex ? 'active' : 'pending'}
-        />
+        <CheckpointMarker key={checkpoint.id} checkpoint={checkpoint} status={checkpointStatus(checkpoint, index, progress)} />
       ))}
 
       {course.decorations && (
@@ -98,20 +117,19 @@ function CourseObjects({ course, core, telemetry, refs }) {
       )}
       {liveCones.length > 0 && <ObstacleCones obstacles={liveCones} coneRefs={coneObjectsRef} />}
       {racks.length > 0 && <CourseRacks racks={racks} />}
-      {pallets
-        .filter((palletDef) => palletDef.targetRack && palletDef.targetLevel)
-        .map((palletDef) => {
-          const targetRack = racks.find((rack) => rack.id === palletDef.targetRack)
-          if (!targetRack) return null
-          return (
-            <RackLevelMarker
-              key={`${palletDef.id}-target`}
-              rack={targetRack}
-              level={palletDef.targetLevel}
-              delivered={palletState === 'delivered'}
-            />
-          )
-        })}
+      {pallets.map((palletDef) => {
+        const target = palletTarget(palletDef)
+        const targetRack = target?.rack && racks.find((rack) => rack.id === target.rack)
+        if (!targetRack) return null
+        return (
+          <RackLevelMarker
+            key={`${palletDef.id}-target`}
+            rack={targetRack}
+            level={target.level}
+            delivered={deliveredIds.has(palletDef.id)}
+          />
+        )
+      })}
 
       {pallets.map((palletDef, index) => (
         <Pallet
@@ -120,10 +138,13 @@ function CourseObjects({ course, core, telemetry, refs }) {
           palletRef={(el) => {
             palletObjectsRef.current[index] = el
           }}
-          overweight={typeof course.capacityKg === 'number' && (palletDef.weightKg ?? 0) > course.capacityKg}
+          overweight={typeof course.capacityKg === 'number' && (palletDef.weightKg ?? 0) > deratedCapacityKg(course.capacityKg, seatedLoadCentreM(palletDef))}
+          loadCentreM={palletDef.loadOffsetM ? seatedLoadCentreM(palletDef) : null}
         />
       ))}
-      {course.dropZone && <DropZoneMarker zone={course.dropZone} delivered={palletState === 'delivered'} />}
+      {dropZones.map((zone) => (
+        <DropZoneMarker key={zone.id} zone={zone} delivered={zoneDelivered(zone)} />
+      ))}
       {course.parkingBay && <ParkingBayMarker bay={course.parkingBay} parked={parked} />}
     </>
   )
@@ -143,10 +164,11 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
   const t = useT()
 
   const hud = useTelemetry(telemetry, (snapshot) => snapshot)
-  const { checkpointIndex, palletState, parkingStatus, parked } = hud
+  const { checkpointIndex, missionIndex, palletState, parkingStatus, parked } = hud
   const hint = drivingHint(t, hud, shot)
 
   const checkpoints = course.checkpoints || []
+  const tasks = core.world.mission || []
   // Stored courses always use `pallets`; the singular `pallet` is the older
   // hand-written shape kept working here.
   const hasPallet = Boolean(course.pallets?.length || course.pallet)
@@ -157,7 +179,14 @@ function DrivingSimulationInner({ profile, course, onEvent, onRequestReset, clas
         {/* Course objective and progress only: the operator dashboard at the
             bottom carries the truck's own readings. */}
         <div className="driving-hud-status">
-          {checkpoints.length > 0 && (
+          {missionIndex !== null && (
+            <span className="driving-checkpoint-badge">
+              {missionIndex >= tasks.length
+                ? t('driving.hud.missionComplete')
+                : t('driving.hud.task', { index: missionIndex + 1, total: tasks.length, label: tasks[missionIndex].label || '' })}
+            </span>
+          )}
+          {missionIndex === null && checkpoints.length > 0 && (
             <span className="driving-checkpoint-badge">
               {checkpointIndex >= checkpoints.length
                 ? t('driving.hud.courseComplete')
