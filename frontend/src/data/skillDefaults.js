@@ -105,6 +105,8 @@ export const SKILL_DEFAULTS = [
     tesdaRef: 'CON834218 el. 1.2–1.4',
     evidence: [
       { type: 'clean-run', module: LOAD_HANDLING, stepId: 'driving-course', rules: [], severity: 'danger' },
+      { type: 'clean-run', module: LOAD_HANDLING, stepId: 'reverse-travel', rules: ['look-direction'], severity: 'any' },
+      { type: 'clean-run', module: LOAD_HANDLING, stepId: 'speed-zones', rules: ['overspeed', 'sound-horn'], severity: 'any' },
     ],
     modules: [...teaches(LOAD_HANDLING), ...requires(POST_OPERATION, PALLET_HANDLING)],
   },
@@ -122,6 +124,7 @@ export const SKILL_DEFAULTS = [
         rules: ['obstacle-ahead', 'obstacle-behind', 'tail-swing'],
         severity: 'danger',
       },
+      { type: 'clean-run', module: LOAD_HANDLING, stepId: 'reverse-travel', rules: ['obstacle-behind'], severity: 'danger' },
     ],
     modules: [...teaches(LOAD_HANDLING, POST_OPERATION)],
   },
@@ -133,6 +136,7 @@ export const SKILL_DEFAULTS = [
     tesdaRef: 'CON834218 el. 3',
     evidence: [
       { type: 'step-complete', module: PALLET_HANDLING, stepId: 'load-limits' },
+      { type: 'step-complete', module: PALLET_HANDLING, stepId: 'load-centre' },
       { type: 'quiz-score', module: PALLET_HANDLING, min: 80 },
     ],
     modules: [...teaches(PALLET_HANDLING)],
@@ -151,7 +155,7 @@ export const SKILL_DEFAULTS = [
   {
     id: 'carry-stack-load',
     title: 'Carry and stack a load at height',
-    description: 'Carry a load to a rack and set it on a shelf without tilting it forward or risking a tip-over.',
+    description: 'Carry a load round turns to a rack, set it on a shelf and take one down, without tilting it forward or risking a tip-over.',
     category: 'motor',
     tesdaRef: 'CON834218 el. 4.2–4.4',
     evidence: [
@@ -160,6 +164,20 @@ export const SKILL_DEFAULTS = [
         module: PALLET_HANDLING,
         stepId: 'rack-storage',
         rules: ['tilt-forward-elevated', 'tip-risk'],
+        severity: 'any',
+      },
+      {
+        type: 'clean-run',
+        module: PALLET_HANDLING,
+        stepId: 'stability-turns',
+        rules: ['tip-risk', 'load-shifting', 'turn-speed'],
+        severity: 'any',
+      },
+      {
+        type: 'clean-run',
+        module: PALLET_HANDLING,
+        stepId: 'rack-retrieval',
+        rules: ['tilt-forward-elevated', 'lifting-while-moving', 'forks-high-travel'],
         severity: 'any',
       },
     ],

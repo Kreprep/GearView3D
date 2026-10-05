@@ -662,10 +662,12 @@ function CourseEditor({ course, equipment = null, modules = [], onCourseChanged,
               {draft.goalType === 'free' && (
                 <PanelNote>
                   Runs in every learner's browser inside a sandboxed worker (no access to the page or their login) each
-                  time they press a key, start the engine or work the seatbelt or parking brake. Receives{' '}
-                  <code>context.keysUsed</code> (array of key strings pressed so far), <code>context.engineStarted</code>{' '}
-                  (boolean), and <code>context.seatbelt</code> / <code>context.parkingBrake</code> (whether each is on
-                  right now); return a truthy value once
+                  time they press a key, start the engine, sound the horn or work the seatbelt, parking brake or
+                  direction lever. Receives <code>context.keysUsed</code> (array of key strings pressed so far),{' '}
+                  <code>context.engineStarted</code> (boolean), <code>context.seatbelt</code> /{' '}
+                  <code>context.parkingBrake</code> (whether each is on right now), <code>context.horn</code> (whether
+                  the horn has sounded on this visit to the step) and <code>context.leversUsed</code> (the direction
+                  lever positions, &apos;F&apos; / &apos;N&apos; / &apos;R&apos;, chosen on this visit); return a truthy value once
                   the step should complete, e.g. <code>return context.engineStarted &amp;&amp; context.keysUsed.includes(&apos;w&apos;)</code>.
                   A free-practice course cannot be published without this. Describe the actual requirement to learners
                   in this step's Instructions or Hint field above.

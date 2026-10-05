@@ -163,10 +163,18 @@ test('every built-in driving course validates and is completable headless', () =
     'pallet-pickup': 'pallet-pickup-delivery',
     'rack-storage': 'rack-storage-delivery',
     'rack-storage-top': 'rack-storage-top-delivery',
+    'reverse-travel': 'reverse-travel',
+    'speed-zones': 'speed-zones',
+    'load-centre': 'load-centre-delivery',
+    'stability-turns': 'stability-turns',
+    'rack-retrieval': 'rack-retrieval',
   }
   for (const id of Object.keys(drivingCourses)) {
     assert.deepEqual(validateCourse(buildDefaultCourse(id).data), [], id)
   }
+  // Every course is driven below but the free-practice pad and Load Limits,
+  // whose overload is driven above (load-limits-overload).
+  assert.deepEqual(Object.keys(drivingCourses).filter((id) => !completes[id]), ['controls-intro', 'load-limits'])
   for (const [courseId, scenarioId] of Object.entries(completes)) {
     const { view, events } = drive(scenarioId)
     assert.equal(failOf(events), null, courseId)
@@ -259,4 +267,62 @@ test('the Phase 5 fixture courses validate', () => {
   for (const id of ['load-centre', 'shelf-retrieval', 'horn-crossing', 'mission']) {
     assert.deepEqual(validateCourse(featureCourses[id]), [], id)
   }
+})
+
+// --- The module improvements' Phase 6 courses ---------------------------------
+
+test('Reversing and Looking Behind is driven out in reverse the whole way', () => {
+  const { events, watched } = drive('reverse-travel', (v) => v.speed)
+  assert.equal(types(events).at(-1), 'course-complete')
+  // Never forward faster than a creep: the lane is too narrow to turn round.
+  assert.ok(Math.max(...watched) < 0.01, `forward at ${Math.max(...watched)}`)
+})
+
+test('Speed Zones: the blind crossing clears only after the horn, under the limit', () => {
+  const { events, watched } = drive('speed-zones', (v) => v.speed)
+  const ids = events.filter((event) => event.type === 'checkpoint' || event.type === 'course-complete').map((event) => event.id)
+  assert.deepEqual(ids, ['stop-line', 'blind-crossing', 'zone-exit'])
+  const crossing = events.find((event) => event.id === 'blind-crossing')
+  assert.ok(crossing.f > events.find((event) => event.id === 'stop-line').f)
+  // 5 km/h is 0.347 units a second.
+  assert.ok(Math.max(...watched) < 0.347, `top speed ${Math.max(...watched)}`)
+
+  const course = drivingCourses['speed-zones']
+  const sim = createHeadlessDrive(course)
+  const scenario = scenarioById('speed-zones')
+  runScenario({ phases: scenario.phases.filter((phase) => phase.name !== 'sound the horn') }, { observe: sim.observe, frame: sim.frame })
+  assert.equal(sim.view().checkpointIndex, 1, 'no horn, no crossing')
+  sim.dispose()
+})
+
+test('Reading the Load Chart: the far load overloads the derated plate, the centred one is delivered', () => {
+  const far = drive('load-centre-far')
+  assert.equal(failOf(far.events), 'overload')
+  assert.ok(Math.abs(far.state.load.centre - 0.9) < 0.05, `load centre ${far.state.load.centre} m`)
+
+  const { view, events, state } = drive('load-centre-delivery')
+  assert.equal(failOf(events), null)
+  assert.equal(view.deliveredCount, 1)
+  assert.equal(state.pallets[1].state, 'delivered')
+  assert.equal(state.pallets[0].state, 'ground')
+})
+
+test('Turning with a Load: the near-rated load goes round the bends without tipping or sliding', () => {
+  const { events, watched } = drive('stability-turns', (v) => v.lateralMargin)
+  assert.equal(failOf(events), null)
+  assert.deepEqual(types(events).filter((type) => type.startsWith('pallet-')), ['pallet-lifted', 'pallet-dropped', 'pallet-delivered'])
+  assert.ok(Math.min(...watched) > 0, `lateral margin ${Math.min(...watched)}`)
+})
+
+test('Retrieving from the Top Shelf: off the shelf and into the dock', () => {
+  const { view, events } = drive('rack-retrieval')
+  assert.equal(failOf(events), null)
+  assert.deepEqual(types(events).filter((type) => type.startsWith('pallet-')), ['pallet-lifted', 'pallet-dropped', 'pallet-delivered'])
+  assert.ok(Math.hypot(view.pallets[0].position.x, view.pallets[0].position.z - 3) < 0.9)
+})
+
+test('the driving course ends by reversing out of the dead end', () => {
+  const { events } = drive('driving-course', (v) => v.speed)
+  const last = events.filter((event) => event.type === 'checkpoint' || event.type === 'course-complete').slice(-2)
+  assert.deepEqual(last.map((event) => event.id), ['course-park', 'course-reverse'])
 })

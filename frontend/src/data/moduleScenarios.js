@@ -46,16 +46,17 @@ export const moduleScenarioSteps = {
       id: 'briefing',
       title: 'Scenario Briefing',
       objective: 'Prepare for a guided driving exercise on a simulated forklift.',
-      instructions: 'Review why operational-control familiarization comes before supervised practical training.',
+      instructions:
+        'Review how the simulated forklift is started and driven from the seat, and why control familiarization comes before supervised practical training.',
       hint: 'The goal is control familiarization and decision-making before supervised practical training.',
     },
     {
       id: 'controls-intro',
       title: 'Controls & Engine Start',
-      objective: 'Learn the start sequence and the WASD driving controls.',
+      objective: 'Learn the start sequence, the driving keys, the horn and the direction lever.',
       instructions:
-        'Start the engine the way a real forklift is started: fasten the seatbelt (B), set the parking brake (Space), keep the direction lever in N, then press E. Release the parking brake (Space), then try W, A, S, and D at least once each on the open practice pad.',
-      hint: 'The engine will not crank until the seatbelt is fastened, the parking brake is set and the lever is in N - the dashboard marks whatever is missing. The truck will not move while the parking brake is on.',
+        'Start the engine the way a real forklift is started: fasten the seatbelt (B), set the parking brake (Space), keep the direction lever in N, then press E. Release the parking brake (Space) and try W, A, S and D at least once each. Sound the horn (H), then click R on the dashboard\'s direction lever and back to Auto.',
+      hint: 'The engine will not crank until the seatbelt is fastened, the parking brake is set and the lever is in N - the dashboard marks whatever is missing. With the lever in R, W drives the truck backwards; Auto lets W and S choose the direction again.',
     },
     {
       id: 'accelerate-course',
@@ -79,12 +80,28 @@ export const moduleScenarioSteps = {
       hint: 'Steering only responds while the forklift is moving.',
     },
     {
+      id: 'reverse-travel',
+      title: 'Reversing and Looking Behind',
+      objective: 'Reverse out of a narrow aisle, looking in the direction of travel.',
+      instructions:
+        'The forklift is nose-in to a dead end, in an aisle too narrow to turn round in. Reverse out with S, through the aisle and round the bend, and stop at the marked point clear of it. Look behind you while you reverse: in first-person, glance round with the arrow keys or drag the scene; press C for the chase view.',
+      hint: 'A rear-steer forklift swings its tail the opposite way to a car when reversing - make small steering corrections and keep the speed down. A sign comes up if you reverse while looking ahead.',
+    },
+    {
+      id: 'speed-zones',
+      title: 'Speed Zones and Crossings',
+      objective: 'Keep to a speed limit, stop at a stop line and sound the horn at a blind crossing.',
+      instructions:
+        'This zone has a 5 km/h limit. Stop fully at the stop line, then drive on to the blind crossing between the walls: stop there and sound the horn (H) before crossing, then drive on to the end of the zone.',
+      hint: 'The crossing does not clear until you have stopped in it and sounded the horn. Watch the speed on the dashboard - the sign comes up as soon as you go over the limit.',
+    },
+    {
       id: 'driving-course',
       title: 'Driving Course',
-      objective: 'Combine starting, accelerating, braking, and steering through a full course with turns, cone lanes, and a mid-course stop.',
+      objective: 'Combine starting, accelerating, braking, steering and reversing through a full course with turns, cone lanes and a mid-course stop.',
       instructions:
-        'Start the engine, then drive through each checkpoint in order - weaving through the cone lanes, stopping fully at the yield point, and clearing the boundary walls - before parking in the final bay.',
-      hint: 'Hitting a cone or wall fails the attempt just like in Turning Practice - take the turns slowly and keep clear of the lane markers.',
+        'Start the engine, then drive through each checkpoint in order - weaving through the cone lanes, stopping fully at the yield point and turning past the rack - into the dead end at the far end. Stop there, then reverse out to the last marker, looking behind you.',
+      hint: 'Hitting a cone or wall fails the attempt - take the turns slowly. On the turn past the rack the tail swings out toward it, so keep the turn wide.',
     },
     {
       id: 'pallet-pickup',
@@ -98,7 +115,8 @@ export const moduleScenarioSteps = {
       id: 'summary',
       title: 'Completion Summary',
       objective: 'Review completed driving control tasks.',
-      instructions: 'Confirm engine start, acceleration, braking, turning, the driving course, and the pallet pickup task are complete.',
+      instructions:
+        'Confirm engine start, acceleration, braking, turning, reversing, the speed zone, the driving course and the pallet pickup task are complete.',
       hint: 'Completion means you can identify and use the basic forklift operating controls in this simplified simulation.',
     },
   ],
@@ -106,9 +124,9 @@ export const moduleScenarioSteps = {
     {
       id: 'briefing',
       title: 'Scenario Briefing',
-      objective: 'Understand rated capacity, load stability, and the fail conditions in this assessment.',
+      objective: 'Understand rated capacity, load centre, stability and the fail conditions in this assessment.',
       instructions:
-        'Review why overloading tips a forklift forward, why cones must never be struck, and why sudden braking throws the load off the forks. Any of these fails the attempt.',
+        'Review how the capacity plate and the load centre decide what the forklift may lift, why a load slides or a truck tips, and which mistakes fail the attempt.',
       hint: 'The counterweight only balances loads up to the rated capacity on the capacity plate, and less than that when the load sits further out along the forks.',
     },
     {
@@ -116,16 +134,32 @@ export const moduleScenarioSteps = {
       title: 'Precision Carry',
       objective: 'Carry a pallet through a cone-lined lane and deliver it without a single fail condition.',
       instructions:
-        'Pick up the pallet, carry it low and tilted back down the cone corridor to the drop zone, level the mast with G, lower it with F until it rests on the ground and the forks are free, and reverse straight out. Hitting a cone, losing the load or travelling fast with the forks raised fails the attempt - use Reset Attempt and try again.',
-      hint: 'Ease off W early and let the forklift coast instead of slamming S at speed: a load slides on the forks under hard braking, and one that is not seated all the way comes off.',
+        'Pick up the pallet, carry it low and tilted back down the cone corridor to the drop zone, level the mast with G, lower it with F until it rests on the ground and the forks are free, and reverse straight out. Hitting a cone, losing the load or travelling with the forks raised fails the attempt - use Reset Attempt and try again.',
+      hint: 'Ease off W early instead of braking hard at speed: the load is held on the forks only by friction and slides under hard braking, and one that is not seated all the way to the carriage comes off.',
     },
     {
       id: 'load-limits',
       title: 'Load Limits',
       objective: 'Judge which pallet is within the rated capacity and deliver it safely.',
       instructions:
-        'Three pallets are labeled with their weight. The capacity plate on the dashboard shows what the forklift may lift. Lift a pallet within capacity and deliver it to the drop zone. Lifting the overweight pallet fails the attempt.',
-      hint: 'Read the weight labels before driving in - the heaviest pallet exceeds the rated capacity.',
+        'Three pallets are labelled with their weight. The capacity plate on the dashboard shows what the forklift may lift. Lift a pallet within capacity and deliver it to the drop zone. Lifting the overweight pallet fails the attempt.',
+      hint: 'Read the weight labels before driving in - the heaviest pallet is over the rated capacity, and the plate shows it the moment the forks take its weight.',
+    },
+    {
+      id: 'load-centre',
+      title: 'Reading the Load Chart',
+      objective: 'Judge a load by its load centre as well as its weight, and deliver the one the forklift may lift.',
+      instructions:
+        'Both pallets weigh the same, but one load sits toward the far end of its pallet. Read each label: the load centre is how far the load\'s weight sits from the fork face. Lift the pallet that is within the capacity plate at its load centre and deliver it to the drop zone. Lifting the other fails as an overload.',
+      hint: 'The rated capacity holds at the rated load centre (0.6 m). The further out the load sits, the less the forklift may lift - the dashboard\'s capacity plate shows the limit for the load on the forks.',
+    },
+    {
+      id: 'stability-turns',
+      title: 'Turning with a Load',
+      objective: 'Carry a near-rated load round a curve and an S-bend without tipping the truck or losing the load.',
+      instructions:
+        'Pick up the pallet and carry it low and tilted back down the corridor, round the curve and the S-bend, to the drop zone, then set it down and reverse out. Slow down before each turn, not in it.',
+      hint: 'A heavy load raises the risk of a sideways tip in a turn - more so with the forks high or at speed. If the tip-risk or load-shifting sign comes up, ease off and straighten up.',
     },
     {
       id: 'rack-storage',
@@ -144,11 +178,20 @@ export const moduleScenarioSteps = {
       hint: 'Hold R until the carried pallet lines up with the top target ring - it takes longer to reach than the middle shelf.',
     },
     {
+      id: 'rack-retrieval',
+      title: 'Retrieving from the Top Shelf',
+      objective: 'Take a pallet off the top shelf, lower it before travelling and deliver it to the dock.',
+      instructions:
+        'Stop in front of the rack and raise the level forks to the pockets of the pallet on the top shelf. Drive in until the rack stops the truck, raise the pallet just clear of the shelf, tilt back a little with T and reverse straight out. Stop, lower it to travel height with F, then reverse to the dock behind you, set it down and back away.',
+      hint: 'Do not tilt forward with the load raised, and do not lift or lower while the truck is moving - stop first. Travelling with the forks raised fails the attempt.',
+    },
+    {
       id: 'summary',
       title: 'Completion Summary',
       objective: 'Review the assessment results.',
-      instructions: 'Confirm the precision carry, load limit, and rack storage exercises are complete.',
-      hint: 'Completion means you can plan a safe carry, refuse an overweight load, and shelve a pallet at any rack level.',
+      instructions:
+        'Confirm the precision carry, the load limit and load chart exercises, the turns with a load and the rack storage and retrieval exercises are complete.',
+      hint: 'Completion means you can plan a safe carry, refuse a load over the capacity at its load centre, take turns safely with a load, and store and retrieve a pallet at any rack level.',
     },
   ],
   'post-operation': [
@@ -165,7 +208,7 @@ export const moduleScenarioSteps = {
       objective: 'Park the forklift inside the painted bay without striking a cone.',
       instructions:
         'Drive the cone-lined route to the painted parking bay, straighten up between the lines and stop completely. Then secure the forklift: direction lever in N, forks lowered with F, parking brake set with Space, engine off with E. Hitting a cone fails the attempt.',
-      hint: 'The status badge at the top tells you which parking requirement is still missing.',
+      hint: 'The status badge at the top tells you which parking requirement is still missing. A forks-raised sign comes up if you park with the forks up.',
     },
     {
       id: 'parallel-parking',

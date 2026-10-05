@@ -26,8 +26,11 @@ export const drivingCourses = {
     // No checkpoints/bay/pallet to complete against (goalType resolves to
     // 'free'), so this is graded by its own completion code instead of a
     // built-in default - see lib/customCompletion.js.
+    // The start sequence, the four driving keys, the horn and the direction
+    // lever put in R (context.horn and context.leversUsed: the horn and the
+    // lever positions since the step was opened, useDrivingController.jsx).
     completionCode:
-      "return context.engineStarted && ['w', 'a', 's', 'd'].every((key) => context.keysUsed.includes(key))",
+      "return context.engineStarted && ['w', 'a', 's', 'd'].every((key) => context.keysUsed.includes(key)) && context.horn && context.leversUsed.includes('R')",
   },
   // The two acceleration lanes are open straights for learning the pedals at
   // full throttle, so their speed limit is the truck's top speed rather than
@@ -143,18 +146,116 @@ export const drivingCourses = {
       {
         id: 'course-park',
         type: 'stop',
-        position: [0, 0, 40],
-        radius: 1.2,
+        position: [0, 0, 41.8],
+        radius: 0.9,
         maxSpeed: 0.25,
-        label: 'Parking Bay',
-        completeMessage: 'You completed the full driving course and parked safely.',
+        label: 'Dead End',
+        completeMessage: 'Stopped at the dead end - now reverse out, looking behind you.',
+      },
+      {
+        id: 'course-reverse',
+        type: 'stop',
+        position: [0, 0, 38.6],
+        radius: 0.9,
+        maxSpeed: 0.25,
+        label: 'Reverse Out',
+        completeMessage: 'You completed the full driving course and reversed out safely.',
       },
     ],
-    decorations: corridorCones(
-      [[0, 0], [0, 9], [-2.6, 16], [2.6, 23], [0, 27], [-2.6, 33], [0, 40]],
-      0.75,
-      1.3,
-    ),
+    // The corridor, a rack on the outside of the last right turn, where the
+    // tail swings toward it (tail-swing), and the wall closing the dead end
+    // the course reverses out of.
+    decorations: [
+      ...corridorCones([[0, 0], [0, 9], [-2.6, 16], [2.6, 23], [0, 27], [-2.6, 33], [0, 38], [0, 42.6]], 0.75, 1.3),
+      { type: 'rack-loaded', position: [-3.9, 0, 33], rotation: Math.PI / 2 },
+      { type: 'wall', position: [0, 0, 43.4], length: 1.6, rotation: Math.PI / 2 },
+    ],
+  },
+  // Reversing and Looking Behind: the truck starts nose-in to a dead end, in
+  // a lane too narrow to turn round in, so the only way out is in reverse,
+  // round a bend, to a stop clear of the aisle.
+  'reverse-travel': {
+    id: 'reverse-travel',
+    start: { position: [0, 0, 12], heading: 0 },
+    checkpoints: [
+      {
+        id: 'reverse-aisle',
+        type: 'pass',
+        position: [0, 0, 8],
+        radius: 0.5,
+        label: 'Aisle',
+        completeMessage: 'Straight back down the aisle - the bend is coming up behind you.',
+      },
+      {
+        id: 'reverse-bend',
+        type: 'pass',
+        position: [0.9, 0, 4.5],
+        radius: 0.5,
+        label: 'Bend',
+        completeMessage: 'Round the bend - keep looking where the truck is going.',
+      },
+      {
+        id: 'reverse-stop',
+        type: 'stop',
+        position: [1.8, 0, 1.5],
+        radius: 0.6,
+        maxSpeed: 0.25,
+        label: 'Stop Clear',
+        completeMessage: 'You reversed out of the aisle and stopped clear of it.',
+      },
+    ],
+    decorations: [
+      ...corridorCones([[0, 13], [0, 8], [0.9, 4.5], [1.8, 2], [1.8, 0.5]], 0.4, 1),
+      { type: 'wall', position: [0, 0, 13.4], length: 1.2, rotation: Math.PI / 2 },
+    ],
+  },
+  // Speed Zones and Crossings: a 5 km/h zone with a stop line, then a blind
+  // crossing between walls where the truck stops and sounds the horn
+  // (requireHorn), then on to the end of the zone.
+  'speed-zones': {
+    id: 'speed-zones',
+    start: { position: [0, 0, 0], heading: 0 },
+    speedLimitKmh: 5,
+    checkpoints: [
+      {
+        id: 'stop-line',
+        type: 'stop',
+        position: [0, 0, 6],
+        radius: 0.6,
+        maxSpeed: 0.25,
+        label: 'Stop Line',
+        completeMessage: 'Stopped at the line. The blind crossing is next.',
+      },
+      {
+        id: 'blind-crossing',
+        type: 'stop',
+        requireHorn: true,
+        position: [0, 0, 13],
+        radius: 0.7,
+        maxSpeed: 0.25,
+        label: 'Blind Crossing',
+        completeMessage: 'Stopped and warned anyone round the corner - cross when it is clear.',
+      },
+      {
+        id: 'zone-exit',
+        type: 'pass',
+        position: [0, 0, 20],
+        radius: 0.8,
+        label: 'End of Zone',
+        completeMessage: 'You kept to the speed limit, stopped at the line and sounded the horn at the crossing.',
+      },
+    ],
+    decorations: [
+      ...coneLine(-1.2, 1, 9, 1.3),
+      ...coneLine(1.2, 1, 9, 1.3),
+      // The walls hide the cross aisle until the truck is in it.
+      { type: 'wall', position: [-1.3, 0, 10.8], length: 1.6, rotation: 0 },
+      { type: 'wall', position: [1.3, 0, 10.8], length: 1.6, rotation: 0 },
+      { type: 'wall', position: [-1.3, 0, 15.2], length: 1.6, rotation: 0 },
+      { type: 'wall', position: [1.3, 0, 15.2], length: 1.6, rotation: 0 },
+      ...coneLine(-1.2, 17, 21, 1.3),
+      ...coneLine(1.2, 17, 21, 1.3),
+    ],
   },
   // Module 3 (Post-Operation) parking proficiency course. `parkingBay` enables
   // the painted-lines bay in DrivingSimulationViewer: the step completes when
@@ -272,6 +373,47 @@ export const drivingCourses = {
       ...coneLine(5.4, 3, 18, 2.5),
     ],
   },
+  // Reading the Load Chart: two pallets of the same weight. One load sits
+  // 0.3 m toward the far end of its pallet, so its load centre is 0.9 m and
+  // the plate derated for that (678 kg) is under its 800 kg: lifting it fails
+  // as an overload. The other is centred (0.6 m) and within the plate.
+  'load-centre': {
+    id: 'load-centre',
+    start: { position: [0, 0, 0], heading: 0 },
+    checkpoints: [],
+    capacityKg: 1000,
+    failConditions: { loadDrop: true, overload: true, highTravel: true },
+    pallets: [
+      { id: 'pallet-far-load', position: [-1.4, 0, 7], rotation: 0, weightKg: 800, loadOffsetM: 0.3 },
+      { id: 'pallet-centred-load', position: [1.4, 0, 7], rotation: 0, weightKg: 800 },
+    ],
+    dropZone: { position: [0, 0, 15], radius: 0.9, label: 'Drop Zone' },
+    obstacles: [
+      { type: 'cone', position: [-3.2, 0, 10] },
+      { type: 'cone', position: [3.2, 0, 10] },
+      { type: 'cone', position: [-1.6, 0, 12.5] },
+      { type: 'cone', position: [1.6, 0, 12.5] },
+    ],
+    decorations: [
+      { type: 'wall', position: [4.6, 0, 7], length: 3.2, rotation: 0 },
+      { type: 'wall', position: [-4.6, 0, 7], length: 3.2, rotation: 0 },
+      ...coneLine(-5.4, 3, 18, 2.5),
+      ...coneLine(5.4, 3, 18, 2.5),
+    ],
+  },
+  // Turning with a Load: a near-rated load carried down a cone corridor that
+  // curves, then bends back and forth, to the drop zone. Taken fast or with
+  // the load high, the turns tip the truck sideways or slide the load.
+  'stability-turns': {
+    id: 'stability-turns',
+    start: { position: [0, 0, 0], heading: 0 },
+    checkpoints: [],
+    capacityKg: 1000,
+    failConditions: { loadDrop: true, overload: true, highTravel: true },
+    pallets: [{ id: 'turn-pallet', position: [0, 0, 4], rotation: 0, weightKg: 900 }],
+    dropZone: { position: [0, 0, 27.5], radius: 0.9, label: 'Drop Zone' },
+    decorations: corridorCones([[0, -1], [0, 7], [1.8, 11], [1.8, 14], [0, 17], [-1.8, 20], [0, 23], [0, 29]], 0.7, 1.2),
+  },
   'pallet-pickup': {
     id: 'pallet-pickup',
     start: { position: [0, 0, 0], heading: 0 },
@@ -319,5 +461,27 @@ export const drivingCourses = {
       ...coneLine(-2.6, 2, 13, 2.4),
       ...coneLine(2.6, 2, 13, 2.4),
     ],
+  },
+  // Retrieving from the Top Shelf: the pallet starts on the rack's top
+  // shelf. Take it off, lower it to travel height before moving, and reverse
+  // with it to the dock behind the start.
+  'rack-retrieval': {
+    id: 'rack-retrieval',
+    start: { position: [0, 0, 6], heading: 0 },
+    checkpoints: [],
+    failConditions: { loadDrop: true, overload: true, highTravel: true },
+    racks: [{ id: 'retrieval-rack', position: [0, 0, 12], rotation: 0 }],
+    pallets: [
+      {
+        id: 'top-shelf-pallet',
+        position: [0, 0, 12],
+        rotation: 0,
+        weightKg: 450,
+        startShelf: { rack: 'retrieval-rack', level: 'top' },
+        target: { zone: 'dock' },
+      },
+    ],
+    dropZones: [{ id: 'dock', position: [0, 0, 3], radius: 0.9, label: 'Dock' }],
+    decorations: [...coneLine(-1.6, 1, 10, 2.4), ...coneLine(1.6, 1, 10, 2.4)],
   },
 }

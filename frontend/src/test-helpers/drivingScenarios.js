@@ -210,6 +210,72 @@ const setDownOnShelf = (level) => [
   brakeToStop,
 ]
 
+// Reverse straight back until the truck is at `z`.
+const reverseTo = (z, speed = -0.25) => ({
+  name: `reverse to ${z}`,
+  keys: (obs) => speedKeys(obs, obs.z > z ? speed : 0),
+  until: (obs, phaseFrame) => obs.failed || (phaseFrame > 2 && obs.z <= z + 0.02 && stopped(obs)),
+  frames: 2400,
+})
+const honk = { name: 'sound the horn', press: ['h'], keys: hold(NO_KEYS), frames: 1 }
+const stopAt = (point) => ({
+  name: `stop at ${point[2]}`,
+  keys: driveTo(point, { speed: 0.4, stop: true, stopRadius: 0.05 }),
+  until: (obs, phaseFrame) => obs.failed || (phaseFrame > 20 && stopped(obs)),
+  frames: 1200,
+})
+
+// Bang-bang steering in reverse: the tail toward a point. Reversing turns
+// the truck the other way for the same steer, so the keys are swapped.
+function reverseSteerKeys(obs, point, deadband = 0.03) {
+  const bearing = Math.atan2(obs.x - point[0], obs.z - point[2])
+  const error = wrapAngle(bearing - obs.heading)
+  if (error > deadband) return { right: true }
+  if (error < -deadband) return { left: true }
+  return {}
+}
+
+// Follow a checkpoint course in reverse, as followCheckpoints does forward.
+function reverseCheckpoints(checkpoints, speed) {
+  return (obs) => {
+    const checkpoint = checkpoints[obs.checkpointIndex]
+    if (!checkpoint) return speedKeys(obs, 0)
+    const distance = distanceTo(obs, checkpoint.position)
+    const target = checkpoint.type === 'stop' ? (distance < 0.35 ? 0 : -Math.min(speed, Math.max(0.12, distance * 0.6))) : -speed
+    return { ...reverseSteerKeys(obs, checkpoint.position), ...speedKeys(obs, target) }
+  }
+}
+
+// forksInto from off the pallet's line: steering for its centre on the way
+// in, so the tines meet the pockets square (a medium pallet's leave about
+// 2 cm either way).
+const forksIntoSteered = (pallet) => {
+  const phase = forksInto(pallet)
+  return {
+    ...phase,
+    name: 'steer the forks into the pallet',
+    keys: (obs, phaseFrame) => {
+      const keys = phase.keys(obs, phaseFrame)
+      return obs.z < pallet.position[2] - 1.2 && obs.speed > 0.05 ? { ...steerKeys(obs, pallet.position, 0.004), ...keys } : keys
+    },
+  }
+}
+
+// Drive through `points` in turn, moving on within `reach` of each.
+function followPoints(points, { speed = 0.3, reach = 0.5 } = {}) {
+  let index = 0
+  return {
+    name: 'follow the route',
+    keys: (obs, phaseFrame) => {
+      if (phaseFrame === 0) index = 0
+      while (index < points.length - 1 && distanceTo(obs, points[index]) < reach) index += 1
+      return driveTo(points[index], { speed })(obs)
+    },
+    until: (obs) => obs.failed || distanceTo(obs, points.at(-1)) < reach,
+    frames: 6000,
+  }
+}
+
 const course = (id) => drivingCourses[id]
 const palletOf = (id, index = 0) => (course(id).pallets || [course(id).pallet])[index]
 
@@ -273,8 +339,23 @@ export const drivingScenarios = [
       {
         name: 'course',
         keys: followCheckpoints(course('driving-course'), 0.5),
-        until: (obs) => obs.failed || obs.checkpointIndex >= course('driving-course').checkpoints.length,
+        until: (obs) => obs.failed || obs.checkpointIndex >= 5,
         frames: 6000,
+      },
+      // Since the module improvements' Phase 6 the course ends in a dead end:
+      // round the corner into it, stop, and reverse out.
+      followPoints([[0, 0, 38], [0, 0, 39.4]], { speed: 0.4, reach: 0.4 }),
+      {
+        name: 'into the dead end',
+        keys: followCheckpoints(course('driving-course'), 0.4),
+        until: (obs) => obs.failed || obs.checkpointIndex >= course('driving-course').checkpoints.length - 1,
+        frames: 2400,
+      },
+      {
+        name: 'reverse out',
+        keys: reverseCheckpoints(course('driving-course').checkpoints, 0.35),
+        until: (obs) => obs.failed || obs.checkpointIndex >= course('driving-course').checkpoints.length,
+        frames: 3000,
       },
       settle(),
     ],
@@ -603,6 +684,7 @@ export const drivingScenarios = [
     ],
   },
   ...phase5Scenarios(),
+  ...phase6Scenarios(),
 ]
 
 // The module improvements' Phase 5 features, on the fixture courses in
@@ -610,20 +692,6 @@ export const drivingScenarios = [
 function phase5Scenarios() {
   const feature = (id) => featureCourses[id]
   const featurePallet = (id, index = 0) => feature(id).pallets[index]
-  // Reverse straight back until the truck is at `z`.
-  const reverseTo = (z, speed = -0.25) => ({
-    name: `reverse to ${z}`,
-    keys: (obs) => speedKeys(obs, obs.z > z ? speed : 0),
-    until: (obs, phaseFrame) => obs.failed || (phaseFrame > 2 && obs.z <= z + 0.02 && stopped(obs)),
-    frames: 2400,
-  })
-  const honk = { name: 'sound the horn', press: ['h'], keys: hold(NO_KEYS), frames: 1 }
-  const stopAt = (point) => ({
-    name: `stop at ${point[2]}`,
-    keys: driveTo(point, { speed: 0.4, stop: true, stopRadius: 0.05 }),
-    until: (obs, phaseFrame) => obs.failed || (phaseFrame > 20 && stopped(obs)),
-    frames: 1200,
-  })
 
   return [
     {
@@ -703,6 +771,134 @@ function phase5Scenarios() {
         brakeToStop,
         ...shutDown,
         settle(30),
+      ],
+    },
+  ]
+}
+
+// The courses the module improvements' Phase 6 added to Load Handling and
+// Pallet Handling Assessment, each driven to completion (recorded with them).
+function phase6Scenarios() {
+  const crossing = course('speed-zones').checkpoints[1].position
+  const centred = palletOf('load-centre', 1)
+  return [
+    {
+      // Out of the dead end the only way there is: in reverse, round the bend.
+      id: 'reverse-travel',
+      course: course('reverse-travel'),
+      phases: [
+        ...startEngine,
+        {
+          name: 'reverse out',
+          keys: reverseCheckpoints(course('reverse-travel').checkpoints, 0.25),
+          until: (obs) => obs.failed || obs.checkpointIndex >= course('reverse-travel').checkpoints.length,
+          frames: 4000,
+        },
+        brakeToStop,
+      ],
+    },
+    {
+      // Under the 5 km/h limit, a stop at the line, then a stop and the horn
+      // at the blind crossing.
+      id: 'speed-zones',
+      course: course('speed-zones'),
+      phases: [
+        ...startEngine,
+        {
+          name: 'to the stop line',
+          keys: followCheckpoints(course('speed-zones'), 0.3),
+          until: (obs) => obs.failed || obs.checkpointIndex >= 1,
+          frames: 2400,
+        },
+        {
+          name: 'to the crossing',
+          keys: followCheckpoints(course('speed-zones'), 0.3),
+          until: (obs, phaseFrame) => obs.failed || (phaseFrame > 20 && stopped(obs) && distanceTo(obs, crossing) < 0.4),
+          frames: 2400,
+        },
+        honk,
+        settle(10),
+        {
+          name: 'out of the zone',
+          keys: followCheckpoints(course('speed-zones'), 0.3),
+          until: (obs) => obs.failed || obs.checkpointIndex >= course('speed-zones').checkpoints.length,
+          frames: 2400,
+        },
+        brakeToStop,
+      ],
+    },
+    {
+      // The far load's pallet: over the plate derated for its load centre.
+      id: 'load-centre-far',
+      course: course('load-centre'),
+      setup: { x: -1.4, z: 3, heading: 0 },
+      phases: [
+        ...startEngine,
+        forksInto(palletOf('load-centre', 0)),
+        { name: 'try to lift', keys: hold({ raise: true }), until: (obs) => obs.failed, frames: 300 },
+        settle(60),
+      ],
+    },
+    {
+      // The centred one: lined up from the start, lifted and delivered.
+      id: 'load-centre-delivery',
+      course: course('load-centre'),
+      phases: [
+        ...startEngine,
+        followPoints([[1.4, 0, 2.2], [1.4, 0, 3.4]], { speed: 0.3, reach: 0.2 }),
+        forksIntoSteered(centred),
+        raiseTo(TRAVEL_HEIGHT),
+        tiltBackTo(-0.1),
+        reverseTo(5.4),
+        {
+          name: 'carry to the drop zone',
+          keys: driveTo([0, 0, 14.4], { speed: 0.3, stop: true }),
+          until: (obs, phaseFrame) => obs.failed || (phaseFrame > 30 && stopped(obs)),
+          frames: 2400,
+        },
+        ...setDownOnFloor,
+        settle(),
+      ],
+    },
+    {
+      // The near-rated load round the curve and the S-bend, low and slow.
+      id: 'stability-turns',
+      course: course('stability-turns'),
+      phases: [
+        ...startEngine,
+        ...pickUp(palletOf('stability-turns')),
+        followPoints([[0, 0, 7], [1.8, 0, 11], [1.8, 0, 14], [0, 0, 17], [-1.8, 0, 20], [0, 0, 23], [0, 0, 25]], { speed: 0.3 }),
+        {
+          name: 'carry to the drop zone',
+          keys: driveTo([0, 0, 26.9], { speed: 0.3, stop: true }),
+          until: (obs, phaseFrame) => obs.failed || (phaseFrame > 30 && stopped(obs)),
+          frames: 2400,
+        },
+        ...setDownOnFloor,
+        settle(),
+      ],
+    },
+    {
+      // Off the top shelf, down to travel height, back to the dock.
+      id: 'rack-retrieval',
+      course: course('rack-retrieval'),
+      phases: [
+        ...startEngine,
+        stopAt([0, 0, 10.4]),
+        raiseTo(freeOnShelf('top') + 0.01),
+        lowerTo(freeOnShelf('top') + 0.004),
+        creepUntilBlocked(0.15),
+        raiseTo(aboveShelf('top', 0.02)),
+        tiltBackTo(-0.1),
+        backOut(0.8),
+        brakeToStop,
+        lowerTo(TRAVEL_HEIGHT),
+        reverseTo(2.6),
+        levelMast,
+        lowerTo(0),
+        backOut(0.8),
+        brakeToStop,
+        settle(),
       ],
     },
   ]
