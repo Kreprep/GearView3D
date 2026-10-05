@@ -18,14 +18,23 @@
 // untouched hint.
 import { createHash } from 'node:crypto'
 
-// JSON with object keys sorted, so the same value fingerprints the same
-// however the database or a data file ordered its keys.
+// Significant digits a number is compared at. Prisma writes a Json column's
+// numbers with 16, so a stock value read back from the database is not
+// always the one the data file holds: Math.PI / 2 is stored as
+// 1.570796326794897. Found by the module improvements Phase 8 rehearsal;
+// without this, a stock rotation or heading never matched its fingerprint.
+const NUMBER_PRECISION = 15
+
+// JSON with object keys sorted and numbers rounded to NUMBER_PRECISION, so
+// the same value fingerprints the same however the database or a data file
+// ordered its keys, and whichever of them last wrote its numbers.
 export function canonicalJson(value) {
-  return JSON.stringify(value ?? null, (key, entry) =>
-    entry && typeof entry === 'object' && !Array.isArray(entry)
+  return JSON.stringify(value ?? null, (key, entry) => {
+    if (typeof entry === 'number' && Number.isFinite(entry)) return Number(entry.toPrecision(NUMBER_PRECISION))
+    return entry && typeof entry === 'object' && !Array.isArray(entry)
       ? Object.fromEntries(Object.keys(entry).sort().map((name) => [name, entry[name]]))
-      : entry,
-  )
+      : entry
+  })
 }
 
 export function stockFingerprint(value) {

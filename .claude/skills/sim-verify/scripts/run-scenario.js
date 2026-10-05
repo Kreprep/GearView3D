@@ -338,7 +338,7 @@ async (page) => {
         "a.loops.find((loop) => loop.name === 'engineIdle').gain > 0",
       ],
     },
-    // --- Safety signs (Phase 6), one per rule family -----------------------
+    // --- The Final Driving Test (module improvements Phase 7) ---------------
     mission: {
       module: 'final-driving-test', step: 'The Final Test',
       // The whole Final Driving Test, warped from task to task with real keys
@@ -412,6 +412,7 @@ async (page) => {
         "l.scorecard !== null && l.scorecard.includes('Passed')",
       ],
     },
+    // --- Safety signs (Phase 6), one per rule family -----------------------
     'sign-interlock': {
       module: 'load-handling', step: 'Accelerate Course',
       actions: [

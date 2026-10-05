@@ -244,8 +244,31 @@ Notes:
 
 ### Live instance
 
-A copy of this stack runs on a homelab LXC container, reachable at `https://gearview3d.lindenwood53.vip` (public, behind a Caddy reverse proxy with CrowdSec + AppSec) and a LAN address. It follows the Docker deployment above: pull, then `docker compose up -d --build`, run **as the `eugene` user**, not root — the deploy key and passwordless `docker` group access are only wired up for that user.
+A copy of this stack runs on a homelab LXC container , reachable at `https://gearview3d.lindenwood53.vip` (public, behind a Caddy reverse proxy with CrowdSec + AppSec) and a LAN address. The checkout is `/docker/gearview3d`, and everything there is run **as the `eugene` user**, never root: the deploy key and passwordless `docker` group access are only wired up for that user, and `git pull` as root fails on the key lookup and on git's "dubious ownership" check.
 
 - The container clones the repo over a **read-only GitHub deploy key** (not a personal token or SSH-agent forwarding), since the container has no access to anyone's personal credentials. The repo's `core.sshCommand` git config points at that key, so plain `git pull` works — if that config is ever missing (e.g. after a fresh clone) `git pull` fails with `Permission denied (publickey)`.
-- `docker compose logs -f backend` / `-f web`, `docker compose ps`, and `docker compose restart <service>` are the usual ways to check on it.
+- `./deploy.sh` (in the checkout) is the redeploy: it refuses a dirty working tree, fast-forwards `main`, runs `docker compose up -d --build` (so the backend boots through `prisma migrate deploy` and the seed), waits for `/api/health`, then prunes unused images.
+- Database backups go to `~/backups/` on the box (`pg_dump`, custom format).
+- `docker compose logs -f backend` / `-f web`, `docker compose ps`, `docker compose restart <service>`, `curl -s http://localhost:8080/api/health` and `docker compose exec postgres psql -U gearview -d gearview3d` are the usual ways to check on it.
+- Production never seeds the demo accounts (`SEED_DEMO_USERS=false`), but the flag does not remove accounts seeded before it existed: a demo account on a public instance must have its password changed or be deleted in the dashboard (Users), since the demo passwords are published in this README.
 - Full LXC specs, credentials, and setup steps live in the private homelab documentation (private documentation), not in this repo — secrets like the root password, `POSTGRES_PASSWORD`, and `JWT_SECRET` never get committed.
+
+#### Redeploying
+
+Rehearse first on a copy of the live database (a `pg_dump` restored into a throwaway database, then `npx prisma migrate deploy` and `SEED_DEMO_USERS=false node prisma/seed.js` from `backend/` against it, twice, comparing every row before and after; a release that changes stock content in `frontend/src/data/` also needs its stock history recorded, see CLAUDE.md). Then, on the box as `eugene`:
+
+```bash
+cd /docker/gearview3d
+git status --short && git log --oneline -1          # clean, and note the commit live is on
+# 1. Back up the database and export the content
+docker compose exec -T postgres pg_dump -U gearview -d gearview3d -Fc > ~/backups/gearview3d-pre-<release>.dump
+docker compose exec backend npm run content:export
+docker compose cp backend:/app/backend/prisma/content-export.json ~/backups/content-export-pre-<release>.json
+# 2. Redeploy (pulls main, rebuilds, migrates, seeds, health check, prune)
+./deploy.sh
+# 3. Check the boot
+docker compose logs backend | grep -A12 "Seed complete"
+curl -s http://localhost:8080/api/health
+```
+
+The content export is written inside the backend container and copied out to `~/backups/`, never into the checkout, which `deploy.sh` needs clean. To roll back the code, check out the previous commit and run `docker compose up -d --build`; to roll back the data, restore the dump with `pg_restore --clean`. The seed never deletes rows, so a code rollback alone loses nothing.

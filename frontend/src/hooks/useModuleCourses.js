@@ -3,9 +3,10 @@ import { getModuleCourses } from '../lib/api'
 
 const NO_STEPS = []
 
-// Loads every published step of a module, in order. Modules 2-4 have no
-// hardcoded step list left: each row's `kind` tells the page how to render it
-// (briefing / driving / activity / summary) and `content` carries the payload.
+// Loads every published step of a module, in order. No module has a
+// hardcoded step list: each row's `kind` tells the page how to render it
+// (briefing / driving / walk-around / checklist / quiz / activity / summary)
+// and `content` carries the payload.
 //
 // Pages must hold off rendering the simulation shell until `loading` is false:
 // completion percentage is computed against the graded step list, so grading a

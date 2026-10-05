@@ -49,7 +49,9 @@ What the runner does:
   that marks every step complete, so the stepper opens all of them, and
   answers `PUT /api/progress` in the browser, so that copy never reaches the
   database. It puts the account's own copy and language back at the end.
-  Nothing is written to the DB.
+  Nothing is written to the DB. A mission step (the Final Driving Test) is
+  also given a scorecard (a failing last run with four signs, after an
+  earlier pass), so its task column is checked at its longest.
 - **CSS pixels.** The MCP's Chrome may run at a 110% device scale, which makes
   a 1920 px window 1745 CSS px wide. The runner scales the window so the page
   sees exactly 1920 x the height, and fails a step whose viewport is anything

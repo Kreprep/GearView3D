@@ -25,6 +25,16 @@ test('the fingerprint ignores key order, as a database may reorder a JSON object
   assert.deepEqual(staleStockUpgrades(reordered, current, history), { data: current.data })
 })
 
+test('the fingerprint ignores the digit a database write drops, and no more', () => {
+  // Math.PI / 2 as Prisma writes it to a Json column, and back.
+  const stored = { heading: 1.570796326794897 }
+  assert.equal(stockFingerprint({ heading: Math.PI / 2 }), stockFingerprint(stored))
+  assert.deepEqual(staleStockUpgrades({ data: stored }, { data: { heading: 0 } }, { data: [stockFingerprint({ heading: Math.PI / 2 })] }), { data: { heading: 0 } })
+  // A real change, however small an admin makes it, still counts.
+  assert.notEqual(stockFingerprint({ x: 1.2 }), stockFingerprint({ x: 1.2000001 }))
+  assert.notEqual(stockFingerprint({ x: 0.1 }), stockFingerprint({ x: 0.2 }))
+})
+
 test('nothing happens without history, a stored row, or a difference', () => {
   assert.deepEqual(staleStockUpgrades(oldStock, current, undefined), {})
   assert.deepEqual(staleStockUpgrades(null, current, history), {})
