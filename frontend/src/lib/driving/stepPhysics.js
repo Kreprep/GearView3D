@@ -62,7 +62,9 @@ export function createScenePhysics(RAPIER, state, world) {
       footprint: { halfWidth: world.halfWidth, halfLength: world.halfLength },
       mastFoot: world.geometry.mastFoot,
       feet: truckFeet(world.geometry),
-      pallets: state.pallets.map(({ def }) => ({ def, ...placed(def) })),
+      // A pallet's def has its start pose resolved (lib/coursePallets.js):
+      // one that starts on a shelf is placed at the shelf's height.
+      pallets: state.pallets.map(({ def }) => ({ def, ...placed(def), y: def.position[1] })),
       cones: world.liveCones.map(placed),
       racks: world.rackColliders,
       walls: world.liveWalls.filter((item) => item.type === 'wall').map((wall) => ({ ...placed(wall), length: wall.length || 3 })),

@@ -11,6 +11,7 @@ import { stepPallet } from './stepPallet.js'
 import { createScenePhysics, stepPhysics, truckPoses } from './stepPhysics.js'
 import { stepStability } from './stepStability.js'
 import { stepCheckpoints, stepParking } from './stepGoals.js'
+import { stepMission } from './stepMission.js'
 
 // The headless driving simulation: one course, one attempt. No three.js
 // scene, no React, no browser - DrivingSimulationViewer runs it inside its
@@ -20,7 +21,7 @@ import { stepCheckpoints, stepParking } from './stepGoals.js'
 //
 //   await loadRapier()               // once, before the first core
 //   const core = createSimCore(course, profile)
-//   core.command('engineStart')      // or 'engineStop'
+//   core.command('engineStart')      // or 'engineStop', 'horn'
 //   core.step(SIM_DT, controls)      // controls: lib/driving/controls.js
 //   core.drainEvents()               // what happened, in order
 //   core.setFaults({ brakeFade })    // a defect scenario's control faults
@@ -38,6 +39,8 @@ import { stepCheckpoints, stepParking } from './stepGoals.js'
 //   { type: 'checkpoint', index, checkpoint, isLast }
 //   { type: 'pallet', event, nextState }   event is the viewer's pallet-* event
 //   { type: 'parking', status, isParked }
+//   { type: 'task', index, task, isLast }  a mission course's task done
+//                                    (stepMission.js)
 //   { type: 'impact', what, speed }  something struck or landed hard enough to
 //                                    hear: 'pallet' | 'cone' | 'landing' | 'structure'
 export function createSimCore(course, profile, { geometry, rapier } = {}) {
@@ -73,6 +76,10 @@ export function createSimCore(course, profile, { geometry, rapier } = {}) {
       } else if (command === 'engineStop' && truck.engineOn) {
         truck.engineOn = false
         state.events.push({ type: 'engine', on: false })
+      } else if (command === 'horn') {
+        // Noted for `requireHorn` checkpoints (stepGoals.js), and raises no
+        // event: the viewer plays the horn itself.
+        Object.assign(state.horn, { at: state.time, x: truck.x, z: truck.z })
       }
     }
     commands = []
@@ -127,6 +134,7 @@ export function createSimCore(course, profile, { geometry, rapier } = {}) {
       stepPallet(state, world, dt)
       stepStability(state, world, dt)
       stepParking(state, world)
+      stepMission(state, world)
       state.truck.prevSpeed = state.truck.speed
       state.time += dt
       if (state.events.length) {

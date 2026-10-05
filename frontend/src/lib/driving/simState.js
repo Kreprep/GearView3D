@@ -2,7 +2,8 @@ import { Euler, Quaternion, Vector3 } from 'three'
 import { palletPhysics } from '../../data/physicsProfile.js'
 import { DECOR_RACK_KINDS, RACK_FOOTPRINT } from '../../data/rackProfile.js'
 import { decorationType } from '../courseEdit.js'
-import { resolveCapacityKg, resolveCourseBounds, resolveFailConditions } from '../courseGoals.js'
+import { courseGoalType, resolveCapacityKg, resolveCourseBounds, resolveFailConditions } from '../courseGoals.js'
+import { courseDropZones, coursePallets } from '../coursePallets.js'
 import { initialPalletState } from '../physics/palletState.js'
 import { stabilityModel } from '../physics/stability.js'
 import { NO_CONTROL_FAULTS } from './controlFaults.js'
@@ -20,11 +21,9 @@ import { FORKLIFT_RIG_GEOMETRY } from './rigGeometry.js'
 // themselves; the state keeps what the other steps, the safety rules and the
 // view need to know about them.
 
-// Stored courses always use `pallets`; the singular `pallet` is the older
-// hand-written shape kept working.
-export function coursePallets(course) {
-  return course.pallets || (course.pallet ? [course.pallet] : [])
-}
+// The course's pallets, each with its start pose resolved (a pallet that
+// starts on a shelf stands at its rack), are lib/coursePallets.js's.
+export { coursePallets }
 
 // Every cone is a live collider, whether authored under `obstacles` or as a
 // `decorations` lane/gate marker.
@@ -47,6 +46,8 @@ export function createSimWorld(course, profile, geometry = FORKLIFT_RIG_GEOMETRY
     geometry,
     checkpoints: course.checkpoints || [],
     pallets: coursePallets(course),
+    // Every drop zone, the older single `dropZone` among them.
+    dropZones: courseDropZones(course),
     racks,
     liveCones: courseCones(course),
     liveWalls: (course.decorations || []).filter((item) => item.type === 'wall' || decorationType(item) === 'vehicle'),
@@ -71,6 +72,8 @@ export function createSimWorld(course, profile, geometry = FORKLIFT_RIG_GEOMETRY
     // The load-handling fails the course switched on, its capacity plate and
     // the truck that plate describes (lib/physics/stability.js).
     failConditions: resolveFailConditions(course),
+    // A mission course's tasks, in order (stepMission.js), or null.
+    mission: courseGoalType(course) === 'mission' ? course.tasks || [] : null,
     ratedCapacityKg,
     stability: stabilityModel(ratedCapacityKg),
     scratch: {
@@ -124,6 +127,15 @@ export function createSimState(course) {
     failed: false,
     failReason: null,
     checkpointIndex: 0,
+    // When the checkpoint to reach became the one to reach (state.time), so
+    // a horn sounded for an earlier one does not count for it.
+    checkpointSince: 0,
+    // The last time the horn sounded and where the truck was:
+    // { at (state.time, or null), x, z }. For `requireHorn` checkpoints.
+    horn: { at: null, x: 0, z: 0 },
+    // A mission course's progress through its tasks (stepMission.js):
+    // { index, since }, or null for any other course.
+    mission: courseGoalType(course) === 'mission' ? { index: 0, since: 0 } : null,
     pallets: coursePallets(course).map((def) => {
       const { kind, pallet, loadKg, footprint } = palletPhysics(def)
       const rotation = def.rotation || 0
@@ -135,14 +147,14 @@ export function createSimState(course) {
         // pallet, which the stability model carries.
         loadKg,
         massKg: loadKg + pallet.mass,
-        position: new Vector3(def.position[0], 0, def.position[2]),
+        position: new Vector3(def.position[0], def.position[1], def.position[2]),
         quaternion: new Quaternion().setFromEuler(new Euler(0, rotation, 0)),
         // The same orientation as yaw-first Euler angles, for the 2D readers
         // (fork engagement, proximity), which want `rotation.y`.
         rotation: new Euler(0, rotation, 0, 'YXZ'),
         velocity: new Vector3(),
         // The centre of gravity, in world space.
-        com: new Vector3(def.position[0], 0, def.position[2]),
+        com: new Vector3(def.position[0], def.position[1], def.position[2]),
         // Radians off level.
         lean: 0,
         touch: { ...noTouch(), supported: true },

@@ -80,6 +80,7 @@ export function createHeadlessDrive(course, { afterStep, faults } = {}) {
       })),
       cones: state.cones,
       load: state.load,
+      missionIndex: state.mission?.index ?? null,
     }
   }
 
@@ -91,6 +92,7 @@ export function createHeadlessDrive(course, { afterStep, faults } = {}) {
     if (event.type === 'checkpoint') return { type: event.isLast ? 'course-complete' : 'checkpoint', id: event.checkpoint.id }
     if (event.type === 'pallet') return { ...event.event, nextState: event.nextState }
     if (event.type === 'parking') return { type: 'parking', status: event.status, isParked: event.isParked }
+    if (event.type === 'task') return { type: 'mission-task', id: event.task.id, index: event.index, isLast: event.isLast }
     // An impact's speed is a physics reading: rounded, like the samples.
     if (event.type === 'impact') return { type: 'impact', what: event.what, speed: Math.round(event.speed * 1e4) / 1e4 }
     return event
@@ -130,12 +132,12 @@ export function createHeadlessDrive(course, { afterStep, faults } = {}) {
         keyboard.keyUp(key)
       }
       for (const command of keyboard.drainCommands()) applyCabCommand(dashboard, command, core.state.truck.engineOn)
-      // The horn is the view's (the viewer plays it); everything else is the
-      // core's.
+      // Every command reaches the core, as in the viewer; the horn's sound
+      // is the view's, so the core only notes it (requireHorn checkpoints).
       let horn = false
       for (const command of dashboard.drainCommands()) {
         if (command === 'horn') horn = true
-        else core.command(command)
+        core.command(command)
       }
       const { steps } = loop.advance(SCENARIO_DT)
       assert.equal(steps, 1, 'one fixed step per 1/60 s frame')

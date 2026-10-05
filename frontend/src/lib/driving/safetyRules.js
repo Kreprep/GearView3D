@@ -150,6 +150,18 @@ export const SAFETY_RULES = [
     when: (s) => Math.abs(s.speed) > s.speedLimit && { values: { limit: s.speedLimitKmh } },
   },
   {
+    // At a blind crossing (a checkpoint with `requireHorn`) without having
+    // sounded the horn on the way to it. The checkpoint does not clear until
+    // it is sounded (lib/driving/stepGoals.js).
+    id: 'sound-horn',
+    ...CAUTION,
+    kind: 'mandatory',
+    pictogram: 'horn',
+    messageKey: 'safety.sign.sound-horn',
+    osha: '(n)(4)',
+    when: (s) => s.hornDue,
+  },
+  {
     id: 'turn-speed',
     ...CAUTION,
     kind: 'warning',

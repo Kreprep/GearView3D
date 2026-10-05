@@ -1,4 +1,5 @@
 import { TINE } from '../../data/physicsProfile.js'
+import { palletTarget } from '../coursePallets.js'
 import { closestPointOnOrientedRect, forwardGap, forwardGapToCircle, rectRectClosest, toRectLocal } from '../simCollision.js'
 import { CONE_RADIUS, PALLET_SOLID_MAX_Y } from './constants.js'
 import { wallRectInto } from './stepCollision.js'
@@ -181,12 +182,17 @@ export function pathClearance(state, world, direction, margin = 0) {
         halfZ: body.halfZ + forks.halfZ,
       }
     : bodyPath
-  const targetRackId = ahead ? state.pallets[state.carriedIndex]?.def.targetRack ?? null : null
+  // The rack a carried load is going to, or the one the load the forks are
+  // in rests on (taking it off a shelf), is where the truck is meant to be:
+  // not an obstacle ahead.
+  const carried = ahead ? state.pallets[state.carriedIndex] : null
+  const engaged = ahead && state.load ? state.pallets[state.load.index] : null
+  const workingRacks = new Set([palletTarget(carried?.def)?.rack, engaged?.touch.rackId].filter(Boolean))
 
   let nearest = null
   for (const obstacle of obstacles(state, world)) {
     if (ahead && obstacle.kind === 'pallet') continue
-    if (obstacle.kind === 'rack' && targetRackId !== null && obstacle.id === targetRackId) continue
+    if (obstacle.kind === 'rack' && workingRacks.has(obstacle.id)) continue
     const path = obstacle.kind === 'rack' ? bodyPath : truckPath
     const distance = obstacle.rect ? forwardGap(path, obstacle.rect, margin) : forwardGapToCircle(path, obstacle.circle, margin)
     if (distance === null) continue

@@ -84,6 +84,11 @@ export function normalizeCourseGeometry(course = {}) {
     rotation: pallet.rotation || 0,
     ...(pallet.weightKg !== undefined ? { weightKg: pallet.weightKg } : {}),
     ...(pallet.targetRack ? { targetRack: pallet.targetRack, targetLevel: pallet.targetLevel } : {}),
+    // Where it goes, a shelf it starts on, and a load heavier at one end
+    // (lib/coursePallets.js, data/physicsProfile.js).
+    ...(pallet.target ? { target: pallet.target } : {}),
+    ...(pallet.startShelf ? { startShelf: pallet.startShelf } : {}),
+    ...(pallet.loadOffsetM !== undefined ? { loadOffsetM: pallet.loadOffsetM } : {}),
   }))
 
   const racks = (course.racks || []).map((rack) => ({
@@ -99,6 +104,10 @@ export function normalizeCourseGeometry(course = {}) {
     pallets,
     racks,
     dropZone: course.dropZone || null,
+    // More drop zones, each with an id a pallet's target can name, and a
+    // mission's tasks (lib/missionTasks.js), only where the course has them.
+    ...(course.dropZones ? { dropZones: course.dropZones } : {}),
+    ...(course.tasks ? { tasks: course.tasks } : {}),
     parkingBay: course.parkingBay || null,
     capacityKg: typeof course.capacityKg === 'number' ? course.capacityKg : null,
     failConditions: course.failConditions || null,

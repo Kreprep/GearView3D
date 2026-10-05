@@ -11,6 +11,8 @@ export default {
   // numeral, so both variants exist there with the same text.
   'driving.task.checkpoints.one': 'Drive through {count} checkpoint in order to finish this step.',
   'driving.task.checkpoints.other': 'Drive through {count} checkpoints in order to finish this step.',
+  'driving.task.mission.one': 'Complete the {count} task shown at the top of the screen to finish this step.',
+  'driving.task.mission.other': 'Complete the {count} tasks shown at the top of the screen, in order, to finish this step.',
   'driving.task.free': 'Start the engine to finish this step: fasten the seatbelt (B), set the parking brake (Space), then press E.',
   'driving.task.done': 'Step complete. Use Next to continue.',
 
@@ -49,6 +51,9 @@ export default {
 
   'driving.hud.courseComplete': 'Course complete',
   'driving.hud.checkpoint': 'Checkpoint {index} / {total}',
+  'driving.hud.task': 'Task {index} / {total}: {label}',
+  'driving.hud.missionComplete': 'Mission complete',
+  'driving.pallet.loadCentre': 'Load centre {metres} m',
   'driving.hud.pallet.ground': 'Pallet: on ground',
   'driving.hud.pallet.carried': 'Pallet: carried',
   'driving.hud.pallet.released': 'Pallet: set down',

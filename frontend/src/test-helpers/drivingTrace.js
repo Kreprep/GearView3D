@@ -30,6 +30,8 @@ export function traceSnapshot(frame, view) {
     parkingStatus: view.parkingStatus,
     parked: view.parked,
     engineOn: view.engineOn,
+    // Only on a mission course, so older traces are unchanged.
+    ...(view.missionIndex != null ? { missionIndex: view.missionIndex } : {}),
     pallets: view.pallets.map((pallet) => [
       pallet.state,
       roundBody(pallet.position.x),

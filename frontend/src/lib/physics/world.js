@@ -45,6 +45,13 @@ const GROUPS = {
 const TRUCK_KINDS = new Set(['chassis', 'wheel', 'tine', 'backrest'])
 const IDENTITY = { x: 0, y: 0, z: 0, w: 1 }
 
+// A solid box's principal inertia about its own centre.
+const boxInertia = ({ half: [x, y, z] }, mass) => ({
+  x: (mass / 3) * (y * y + z * z),
+  y: (mass / 3) * (x * x + z * z),
+  z: (mass / 3) * (x * x + y * y),
+})
+
 const yawQuaternion = (rotation = 0) => ({ x: 0, y: Math.sin(rotation / 2), z: 0, w: Math.cos(rotation / 2) })
 
 const scratchFrom = new Quaternion()
@@ -65,7 +72,8 @@ const composeInto = (matrix, { position, quaternion }) =>
  *   mastFoot   the rig's mast foot, which the carriage frame hangs from
  *   feet       where the truck stands, in its own frame (colliders.js,
  *              truckFeet): what a truck that has gone over pivots on
- *   pallets    [{ def, x, z, rotation }] (def: the course's pallet)
+ *   pallets    [{ def, x, y, z, rotation }] (def: the course's pallet; y is
+ *              above 0 for one that starts on a rack shelf)
  *   cones      [{ x, z }]
  *   racks      [{ id, x, z, rotation }]
  *   walls      [{ x, z, rotation, length }]
@@ -137,11 +145,11 @@ export function createPhysicsWorld(RAPIER, scene, truck, options = {}) {
   let wreck = null
 
   // --- Dynamic: pallets and cones ---
-  const pallets = scene.pallets.map(({ def, x, z, rotation }, index) => {
-    const { pallet, loadKg } = palletPhysics(def)
+  const pallets = scene.pallets.map(({ def, x, y = 0, z, rotation }, index) => {
+    const { pallet, loadKg, loadOffset } = palletPhysics(def)
     const body = world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic()
-        .setTranslation(x, 0, z)
+        .setTranslation(x, y, z)
         .setRotation(yawQuaternion(rotation))
         .setCcdEnabled(true)
         // A pallet at rest still has to report what it rests on.
@@ -151,7 +159,13 @@ export function createPhysicsWorld(RAPIER, scene, truck, options = {}) {
     const dynamic = (desc) => desc.setFriction(FRICTION.woodOnConcrete).setCollisionGroups(GROUPS.dynamic)
     const density = pallet.mass / pallet.colliders.reduce((sum, box) => sum + boxVolume(box), 0)
     const colliders = pallet.colliders.map((box) => addBox(body, box, tag, (desc) => dynamic(desc).setDensity(density)))
-    colliders.push(addBox(body, pallet.load, tag, (desc) => dynamic(desc).setMass(loadKg)))
+    // A load heavier at one end keeps its box; its centre of gravity moves
+    // along the pallet (palletPhysics, loadOffset).
+    const loadMass = (desc) =>
+      loadOffset
+        ? desc.setMassProperties(loadKg, { x: 0, y: 0, z: loadOffset }, boxInertia(pallet.load, loadKg), IDENTITY)
+        : desc.setMass(loadKg)
+    colliders.push(addBox(body, pallet.load, tag, (desc) => loadMass(dynamic(desc))))
     return { body, colliders, massKg: pallet.mass + loadKg }
   })
 

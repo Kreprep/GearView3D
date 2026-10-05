@@ -85,3 +85,9 @@ export const TIP_RISK_MARGIN = 0.3
 // with the engine off or the parking brake set is "forks up". GearView
 // default.
 export const PARKED_FORKS_MAX = m(0.08)
+
+// (n)(4): slow down and sound the horn at cross aisles and other places
+// where vision is obstructed. A checkpoint with `requireHorn` (a blind
+// crossing) counts the horn sounded within this far of its edge, on the way
+// to it. GearView default: about two truck lengths.
+export const HORN_APPROACH_DISTANCE = m(6)

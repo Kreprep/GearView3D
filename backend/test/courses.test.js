@@ -128,3 +128,35 @@ test('validateCoursePayload rejects a driving step whose speed limit is not a po
   const problems = validateCoursePayload('driving', { ...payload, data: { ...data, speedLimitKmh: -1 } })
   assert.ok(problems.some((p) => p.includes('speed limit')))
 })
+
+// A mission course (module improvements Phase 5): the publish check is
+// validateCourse's mission rules, run in the backend.
+const MISSION_DATA = {
+  start: { position: [0, 0, 0], heading: 0 },
+  checkpoints: [{ id: 'crossing', type: 'stop', requireHorn: true, position: [0, 0, 4], radius: 0.9 }],
+  pallets: [{ id: 'load', position: [0, 0, 10], rotation: 0, weightKg: 400, target: { zone: 'dock' } }],
+  dropZones: [{ id: 'dock', position: [0, 0, 16], radius: 0.9 }],
+  parkingBay: { position: [0, 0, 7], width: 0.45, depth: 1, heading: 0 },
+  tasks: [
+    { id: 'start', type: 'start', label: 'Start the truck' },
+    { id: 'cross', type: 'checkpoint', ref: 'crossing', label: 'Stop and sound the horn' },
+    { id: 'deliver', type: 'deliver', ref: 'load', label: 'Take the pallet to the dock' },
+    { id: 'park', type: 'park', label: 'Park and secure' },
+  ],
+}
+
+test('validateCoursePayload accepts a mission whose tasks all resolve, in an order that can be finished', () => {
+  assert.deepEqual(validateCoursePayload('driving', { title: 'Final test', goalType: 'mission', data: MISSION_DATA }), [])
+})
+
+test('validateCoursePayload refuses a mission with no tasks, a dangling ref or tasks out of order', () => {
+  const check = (data) => validateCoursePayload('driving', { title: 'Final test', goalType: 'mission', data })
+  assert.ok(check({ ...MISSION_DATA, tasks: [] }).some((p) => p.includes('at least one task')))
+  const [start, cross, deliver, park] = MISSION_DATA.tasks
+  assert.ok(check({ ...MISSION_DATA, tasks: [start, { ...cross, ref: 'gone' }] }).some((p) => p.includes('checkpoint that does not exist')))
+  assert.ok(check({ ...MISSION_DATA, tasks: [start, { ...deliver, ref: 'gone' }] }).some((p) => p.includes('pallet that does not exist')))
+  assert.ok(check({ ...MISSION_DATA, tasks: [park, deliver] }).some((p) => p.includes('only be the last task')))
+  assert.ok(check({ ...MISSION_DATA, tasks: [cross, start] }).some((p) => p.includes('only be the first task')))
+  const overloaded = { ...MISSION_DATA, capacityKg: 1000, pallets: [{ ...MISSION_DATA.pallets[0], weightKg: 700, loadOffsetM: 0.3 }] }
+  assert.ok(check(overloaded).some((p) => p.includes('over the capacity for its load centre')))
+})

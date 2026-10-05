@@ -125,6 +125,14 @@ export function cockpitSnapshot(state, course, { controls, switches, gauges, pro
     hours: round(cluster.hours, 1),
     // Course progress.
     checkpointIndex: state.checkpointIndex,
+    // A mission's active task (lib/driving/stepMission.js), or null.
+    missionIndex: state.mission ? state.mission.index : null,
+    // The ids of the pallets delivered so far, joined, so a selector over it
+    // only changes when a delivery does.
+    deliveredPallets: state.pallets
+      .filter((pallet) => pallet.state === 'delivered')
+      .map((pallet) => pallet.def.id)
+      .join(','),
     // A catalog key, set by lib/driving/stepGoals.js. Before the first sim
     // step it has not been worked out yet.
     parkingStatus: state.parking.status || (course.parkingBay ? 'driving.parking.enterBay' : null),

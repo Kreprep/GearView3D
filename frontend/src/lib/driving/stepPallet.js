@@ -2,6 +2,7 @@ import { FORK_POCKET_TOLERANCE, LOAD_LOSS_WINDOW_SECONDS, SHARP_TURN_LATERAL_ACC
 import { PALLETS, TINE, TINE_HEEL_Z, TINE_REST_Y } from '../../data/physicsProfile.js'
 import { RACK_SLOT_HALF_WIDTH } from '../../data/rackProfile.js'
 import { FORKS_TRAVEL_HEIGHT } from '../../data/safetyThresholds.js'
+import { palletTarget } from '../coursePallets.js'
 import { evaluateForkEngagement, forkGrip } from '../loadPhysics.js'
 import { deratedCapacityKg } from '../physics/loadChart.js'
 import { nextPalletState } from '../physics/palletState.js'
@@ -52,21 +53,24 @@ function lossReason(state) {
   return 'load-dropped'
 }
 
-// Whether a pallet is where it was going: on the floor inside the drop zone,
-// or on its target rack's target shelf, in the centre bay.
+// Whether a pallet is where it was going (lib/coursePallets.js, palletTarget):
+// on its target rack's target shelf, in the centre bay; on the floor inside
+// its target drop zone; or, with no target, inside any of the course's drop
+// zones.
 export function atDestination(pallet, world) {
-  const { course, racks } = world
+  const { racks, dropZones } = world
   const { def, touch, position } = pallet
-  if (def.targetRack && def.targetLevel) {
-    if (touch.rackId !== def.targetRack || touch.rackLevel !== def.targetLevel) return false
-    const rack = racks.find((entry) => entry.id === def.targetRack)
+  const target = palletTarget(def)
+  if (target?.rack) {
+    if (touch.rackId !== target.rack || touch.rackLevel !== target.level) return false
+    const rack = racks.find((entry) => entry.id === target.rack)
     if (!rack) return false
     const slot = toRectLocal(position.x, position.z, { x: rack.position[0], z: rack.position[2], rotation: rack.rotation || 0 })
     return Math.abs(slot.x) <= RACK_SLOT_HALF_WIDTH
   }
-  const zone = course.dropZone
-  if (!zone || touch.rackId !== null) return false
-  return Math.hypot(position.x - zone.position[0], position.z - zone.position[2]) <= zone.radius
+  if (touch.rackId !== null) return false
+  const zones = target?.zone ? dropZones.filter((zone) => zone.id === target.zone) : dropZones
+  return zones.some((zone) => Math.hypot(position.x - zone.position[0], position.z - zone.position[2]) <= zone.radius)
 }
 
 export function stepPallet(state, world, dt) {
