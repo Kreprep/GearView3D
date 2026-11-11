@@ -44,3 +44,6 @@ Thumbs.db
 # frontend/public/audio/ are what ships; scripts/build-audio.mjs rebuilds them.
 frontend/audio-src/raw/
 frontend/textures-src/raw/
+
+# Planning docs (plans, revision log) are kept locally, not published
+docs/
