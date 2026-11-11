@@ -1,7 +1,7 @@
 #!/bin/sh
 # Pulls the latest main, rebuilds/redeploys the compose stack, waits for the
-# API to answer, then prunes what the rebuild orphaned. Run on the LXC itself,
-# from the deploy checkout (/docker/gearview3d):
+# API to answer, then prunes what the rebuild orphaned. Run on the server itself,
+# as the deploy user, from the deploy checkout (/docker/gearview3d):
 #   ./deploy.sh
 set -e
 
