@@ -1,6 +1,6 @@
 # GearView3D
 
-**Try it live: [gearview3d.lindenwood53.vip](https://gearview3d.lindenwood53.vip)** (sign up with any email; laptop or desktop browser, 1024 px wide or more)
+**Try it live: [gearview3d.krepre.com](https://gearview3d.krepre.com)** (sign up with any email; laptop or desktop browser, 1024 px wide or more)
 
 GearView3D is a thesis prototype for browser-based forklift familiarization. It supports learner modules, guided checklists, parts identification, progress tracking, quizzes, final assessment review, and admin content management.
 
