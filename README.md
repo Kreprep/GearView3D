@@ -246,7 +246,7 @@ Notes:
 
 ### Live instance
 
-A copy of this stack runs on a self-hosted server, reachable at `https://gearview3d.lindenwood53.vip` (behind a reverse proxy). The checkout is `/docker/gearview3d`, and everything there is run **as the deploy user**, never root: the deploy key and passwordless `docker` group access are only wired up for that user, and `git pull` as root fails on the key lookup and on git's "dubious ownership" check.
+A copy of this stack runs on a self-hosted server, reachable at `https://gearview3d.krepre.com` (behind a reverse proxy). The checkout is `/docker/gearview3d`, and everything there is run **as the deploy user**, never root: the deploy key and passwordless `docker` group access are only wired up for that user, and `git pull` as root fails on the key lookup and on git's "dubious ownership" check.
 
 - The container clones the repo over a **read-only GitHub deploy key** (not a personal token or SSH-agent forwarding), since the container has no access to anyone's personal credentials. The repo's `core.sshCommand` git config points at that key, so plain `git pull` works — if that config is ever missing (e.g. after a fresh clone) `git pull` fails with `Permission denied (publickey)`.
 - `./deploy.sh` (in the checkout) is the redeploy: it refuses a dirty working tree, fast-forwards `main`, runs `docker compose up -d --build` (so the backend boots through `prisma migrate deploy` and the seed), waits for `/api/health`, then prunes unused images.
